@@ -1,0 +1,59 @@
+{
+  "resources": ["food", "wood", "gold", "stone"],
+  "ages": [
+    {"id": "stone", "name": "Stone Age"},
+    {"id": "tool", "name": "Tool Age", "cost": {"food": 500}, "research_time": 60, "requires_buildings": 2}
+  ],
+  "combat": {"min_damage": 1},
+  "economy": {
+    "carry": 10,
+    "gather_rates": {"food": 0.45, "wood": 0.4, "gold": 0.38, "stone": 0.36},
+    "start": {"food": 200, "wood": 200, "gold": 0, "stone": 150},
+    "start_villagers": 3,
+    "pop_max": 50
+  },
+  "nodes": [
+    {"id": "tree", "name": "Tree", "resource": "wood", "amount": 75},
+    {"id": "berry_bush", "name": "Berry Bush", "resource": "food", "amount": 150},
+    {"id": "gold_mine", "name": "Gold Mine", "resource": "gold", "amount": 400},
+    {"id": "stone_mine", "name": "Stone Mine", "resource": "stone", "amount": 350}
+  ],
+  "units": [
+    {"id": "villager", "name": "Villager", "class": "worker", "age": "stone", "trained_at": "town_center",
+     "cost": {"food": 50}, "train_time": 20, "hp": 25, "attack": 3, "armor": 0, "pierce_armor": 0,
+     "range": 0, "attack_cooldown": 1.5, "speed": 1.1, "los": 4, "pop": 1},
+    {"id": "clubman", "name": "Clubman", "class": "infantry", "age": "stone", "trained_at": "barracks",
+     "cost": {"food": 50}, "train_time": 22, "hp": 40, "attack": 3, "armor": 0, "pierce_armor": 0,
+     "range": 0, "attack_cooldown": 1.5, "speed": 1.0, "los": 4, "pop": 1, "bonus": {"building": 2}},
+    {"id": "axeman", "name": "Axeman", "class": "infantry", "age": "tool", "trained_at": "barracks",
+     "cost": {"food": 50, "gold": 20}, "train_time": 24, "hp": 50, "attack": 5, "armor": 0, "pierce_armor": 0,
+     "range": 0, "attack_cooldown": 1.5, "speed": 1.0, "los": 4, "pop": 1, "bonus": {"cavalry": 4, "building": 3}},
+    {"id": "bowman", "name": "Bowman", "class": "archer", "age": "tool", "trained_at": "archery_range",
+     "cost": {"food": 30, "wood": 20}, "train_time": 26, "hp": 30, "attack": 4, "armor": 0, "pierce_armor": 0,
+     "range": 5, "attack_cooldown": 1.4, "speed": 1.1, "los": 6, "pop": 1, "bonus": {"infantry": 1}},
+    {"id": "scout", "name": "Scout", "class": "cavalry", "age": "tool", "trained_at": "stable",
+     "cost": {"food": 100}, "train_time": 30, "hp": 60, "attack": 3, "armor": 0, "pierce_armor": 1,
+     "range": 0, "attack_cooldown": 1.5, "speed": 2.0, "los": 8, "pop": 1, "bonus": {"archer": 5}}
+  ],
+  "buildings": [
+    {"id": "town_center", "name": "Town Center", "age": "stone", "cost": {"wood": 200}, "size": 3, "hp": 600,
+     "build_time": 60, "los": 7, "pop_provided": 5, "drop_off": ["food", "wood", "gold", "stone"],
+     "trains": ["villager"], "requires": []},
+    {"id": "house", "name": "House", "age": "stone", "cost": {"wood": 30}, "size": 2, "hp": 150,
+     "build_time": 15, "los": 2, "pop_provided": 4},
+    {"id": "granary", "name": "Granary", "age": "stone", "cost": {"wood": 120}, "size": 2, "hp": 250,
+     "build_time": 25, "los": 3, "drop_off": ["food"]},
+    {"id": "storage_pit", "name": "Storage Pit", "age": "stone", "cost": {"wood": 120}, "size": 2, "hp": 250,
+     "build_time": 25, "los": 3, "drop_off": ["wood", "gold", "stone"]},
+    {"id": "barracks", "name": "Barracks", "age": "stone", "cost": {"wood": 125}, "size": 3, "hp": 350,
+     "build_time": 30, "los": 3, "trains": ["clubman", "axeman"]},
+    {"id": "farm", "name": "Farm", "age": "stone", "cost": {"wood": 75}, "size": 2, "hp": 100,
+     "build_time": 15, "los": 1, "requires": ["granary"], "resource": {"food": 250}},
+    {"id": "archery_range", "name": "Archery Range", "age": "tool", "cost": {"wood": 150}, "size": 3, "hp": 350,
+     "build_time": 35, "los": 3, "requires": ["barracks"], "trains": ["bowman"]},
+    {"id": "stable", "name": "Stable", "age": "tool", "cost": {"wood": 150}, "size": 3, "hp": 350,
+     "build_time": 35, "los": 3, "requires": ["barracks"], "trains": ["scout"]},
+    {"id": "watch_tower", "name": "Watch Tower", "age": "tool", "cost": {"stone": 150}, "size": 1, "hp": 300,
+     "build_time": 40, "los": 8, "attack": 3, "range": 6, "attack_cooldown": 2.0}
+  ]
+}

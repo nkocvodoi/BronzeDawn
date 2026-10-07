@@ -1,0 +1,34 @@
+feature,area,priority,original,clone,notes
+Isometric tile map with terrain and water,map,must,yes,yes,
+Seeded random skirmish maps,map,must,yes,yes,72x72 two corners
+Scroll and zoom the camera,camera,must,yes,yes,arrows trackpad pinch edge in full screen
+Click box shift and double-click selection,selection,must,yes,yes,
+Right-click context command,commands,must,yes,yes,
+Control groups,commands,should,yes,yes,Cmd+1-9
+Pathfinding around obstacles,pathfinding,must,yes,yes,A* 8 directions
+Gather carry and drop off four resources,gathering,must,yes,yes,
+Farms,gathering,must,yes,yes,
+Hunting animals,gathering,should,yes,no,
+Fishing and docks,gathering,could,yes,no,no water units yet
+Construction with several builders,construction,must,yes,yes,
+Production queues and rally points,production,must,yes,yes,
+Population and houses,production,must,yes,yes,
+Melee ranged and bonus damage,combat,must,yes,yes,
+Counter triangle,combat,must,yes,yes,checked by balance.py
+Watch tower,combat,should,yes,yes,
+Walls,combat,could,yes,no,
+Fog of war explored and visible,fog,must,yes,yes,
+Computer opponent with three levels,ai,must,yes,yes,
+Stone and Tool ages,ages,must,yes,yes,
+Bronze and Iron ages,ages,should,yes,no,next milestone
+Technologies and upgrades,ages,should,yes,no,
+Civilizations with bonuses,ages,could,yes,no,
+Win by conquest,win,must,yes,yes,
+Minimap,hud,must,yes,yes,click to jump right-click to send
+Hotkeys for every command,hud,must,yes,yes,
+Sound effects and music,audio,should,yes,no,needs original or licensed audio
+Campaigns and scenarios,modes,could,yes,skip,out of the first slice
+Multiplayer,modes,could,yes,skip,lockstep later: commands already go through one API
+Map editor,modes,could,yes,skip,
+The original's art audio and names,assets,must,yes,skip,clean-room: never copied
+Headless AI vs AI match,tooling,should,no,yes,ours: the integration test

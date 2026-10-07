@@ -1,0 +1,79 @@
+# Bronze Dawn
+
+Game chiến thuật thời gian thực (RTS) thời kỳ đồ đá cho macOS, lấy cảm hứng từ
+lối chơi của Đế chế 1. Đây là bản clean-room: chỉ làm lại cơ chế chơi. Tên,
+hình vẽ, số liệu và code đều là của dự án này, không lấy bất cứ thứ gì từ game gốc.
+
+"Bronze Dawn" chỉ là tên tạm. Hãy chạy `/replica-brand` để đặt tên thật trước khi phát hành.
+
+## Chạy game
+
+Cần macOS 13 trở lên và Xcode (hoặc Command Line Tools).
+
+```bash
+swift run -c release BronzeDawn          # chơi ngay
+./scripts/make-app.sh                     # đóng gói build/Bronze Dawn.app (universal, ad-hoc signed)
+open "build/Bronze Dawn.app"
+```
+
+Khi vào game, bấm 1, 2 hoặc 3 để chọn độ khó Dễ, Thường hoặc Khó.
+
+## Cách chơi
+
+Bạn bắt đầu với 1 Town Center và 3 dân làng (villager). Nhiệm vụ: thu thập
+tài nguyên, xây nhà, lên Tool Age rồi tiêu diệt đối thủ.
+
+| Thao tác | Tác dụng |
+| --- | --- |
+| Chuột trái / kéo | Chọn / chọn theo vùng. Giữ Shift để chọn thêm, double-click để chọn mọi unit cùng loại trên màn hình |
+| Chuột phải | Đi, thu hoạch, xây, tấn công. Khi đang chọn công trình: đặt điểm tập kết (rally point) |
+| Villager: Q W E R A S D F Z | House, Granary, Storage Pit, Barracks, Farm, Archery Range, Stable, Watch Tower, Town Center |
+| Công trình: Q W E R / T / X | Luyện quân / Lên đời (Advance) / Hủy |
+| Lính: A / S | Attack-move / Dừng |
+| H, `.` | Về Town Center, chọn villager đang rảnh |
+| Cmd+1..9, 1..9 | Lưu và gọi nhóm quân |
+| Mũi tên, trackpad, pinch, + - | Cuộn và zoom bản đồ |
+| F1, P, Delete | Hướng dẫn, tạm dừng, phá unit hoặc công trình đã chọn |
+
+Các mẹo:
+- Thức ăn ban đầu lấy từ bụi dâu. Khi dâu hết thì xây Farm (cần Granary trước).
+- Muốn lên Tool Age cần 500 food và 2 loại công trình khác nhau (không tính House và Town Center).
+- Thế khắc chế: cung thủ (Bowman) thắng bộ binh, kỵ binh (Scout) thắng cung thủ, bộ binh thắng kỵ binh. Bộ binh có thêm sát thương lên công trình.
+
+## Cấu trúc
+
+```
+data/rules.json          mọi con số trong game. Sửa ở đây là cân bằng lại game, không cần build lại
+Sources/DawnCore/        mô phỏng (không dùng SpriteKit): luật, bản đồ, A*, sương mù, AI
+Sources/BronzeDawn/      SpriteKit: hình vẽ bằng code, HUD, điều khiển
+Tests/DawnCoreTests/     unit test và một trận AI đấu AI chạy headless
+replica/game/design.md   tài liệu thiết kế (viết theo /replica-game-design)
+replica/features.csv     ma trận tính năng, chấm điểm bằng /replica-diff
+```
+
+## Kiểm tra
+
+```bash
+swift test                                                         # 15 test, gồm một trận AI đấu AI trọn vẹn
+swift run -c release BronzeDawn --simulate --seed 3 --ai1 hard --ai2 easy
+python3 ../replica-skill/replica-game-design/balance.py data/rules.json   # tam giác khắc chế
+python3 ../replica-skill/replica-diff/parity.py replica/features.csv        # độ phủ tính năng
+swift run BronzeDawn --snapshot shot.png --seconds 600 --reveal            # chụp một khung hình
+```
+
+## Phát hành cho máy Mac khác
+
+`make-app.sh` chỉ ký ad-hoc, nên bản build chỉ chạy được trên máy này. Muốn
+phân phối, ký bằng Developer ID rồi notarize:
+
+```bash
+codesign --force --options runtime --sign "Developer ID Application: <tên>" "build/Bronze Dawn.app"
+ditto -c -k --keepParent "build/Bronze Dawn.app" BronzeDawn.zip
+xcrun notarytool submit BronzeDawn.zip --apple-id <email> --team-id <team> --wait
+xcrun stapler staple "build/Bronze Dawn.app"
+```
+
+## Việc tiếp theo
+
+Bronze Age và Iron Age, công nghệ nâng cấp, âm thanh, săn thú, tường thành,
+dân tộc với bonus riêng. Xem [replica/features.csv](replica/features.csv).
