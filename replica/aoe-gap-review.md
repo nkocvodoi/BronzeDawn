@@ -105,6 +105,18 @@ Thấy thêm khi chơi:
 
 Còn khác có chủ ý: dân số vẫn hiện trên thanh trên (bản gốc không có) vì không có nó rất khó chơi.
 
+## Đã làm (bước 2, nhánh `aoe-terrain`)
+
+- Sương mù vẽ bằng shader (`web/src/game/fog.ts`): đen đặc ở vùng chưa khám phá, lưới chấm ở vùng đã khám
+  phá, mép sắc và lượn sóng. Lưới chấm theo điểm ảnh màn hình, gắn với bản đồ nên không "bò" khi cuộn.
+- Mặt đất: cỏ có mảng sáng tối, đốm vàng, mảng đất trơ; nền rừng tối; nước có dải sáng tối; bờ nước là
+  đường cong trơn có bọt trắng đứt nét (chỉ đổi hình, ô nào là nước vẫn như cũ).
+- Rừng mọc thành khối dày: rừng gần nhà to hơn (bán kính 4,2 và 2,8, mật độ 0,95), ít rừng nhỏ hơn nhưng
+  dày hơn trên bản đồ, ít cây lẻ hơn.
+
+Ghi chú: bản đồ Huge tạo mất khoảng 2,2 giây (vẽ mặt đất nặng hơn). Tỉ lệ thắng của AI Khó trước AI Dễ
+vẫn khoảng 9/10 trên 10 seed, giống bản đồ cũ.
+
 ## Đề xuất thứ tự làm
 
 1. HUD co giãn theo cửa sổ và lưới nút lệnh kiểu bản gốc (mục 2, 3). Một đến hai buổi, thấy khác ngay.
