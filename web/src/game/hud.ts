@@ -22,6 +22,7 @@ export class HUD {
   private age = $("#age");
   private time = $("#clock");
   private speedLabel = $("#speed");
+  private civLabel = $("#civ-name");
   private title = $("#info-title");
   private lines = [0, 1, 2, 3].map((i) => $(`#info-${i}`));
   private hp = $("#hp");
@@ -64,6 +65,13 @@ export class HUD {
     let url = this.icons.get(id);
     if (!url) { url = iconPic(id).toDataURL(); this.icons.set(id, url); }
     return url;
+  }
+
+  /** Your civilization in the top bar; hovering it lists the bonuses, and the enemy's. */
+  civ(name: string | null, bonuses: string[], enemy: string | null) {
+    this.civLabel.hidden = !name;
+    this.civLabel.textContent = name ?? "";
+    this.civLabel.title = name ? `${name}: ${bonuses.join("; ") || "no bonuses"}${enemy ? `\nEnemy: ${enemy}` : ""}` : "";
   }
 
   speed(x: number) {
@@ -133,7 +141,6 @@ export class HUD {
         : `Attack ${r(st.attack)}${isRanged(d) ? ` (range ${r(st.range)})` : ""}   Armor ${r(st.armor)}/${r(st.pierce_armor)}`;
       if (first.carry > 0 && first.carryRes !== null) this.lines[2].textContent = `Carrying ${Math.floor(first.carry)} ${first.carryKind === "meat" ? "meat" : RES_KEY[first.carryRes]}`;
       if (d.bonus) this.lines[3].textContent = "Bonus " + Object.entries(d.bonus).map(([k, v]) => `+${v} vs ${k}`).join(", ");
-      if (first.owner >= 0 && first.owner === me && w.players[me].civ && !first.isVillager && !d.bonus) this.lines[3].textContent = w.players[me].civ!.name;
     } else if (first instanceof Building) {
       if (!first.complete) {
         this.lines[1].textContent = `Under construction ${Math.floor(first.progress * 100)}%`;

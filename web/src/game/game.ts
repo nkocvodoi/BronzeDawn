@@ -3,10 +3,11 @@ import { AIController, Difficulty } from "../core/ai";
 import { Building, Entity, ResourceNode, Unit } from "../core/entities";
 import { Tile, Vec2 } from "../core/geom";
 import { Terrain } from "../core/grid";
-import { Effect, Res, ResBag, Rules, TechDef } from "../core/rules";
+import { Res, ResBag, Rules } from "../core/rules";
 import { clock } from "../core/sim";
 import { World } from "../core/world";
 import { Arch, buildingPic, Facing, nodePic, Pic, playerColor, Pose, projectilePic, terrainTexture, Tool, unitPic, UnitLook, wallPic } from "./art";
+import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 
@@ -31,36 +32,6 @@ const KEYS = "QWERTYASDFGJZXCVBN"; // H stays "select the Town Center"
 
 const WALL_TIER: Record<string, 0 | 1 | 2> = { small_wall: 0, medium_wall: 1, fortification: 2 };
 
-/** One line on what a technology does, for its tooltip. */
-function describe(t: TechDef, rules: Rules): string {
-  const name = (id: string) => rules.units.get(id)?.name ?? rules.buildings.get(id)?.name ?? id;
-  const who = (e: Extract<Effect, { type: "stat" }>) => {
-    const t2 = e.target;
-    if (t2.units) return t2.units.map(name).join(", ");
-    if (t2.tags) return t2.tags.join(" ");
-    if (t2.buildings_tags) return t2.buildings_tags.includes("*") ? "buildings" : t2.buildings_tags.filter((x) => !x.startsWith("!")).join(", ");
-    return "";
-  };
-  const parts = t.effects.map((e) => {
-    switch (e.type) {
-      case "stat": {
-        const v = e.op === "add" ? `${e.value > 0 ? "+" : ""}${e.value}` : e.value < 1 ? `-${Math.round((1 - e.value) * 100)}%` : `+${Math.round((e.value - 1) * 100)}%`;
-        return `${v} ${e.stat.replace("_", " ")} (${who(e)})`;
-      }
-      case "gather": return `${e.resource} gathering +${Math.round((e.rate - 1) * 100)}%${e.carry ? `, carry +${e.carry}` : ""}`;
-      case "upgrade": return `${name(e.from)} becomes ${name(e.to)}`;
-      case "farm_food": return `farms ${e.op === "add" ? `+${e.value}` : `x${e.value}`} food`;
-      case "mine_yield": return `gold mines yield +${Math.round((e.value - 1) * 100)}%`;
-      case "flag": return e.flag === "ballistics" ? "siege leads moving targets" : "priests convert buildings and priests";
-      case "conversion": return `conversion ${e.stat} x${e.value}`;
-      case "carry": return `villagers carry ${e.value}`;
-      case "heal": return `priests heal x${e.value}`;
-    }
-  });
-  const unlocks = [...rules.units.values(), ...rules.buildings.values()].filter((d) => d.requires_tech === t.id).map((d) => d.name);
-  if (unlocks.length && !t.effects.some((e) => e.type === "upgrade")) parts.push(`unlocks ${unlocks.join(", ")}`);
-  return parts.join("; ");
-}
 
 export class Game {
   world: World;
@@ -181,6 +152,7 @@ export class Game {
     this.hud.showOverlay("Bronze Dawn", [
       "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
       `Your civilization: <select id="civ"><option value="">Random</option>${civs}</select>`,
+      `<span id="civ-info">A civilization picked at random. Its bonuses show at the top of the screen.</span>`,
       `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
       `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
       "Hard: the computer gathers 20% faster.",
@@ -203,7 +175,9 @@ export class Game {
     this.started = true;
     this.hud.hideOverlay();
     const civ = this.world.players[this.me].civ;
-    this.hud.message(`${civ ? `You lead the ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
+    const enemyCiv = this.world.players[1].civ;
+    this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules) : [], enemyCiv?.name ?? null);
+    this.hud.message(`${civ ? `Your civilization: ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
     this.selectTownCenter();
   }
 
@@ -211,13 +185,23 @@ export class Game {
     this.hud.showOverlay("Controls", [
       "Left click / drag: select · Shift: add · Double click: all of that kind on screen",
       "Right click: move, gather, hunt, build, attack, convert or heal (priests), or set a rally point",
-      "Command keys follow the grid: Q W E R T Y / A S D F G H / Z X C V B N",
+      "Command keys follow the grid: Q W E R T Y / A S D F G J / Z X C V B N",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Ctrl+1-9 save group · 1-9 recall · Delete destroy",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · P pause",
+      ...this.civLines(),
       "Press ? or Esc to close",
     ], "help");
+  }
+
+  /** Your civilization and its bonuses, and the enemy's, for the help screen. */
+  private civLines(): string[] {
+    const out: string[] = [];
+    const mine = this.world.players[this.me].civ, theirs = this.world.players[1]?.civ;
+    if (mine) out.push(`<b>You: ${mine.name}</b> · ${describeCiv(mine, this.rules).join(" · ")}`);
+    if (theirs) out.push(`Enemy: ${theirs.name} · ${describeCiv(theirs, this.rules).join(" · ")}`);
+    return out;
   }
 
   private gameOver(winner: number, how: "conquest" | "wonder" = "conquest") {
@@ -796,6 +780,14 @@ export class Game {
   private bindInput() {
     const canvas = this.app.canvas;
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    // The start screen describes the chosen civilization as you pick it.
+    document.addEventListener("change", (e) => {
+      const t = e.target as HTMLSelectElement;
+      if (t.id !== "civ") return;
+      const info = document.querySelector("#civ-info");
+      const c = this.rules.civs.find((x) => x.id === t.value);
+      if (info) info.textContent = c ? `${c.name}: ${describeCiv(c, this.rules).join("; ")}` : "A civilization picked at random. Its bonuses show at the top of the screen.";
+    });
     document.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       if (t.closest("#speed")) { this.setSpeed(0, (SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length); return; }
@@ -924,9 +916,47 @@ export class Game {
     }
     const target = this.pick(e.clientX, e.clientY);
     const r = this.world.smart(this.me, this.selection, target?.id ?? null, at);
-    if (r === "attacked") this.marker(e.clientX, e.clientY, 0xff3333);
-    else if (r === "converted" || r === "healed") this.marker(e.clientX, e.clientY, 0xffd659);
-    else if (r !== "nothing") this.marker(e.clientX, e.clientY, 0x33ff66);
+    const color = r === "attacked" ? 0xff3333 : r === "converted" || r === "healed" ? 0xffd659 : 0x33ff66;
+    // As in the original: the tree, bush, mine, animal, foundation or enemy you ordered them onto flashes.
+    if (target && r !== "moved" && r !== "nothing") this.flash(target, color);
+    else if (r !== "nothing") this.marker(e.clientX, e.clientY, color);
+  }
+
+  /** How many target flashes are running (for the smoke test). */
+  flashes = 0;
+
+  /** Blinks the targeted thing a few times and rings it, so you see what your units were sent to. */
+  private flash(e: Entity, color: number) {
+    const v = this.views.get(e.id);
+    if (!v) return;
+    const ring = new Graphics();
+    if (e instanceof Building) {
+      const sz = e.def.size, w = sz * HALF_W, h = sz * HALF_H;
+      ring.poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 2, color });
+    } else {
+      const rx = Math.max(14, v.pic.w * 0.42), ry = rx / 2;
+      ring.ellipse(0, 0, rx, ry).stroke({ width: 2, color });
+    }
+    ring.zIndex = -0.4;
+    v.root.addChild(ring);
+    this.flashes++;
+    let t = 0;
+    const blinks = 3, period = 0.22;
+    const tick = (dt: { deltaMS: number }) => {
+      t += dt.deltaMS / 1000;
+      const on = Math.floor(t / (period / 2)) % 2 === 0;
+      if (!v.root.destroyed) {
+        v.sprite.alpha = on ? 1 : 0.35;
+        ring.alpha = on ? 1 : 0.3;
+        ring.scale.set(1 + 0.12 * Math.sin((t / period) * Math.PI));
+      }
+      if (t >= blinks * period || v.root.destroyed) {
+        this.app.ticker.remove(tick);
+        this.flashes--;
+        if (!v.root.destroyed) { v.sprite.alpha = 1; ring.destroy(); }
+      }
+    };
+    this.app.ticker.add(tick);
   }
 
   private marker(sx: number, sy: number, color: number | string) {
