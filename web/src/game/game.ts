@@ -11,6 +11,7 @@ import { CursorKind, cursors } from "./cursors";
 import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
+import { MouseLock } from "./mouselock";
 import { Sfx, Sound, VoiceKind } from "./sound";
 
 /** The drawable side of one entity. `workFrame` is the last work-animation frame, so a swing makes one sound. */
@@ -106,6 +107,11 @@ export class Game {
   readonly sound = new Sound();
   private cursor: CursorKind | "" = "";
   private cursorAt = 0;
+  readonly lock = new MouseLock((on) => {
+    this.cursorAt = 0;
+    this.screenButtons();
+    if (on) this.mouse.inside = true;
+  });
 
   constructor(private app: Application, private rules: Rules, seed: number) {
     this.seed = seed;
@@ -231,6 +237,7 @@ export class Game {
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
       "Up to 25 units in one selection · The pointer shows what a right-click will do · Sound and Music switch in the top bar",
+      "Lock mouse: click the map and the mouse stays in the game; Alt+Tab or Esc lets go · Full screen: hold Esc to leave",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · F3 pause",
       ...this.civLines(),
@@ -323,10 +330,13 @@ export class Game {
   }
 
   private updateCursor() {
+    // Menus and the end screen need the real mouse back.
+    if (this.lock.locked && this.hud.overlayShown) this.lock.unlock();
     const now = performance.now();
     if (now - this.cursorAt < 70) return; // a pick test is cheap, but not every frame
     this.cursorAt = now;
     const k = this.cursorFor(this.mouse.x, this.mouse.y);
+    if (this.lock.locked) this.lock.show(document.elementFromPoint(this.mouse.x, this.mouse.y) === this.app.canvas ? k : "arrow");
     if (k === this.cursor) return;
     this.cursor = k;
     this.app.canvas.style.cursor = cursors()[k];
@@ -993,6 +1003,13 @@ export class Game {
       if (t.closest("button, #speed")) this.sound.play("click", 0.7, 0, 0.03);
       if (t.closest("#sfx-btn")) { const on = this.sound.toggleSfx(); this.soundButtons(); this.hud.message(on ? "Sound on" : "Sound off"); return; }
       if (t.closest("#music-btn")) { const on = this.sound.toggleMusic(); if (on && this.started) this.sound.startMusic(); this.soundButtons(); this.hud.message(on ? "Music on" : "Music off"); return; }
+      if (t.closest("#lock-btn")) {
+        const on = this.lock.toggle();
+        this.screenButtons();
+        this.hud.message(on ? "Mouse lock on: click the map to keep the mouse in the game. Alt+Tab or Esc lets go." : "Mouse lock off");
+        return;
+      }
+      if (t.closest("#fs-btn")) { this.toggleFullscreen(); return; }
       if (t.closest("#speed")) { this.setSpeed(0, (SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length); return; }
       // Menu and ? open the controls and pause, as the original's menu did.
       if (t.closest("#menu-btn, #help-btn") && this.started) {
@@ -1041,7 +1058,28 @@ export class Game {
     window.addEventListener("keyup", (e) => this.keys.delete(e.key));
     window.addEventListener("blur", () => this.keys.clear());
     document.body.style.cursor = cursors().arrow;
+    document.addEventListener("fullscreenchange", () => {
+      // In full screen Chrome lets the game have Esc (hold it to leave), so Esc still cancels orders.
+      const kb = (navigator as unknown as { keyboard?: { lock?: (k: string[]) => Promise<void>; unlock?: () => void } }).keyboard;
+      if (document.fullscreenElement) kb?.lock?.(["Escape"]).catch(() => {});
+      else kb?.unlock?.();
+      this.screenButtons();
+    });
     this.soundButtons();
+    this.screenButtons();
+  }
+
+  private toggleFullscreen() {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else document.documentElement.requestFullscreen?.({ navigationUI: "hide" }).catch(() => this.hud.message("Full screen is not allowed here", "warn"));
+  }
+
+  /** The mouse lock and full screen switches show their state. */
+  private screenButtons() {
+    const lockBtn = document.querySelector("#lock-btn"), fs = document.querySelector("#fs-btn");
+    lockBtn?.classList.toggle("off", !this.lock.wanted);
+    lockBtn?.classList.toggle("active", this.lock.locked);
+    if (fs) fs.textContent = document.fullscreenElement ? "Window" : "Full screen";
   }
 
   /** The two sound switches in the top bar show whether they are on. */
@@ -1065,6 +1103,8 @@ export class Game {
 
   private mouseDown(e: MouseEvent) {
     if (!this.started || this.hud.overlayShown) return;
+    // The first click on the map takes the mouse, if the player wants it kept in the game. The click still counts.
+    if (e.isTrusted && !this.lock.locked) this.lock.lock(e.clientX, e.clientY);
     if (e.button === 2) { this.rightClick(e); return; }
     if (e.button !== 0) return;
     if (this.placing) {

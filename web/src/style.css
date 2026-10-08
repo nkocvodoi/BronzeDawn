@@ -39,6 +39,12 @@ canvas#game { position: fixed; inset: 0; display: block; }
 #speed.fast { color: var(--gold); }
 #topbar button.toggle { padding: 1px 8px; }
 #topbar button.toggle.off { color: #8a7a62; text-decoration: line-through; }
+#topbar button.toggle.active { color: var(--gold); }
+/* The pointer drawn by the game while the mouse is locked in. */
+#soft-cursor { position: fixed; left: 0; top: 0; width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; z-index: 1000; will-change: transform; }
+body.mouse-locked, body.mouse-locked * { cursor: none !important; }
+#commands button.vhover { filter: brightness(1.2); }
+#overlay button.vhover { background: linear-gradient(#80653e, #5a4428); }
 #topbar button, #mini-buttons button {
   font: inherit; font-size: 13px; color: var(--text); cursor: pointer; padding: 1px 12px;
   background: linear-gradient(#7a5530, #4e331a); text-shadow: 1px 1px 0 #000;

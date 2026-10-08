@@ -90,15 +90,23 @@ const DRAW: Record<CursorKind, { hot: [number, number]; draw: (px: Px) => void }
   } },
 };
 
+let art: Record<CursorKind, { url: string; hot: [number, number] }> | null = null;
 let cache: Record<CursorKind, string> | null = null;
 
-/** CSS cursor values for each kind, drawn once. */
+/** Each pointer as an image and its hot spot, drawn once. */
+export function cursorArt() {
+  if (art) return art;
+  art = {} as Record<CursorKind, { url: string; hot: [number, number] }>;
+  for (const k of Object.keys(DRAW) as CursorKind[]) art[k] = { url: sprite((px) => DRAW[k].draw(px)), hot: DRAW[k].hot };
+  return art;
+}
+
+/** CSS cursor values for each kind. */
 export function cursors(): Record<CursorKind, string> {
   if (cache) return cache;
   const out = {} as Record<CursorKind, string>;
-  for (const k of Object.keys(DRAW) as CursorKind[]) {
-    const d = DRAW[k];
-    out[k] = `url(${sprite((px) => d.draw(px))}) ${d.hot[0]} ${d.hot[1]}, ${k === "arrow" ? "default" : "pointer"}`;
+  for (const [k, a] of Object.entries(cursorArt()) as [CursorKind, { url: string; hot: [number, number] }][]) {
+    out[k] = `url(${a.url}) ${a.hot[0]} ${a.hot[1]}, ${k === "arrow" ? "default" : "pointer"}`;
   }
   cache = out;
   return out;
