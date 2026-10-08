@@ -114,3 +114,19 @@ canvas#game { position: fixed; inset: 0; display: block; }
   #commands { grid-template-columns: repeat(5, 64px); }
   #commands small { display: none; }
 }
+
+/* Six columns and three rows of commands, each with a pixel icon. */
+#commands { grid-template-columns: repeat(6, 78px); grid-auto-rows: 42px; gap: 4px; }
+#commands button { position: relative; padding: 2px 4px 2px 30px; justify-content: center; gap: 1px; }
+#commands button img { position: absolute; left: 3px; top: 50%; width: 24px; height: 24px; margin-top: -12px; image-rendering: pixelated; }
+#commands button b { position: absolute; right: 4px; top: 2px; font-size: 10px; }
+#commands span { font-size: 11px; line-height: 13px; white-space: normal; max-height: 26px; }
+#commands small { font-size: 9px; line-height: 11px; }
+#overlay select { font: inherit; padding: 4px 8px; background: #2a2218; color: var(--text); border: 2px solid var(--edge-light); }
+#clock.warn { color: #ff9a3a; }
+@media (max-width: 1100px) {
+  #commands { grid-template-columns: repeat(6, 62px); }
+  #commands small { display: none; }
+}
+#commands button { overflow: hidden; }
+#commands span, #commands small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }

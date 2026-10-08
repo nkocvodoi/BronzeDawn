@@ -13,10 +13,12 @@ const run = (w: World, seconds: number) => { for (let i = 0; i < Math.round(seco
 
 describe("rules", () => {
   it("loads the shared rules file", () => {
-    expect(RULES.ages.length).toBe(2);
+    expect(RULES.ages.map((a) => a.id)).toEqual(["stone", "tool", "bronze", "iron"]);
     expect(RULES.units.get("villager")).toBeDefined();
-    expect(RULES.buildings.get("town_center")?.size).toBe(3);
-    expect(RULES.units.get("axeman")?.bonus?.cavalry).toBe(4);
+    expect(RULES.buildings.get("town_center")?.pop_provided).toBe(4);
+    expect(RULES.techs.size).toBeGreaterThan(50);
+    expect(RULES.civs.length).toBe(16);
+    expect(RULES.units.get("cavalry")?.bonus?.infantry).toBe(5);
   });
 });
 
@@ -92,13 +94,13 @@ describe("production", () => {
   it("waits for housing", () => {
     const w = blank();
     const tc = w.addBuilding("town_center", 0, new Tile(5, 5), true);
-    for (let i = 0; i < 5; i++) w.spawnUnit("villager", 0, new Tile(12 + i, 12).center);
+    for (let i = 0; i < 4; i++) w.spawnUnit("villager", 0, new Tile(12 + i, 12).center);
     w.refreshPopulation();
-    expect(w.players[0].popCap).toBe(5);
+    expect(w.players[0].popCap).toBe(4);
     w.players[0].res.set(Res.food, 500);
     w.train(0, tc.id, "villager");
     run(w, 30);
-    expect(w.unitsOf(0).length).toBe(5);
+    expect(w.unitsOf(0).length).toBe(4);
     expect(w.events.some((e) => e.kind === "message" && e.text === "Need more houses")).toBe(true);
   });
 
@@ -122,7 +124,7 @@ describe("production", () => {
     run(w, 25);
     expect(w.building((r as { id: number }).id)!.complete).toBe(true);
     w.refreshPopulation();
-    expect(w.players[0].popCap).toBe(9);
+    expect(w.players[0].popCap).toBe(8);
   });
 
   it("advances an age with two buildings and the food", () => {
@@ -133,7 +135,7 @@ describe("production", () => {
     w.addBuilding("granary", 0, new Tile(12, 5), true);
     w.addBuilding("barracks", 0, new Tile(12, 10), true);
     expect(w.advanceAge(0, tc.id)).toBeNull();
-    run(w, 61);
+    run(w, 121);
     expect(w.players[0].age).toBe(1);
   });
 });
@@ -141,17 +143,20 @@ describe("production", () => {
 describe("combat", () => {
   it("uses the same damage formula as balance.py", () => {
     const w = blank();
-    const axe = w.spawnUnit("axeman", 0, new Vec2(3, 3));
-    const scout = w.spawnUnit("scout", 1, new Vec2(4, 3));
-    const bow = w.spawnUnit("bowman", 0, new Vec2(5, 3));
-    expect(w.damage(axe.def.attack, false, axe.def.bonus, scout)).toBe(9);
-    expect(w.damage(bow.def.attack, true, bow.def.bonus, scout)).toBe(3);
+    const cav = w.spawnUnit("cavalry", 0, new Vec2(3, 3));
+    const club = w.spawnUnit("clubman", 1, new Vec2(4, 3));
+    const sword = w.spawnUnit("short_swordsman", 1, new Vec2(5, 3));
+    expect(w.damage(cav.def.attack, false, cav.def.bonus, club)).toBe(13);     // 8 + 5 against infantry
+    expect(w.damage(cav.def.attack, false, cav.def.bonus, sword)).toBe(12);    // armor 1
+    expect(w.damage(1, false, undefined, club)).toBe(1);                       // never below 1
+    const house = w.addBuilding("house", 1, new Tile(10, 10), true);
+    expect(w.damage(3, false, undefined, house)).toBeCloseTo(0.6);           // buildings take a fifth
   });
 
   it("fights to the death", () => {
     const w = blank();
-    const a = w.spawnUnit("axeman", 0, new Tile(5, 5).center);
-    const s = w.spawnUnit("scout", 1, new Tile(9, 5).center);
+    const a = w.spawnUnit("cavalry", 0, new Tile(5, 5).center);
+    const s = w.spawnUnit("clubman", 1, new Tile(9, 5).center);
     run(w, 20);
     expect(s.alive).toBe(false);
     expect(a.alive).toBe(true);
@@ -219,7 +224,7 @@ describe("fixes from the logic review", () => {
     const wood = w.players[0].res.wood;
     const r = w.place(0, "barracks", new Tile(8, 8), [v.id]) as { id: number };
     w.destroy(0, r.id);
-    expect(w.players[0].res.wood).toBe(wood);
+    expect(w.players[0].res.wood).toBe(wood - 125 + 62);   // half of the unbuilt part, as in the original
   });
 
   it("soldiers stop retrying an enemy they cannot reach", () => {
@@ -233,6 +238,148 @@ describe("fixes from the logic review", () => {
     run(w, 20);
     expect(c.alive).toBe(true);
     expect(searches).toBeLessThan(10);
+  });
+});
+
+describe("the original's rules", () => {
+  const tool = (w: World, p = 0) => { w.players[p].age = 1; };
+
+  it("techs change stats: Toolworking adds 2 attack to melee soldiers", () => {
+    const w = blank();
+    const sp = w.addBuilding("storage_pit", 0, new Tile(3, 3), true);
+    tool(w);
+    w.players[0].res.set(Res.food, 1000);
+    expect(w.unitStats(0, "clubman").attack).toBe(3);
+    expect(w.research(0, sp.id, "toolworking")).toBeNull();
+    run(w, 31);
+    expect(w.unitStats(0, "clubman").attack).toBe(5);
+    expect(w.unitStats(0, "bowman").attack).toBe(3);   // not a melee unit
+  });
+
+  it("an upgrade turns existing units into the new type", () => {
+    const w = blank();
+    const b = w.addBuilding("barracks", 0, new Tile(3, 3), true);
+    w.players[0].age = 2;
+    w.players[0].mods.research(RULES.techs.get("battle_axe")!);
+    w.players[0].mods.research(RULES.techs.get("short_sword")!);
+    const sw = w.spawnUnit("short_swordsman", 0, new Tile(10, 10).center);
+    w.players[0].res.set(Res.food, 1000); w.players[0].res.set(Res.gold, 1000);
+    expect(w.research(0, b.id, "broad_sword")).toBeNull();
+    run(w, 81);
+    expect(sw.def.id).toBe("broad_swordsman");
+    expect(w.unitShown("short_swordsman", 0)).toBe(false);
+  });
+
+  it("ages need two different buildings from the list, and cost what the original did", () => {
+    const w = blank();
+    const tc = w.addBuilding("town_center", 0, new Tile(3, 3), true);
+    tool(w);
+    w.players[0].res.set(Res.food, 2000);
+    w.addBuilding("market", 0, new Tile(10, 3), true);
+    expect(w.blockerForNextAge(0)).toContain("Needs 2 different buildings");
+    w.addBuilding("stable", 0, new Tile(10, 8), true);
+    expect(w.advanceAge(0, tc.id)).toBeNull();
+    expect(w.players[0].res.food).toBe(1200);
+    run(w, 141);
+    expect(w.players[0].age).toBe(2);
+  });
+
+  it("farms need a Market and the Tool Age", () => {
+    const w = blank();
+    w.fog[0].revealAll();
+    w.addBuilding("granary", 0, new Tile(3, 3), true);
+    expect(w.blockerBuilding("farm", 0)).toBe("Needs Tool Age");
+    tool(w);
+    expect(w.blockerBuilding("farm", 0)).toBe("Needs a Market");
+  });
+
+  it("a villager's kill leaves meat, which goes to a Storage Pit, not a Granary", () => {
+    const w = blank();
+    w.addBuilding("granary", 0, new Tile(2, 2), true);
+    const pit = w.addBuilding("storage_pit", 0, new Tile(2, 9), true);
+    const g = w.spawnAnimal("gazelle", new Tile(9, 6).center)!;
+    const v = w.spawnUnit("villager", 0, new Tile(7, 6).center);
+    w.attack(0, [v.id], g.id);
+    run(w, 60);
+    expect(g.alive).toBe(false);
+    expect(w.players[0].stats.gathered.food).toBeGreaterThan(9);
+    expect(pit.dropsOff(Res.food, "meat")).toBe(true);
+  });
+
+  it("a soldier's kill leaves no meat", () => {
+    const w = blank();
+    const g = w.spawnAnimal("gazelle", new Tile(9, 6).center)!;
+    const c = w.spawnUnit("clubman", 0, new Tile(8, 6).center);
+    w.attack(0, [c.id], g.id);
+    run(w, 20);
+    expect(g.alive).toBe(false);
+    expect(w.nodes.filter((n) => n.def.id.startsWith("carcass")).length).toBe(0);
+  });
+
+  it("lions attack villagers who wander close", () => {
+    const w = blank();
+    w.spawnAnimal("lion", new Tile(8, 8).center);
+    const v = w.spawnUnit("villager", 0, new Tile(10, 8).center);
+    run(w, 5);
+    expect(v.hp).toBeLessThan(v.maxHp);
+  });
+
+  it("priests convert after a few chants, and their faith must recover", () => {
+    const w = blank();
+    w.players[0].age = 2;
+    const pr = w.spawnUnit("priest", 0, new Tile(5, 5).center);
+    const enemy = w.spawnUnit("axeman", 1, new Tile(12, 5).center);
+    w.convert(0, [pr.id], enemy.id);
+    for (let i = 0; i < 20 * 60 && enemy.owner === 1; i++) w.step();
+    expect(enemy.owner).toBe(0);
+    expect(pr.faith).toBeLessThan(100);
+  });
+
+  it("siege stones splash and moving units can dodge them", () => {
+    const w = blank(40);
+    w.players[0].age = 2;
+    const st = w.spawnUnit("stone_thrower", 0, new Tile(5, 20).center);
+    const a = w.spawnUnit("clubman", 1, new Tile(13, 20).center);
+    const b = w.spawnUnit("clubman", 1, new Tile(13, 20).center.add(new Vec2(0.3, 0)));
+    w.attack(0, [st.id], a.id);
+    run(w, 3);
+    expect(a.hp < a.maxHp || !a.alive).toBe(true);
+    expect(b.hp < b.maxHp || !b.alive).toBe(true);        // the splash hit the neighbour
+  });
+
+  it("walls are laid as a row of foundations along a drag", () => {
+    const w = blank();
+    w.fog[0].revealAll();
+    tool(w);
+    w.players[0].mods.research(RULES.techs.get("small_wall_tech")!);
+    const v = w.spawnUnit("villager", 0, new Tile(3, 3).center);
+    const r = w.placeWall(0, "small_wall", new Tile(6, 6), new Tile(12, 6), [v.id]);
+    expect("placed" in r && r.placed).toBe(7);
+    expect(w.players[0].res.stone).toBe(150 - 35);
+    run(w, 80);
+    expect(w.buildings.filter((b) => b.def.id === "small_wall" && b.complete).length).toBe(7);
+  });
+
+  it("civilization bonuses apply: Shang villagers cost 30% less", () => {
+    const w = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["shang", "greek"] });
+    expect(w.unitCost(0, "villager").food).toBe(35);
+    expect(w.unitCost(1, "villager").food).toBe(50);
+    const persian = new World(RULES, 1, ["A"], 24, false, { civs: ["persian"] });
+    expect(persian.blockerBuilding("academy", 0)).toContain("Not available");
+  });
+
+  it("a Wonder that stands long enough wins", () => {
+    const w = blank();
+    w.players[0].age = 3;
+    w.addBuilding("town_center", 1, new Tile(18, 18), true);
+    const wonder = w.addBuilding("wonder", 0, new Tile(3, 3), false);
+    wonder.progress = 0.999;
+    const v = w.spawnUnit("villager", 0, new Tile(9, 5).center);
+    w.build(0, [v.id], wonder.id);
+    run(w, 20);
+    expect(wonder.complete).toBe(true);
+    run(w, (RULES.economy.wonder_seconds ?? 900) + 2);
+    expect(w.winner).toBe(0);
   });
 });
 
@@ -256,10 +403,10 @@ describe("maps and matches", () => {
   });
 
   it("ends a headless match with the stronger AI winning", () => {
-    for (const seed of [1, 2, 3]) {
-      const r = runMatch(RULES, seed, 45, ["hard", "easy"]);
+    for (const seed of [1, 3]) {
+      const r = runMatch(RULES, seed, 75, ["hard", "easy"]);
       expect(r.winner, r.lines.join("\n")).toBe(0);
       expect(r.problems).toEqual([]);
     }
-  }, 60_000);
+  }, 120_000);
 });

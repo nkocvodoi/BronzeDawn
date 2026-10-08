@@ -1,36 +1,43 @@
 feature,area,priority,original,clone,notes
 Isometric tile map with terrain and water,map,must,yes,yes,
 Seeded random skirmish maps,map,must,yes,yes,72x72 two corners
-Scroll and zoom the camera,camera,must,yes,yes,arrows trackpad pinch edge in full screen
+Scroll and zoom the camera,camera,must,yes,yes,arrows trackpad pinch edge; zoom in whole-pixel steps
 Click box shift and double-click selection,selection,must,yes,yes,
-Right-click context command,commands,must,yes,yes,
-Control groups,commands,should,yes,yes,Cmd+1-9
+Right-click context command,commands,must,yes,yes,move gather hunt build attack convert heal
+Control groups,commands,should,yes,yes,Ctrl or Alt+1-9 on the web
 Pathfinding around obstacles,pathfinding,must,yes,yes,A* 8 directions
-Gather carry and drop off four resources,gathering,must,yes,yes,
-Farms,gathering,must,yes,yes,
-Hunting animals,gathering,should,yes,no,
-Fishing and docks,gathering,could,yes,no,no water units yet
-Construction with several builders,construction,must,yes,yes,
-Production queues and rally points,production,must,yes,yes,
-Population and houses,production,must,yes,yes,
-Melee ranged and bonus damage,combat,must,yes,yes,
-Counter triangle,combat,must,yes,yes,checked by balance.py
-Watch tower,combat,should,yes,yes,
-Walls,combat,could,yes,no,
-Fog of war explored and visible,fog,must,yes,yes,
-Computer opponent with three levels,ai,must,yes,yes,
-Stone and Tool ages,ages,must,yes,yes,
-Bronze and Iron ages,ages,should,yes,no,next milestone
-Technologies and upgrades,ages,should,yes,no,
-Civilizations with bonuses,ages,could,yes,no,
-Win by conquest,win,must,yes,yes,
+Gather carry and drop off four resources,gathering,must,yes,yes,food kinds: berries and farms to the Granary; meat and fish to the Storage Pit
+Hunting gazelles and elephants,gathering,must,yes,yes,villagers throw spears; meat rots; soldiers' kills give nothing
+Dangerous animals (lions and alligators),gathering,should,yes,yes,
+Shore fishing,gathering,should,yes,yes,0.6 a second
+Fishing boats docks and ships,gathering,could,yes,no,no water units yet
+Farms behind a Market,gathering,must,yes,yes,one farmer; Domestication Plow Irrigation; walkable as in the remaster
+Construction with several builders,construction,must,yes,yes,three visible stages
+Walls dragged as a line,construction,should,yes,yes,small medium fortification by research
+Production queues,production,must,yes,yes,research and training share the queue
+Rally points,production,could,no,yes,ours: a modern convenience the original lacked
+Population and houses,production,must,yes,yes,4 per house and per Town Center; cap 50
+Combat formula with pierce armor,combat,must,yes,yes,buildings take a fifth
+Counter triangle and bonus damage,combat,must,yes,yes,checked by balance.py with accepted exceptions
+Siege splash that moving units dodge,combat,should,yes,yes,Ballistics leads the target
+Elephant and scythe trample,combat,should,yes,yes,
+Tower line,combat,should,yes,yes,watch sentry guard ballista
+Fog of war explored and visible,fog,must,yes,yes,enemy buildings drawn as last seen
+Computer opponent with three levels,ai,must,yes,yes,advances four ages and researches
+Stone Tool Bronze and Iron ages,ages,must,yes,yes,two different buildings of the age to advance
+Technologies and upgrades,ages,must,yes,yes,65 at the Storage Pit Granary Market Government Center Temple and unit buildings
+Civilizations with bonuses,ages,should,yes,yes,16 with five architecture sets
+Priests convert and heal,religion,should,yes,yes,faith regenerates; Monotheism converts buildings
+Win by conquest,win,must,yes,yes,every unit and building but walls
+Wonder victory,win,should,yes,yes,15 minutes standing
+Ruins and artifacts,win,could,yes,no,
 Minimap,hud,must,yes,yes,click to jump right-click to send
-Hotkeys for every command,hud,must,yes,yes,
+Hotkeys for every command,hud,must,yes,yes,by position in the 6x3 grid
+Pixel-art look in the spirit of the original,hud,should,yes,yes,drawn in code
 Sound effects and music,audio,should,yes,no,needs original or licensed audio
 Campaigns and scenarios,modes,could,yes,skip,out of the first slice
-Multiplayer,modes,could,yes,skip,lockstep later: commands already go through one API
+Multiplayer,modes,could,yes,skip,lockstep later: the simulation is deterministic
 Map editor,modes,could,yes,skip,
 The original's art audio and names,assets,must,yes,skip,clean-room: never copied
 Headless AI vs AI match,tooling,should,no,yes,ours: the integration test
 Plays in a browser with nothing to install,platform,should,no,yes,ours: PixiJS build on GitHub Pages
-Deterministic simulation for lockstep,platform,could,no,yes,ours: groundwork for multiplayer

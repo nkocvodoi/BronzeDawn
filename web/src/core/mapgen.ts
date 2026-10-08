@@ -1,4 +1,4 @@
-import { DIRS16, Footprint, Tile } from "./geom";
+import { DIRS16, Footprint, Tile, Vec2 } from "./geom";
 import { Terrain } from "./grid";
 import type { World } from "./world";
 
@@ -66,8 +66,12 @@ export function generateMap(w: World) {
     cluster(w, "stone_mine", at(12, 10), 4);
     for (let k = 0; k < 6; k++) {
       const t = s.center.add(DIRS16[w.rng.int(0, 15)].mul(w.rng.int(6, 9))).tile;
-      w.addNode("tree", t);
+      w.addNode("lone_tree", t);
     }
+    // Something to hunt near every base, as in the original's Stone Age.
+    herd(w, "gazelle", at(3, 9), w.rng.int(3, 5));
+    herd(w, "gazelle", at(14, 13), w.rng.int(3, 4));
+    herd(w, "elephant", at(7, 14), 1);
   }
 
   // The rest of the map.
@@ -77,7 +81,35 @@ export function generateMap(w: World) {
   }
   for (let k = 0; k < 70; k++) {
     const c = new Tile(w.rng.int(1, n - 2), w.rng.int(1, n - 2));
-    if (farFromStarts(c, 8)) w.addNode("tree", c);
+    if (farFromStarts(c, 8)) w.addNode("lone_tree", c);
+  }
+  // Wild animals across the map: gazelles and elephants to hunt, lions to fear, alligators by the water.
+  for (let k = 0; k < 6; k++) {
+    const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
+    if (farFromStarts(c, 16)) herd(w, "gazelle", c, w.rng.int(3, 6));
+  }
+  for (let k = 0; k < 3; k++) {
+    const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
+    if (farFromStarts(c, 16)) herd(w, "elephant", c, w.rng.int(1, 2));
+  }
+  for (let k = 0; k < 3; k++) {
+    const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
+    if (farFromStarts(c, 20)) herd(w, "lion", c, w.rng.int(1, 2));
+  }
+  // Shore fish, and alligators, along the lakes.
+  let gators = 0;
+  for (let y = 1; y < n - 1; y++) {
+    for (let x = 1; x < n - 1; x++) {
+      const t = new Tile(x, y);
+      if (map.terrainAt(t) !== Terrain.water) continue;
+      const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => map.terrainAt(new Tile(x + dx, y + dy)) !== Terrain.water);
+      if (!shore) continue;
+      if (w.rng.chance(0.07)) w.addNode("fish", t);
+      else if (gators < 4 && w.rng.chance(0.01) && farFromStarts(t, 18)) {
+        const land = map.nearestPassable(t, 2);
+        if (land) { herd(w, "alligator", land, 1); gators++; }
+      }
+    }
   }
   for (const kind of ["gold_mine", "gold_mine", "stone_mine", "stone_mine", "berry_bush", "berry_bush", "berry_bush"]) {
     for (let tries = 0; tries < 30; tries++) {
@@ -93,6 +125,14 @@ export function generateMap(w: World) {
 export function startTiles(count: number, n: number): Tile[] {
   const corners = [new Tile(14, n - 15), new Tile(n - 15, 14), new Tile(14, 14), new Tile(n - 15, n - 15)];
   return corners.slice(0, Math.max(1, Math.min(count, corners.length)));
+}
+
+/** A few animals of one kind standing near a point. */
+function herd(w: World, kind: string, c: Tile, count: number) {
+  for (let i = 0; i < count; i++) {
+    const t = w.map.nearestPassable(new Tile(c.x + w.rng.int(-1, 1), c.y + w.rng.int(-1, 1)), 3);
+    if (t) w.spawnAnimal(kind, t.center.add(new Vec2(w.rng.unit() * 0.4 - 0.2, w.rng.unit() * 0.4 - 0.2)));
+  }
 }
 
 function blob(w: World, c: Tile, r: number, body: (t: Tile) => void) {

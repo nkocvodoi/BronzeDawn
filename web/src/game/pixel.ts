@@ -52,8 +52,8 @@ export class PixelCanvas {
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j, c);
   }
 
-  /** Filled convex polygon with hard edges. `shade` can vary the colour per pixel. */
-  poly(pts: [number, number][], c: RGB | ((x: number, y: number) => RGB)) {
+  /** Calls fn for every pixel inside a convex polygon (pixel centres, hard edges). */
+  scan(pts: readonly (readonly [number, number])[], fn: (x: number, y: number) => void) {
     const ys = pts.map((p) => p[1]);
     const y0 = Math.max(0, Math.floor(Math.min(...ys))), y1 = Math.min(this.h - 1, Math.ceil(Math.max(...ys)));
     for (let y = y0; y <= y1; y++) {
@@ -66,8 +66,24 @@ export class PixelCanvas {
         lo = Math.min(lo, x); hi = Math.max(hi, x);
       }
       if (lo > hi) continue;
-      for (let x = Math.round(lo); x < Math.round(hi); x++) this.set(x, y, typeof c === "function" ? c(x, y) : c);
+      for (let x = Math.max(0, Math.round(lo)); x < Math.min(this.w, Math.round(hi)); x++) fn(x, y);
     }
+  }
+
+  /** Filled convex polygon with hard edges. `c` can vary the colour per pixel. */
+  poly(pts: readonly (readonly [number, number])[], c: RGB | ((x: number, y: number) => RGB)) {
+    this.scan(pts, (x, y) => this.set(x, y, typeof c === "function" ? c(x, y) : c));
+  }
+
+  /** Makes every pixel inside a convex polygon transparent. */
+  erase(pts: readonly (readonly [number, number])[]) {
+    this.scan(pts, (x, y) => { this.data[(y * this.w + x) * 4 + 3] = 0; });
+  }
+
+  /** A thick line: a run of square dots. */
+  thick(x0: number, y0: number, x1: number, y1: number, c: RGB, w = 2) {
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+    for (let i = 0; i <= n; i++) this.rect(Math.round(x0 + ((x1 - x0) * i) / n - (w - 1) / 2), Math.round(y0 + ((y1 - y0) * i) / n - (w - 1) / 2), w, w, c);
   }
 
   ellipse(cx: number, cy: number, rx: number, ry: number, c: RGB | ((x: number, y: number) => RGB)) {
@@ -95,17 +111,20 @@ export class PixelCanvas {
     }
   }
 
-  /** A one-pixel dark outline around everything drawn so far (shadows excluded). */
-  outline(c: RGB = [24, 16, 10]) {
+  /** A one-pixel dark outline around everything drawn so far (shadows excluded).
+   *  With `soft` above 0, the outline takes in a little of the colour it borders, which reads less harsh. */
+  outline(c: RGB = [24, 16, 10], soft = 0) {
     const solid = (x: number, y: number) => this.alphaAt(x, y) === 255;
-    const add: [number, number][] = [];
+    const add: [number, number, RGB][] = [];
     for (let y = 0; y < this.h; y++) {
       for (let x = 0; x < this.w; x++) {
         if (solid(x, y)) continue;
-        if (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1)) add.push([x, y]);
+        let n: RGB | null = null;
+        for (const [dx, dy] of [[0, 1], [-1, 0], [1, 0], [0, -1]]) if (solid(x + dx, y + dy)) { n = this.get(x + dx, y + dy); break; }
+        if (n) add.push([x, y, soft ? mix(c, n, soft) : c]);
       }
     }
-    for (const [x, y] of add) this.set(x, y, c);
+    for (const [x, y, k] of add) this.set(x, y, k);
   }
 
   toCanvas(): HTMLCanvasElement {

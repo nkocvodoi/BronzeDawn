@@ -14,8 +14,10 @@ export function clock(t: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export function runMatch(rules: Rules, seed: number, minutes = 45, levels: Difficulty[] = ["normal", "normal"]): SimReport {
-  const w = new World(rules, seed, levels.map((_, i) => `AI ${i + 1}`));
+export function runMatch(rules: Rules, seed: number, minutes = 75, levels: Difficulty[] = ["normal", "normal"]): SimReport {
+  // Civilizations come from the seed too, so a seed always replays the same match.
+  const civs = levels.map((_, i) => rules.civs.length ? rules.civs[(seed * 7 + i * 5) % rules.civs.length].id : null);
+  const w = new World(rules, seed, levels.map((_, i) => `AI ${i + 1}`), 72, true, { civs });
   w.ais = levels.map((d, i) => new AIController(i, d));
   for (const ai of w.ais) ai.attach(w);
   const problems: string[] = [];
@@ -37,10 +39,10 @@ export function runMatch(rules: Rules, seed: number, minutes = 45, levels: Diffi
   const lines = w.players.map((p) => {
     const us = w.unitsOf(p.id);
     const v = us.filter((u) => u.isVillager).length;
-    const age = ageAt.has(p.id) ? `Tool Age at ${clock(ageAt.get(p.id)!)}` : "stayed in Stone Age";
+    const age = `${rules.ages[p.age].name}`;
     return `${p.name}: ${p.defeated ? "defeated" : "standing"}, ${v} villagers, ${us.length - v} soldiers, ` +
       `${w.buildingsOf(p.id).length} buildings, ${age}, gathered ${Math.floor(p.stats.gathered.total)}, ` +
-      `trained ${p.stats.trained}, kills ${p.stats.kills}`;
+      `trained ${p.stats.trained}, kills ${p.stats.kills}, techs ${p.stats.researched}, civ ${p.civ?.name ?? "-"}`;
   });
   if (w.winner === null) problems.push(`no winner after ${minutes} minutes`);
   return { seed, winner: w.winner, seconds: w.time, lines, problems };

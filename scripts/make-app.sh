@@ -14,7 +14,7 @@ APP="build/Bronze Dawn.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/BronzeDawn"
-cp data/rules.json "$APP/Contents/Resources/rules.json"
+cp data/rules-mac.json "$APP/Contents/Resources/rules-mac.json"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
