@@ -9,12 +9,12 @@ Elevation damage bonus,combat,could,yes,no,needs elevation
 Shallows land units can cross,map,could,yes,no,
 Scroll and zoom the camera,camera,must,yes,yes,
 Click box shift and double-click selection,selection,must,yes,yes,
-Selection limit of 25,selection,could,yes,no,no limit
+Selection limit of 25,selection,could,yes,yes,
 Control groups,selection,should,yes,yes,Ctrl or Alt+digit save; digit recall
-Alt+digit centers and Shift+digit adds a group,selection,could,yes,no,
-Tab cycles and Space centers the selection,selection,could,yes,no,
+Alt+digit centers and Shift+digit adds a group,selection,could,yes,partial,Shift+digit adds; pressing the digit twice centers (Alt saves on the web)
+Tab cycles and Space centers the selection,selection,could,yes,partial,Space centers; no Tab
 Right-click context command,commands,must,yes,yes,
-Context cursors (sword over enemies hand over resources hammer over foundations),commands,should,yes,no,the default arrow everywhere
+Context cursors (sword over enemies hand over resources hammer over foundations),commands,should,yes,yes,our own pixel-art pointers: sword axe pick basket hammer staff
 Stand ground and attack ground,commands,should,yes,no,
 Waypoints with Shift+right-click,commands,could,yes,no,
 Formations that move at the slowest unit's speed,commands,could,yes,no,
@@ -60,10 +60,12 @@ Save and load a game,setup,should,yes,no,
 Status box command icons and diamond minimap,hud,must,yes,yes,
 Build menu with the original's keys,hud,must,yes,yes,B then a letter
 Train keys of the original,hud,should,yes,yes,
-Score display and timers on screen,hud,could,yes,partial,Wonder timer only
-Sound effects,audio,should,yes,no,
-Unit voices and acknowledgements,audio,should,yes,no,
-Music,audio,could,yes,no,
+Score display and timers on screen,hud,could,yes,partial,Wonder timer; S or F4 shows a score of our own making
+Interface laid out and scaled as the original at 800x600,hud,should,yes,yes,carved stone in the style of each architecture
+Villagers named by their work,hud,could,yes,yes,Builder Woodcutter Forager Hunter Fisherman Farmer Gold Miner Stone Miner
+Sound effects,audio,should,yes,yes,synthesized at run time with Web Audio: tools combat buildings alerts
+Unit voices and acknowledgements,audio,should,yes,yes,formant-synthesized made-up tongue; priests chant when converting
+Music,audio,could,yes,yes,procedural: drone lyre hand drum flute in D dorian
 Death animations and decaying bodies,art,could,yes,partial,bodies fade; no bones
 Buildings change look with each age,art,should,yes,yes,
 Multiplayer,modes,should,yes,no,the simulation is deterministic already
@@ -75,3 +77,4 @@ Attack-move,extras,could,no,yes,ours: not in the original
 Game speed 3x,extras,could,no,yes,ours: the original stops at 2x
 Headless AI vs AI match,tooling,should,no,yes,ours
 Plays in a browser,platform,should,no,yes,ours
+Mouse kept inside the game window and full screen,platform,should,yes,yes,pointer lock with our own drawn pointer; Alt+Tab or Esc lets go

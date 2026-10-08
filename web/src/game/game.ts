@@ -7,12 +7,28 @@ import { Res, ResBag, Rules } from "../core/rules";
 import { clock } from "../core/sim";
 import { World } from "../core/world";
 import { Arch, buildingPic, Facing, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
+import { CursorKind, cursors } from "./cursors";
 import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
+import { MouseLock } from "./mouselock";
+import { Sfx, Sound, VoiceKind } from "./sound";
 
-/** The drawable side of one entity. */
-interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean; key: string; barW: number; tiles: Tile[] }
+/** The drawable side of one entity. `workFrame` is the last work-animation frame, so a swing makes one sound. */
+interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean; key: string; barW: number; tiles: Tile[]; workFrame: number }
+
+/** The original's limit on how many units one selection holds. */
+const MAX_SELECTION = 25;
+
+/** The sound of each tool striking, while a villager works. */
+const TOOL_SOUND: Partial<Record<Tool, Sfx>> = { axe: "chop", pick: "mine", hammer: "hammer", basket: "forage", hoe: "farm", net: "fish", spear: "spear" };
+
+/** What a building says when you pick it. */
+const BUILDING_SOUND: Record<string, Sfx> = {
+  barracks: "sword", academy: "sword", archery_range: "bow", siege_workshop: "hammer", temple: "heal",
+  market: "forage", granary: "forage", storage_pit: "mine", house: "knock", town_center: "trained",
+  government_center: "researched", watch_tower: "bow", wonder: "researched", farm: "farm",
+};
 
 /** Zoom steps where one art pixel covers a whole number of screen pixels: 4, 3, 2, 1. */
 const ZOOMS = [0.5, 2 / 3, 1, 2];
@@ -23,9 +39,10 @@ const SPEEDS = [1, 1.5, 2, 3];
 /** Map sizes in tiles, after the original's Small to Huge. */
 const MAP_SIZES: [string, number][] = [["Small", 72], ["Medium", 96], ["Large", 120], ["Huge", 144]];
 
-/** The original's build keys: B opens the build menu, then a letter places the building. */
+/** The original's build keys: B opens the build menu, then a letter places the building.
+ *  In the original's order on the buttons: House, Barracks, Granary, Storage Pit, then the later ones. */
 const BUILD_KEYS: Record<string, string> = {
-  house: "E", granary: "G", storage_pit: "S", barracks: "B", market: "M", farm: "F",
+  house: "E", barracks: "B", granary: "G", storage_pit: "S", market: "M", farm: "F",
   archery_range: "A", stable: "L", small_wall: "W", watch_tower: "T", government_center: "C", temple: "P",
   academy: "Y", siege_workshop: "K", town_center: "N", wonder: "O",
 };
@@ -88,6 +105,14 @@ export class Game {
   private idleIndex = 0;
   private miniBase = document.createElement("canvas");
   private dragBox = document.querySelector("#dragbox") as HTMLDivElement;
+  readonly sound = new Sound();
+  private cursor: CursorKind | "" = "";
+  private cursorAt = 0;
+  readonly lock = new MouseLock((on) => {
+    this.cursorAt = 0;
+    this.screenButtons();
+    if (on) this.mouse.inside = true;
+  });
 
   constructor(private app: Application, private rules: Rules, seed: number) {
     this.seed = seed;
@@ -129,10 +154,15 @@ export class Game {
       this.terrain.addChild(ground);
     }
     const n = this.world.map.width;
-    // One extra tile of black on every side so the terrain's edge never peeks out.
+    // One extra tile of black on every side so the terrain's edge never peeks out. A fresh canvas and
+    // texture for each map: resizing the old canvas leaves the GPU copy at the first map's size, and
+    // a bigger map then draws no fog at all.
+    const old = this.fogSprite.texture;
+    this.fogCanvas = document.createElement("canvas");
     this.fogCanvas.width = n + 2;
     this.fogCanvas.height = n + 2;
     this.fogSprite.texture = Texture.from(this.fogCanvas);
+    if (old && old !== Texture.EMPTY) old.destroy(true);
     this.fogSprite.setFromMatrix(new Matrix(HALF_W, HALF_H, -HALF_W, HALF_H, 0, -2 * HALF_H));
     this.miniBase.width = n;
     this.miniBase.height = n;
@@ -191,9 +221,17 @@ export class Game {
     if (SPEEDS.includes(chosen)) { this.speed = chosen; this.hud.speed(chosen); }
     this.world.ais = [new AIController(1, d)];
     this.world.ais[0].attach(this.world);
+    // Start zoomed so the map fills the screen as it did at 800 x 600, with the interface scaled to match.
+    const u = Math.min(window.innerWidth / 800, window.innerHeight / 600);
+    this.cam.zoom = ZOOMS.reduce((a, b) => (Math.abs(b - 1 / u) < Math.abs(a - 1 / u) ? b : a));
     this.started = true;
+    this.paused = false;
     this.hud.playing(true);
     this.hud.hideOverlay();
+    this.hud.clearMessages();
+    this.hud.theme(this.arch(this.me)); // the interface is carved in your civilization's style
+    this.sound.unlock();
+    this.sound.startMusic();
     const civ = this.world.players[this.me].civ;
     const enemyCiv = this.world.players[1].civ;
     this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules) : [], enemyCiv?.name ?? null);
@@ -209,12 +247,40 @@ export class Game {
       "A Archery Range · L Stable · W Wall · T Tower · C Government Center · P Temple · Y Academy · K Siege Workshop · N Town Center · O Wonder",
       "Train: C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
-      "H town center · . idle villager · Ctrl+1-9 save group · 1-9 recall · Delete destroy",
+      "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
+      "Up to 25 units in one selection · The pointer shows what a right-click will do · F4 or S: scores · F10: menu",
+      "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), full screen (hold Esc to leave)",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · F3 pause",
       ...this.civLines(),
       "Press ? or Esc to close",
     ], "help");
+  }
+
+  /** The game menu: options that the top bar used to hold, help, and leaving the game. */
+  private showMenu() {
+    const t = (id: string, label: string, on: boolean) => `<button id="${id}" class="toggle${on ? "" : " off"}">${label}</button>`;
+    this.hud.showOverlay("Menu", [
+      `<span class="stack">
+        <button id="resume-btn">Return to game (Esc)</button>
+        <button id="help-open">Controls (F1)</button>
+        <button id="speed">Game speed ${this.speed}x</button>
+        ${t("sfx-btn", "Sound effects", this.sound.sfxOn)}
+        ${t("music-btn", "Music", this.sound.musicOn)}
+        ${t("lock-btn", "Keep the mouse in the game", this.lock.wanted)}
+        <button id="fs-btn">${document.fullscreenElement ? "Leave full screen" : "Full screen"}</button>
+        <button data-restart>Quit to a new map</button>
+      </span>`,
+    ], "menu");
+  }
+
+  /** The players and their civilizations, with what each civilization is good at. */
+  private showDiplomacy() {
+    const rows = this.world.players.map((p) => {
+      const bonuses = p.civ ? describeCiv(p.civ, this.rules).join("; ") : "no bonuses";
+      return `<tr><td style="color:${playerColor(p.id)}"><b>${p.name}</b></td><td>${p.civ?.name ?? "-"}</td><td>${p.id === this.me ? "You" : "Enemy"}</td><td>${bonuses}</td></tr>`;
+    }).join("");
+    this.hud.showOverlay("Diplomacy", [`<table>${rows}</table>`, `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`], "menu");
   }
 
   /** Your civilization and its bonuses, and the enemy's, for the help screen. */
@@ -228,6 +294,8 @@ export class Game {
 
   private gameOver(winner: number, how: "conquest" | "wonder" = "conquest") {
     const won = winner === this.me;
+    this.sound.stopMusic();
+    this.sound.play(won ? "victory" : "defeat");
     const p = this.world.players[this.me].stats, e = this.world.players[1].stats;
     this.hud.showOverlay(won ? "Victory" : "Defeat", [
       `${how === "wonder" ? "A Wonder stood its time. " : ""}Time ${clock(this.world.time)}`,
@@ -262,18 +330,125 @@ export class Game {
     this.selection = this.selection.filter((id) => w.entity(id));
     const sel = this.selectedEntities();
     this.hud.update(w, this.me, sel);
-    const one = sel.length === 1 ? this.views.get(sel[0].id) : undefined;
+    // The status box shows the first of a group, so its picture too.
+    const one = sel.length ? this.views.get(sel[0].id) : undefined;
     this.hud.portrait(one?.pic.canvas ?? null);
     this.hud.setCommands(this.commands(sel));
     this.updateGhost();
+    this.updateCursor();
+  }
+
+  // ---- the pointer
+
+  /** What a right-click here would do, shown by the pointer. */
+  private cursorFor(sx: number, sy: number): CursorKind {
+    if (!this.started || this.hud.overlayShown || this.placing || !this.mouse.inside) return "arrow";
+    if (this.attackMovePending) return "sword";
+    const units = this.selectedEntities().filter((x): x is Unit => x instanceof Unit && x.owner === this.me);
+    if (!units.length) return "arrow";
+    const t = this.pick(sx, sy);
+    const villagers = units.some((u) => u.isVillager), priests = units.some((u) => u.isPriest);
+    if (villagers) {
+      const at = this.toWorld(sx, sy);
+      const foundation = this.world.buildingsOf(this.me).find((b) => !b.complete && b.footprint.distance(at) === 0);
+      if (foundation) return "hammer";
+    }
+    if (!t) return "arrow";
+    if (t instanceof ResourceNode) {
+      if (!villagers) return "arrow";
+      return t.res === Res.wood ? "axe" : t.res === Res.food ? "basket" : "pick";
+    }
+    if (t.owner === this.me) {
+      if (villagers && t instanceof Building && t.isFarm && t.complete) return "basket";
+      if (priests && t instanceof Unit && t.hp < t.maxHp) return "staff";
+      return "arrow";
+    }
+    if (t instanceof Unit && t.isAnimal) return villagers || units.some((u) => !u.isPriest) ? "sword" : "arrow";
+    if (priests && t.owner >= 0) return "staff";
+    return t.owner >= 0 ? "sword" : "arrow";
+  }
+
+  /** The help line for what is under the pointer, in the original's manner. */
+  private rolloverText(k: CursorKind): string | null {
+    if (!this.started || this.hud.overlayShown) return null;
+    if (this.placing) return "Click to place the building. Right-click to cancel.";
+    if (this.attackMovePending) return "Click where to attack-move.";
+    const t = this.pick(this.mouse.x, this.mouse.y);
+    const verb: Partial<Record<CursorKind, string>> = {
+      sword: "Right-click to attack", axe: "Right-click to cut wood", pick: "Right-click to mine", basket: "Right-click to gather food",
+      hammer: "Right-click to build", staff: "Right-click to convert or heal",
+    };
+    if (!t) return null;
+    const what = t instanceof ResourceNode ? t.name : t.owner === this.me ? "" : `${t.owner >= 0 ? `${this.world.players[t.owner].name}'s ` : ""}${t.name}`;
+    if (verb[k]) return `${verb[k]}${what ? ` ${what}` : ""}.`;
+    if (t.owner === this.me) return t instanceof Building ? "Click to select this building." : "Click to select this unit.";
+    return `${what}.`;
+  }
+
+  private updateCursor() {
+    // Menus and the end screen need the real mouse back.
+    if (this.lock.locked && this.hud.overlayShown) this.lock.unlock();
+    const now = performance.now();
+    if (now - this.cursorAt < 70) return; // a pick test is cheap, but not every frame
+    this.cursorAt = now;
+    const k = this.cursorFor(this.mouse.x, this.mouse.y);
+    const overMap = document.elementFromPoint(this.mouse.x, this.mouse.y) === this.app.canvas;
+    if (this.lock.locked) this.lock.show(overMap ? k : "arrow");
+    this.hud.rollover(overMap ? this.rolloverText(k) : null);
+    if (k === this.cursor) return;
+    this.cursor = k;
+    this.app.canvas.style.cursor = cursors()[k];
+  }
+
+  /** How loud a sound at p is, and from which side: full in the middle of the screen, fading past its edges. */
+  private spot(p: Vec2): [number, number] | null {
+    const s = this.screenOf(p), sw = this.app.screen.width, sh = this.app.screen.height;
+    const dx = (s.x - sw / 2) / (sw / 2), dy = (s.y - sh / 2) / (sh / 2);
+    const d = Math.hypot(dx, dy * 1.3);
+    if (d > 1.6) return null;
+    return [Math.min(1, 1.25 - d * 0.55), dx * 0.7];
+  }
+
+  /** Plays an effect where it happens, if the player could see it. */
+  private sfx(name: Sfx, at: Vec2, vol = 1, gap?: number) {
+    if (!this.visible(at.tile)) return;
+    const s = this.spot(at);
+    if (s) this.sound.play(name, s[0] * vol, s[1], gap);
+  }
+
+  private voiceOf(u: Unit): VoiceKind {
+    if (u.isVillager) return "villager";
+    if (u.isPriest) return "priest";
+    const c = u.def.class;
+    return c === "siege" ? "siege" : ["cavalry", "chariot", "horse_archer", "elephant", "camel"].includes(c) ? "rider" : "soldier";
+  }
+
+  /** The picked unit answers, or the picked building makes its sound. */
+  private selectSound(ack: boolean) {
+    const first = this.selectedEntities().find((x) => x.owner === this.me);
+    if (!first) return;
+    if (first instanceof Unit) {
+      let h = 0;
+      for (const ch of first.typeId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      this.sound.voice(this.voiceOf(first), h, ack);
+    } else if (first instanceof Building && !ack) {
+      const base = Object.keys(BUILDING_SOUND).find((k) => first.def.id === k || first.def.id.startsWith(k));
+      this.sound.play(first.complete ? (base ? BUILDING_SOUND[base] : "click") : "hammer", 0.6, 0, 0.2);
+    }
   }
 
   private handleEvents() {
     const w = this.world;
     for (const e of w.events) {
       switch (e.kind) {
+        case "hit":
+          if (e.building) this.sfx("knock", e.at, e.melee ? 0.8 : 0.5);
+          else if (e.melee) this.sfx("sword", e.at, 0.8, 0.09);
+          else this.sfx("thud", e.at, 0.7);
+          break;
         case "projectile": {
           if (!this.visible(e.from.tile) && !this.visible(e.to.tile)) break;
+          this.sfx(e.projectile === "stone" ? "club" : e.projectile === "spear" ? "spear" : "bow", e.from, 0.7, 0.08);
           const a = iso(e.from), b = iso(e.to);
           const kind = (["arrow", "stone", "bolt", "spear"].includes(e.projectile) ? e.projectile : "arrow") as "arrow" | "stone" | "bolt" | "spear";
           const pic = projectilePic(kind);
@@ -309,6 +484,8 @@ export class Game {
             break;
           }
           this.seen.delete(e.id);
+          if (e.wasBuilding) { if (v && this.anyVisible(v.tiles)) this.sfx("collapse", e.at, 1, 0.3); }
+          else if (v?.isUnit && v.root.visible) this.sfx(e.owner >= 0 ? "die" : "thud", e.at, 0.8, 0.15);
           if (v) {
             if (v.isUnit && v.root.visible) this.corpse(v);
             v.root.destroy({ children: true });
@@ -323,23 +500,32 @@ export class Game {
           if (e.player === this.me || e.player === -1) this.hud.message(e.text);
           break;
         case "underAttack":
-          if (e.player === this.me && !this.onScreen(e.at)) this.hud.message("You are under attack!", "warn");
+          if (e.player === this.me && !this.onScreen(e.at)) { this.hud.message("You are under attack!", "warn"); this.sound.play("alarm", 1, 0, 8); }
           break;
         case "ageReached":
-          if (e.player !== this.me) this.hud.message(`The enemy reached the ${this.rules.ages[e.age].name}`, "warn");
+          if (e.player !== this.me) { this.hud.message(`The enemy reached the ${this.rules.ages[e.age].name}`, "warn"); this.sound.play("researched", 0.7); }
+          else this.sound.play("ageUp");
           break;
         case "completed": {
           const b = e.owner === this.me ? w.building(e.id) : null;
-          if (b) this.hud.message(`${b.name} complete`);
+          if (b) { this.hud.message(`${b.name} complete`); this.sound.play("complete", 0.8, 0, 0.3); }
           break;
         }
+        case "trained":
+          if (e.owner === this.me) this.sound.play("trained", 0.6, 0, 0.6);
+          break;
+        case "researched":
+          if (e.player === this.me) this.sound.play("researched", 0.7, 0, 0.5);
+          break;
         case "gameOver":
           this.gameOver(e.winner, e.how);
           break;
         case "splash":
           if (this.visible(e.at.tile)) this.puff(e.at, e.radius > 1);
+          this.sfx("boom", e.at, 0.9, 0.12);
           break;
         case "converted": {
+          this.sfx("heal", e.at, 1, 0.5);
           // Redraw in the new owner's colours.
           const v = this.views.get(e.id);
           if (v) { v.root.destroy({ children: true }); this.views.delete(e.id); }
@@ -432,8 +618,9 @@ export class Game {
     const ringColor = own ? 0xffffff : e.owner >= 0 ? playerColor(e.owner) : 0xffee55;
     if (e instanceof Unit) {
       pic = unitPic(this.unitLook(e, 0));
-      const big = pic.w > 48;
-      ring = new Graphics().ellipse(0, 0, big ? 20 : 12, big ? 10 : 6).stroke({ width: 2, color: ringColor });
+      // A flat diamond on the ground under the unit, as the original marks what you picked.
+      const big = pic.w > 48, rw = big ? 20 : 12, rh = rw / 2;
+      ring = new Graphics().poly([-rw, 0, 0, -rh, rw, 0, 0, rh]).stroke({ width: 1.5, color: ringColor });
       barY = -pic.h * pic.ay - 6; barW = 26;
     } else if (e instanceof Building) {
       pic = this.buildingLook(e);
@@ -457,7 +644,7 @@ export class Game {
     bar.visible = false;
     root.addChild(ring, sprite, bar);
     this.entities.addChild(root);
-    const v: View = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit, key: "", barW, tiles: e instanceof Building ? e.footprint.tiles() : [] };
+    const v: View = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit, key: "", barW, tiles: e instanceof Building ? e.footprint.tiles() : [], workFrame: -1 };
     this.views.set(e.id, v);
     return v;
   }
@@ -501,7 +688,15 @@ export class Game {
       const s = iso(p);
       v.root.position.set(Math.round(s.x / 2) * 2, Math.round(s.y / 2) * 2);
       v.root.zIndex = depth(p) + 0.3;
-      this.setPic(v, unitPic(this.unitLook(e, alpha)));
+      const look = this.unitLook(e, alpha);
+      this.setPic(v, unitPic(look));
+      // Each swing of a villager's tool makes its sound, as the axe, pick or hoe comes down.
+      const wf = look.pose === "work" ? look.frame : -1;
+      if (wf === 0 && v.workFrame > 0 && !this.paused) {
+        const s = TOOL_SOUND[look.tool];
+        if (s) this.sfx(s, p, 0.55, 0.05);
+      }
+      v.workFrame = wf;
       const dx = e.facing.x - e.facing.y;
       if (Math.abs(dx) > 0.2) v.sprite.scale.x = Math.abs(v.sprite.scale.x) * (dx < 0 ? -1 : 1);
     } else if (e instanceof Building) {
@@ -665,12 +860,13 @@ export class Game {
           { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
           del,
         ];
-      }
-      const out: Command[] = [];
+      }      const out: Command[] = [];
       for (const base of Object.keys(BUILD_KEYS)) {
         const id = w.current(me, base);
         const def = this.rules.buildings.get(id);
         if (!def || !w.buildingShown(id, me)) continue;
+        // As in the original, a building appears in the menu once your age allows it.
+        if (this.rules.ages.findIndex((a) => a.id === def.age) > w.players[me].age) continue;
         out.push({ key: BUILD_KEYS[base], title: def.name, detail: w.buildingCost(me, id).text + (WALL_TIER[id] !== undefined ? " a tile, drag a line" : ""),
           blocker: w.blockerBuilding(id, me), icon: id, action: () => { this.beginPlacing(id); this.menu = "main"; } });
       }
@@ -707,13 +903,13 @@ export class Game {
     if (b.def.id === "town_center" && p.age + 1 < this.rules.ages.length) {
       const next = this.rules.ages[p.age + 1];
       used.add("A");
-      out.push({ key: "A", title: `Advance to the ${next.name}`, detail: ResBag.of(next.cost).text, blocker: w.blockerForNextAge(me), icon: "age", action: () => {
+      out.push({ key: "A", title: `Advance to the ${next.name}`, detail: ResBag.of(next.cost).text, blocker: w.blockerForNextAge(me), icon: "age", row: 1, action: () => {
         const why = w.advanceAge(me, b.id);
         if (why) this.hud.message(why, "warn");
       } });
     }
     for (const t of w.techsAt(b, me)) {
-      out.push({ key: spare(), title: t.name, detail: ResBag.of(t.cost).text, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), action: () => {
+      out.push({ key: spare(), title: t.name, detail: ResBag.of(t.cost).text, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), row: 1, action: () => {
         const why = w.research(me, b.id, t.id);
         if (why) this.hud.message(why, "warn");
       } });
@@ -859,13 +1055,33 @@ export class Game {
       const c = this.rules.civs.find((x) => x.id === t.value);
       if (info) info.textContent = c ? `${c.name}: ${describeCiv(c, this.rules).join("; ")}` : "A civilization picked at random. Its bonuses show at the top of the screen.";
     });
+    // Browsers start sound only after the first click or key.
+    window.addEventListener("pointerdown", () => this.sound.unlock(), { capture: true });
+    window.addEventListener("keydown", () => this.sound.unlock(), { capture: true });
     document.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
-      if (t.closest("#speed")) { this.setSpeed(0, (SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length); return; }
-      // Menu and ? open the controls and pause, as the original's menu did.
-      if (t.closest("#menu-btn, #help-btn") && this.started) {
-        if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; } else { this.showHelp(); this.paused = true; }
+      if (t.closest("button, #speed")) this.sound.play("click", 0.7, 0, 0.03);
+      if (t.closest("#sfx-btn")) { const on = this.sound.toggleSfx(); this.soundButtons(); this.hud.message(on ? "Sound on" : "Sound off"); return; }
+      if (t.closest("#music-btn")) { const on = this.sound.toggleMusic(); if (on && this.started) this.sound.startMusic(); this.soundButtons(); this.hud.message(on ? "Music on" : "Music off"); return; }
+      if (t.closest("#lock-btn")) {
+        const on = this.lock.toggle();
+        this.screenButtons();
+        this.hud.message(on ? "Mouse lock on: click the map to keep the mouse in the game. Alt+Tab or Esc lets go." : "Mouse lock off");
         return;
+      }
+      if (t.closest("#fs-btn")) { this.toggleFullscreen(); return; }
+      if (t.closest("#speed")) { this.setSpeed(0, (SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length); return; }
+      // Menu, Diplomacy and ? open their screens and pause, as the original's did.
+      if (this.started) {
+        const open = (show: () => void) => {
+          if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; } else { show(); this.paused = true; }
+        };
+        if (t.closest("#menu-btn")) { open(() => this.showMenu()); return; }
+        if (t.closest("#help-btn")) { open(() => this.showHelp()); return; }
+        if (t.closest("#diplomacy-btn")) { open(() => this.showDiplomacy()); return; }
+        if (t.closest("#score-btn")) { this.hud.toggleScores(this.world); return; }
+        if (t.closest("#resume-btn")) { this.hud.hideOverlay(); this.paused = false; return; }
+        if (t.closest("#help-open")) { this.showHelp(); return; }
       }
       const s = t.closest("[data-start]") as HTMLElement | null;
       if (s) this.start(s.dataset.start as Difficulty);
@@ -908,6 +1124,43 @@ export class Game {
     window.addEventListener("keydown", (e) => this.keyDown(e));
     window.addEventListener("keyup", (e) => this.keys.delete(e.key));
     window.addEventListener("blur", () => this.keys.clear());
+    document.body.style.cursor = cursors().arrow;
+    document.addEventListener("fullscreenchange", () => {
+      // In full screen Chrome lets the game have Esc (hold it to leave), so Esc still cancels orders.
+      const kb = (navigator as unknown as { keyboard?: { lock?: (k: string[]) => Promise<void>; unlock?: () => void } }).keyboard;
+      if (document.fullscreenElement) kb?.lock?.(["Escape"]).catch(() => {});
+      else kb?.unlock?.();
+      this.screenButtons();
+    });
+    this.soundButtons();
+    this.screenButtons();
+  }
+
+  private toggleFullscreen() {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else document.documentElement.requestFullscreen?.({ navigationUI: "hide" }).catch(() => this.hud.message("Full screen is not allowed here", "warn"));
+  }
+
+  /** The mouse lock and full screen switches show their state. */
+  private screenButtons() {
+    const lockBtn = document.querySelector("#lock-btn"), fs = document.querySelector("#fs-btn");
+    lockBtn?.classList.toggle("off", !this.lock.wanted);
+    lockBtn?.classList.toggle("active", this.lock.locked);
+    if (fs) fs.textContent = document.fullscreenElement ? "Leave full screen" : "Full screen";
+  }
+
+  /** The two sound switches in the top bar show whether they are on. */
+  private soundButtons() {
+    const sfx = document.querySelector("#sfx-btn"), music = document.querySelector("#music-btn");
+    sfx?.classList.toggle("off", !this.sound.sfxOn);
+    music?.classList.toggle("off", !this.sound.musicOn);
+  }
+
+  /** Sets the selection, keeping to the original's limit of 25, and lets the first unit answer. */
+  private select(ids: number[], speak = true) {
+    const before = this.selection.join();
+    this.selection = ids.slice(0, MAX_SELECTION);
+    if (speak && this.selection.length && this.selection.join() !== before) this.selectSound(false);
   }
 
   private restart() {
@@ -917,6 +1170,8 @@ export class Game {
 
   private mouseDown(e: MouseEvent) {
     if (!this.started || this.hud.overlayShown) return;
+    // The first click on the map takes the mouse, if the player wants it kept in the game. The click still counts.
+    if (e.isTrusted && !this.lock.locked) this.lock.lock(e.clientX, e.clientY);
     if (e.button === 2) { this.rightClick(e); return; }
     if (e.button !== 0) return;
     if (this.placing) {
@@ -956,17 +1211,18 @@ export class Game {
       const hit = this.pick(e.clientX, e.clientY);
       if (!hit) { if (!e.shiftKey) this.selection = []; return; }
       if (e.detail >= 2 && hit.owner === me) {
-        this.selection = [...this.views.keys()].filter((id) => {
+        this.select([hit.id, ...[...this.views.keys()].filter((id) => {
           const o = w.entity(id);
-          return !!o && o.owner === me && o.typeId === hit.typeId && this.onScreen(o.center);
-        });
+          return id !== hit.id && !!o && o.owner === me && o.typeId === hit.typeId && this.onScreen(o.center);
+        })], false);
         return;
       }
       if (e.shiftKey && hit.owner !== me) return; // shift only adds your own things
       if (e.shiftKey) {
         const i = this.selection.indexOf(hit.id);
-        if (i >= 0) this.selection.splice(i, 1); else this.selection.push(hit.id);
-      } else this.selection = [hit.id];
+        if (i >= 0) this.selection.splice(i, 1);
+        else if (this.selection.length < MAX_SELECTION) { this.selection.push(hit.id); this.selectSound(false); }
+      } else this.select([hit.id]);
       return;
     }
     const p0 = this.toScene(Math.min(a.x, e.clientX), Math.min(a.y, e.clientY));
@@ -976,7 +1232,7 @@ export class Game {
       return s.x >= p0.x && s.x <= p1.x && s.y >= p0.y && s.y <= p1.y;
     }).map((u) => u.id);
     if (!inside.length) { if (!e.shiftKey) this.selection = []; return; }
-    this.selection = e.shiftKey ? [...new Set([...this.selection, ...inside])] : inside;
+    this.select(e.shiftKey ? [...new Set([...this.selection, ...inside])] : inside);
   }
 
   private rightClick(e: MouseEvent) {
@@ -998,6 +1254,8 @@ export class Game {
       if (foundation) target = foundation;
     }
     const r = this.world.smart(this.me, this.selection, target?.id ?? null, at);
+    if (r === "converted") this.sound.play("convert", 0.9, 0, 1.5);
+    else if (r !== "nothing") this.selectSound(true);
     const color = r === "attacked" ? 0xff3333 : r === "converted" || r === "healed" ? 0xffd659 : 0x33ff66;
     // As in the original: the tree, bush, mine, animal, foundation or enemy you ordered them onto flashes.
     if (target && r !== "moved" && r !== "nothing") this.flash(target, color);
@@ -1017,7 +1275,7 @@ export class Game {
       ring.poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 2, color });
     } else {
       const rx = Math.max(14, v.pic.w * 0.42), ry = rx / 2;
-      ring.ellipse(0, 0, rx, ry).stroke({ width: 2, color });
+      ring.poly([-rx, 0, 0, -ry, rx, 0, 0, ry]).stroke({ width: 2, color });
     }
     ring.zIndex = -0.4;
     v.root.addChild(ring);
@@ -1074,11 +1332,13 @@ export class Game {
       return;
     }
     if (this.world.winner !== null) { if (key === "Enter") this.restart(); return; }
-    if (key === "?" || key === "F1") {
+    if (key === "?" || key === "F1" || key === "F10") {
       e.preventDefault();
-      if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; } else { this.showHelp(); this.paused = true; }
+      if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; }
+      else { if (key === "F10") this.showMenu(); else this.showHelp(); this.paused = true; }
       return;
     }
+    if (key === "F4") { e.preventDefault(); this.hud.toggleScores(this.world); return; }
     if (key === "Escape") {
       if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; return; }
       const cancel = this.hud.commands.find((c) => c.key === "Escape");
@@ -1097,12 +1357,20 @@ export class Game {
         this.hud.message(`Group ${d} saved`);
       } else {
         const g = (this.groups.get(d) ?? []).filter((id) => this.world.entity(id));
+        if (e.shiftKey) { this.select([...new Set([...this.selection, ...g])]); return; } // Shift adds the group to what is picked
         if (g.length && g.join() === this.selection.join()) this.centerOn(this.world.entity(g[0])!.center);
-        this.selection = g;
+        this.select(g);
       }
       return;
     }
     if (e.metaKey || e.ctrlKey) return; // leave browser shortcuts alone
+    if (key === " ") {
+      // Space looks at what is picked, as in the original.
+      e.preventDefault();
+      const first = this.selectedEntities()[0];
+      if (first) this.centerOn(first.center);
+      return;
+    }
     switch (ch) {
       case "H": this.selectTownCenter(); return;
       case ".": this.selectIdleVillager(); return;

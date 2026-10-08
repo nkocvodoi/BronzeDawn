@@ -1,11 +1,11 @@
 // Everything drawn on top of the map, in plain HTML so text stays sharp at any zoom.
-// Laid out like the original: resources along the top, and at the bottom a status box,
-// two rows of command icons and the minimap.
+// Laid out like the original on an 800 x 600 screen and scaled to the window: resources along the
+// top, and at the bottom a status box, two rows of command icons and the minimap.
 import { Building, Entity, ResourceNode, Unit } from "../core/entities";
-import { RES_ALL, RES_KEY } from "../core/rules";
+import { Res, RES_ALL, RES_KEY } from "../core/rules";
 import { clock } from "../core/sim";
 import type { World } from "../core/world";
-import { iconPic, playerColor, resourceIcons, statIcons, stoneTexture, woodTexture } from "./art";
+import { iconPic, playerColor, reliefTexture, resourceIcons, statIcons, stoneTexture } from "./art";
 
 /** One command button: a hotkey, a label, a cost, and why it is greyed out. */
 export interface Command {
@@ -14,20 +14,39 @@ export interface Command {
   icon?: string;
   /** A longer line for the tooltip, such as what a technology does. */
   help?: string;
-  /** Shown on every page, at the end (Back, Cancel, Delete). */
+  /** Shown on every page, at the end of the bottom row (Back, Cancel, Delete). */
   pin?: boolean;
+  /** Which row it lives in, as in the original: training and orders on top, research and advancing below. */
+  row?: 0 | 1;
 }
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
-const SLOTS = 14; // two rows of seven, as in the original
+const COLS = 6, SLOTS = COLS * 2; // two rows of six, as in the original
+
+/** What a villager is called by the work it is doing, as the original renames them. */
+export function jobName(u: Unit): string | null {
+  if (!u.isVillager) return null;
+  const o = u.order, node = u.lastNodeType ?? "";
+  if (o.kind === "build") return "Builder";
+  if (o.kind === "attack") return "Hunter";
+  if (o.kind !== "gather" && o.kind !== "return") return null;
+  if (node === "farm") return "Farmer";
+  if (node === "fish") return "Fisherman";
+  if (node.startsWith("carcass_")) return "Hunter";
+  switch (u.lastGather) {
+    case Res.wood: return "Woodcutter";
+    case Res.food: return "Forager";
+    case Res.gold: return "Gold Miner";
+    case Res.stone: return "Stone Miner";
+    default: return null;
+  }
+}
 
 export class HUD {
   private res = RES_ALL.map((r) => $(`#res-${RES_KEY[r]}`));
   private pop = $("#pop");
   private age = $("#age");
   private time = $("#clock");
-  private speedLabel = $("#speed");
-  private civLabel = $("#civ-name");
   private title = $("#info-title");
   private owner = $("#owner-line");
   private stats = $("#stats");
@@ -36,8 +55,7 @@ export class HUD {
   private hpBox = $("#hp");
   private hpText = $("#hp-text");
   private queue = $("#queue");
-  private multi = $("#multi");
-  private statusText = $("#status-text");
+  private status = $("#status");
   private portraitBox = $("#portrait-box");
   private progress = $("#progress");
   private progressBar = $("#progress-bar");
@@ -45,11 +63,12 @@ export class HUD {
   private tip = $("#tooltip");
   private messages = $("#messages");
   private overlay = $("#overlay");
+  private scores = $("#scores");
   readonly minimap = $<HTMLCanvasElement>("#minimap");
   /** Every command of the current menu, all pages: hotkeys reach the ones not on screen too. */
   commands: Command[] = [];
-  /** The ones on screen, by button index. */
-  private shown: Command[] = [];
+  /** The ones on screen, by button index; null for an empty slot. */
+  private shown: (Command | null)[] = [];
   private page = 0;
   private menuKey = "";
   private signature = "";
@@ -57,29 +76,59 @@ export class HUD {
   private portraitCanvas = $<HTMLCanvasElement>("#portrait");
   private portraitSource: HTMLCanvasElement | null = null;
   private icons = new Map<string, string>();
-  private statusKey = "";
+  private reliefs = new Map<string, string>();
+  private tipFromButton = false;
+  /** Your civilization and its bonuses, and the enemy's, for the Diplomacy screen. */
+  civInfo: { name: string | null; bonuses: string[]; enemy: string | null } = { name: null, bonuses: [], enemy: null };
 
   constructor() {
-    // Pixel art for the frame: wooden bars, carved stone cards, resource icons.
     document.documentElement.style.setProperty("--stone", `url(${stoneTexture()})`);
-    document.documentElement.style.setProperty("--wood", `url(${woodTexture()})`);
+    this.theme("egyptian");
     resourceIcons().forEach((url, i) => { this.res[i].style.backgroundImage = `url(${url})`; });
+    // One unit is a pixel of an 800 x 600 screen, so the interface keeps the original's proportions.
+    const fit = () => {
+      const u = Math.max(0.75, Math.min(3, Math.min(window.innerWidth / 800, window.innerHeight / 600)));
+      document.documentElement.style.setProperty("--u", `${u}px`);
+    };
+    fit();
+    window.addEventListener("resize", fit);
     this.grid.addEventListener("mousemove", (e) => {
       const b = (e.target as HTMLElement).closest("button");
       const c = b ? this.shown[Number(b.dataset.i)] : null;
+      this.tipFromButton = !!c;
       if (!c) { this.tip.hidden = true; return; }
       const key = c.key === "Escape" ? "Esc" : c.key === "Delete" ? "Del" : c.key;
-      this.tip.innerHTML = `<b>${c.title}</b> (${key})${c.detail ? ` · ${c.detail}` : ""}${c.help ? `<br>${c.help}` : ""}${c.blocker ? `<br><span class="why">${c.blocker}</span>` : ""}`;
+      this.tip.innerHTML = `<b>${c.title}</b>${key ? ` (${key})` : ""}${c.detail ? ` · ${c.detail}` : ""}${c.help ? `<br>${c.help}` : ""}${c.blocker ? `<br><span class="why">${c.blocker}</span>` : ""}`;
       this.tip.classList.toggle("blocked", !!c.blocker);
       this.tip.hidden = false;
     });
-    this.grid.addEventListener("mouseleave", () => { this.tip.hidden = true; });
+    this.grid.addEventListener("mouseleave", () => { this.tip.hidden = true; this.tipFromButton = false; });
     this.grid.addEventListener("click", (e) => {
       const b = (e.target as HTMLElement).closest("button");
       if (!b) return;
       b.classList.remove("pressed"); void b.offsetWidth; b.classList.add("pressed");
-      this.run(this.shown[Number(b.dataset.i)]);
+      this.run(this.shown[Number(b.dataset.i)] ?? undefined);
     });
+  }
+
+  /** The carved stone of the top bar and panel, in the style of an architecture. */
+  theme(arch: string) {
+    const get = (plain: boolean) => {
+      const k = `${arch}:${plain}`;
+      let url = this.reliefs.get(k);
+      if (!url) { url = reliefTexture(arch, plain); this.reliefs.set(k, url); }
+      return url;
+    };
+    document.documentElement.style.setProperty("--relief", `url(${get(false)})`);
+    document.documentElement.style.setProperty("--relief-plain", `url(${get(true)})`); // the top bar, behind its numbers
+  }
+
+  /** The line at the bottom left of the map that says what is under the pointer. */
+  rollover(text: string | null) {
+    if (this.tipFromButton) return;
+    if (!text) { this.tip.hidden = true; return; }
+    if (this.tip.textContent !== text) { this.tip.textContent = text; this.tip.classList.remove("blocked"); }
+    this.tip.hidden = false;
   }
 
   iconUrl(id: string) {
@@ -88,16 +137,15 @@ export class HUD {
     return url;
   }
 
-  /** Your civilization in the top bar; hovering it lists the bonuses, and the enemy's. */
+  /** Your civilization and the enemy's, for the Diplomacy screen. */
   civ(name: string | null, bonuses: string[], enemy: string | null) {
-    this.civLabel.hidden = !name;
-    this.civLabel.textContent = name ?? "";
-    this.civLabel.title = name ? `${name}: ${bonuses.join("; ") || "no bonuses"}${enemy ? `\nEnemy: ${enemy}` : ""}` : "";
+    this.civInfo = { name, bonuses, enemy };
   }
 
+  /** The speed switch lives in the menu; it is updated when the menu is open. */
   speed(x: number) {
-    this.speedLabel.textContent = `${x}x`;
-    this.speedLabel.classList.toggle("fast", x > 1);
+    const s = document.querySelector("#speed");
+    if (s) s.textContent = `Game speed ${x}x`;
   }
 
   /** The panels slide in when a game starts and out on the start screen. */
@@ -112,14 +160,32 @@ export class HUD {
   update(w: World, me: number, sel: Entity[]) {
     const p = w.players[me];
     RES_ALL.forEach((r, i) => { this.res[i].textContent = String(Math.floor(p.res.get(r))); });
-    this.pop.textContent = `pop ${Math.ceil(p.pop - 1e-9)}/${p.popCap}`;
+    this.pop.textContent = `${Math.ceil(p.pop - 1e-9)}/${p.popCap}`;
     this.pop.classList.toggle("warn", p.pop >= p.popCap);
     this.age.textContent = w.rules.ages[p.age].name;
-    // A Wonder countdown, as in the original: whoever's Wonder stands until the clock runs out wins.
+    // The original shows no clock, only the countdown while a Wonder stands.
     const wonder = w.players.find((x) => x.wonderAt !== null);
-    this.time.textContent = wonder ? `Wonder (${wonder.name}) ${clock(Math.max(0, wonder.wonderAt! - w.time))} · ${clock(w.time)}` : clock(w.time);
+    this.time.hidden = !wonder;
+    if (wonder) this.time.textContent = `Wonder (${wonder.name}) ${clock(Math.max(0, wonder.wonderAt! - w.time))}`;
     this.time.classList.toggle("warn", !!wonder && wonder.id !== me);
-    this.status(w, me, sel);
+    this.statusBox(w, me, sel);
+    if (!this.scores.hidden) this.updateScores(w);
+  }
+
+  // ---- scores
+
+  toggleScores(w: World) {
+    this.scores.hidden = !this.scores.hidden;
+    if (!this.scores.hidden) this.updateScores(w);
+  }
+
+  /** A simple score: what was gathered, built up and won. */
+  private updateScores(w: World) {
+    this.scores.innerHTML = w.players.map((p) => {
+      const s = p.stats;
+      const score = Math.floor(s.gathered.total / 10) + s.kills * 5 + p.age * 100 + w.buildingsOf(p.id).length * 5;
+      return `<div style="color:${playerColor(p.id)}">${p.name}${p.civ ? ` (${p.civ.name})` : ""}: ${score}</div>`;
+    }).join("");
   }
 
   // ---- the status box
@@ -130,51 +196,36 @@ export class HUD {
     return `<span title="${title}" style="background-image:url(${this.statUrl[icon]})">${r(base)}${up ? `<b class="up">${up > 0 ? "+" : ""}${up}</b>` : ""}</span>`;
   }
 
-  private status(w: World, me: number, sel: Entity[]) {
+  /** As in the original, a group shows its first member. */
+  private statusBox(w: World, me: number, sel: Entity[]) {
     const first = sel[0];
-    const many = sel.length > 1;
-    this.multi.hidden = !many;
-    this.statusText.hidden = many || !first;
-    this.portraitBox.hidden = many;
-    this.portraitBox.style.visibility = first ? "visible" : "hidden";
+    this.status.style.visibility = first ? "visible" : "hidden";
     this.progress.hidden = true;
-    if (!first) { this.title.textContent = ""; return; }
-    if (many) {
-      // A group: one small portrait per unit with its health, as in the original.
-      const key = sel.map((e) => `${e.id}:${Math.ceil((e.hp / e.maxHp) * 10)}`).join(",");
-      if (key !== this.statusKey) {
-        this.statusKey = key;
-        this.multi.innerHTML = sel.slice(0, 30).map((e) =>
-          `<div title="${e.name}"><img src="${this.iconUrl(e.typeId)}" alt=""><i style="width:${Math.max(0, (e.hp / e.maxHp) * 26)}px"></i></div>`).join("");
-      }
-      return;
-    }
-    this.statusKey = "";
+    if (!first) return;
     const enemy = first.owner >= 0 && first.owner !== me;
-    this.title.textContent = first.name;
+    this.title.textContent = (first instanceof Unit ? jobName(first) : null) ?? first.name;
     this.title.style.color = enemy ? playerColor(first.owner) : "";
-    this.owner.textContent = first.owner >= 0 ? `${w.players[first.owner].civ?.name ?? w.players[first.owner].name}${enemy ? ` · ${w.players[first.owner].name}` : ""}` : "Gaia";
+    this.owner.textContent = first.owner >= 0 ? `${w.players[first.owner].civ?.name ?? w.players[first.owner].name}` : "Gaia";
     this.stats.innerHTML = "";
     this.lines.forEach((l) => (l.textContent = ""));
     this.queue.innerHTML = "";
+    this.portraitBox.style.visibility = "visible";
     const hpShown = !(first instanceof ResourceNode);
     this.hpBox.style.visibility = hpShown ? "visible" : "hidden";
     if (hpShown) {
       const f = Math.max(0, first.hp / first.maxHp);
       this.hpBar.style.width = `${f * 100}%`;
-      this.hpBar.style.background = f > 0.5 ? "#3c3" : f > 0.25 ? "#dd3" : "#d33";
       this.hpText.textContent = `${Math.ceil(first.hp)}/${first.maxHp}`;
     } else this.hpText.textContent = "";
 
     if (first instanceof ResourceNode) {
-      this.stats.innerHTML = `<span style="background-image:url(${this.statUrl.carry})">${Math.floor(first.amount)} ${first.decay > 0 ? "meat" : RES_KEY[first.res]}</span>`;
+      this.stats.innerHTML = `<span style="background-image:url(${this.statUrl.carry})">${Math.floor(first.amount)}</span>`;
       if (first.decay > 0) this.lines[0].textContent = "Meat rots: gather it soon";
       return;
     }
     if (first instanceof Unit && first.isAnimal) {
       const a = first.animal!;
       this.stats.innerHTML = this.stat("attack", a.attack, a.attack, "Attack") + this.stat("carry", a.food, a.food, "Food when hunted");
-      this.lines[0].textContent = a.behavior === "aggressive" ? "Dangerous: attacks anything near" : a.behavior === "defend" ? "Fights back when attacked" : "Runs when approached";
       return;
     }
     if (first instanceof Unit) {
@@ -183,12 +234,12 @@ export class HUD {
       if (first.isPriest) {
         this.stats.innerHTML = this.stat("faith", 100, Math.floor(first.faith), "Faith") + this.stat("range", d.range, st.range, "Range");
       } else {
-        this.stats.innerHTML = this.stat("attack", d.attack, st.attack, "Attack") + this.stat("armor", d.armor, st.armor, "Armor")
-          + this.stat("pierce", d.pierce_armor, st.pierce_armor, "Pierce armor")
-          + (d.range > 0 ? this.stat("range", d.range, st.range, "Range") : this.stat("los", d.los, st.los, "Line of sight"));
+        this.stats.innerHTML = this.stat("attack", d.attack, st.attack, "Attack")
+          + (d.armor || st.armor ? this.stat("armor", d.armor, st.armor, "Armor") : "")
+          + (d.pierce_armor || st.pierce_armor ? this.stat("pierce", d.pierce_armor, st.pierce_armor, "Pierce armor") : "")
+          + (d.range > 0 ? this.stat("range", d.range, st.range, "Range") : "");
       }
       if (first.carry > 0 && first.carryRes !== null) this.lines[0].textContent = `Carrying ${Math.floor(first.carry)} ${first.carryKind === "meat" ? "meat" : RES_KEY[first.carryRes]}`;
-      if (d.bonus) this.lines[1].textContent = "Bonus " + Object.entries(d.bonus).map(([k, v]) => `+${v} vs ${k}`).join(", ");
       return;
     }
     if (first instanceof Building) {
@@ -197,7 +248,7 @@ export class HUD {
         this.stats.innerHTML = this.stat("attack", first.def.attack, st.attack, "Attack") + this.stat("range", first.def.range ?? 0, st.range, "Range");
       }
       if (!first.complete) {
-        this.lines[0].textContent = `Under construction ${Math.floor(first.progress * 100)}%`;
+        this.lines[0].textContent = `Building ${Math.floor(first.progress * 100)}%`;
         this.showProgress(first.progress);
       } else if (first.queue.length) {
         // What it is working on, as icons: the first is in progress.
@@ -207,12 +258,6 @@ export class HUD {
         this.queue.innerHTML = first.queue.map((x) => `<img src="${this.iconUrl(x.kind === "age" ? "age" : x.id)}" alt="">`).join("");
         this.showProgress(w.trainProgress(first));
       } else if (first.isFarm) this.lines[0].textContent = `${Math.floor(first.food)} food left`;
-      else if ((first.def.pop_provided ?? 0) > 0 && first.owner === me) this.lines[0].textContent = `Houses ${first.def.pop_provided} people`;
-      if (first.def.drop_off && first.owner === me && !first.queue.length) {
-        const kinds = first.def.food_kinds;
-        const what = first.def.drop_off.map((k) => (k === "food" && kinds ? (kinds.includes("meat") ? "meat" : "berries and farm food") : k));
-        this.lines[1].textContent = `Drop off: ${what.join(", ")}`;
-      }
     }
   }
 
@@ -235,33 +280,42 @@ export class HUD {
 
   // ---- command icons
 
-  /** Shows a menu. Pinned commands sit at the end of every page; long menus get a Next button. */
+  /** Places a menu on the 6 x 2 grid. Top-row and bottom-row commands keep their rows, pinned ones sit at
+   *  the right end of the bottom row; a menu too long for that is paged with a More button. */
+  private layout(cmds: Command[], menu: string): (Command | null)[] {
+    const pinned = cmds.filter((c) => c.pin), rest = cmds.filter((c) => !c.pin);
+    const top = rest.filter((c) => c.row !== 1), bottom = rest.filter((c) => c.row === 1);
+    const slots: (Command | null)[] = Array(SLOTS).fill(null);
+    if (top.length <= COLS && bottom.length + pinned.length <= COLS) {
+      top.forEach((c, i) => (slots[i] = c));
+      bottom.forEach((c, i) => (slots[COLS + i] = c));
+      pinned.forEach((c, i) => (slots[SLOTS - pinned.length + i] = c));
+      return slots;
+    }
+    const per = SLOTS - pinned.length - 1;
+    const pages = Math.ceil(rest.length / per);
+    this.page %= pages;
+    const next: Command = { key: "", title: `More (${this.page + 1}/${pages})`, detail: "next page", blocker: null, icon: "next",
+      action: () => { this.page++; this.signature = ""; this.menuKey = menu; this.setCommands(this.commands); } };
+    [...rest.slice(this.page * per, this.page * per + per), next].forEach((c, i) => (slots[i] = c));
+    pinned.forEach((c, i) => (slots[SLOTS - pinned.length + i] = c));
+    return slots;
+  }
+
   setCommands(cmds: Command[]) {
     this.commands = cmds;
     const menu = cmds.map((c) => c.title).join("|");
-    const fresh = menu !== this.menuKey;
-    if (fresh) { this.menuKey = menu; this.page = 0; }
-    const pinned = cmds.filter((c) => c.pin), rest = cmds.filter((c) => !c.pin);
-    let shown: Command[];
-    if (rest.length + pinned.length <= SLOTS) shown = [...rest, ...pinned];
-    else {
-      const per = SLOTS - pinned.length - 1;
-      const pages = Math.ceil(rest.length / per);
-      this.page %= pages;
-      const next: Command = { key: "", title: `More (${this.page + 1}/${pages})`, detail: "next page", blocker: null, icon: "next",
-        action: () => { this.page++; this.signature = ""; this.menuKey = menu; this.setCommands(this.commands); } };
-      shown = [...rest.slice(this.page * per, this.page * per + per), next, ...pinned];
-    }
-    const sig = `${this.page}#` + shown.map((c) => `${c.key}|${c.title}|${c.blocker}`).join(";");
-    if (sig === this.signature) { this.shown = shown; return; }
-    this.signature = sig;
+    if (menu !== this.menuKey) { this.menuKey = menu; this.page = 0; }
+    const shown = this.layout(cmds, menu);
+    const sig = `${this.page}#` + shown.map((c) => (c ? `${c.key}|${c.title}|${c.blocker}` : "-")).join(";");
     this.shown = shown;
-    const animate = fresh || sig.startsWith(`${this.page}#`) && this.grid.dataset.page !== String(this.page);
-    this.grid.dataset.page = String(this.page);
+    if (sig === this.signature) return;
+    this.signature = sig;
+    // No hotkey letters on the buttons, as in the original: they are in the help line.
     this.grid.innerHTML = shown.map((c, i) => {
-      const key = c.key === "Escape" ? "Esc" : c.key === "Delete" ? "" : c.key;
+      if (!c) return `<button class="empty" tabindex="-1" aria-hidden="true"></button>`;
       const icon = c.icon ? `<img src="${this.iconUrl(c.icon)}" alt="${c.title}">` : `<span>${c.title}</span>`;
-      return `<button data-i="${i}" class="${c.blocker ? "off" : ""}${animate ? " pop" : ""}" style="--i:${i}" aria-label="${c.title}">${icon}${key ? `<b>${key}</b>` : ""}</button>`;
+      return `<button data-i="${i}" class="${c.blocker ? "off" : ""}" aria-label="${c.title}">${icon}</button>`;
     }).join("");
   }
 
@@ -274,6 +328,9 @@ export class HUD {
     setTimeout(() => d.classList.add("fade"), 5000);
     setTimeout(() => d.remove(), 6000);
   }
+
+  /** Clears the messages, as when a game starts. */
+  clearMessages() { this.messages.innerHTML = ""; }
 
   showOverlay(title: string, lines: string[], kind = "") {
     this.overlay.innerHTML = `<div class="card ${kind}"><h1>${title}</h1>${lines.map((l) => `<p>${l}</p>`).join("")}</div>`;
