@@ -883,7 +883,7 @@ export class World {
         const shot: Shot = { attackerId: u.id, owner: u.owner, attack: hunting ? 4 : st.attack, pierce, bonus: u.def.bonus };
         if (ranged) this.fire(u.pos, shot, t, u.def.area ?? 0, hunting ? "spear" : u.def.projectile ?? "arrow");
         else {
-          this.hit(t, shot);
+          this.hit(t, shot, true);
           if (u.def.trample) this.trample(u, t, shot, u.def.trample);
         }
       }
@@ -1241,12 +1241,12 @@ export class World {
     this.missiles = keep;
   }
 
-  private hit(t: Entity, s: Shot) { this.applyDamage(t, this.shotDamage(s, t), s.attackerId); }
+  private hit(t: Entity, s: Shot, melee = false) { this.applyDamage(t, this.shotDamage(s, t), s.attackerId, melee); }
 
-  applyDamage(t: Entity, amount: number, attackerId: number) {
+  applyDamage(t: Entity, amount: number, attackerId: number, melee = false) {
     if (!t.alive || t instanceof ResourceNode) return;
     t.hp -= amount;
-    this.events.push({ kind: "hit", at: t.center });
+    this.events.push({ kind: "hit", at: t.center, melee, building: t instanceof Building });
     if (t.owner >= 0 && this.alertTimer[t.owner] <= 0) {
       this.alertTimer[t.owner] = 10;
       this.events.push({ kind: "underAttack", player: t.owner, at: t.center });

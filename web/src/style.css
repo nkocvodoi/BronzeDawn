@@ -37,6 +37,8 @@ canvas#game { position: fixed; inset: 0; display: block; }
 #pop.warn, #clock.warn { color: #ff9a3a; }
 #speed { padding: 0 7px; cursor: pointer; border: 1px solid var(--edge-light); background: rgba(0, 0, 0, .3); }
 #speed.fast { color: var(--gold); }
+#topbar button.toggle { padding: 1px 8px; }
+#topbar button.toggle.off { color: #8a7a62; text-decoration: line-through; }
 #topbar button, #mini-buttons button {
   font: inherit; font-size: 13px; color: var(--text); cursor: pointer; padding: 1px 12px;
   background: linear-gradient(#7a5530, #4e331a); text-shadow: 1px 1px 0 #000;

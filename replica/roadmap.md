@@ -8,6 +8,7 @@ Cách đo: `replica/features.csv` liệt kê từng tính năng của bản gố
 `replica/game/aoe1-research.md` (có nguồn cho từng con số).
 
 **Hiện tại: 65 / 100** (68 tính năng được tính, đủ 20/21 tính năng bắt buộc). Cập nhật lần cuối: 2026-10-08.
+Sau đợt "con trỏ + âm thanh" (nhánh `aoe-feel`) cần chấm lại: 5 dòng chuyển sang `yes`, 2 dòng sang `partial`.
 
 Đây là bảng chấm chi tiết. Bảng thô trước đó cho 95.5 vì gộp nhiều thứ vào một dòng (cả phần tàu thuyền,
 địa hình, âm thanh đều chưa có dòng nào). Mỗi khi xong một hạng mục, sửa cột `clone` trong `features.csv`
@@ -34,17 +35,19 @@ rồi chấm lại.
 Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế chế" và khối lượng việc.
 
 ### Giai đoạn 1: cảm giác điều khiển (nhỏ, thấy ngay)
-- [ ] Con trỏ đổi theo ngữ cảnh: kiếm khi trỏ vào địch, bàn tay khi trỏ vào tài nguyên, búa khi trỏ vào nền móng
+- [x] Con trỏ đổi theo ngữ cảnh: kiếm khi trỏ vào địch, rìu / cuốc / giỏ khi trỏ vào tài nguyên, búa khi trỏ vào nền móng, gậy cho thầy tu (`web/src/game/cursors.ts`, pixel art tự vẽ)
 - [ ] Sửa công trình (villager, tốn tài nguyên), công trình hư thì bốc cháy, phá xong để lại gạch vụn
 - [ ] Tư thế Stand ground, lệnh Attack ground cho máy bắn đá
-- [ ] Shift + chuột phải để đặt điểm đi qua; Alt + số để nhảy tới nhóm; Space để về chỗ đang chọn; giới hạn chọn 25 unit
-- [ ] Thứ tự tài nguyên trên thanh trên cùng như bản gốc (gỗ, thức ăn, vàng, đá)
+- [ ] Shift + chuột phải để đặt điểm đi qua; Tab để chuyển giữa các unit đang chọn
+- [x] Space để về chỗ đang chọn; Shift + số để gộp nhóm; giới hạn chọn 25 unit
+- [x] Thứ tự tài nguyên trên thanh trên cùng như bản gốc (gỗ, thức ăn, vàng, đá)
 
-### Giai đoạn 2: âm thanh (khối lượng vừa, ảnh hưởng lớn)
-- [ ] Hiệu ứng âm thanh: chặt gỗ, đào mỏ, đánh nhau, công trình xây xong, báo bị tấn công
-- [ ] Tiếng đáp lời của unit khi chọn và khi ra lệnh, tiếng thầy tu cải đạo
-- [ ] Nhạc nền
-- Nguồn: tự tổng hợp bằng Web Audio, hoặc thư viện CC0. Không lấy âm thanh của bản gốc.
+### Giai đoạn 2: âm thanh (đã có bản đầu, `web/src/game/sound.ts`)
+- [x] Hiệu ứng âm thanh: chặt gỗ, đào mỏ, hái lượm, làm ruộng, đánh cá, xây; kiếm, chùy, cung, đá văng; nhà sập, xây xong, luyện xong, nghiên cứu xong, lên đời, báo bị tấn công
+- [x] Tiếng đáp lời của unit khi chọn và khi ra lệnh (một thứ tiếng bịa, tổng hợp bằng formant), tiếng tụng của thầy tu khi cải đạo, mỗi công trình có tiếng riêng khi chọn
+- [x] Nhạc nền tự sinh: drone, đàn lyre, trống tay, sáo, điệu D dorian; nút Sound / Music trên thanh trên cùng
+- Toàn bộ tổng hợp bằng Web Audio lúc chạy, không có file âm thanh nào. Không lấy âm thanh của bản gốc.
+- [ ] Tinh chỉnh: nghe thử thật và cân lại âm lượng từng tiếng; thêm tiếng thú (voi, sư tử), tiếng ngựa
 
 ### Giai đoạn 3: nước và tàu (lớn)
 - [ ] Dock (cũng là công trình tính để lên Tool Age)
