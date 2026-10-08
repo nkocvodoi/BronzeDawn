@@ -130,3 +130,6 @@ canvas#game { position: fixed; inset: 0; display: block; }
 }
 #commands button { overflow: hidden; }
 #commands span, #commands small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
+#topbar #speed { min-width: 0; padding: 1px 8px; cursor: pointer; border: 1px solid var(--edge-light); background: rgba(0, 0, 0, .3); }
+#topbar #speed:hover { background: rgba(0, 0, 0, .55); }
+#topbar #speed.fast { color: var(--gold); }

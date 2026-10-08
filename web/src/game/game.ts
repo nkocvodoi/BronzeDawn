@@ -16,6 +16,9 @@ interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics;
 /** Zoom steps where one art pixel covers a whole number of screen pixels: 4, 3, 2, 1. */
 const ZOOMS = [0.5, 2 / 3, 1, 2];
 
+/** Game speeds, as in the original's settings (1.0, 1.5, 2.0), plus 3x for long games. */
+const SPEEDS = [1, 1.5, 2, 3];
+
 /** What a villager can build, in grid order. Walls and towers show their current tier. */
 const BUILD_ORDER = [
   "house", "granary", "storage_pit", "barracks", "market", "farm",
@@ -65,6 +68,8 @@ export class Game {
   started = false;
   paused = false;
   revealMap = false;
+  /** How many simulation seconds pass per real second. The simulation still steps at a fixed 20 Hz. */
+  speed = 1;
   private seed: number;
   private wallStart: Tile | null = null;
   private wallGhosts: Sprite[] = [];
@@ -205,7 +210,8 @@ export class Game {
       "Command keys follow the grid: Q W E R T Y / A S D F G H / Z X C V B N",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Ctrl+1-9 save group · 1-9 recall · Delete destroy",
-      "Arrows / trackpad / screen edge: scroll · Pinch or + -: zoom · P pause",
+      "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
+      "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · P pause",
       "Press ? or Esc to close",
     ], "help");
   }
@@ -228,9 +234,11 @@ export class Game {
     this.scrollCamera(dt);
     const w = this.world;
     if (this.started && !this.paused && w.winner === null) {
-      this.accumulator += dt;
+      this.accumulator += dt * this.speed;
       let steps = 0;
-      while (this.accumulator >= World.dt && steps < 6) { w.step(); this.accumulator -= World.dt; steps++; }
+      const maxSteps = Math.ceil(6 * this.speed);
+      while (this.accumulator >= World.dt && steps < maxSteps) { w.step(); this.accumulator -= World.dt; steps++; }
+      if (steps === maxSteps) this.accumulator = Math.min(this.accumulator, World.dt); // a slow machine falls behind rather than freezing
       this.handleEvents();
     }
     const alpha = this.started ? Math.min(1, this.accumulator / World.dt) : 1;
@@ -786,6 +794,7 @@ export class Game {
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     document.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
+      if (t.closest("#speed")) { this.setSpeed(0, (SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length); return; }
       const s = t.closest("[data-start]") as HTMLElement | null;
       if (s) this.start(s.dataset.start as Difficulty);
       if (t.closest("[data-restart]")) this.restart();
@@ -982,13 +991,24 @@ export class Game {
       case "H": this.selectTownCenter(); return;
       case ".": this.selectIdleVillager(); return;
       case "P": this.paused = !this.paused; this.hud.message(this.paused ? "Paused (P to resume)" : "Resumed"); return;
-      case "+": case "=": this.zoom(0.85); return;
-      case "-": this.zoom(1.15); return;
+      case "+": case "=": this.setSpeed(1); return;   // game speed, as in the original
+      case "-": case "_": this.setSpeed(-1); return;
+      case "PageUp": this.zoom(0.85); return;
+      case "PageDown": this.zoom(1.15); return;
       case "`": this.revealMap = !this.revealMap; this.fogStamp = -1; return; // debugging aid
     }
     // Rebuild the commands now: the selection may have changed since the last frame.
     this.hud.setCommands(this.commands(this.selectedEntities()));
     this.hud.run(this.hud.commands.find((c) => c.key === ch));
+  }
+
+  /** Steps the game speed up or down, or to a given index. */
+  setSpeed(step: number, to?: number) {
+    const i = SPEEDS.indexOf(this.speed);
+    const next = to !== undefined ? to : Math.min(SPEEDS.length - 1, Math.max(0, i + step));
+    this.speed = SPEEDS[next];
+    this.hud.speed(this.speed);
+    this.hud.message(`Game speed ${this.speed}x`);
   }
 
   private selectIdleVillager() {

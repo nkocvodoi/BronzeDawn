@@ -21,6 +21,7 @@ export class HUD {
   private pop = $("#pop");
   private age = $("#age");
   private time = $("#clock");
+  private speedLabel = $("#speed");
   private title = $("#info-title");
   private lines = [0, 1, 2, 3].map((i) => $(`#info-${i}`));
   private hp = $("#hp");
@@ -63,6 +64,11 @@ export class HUD {
     let url = this.icons.get(id);
     if (!url) { url = iconPic(id).toDataURL(); this.icons.set(id, url); }
     return url;
+  }
+
+  speed(x: number) {
+    this.speedLabel.textContent = `${x}x`;
+    this.speedLabel.classList.toggle("fast", x > 1);
   }
 
   run(c: Command | undefined) {
