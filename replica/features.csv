@@ -1,43 +1,77 @@
 feature,area,priority,original,clone,notes
 Isometric tile map with terrain and water,map,must,yes,yes,
-Seeded random skirmish maps,map,must,yes,yes,72x72 two corners
-Scroll and zoom the camera,camera,must,yes,yes,arrows trackpad pinch edge; zoom in whole-pixel steps
+Seeded random maps,map,must,yes,yes,
+Map sizes Small to Huge,map,should,yes,yes,72 96 120 144
+Gigantic map size,map,could,yes,no,
+Map types: islands coastal inland highland and the Rise of Rome four,map,should,yes,no,only an inland map with lakes
+Elevation hills and cliffs,map,should,yes,no,flat ground only
+Elevation damage bonus,combat,could,yes,no,needs elevation
+Shallows land units can cross,map,could,yes,no,
+Scroll and zoom the camera,camera,must,yes,yes,
 Click box shift and double-click selection,selection,must,yes,yes,
-Right-click context command,commands,must,yes,yes,move gather hunt build attack convert heal
-Control groups,commands,should,yes,yes,Ctrl or Alt+1-9 on the web
+Selection limit of 25,selection,could,yes,no,no limit
+Control groups,selection,should,yes,yes,Ctrl or Alt+digit save; digit recall
+Alt+digit centers and Shift+digit adds a group,selection,could,yes,no,
+Tab cycles and Space centers the selection,selection,could,yes,no,
+Right-click context command,commands,must,yes,yes,
+Context cursors (sword over enemies hand over resources hammer over foundations),commands,should,yes,no,the default arrow everywhere
+Stand ground and attack ground,commands,should,yes,no,
+Waypoints with Shift+right-click,commands,could,yes,no,
+Formations that move at the slowest unit's speed,commands,could,yes,no,
 Pathfinding around obstacles,pathfinding,must,yes,yes,A* 8 directions
-Gather carry and drop off four resources,gathering,must,yes,yes,food kinds: berries and farms to the Granary; meat and fish to the Storage Pit
-Hunting gazelles and elephants,gathering,must,yes,yes,villagers throw spears; meat rots; soldiers' kills give nothing
-Dangerous animals (lions and alligators),gathering,should,yes,yes,
-Shore fishing,gathering,should,yes,yes,0.6 a second
-Fishing boats docks and ships,gathering,could,yes,no,no water units yet
-Farms behind a Market,gathering,must,yes,yes,one farmer; Domestication Plow Irrigation; walkable as in the remaster
-Construction with several builders,construction,must,yes,yes,three visible stages
-Walls dragged as a line,construction,should,yes,yes,small medium fortification by research
-Production queues,production,must,yes,yes,research and training share the queue
-Rally points,production,could,no,yes,ours: a modern convenience the original lacked
-Population and houses,production,must,yes,yes,4 per house and per Town Center; cap 50
-Combat formula with pierce armor,combat,must,yes,yes,buildings take a fifth
-Counter triangle and bonus damage,combat,must,yes,yes,checked by balance.py with accepted exceptions
-Siege splash that moving units dodge,combat,should,yes,yes,Ballistics leads the target
-Elephant and scythe trample,combat,should,yes,yes,
-Tower line,combat,should,yes,yes,watch sentry guard ballista
-Fog of war explored and visible,fog,must,yes,yes,enemy buildings drawn as last seen
-Computer opponent with three levels,ai,must,yes,yes,advances four ages and researches
-Stone Tool Bronze and Iron ages,ages,must,yes,yes,two different buildings of the age to advance
-Technologies and upgrades,ages,must,yes,yes,65 at the Storage Pit Granary Market Government Center Temple and unit buildings
-Civilizations with bonuses,ages,should,yes,yes,16 with five architecture sets
-Priests convert and heal,religion,should,yes,yes,faith regenerates; Monotheism converts buildings
-Win by conquest,win,must,yes,yes,every unit and building but walls
-Wonder victory,win,should,yes,yes,15 minutes standing
-Ruins and artifacts,win,could,yes,no,
-Minimap,hud,must,yes,yes,click to jump right-click to send
-Hotkeys for every command,hud,must,yes,yes,by position in the 6x3 grid
-Pixel-art look in the spirit of the original,hud,should,yes,yes,drawn in code
-Sound effects and music,audio,should,yes,no,needs original or licensed audio
-Campaigns and scenarios,modes,could,yes,skip,out of the first slice
-Multiplayer,modes,could,yes,skip,lockstep later: the simulation is deterministic
-Map editor,modes,could,yes,skip,
-The original's art audio and names,assets,must,yes,skip,clean-room: never copied
-Headless AI vs AI match,tooling,should,no,yes,ours: the integration test
-Plays in a browser with nothing to install,platform,should,no,yes,ours: PixiJS build on GitHub Pages
+Gather carry and drop off four resources,gathering,must,yes,yes,
+Hunting gazelles and elephants,gathering,must,yes,yes,
+Dangerous animals,gathering,should,yes,yes,
+Shore fishing,gathering,should,yes,yes,
+Farms behind a Market,gathering,must,yes,partial,walkable and one farmer as in the remaster; the original blocks movement
+Docks,naval,should,yes,no,
+Fishing boats and deep fish,naval,should,yes,no,
+Trade boats and trade between docks,naval,could,yes,no,
+War ships: scout ship war galley trireme catapult trireme juggernaught fire galley,naval,should,yes,no,
+Transports,naval,should,yes,no,
+Construction with several builders,construction,must,yes,yes,
+Repair buildings for a resource cost,construction,should,yes,no,
+Damaged buildings show fire and leave rubble,construction,could,yes,no,
+Walls dragged as a line,construction,should,yes,yes,
+Production queues,production,must,yes,yes,
+Population and houses,production,must,yes,yes,
+Combat formula with pierce armor,combat,must,yes,yes,
+Bonus damage and counters,combat,must,yes,yes,
+Siege splash and dodging,combat,should,yes,yes,
+Trample,combat,should,yes,yes,
+Tower line,combat,should,yes,yes,
+Fog of war,fog,must,yes,yes,
+Computer opponent,ai,must,yes,yes,three levels
+Five AI levels Easiest to Hardest,ai,could,yes,partial,easy normal hard
+Up to eight players with teams and allies,players,should,yes,no,one against one
+Diplomacy stances and tribute,players,could,yes,no,
+Four ages,ages,must,yes,yes,
+Technologies and upgrades,ages,must,yes,yes,65
+Civilizations with bonuses,ages,should,yes,yes,16
+Each civilization's own missing units and techs,ages,should,yes,partial,only the Persian Academy and Macedonian Temple
+Martyrdom,religion,could,yes,no,
+Priests convert and heal,religion,should,yes,yes,
+Win by conquest,win,must,yes,yes,
+Wonder victory,win,should,yes,yes,
+Ruins and artifacts victory,win,should,yes,no,
+Score and score or time-limit victory,win,could,yes,no,
+Game setup options (reveal map starting age resources population limit),setup,should,yes,partial,civ map size speed difficulty only
+Save and load a game,setup,should,yes,no,
+Status box command icons and diamond minimap,hud,must,yes,yes,
+Build menu with the original's keys,hud,must,yes,yes,B then a letter
+Train keys of the original,hud,should,yes,yes,
+Score display and timers on screen,hud,could,yes,partial,Wonder timer only
+Sound effects,audio,should,yes,no,
+Unit voices and acknowledgements,audio,should,yes,no,
+Music,audio,could,yes,no,
+Death animations and decaying bodies,art,could,yes,partial,bodies fade; no bones
+Buildings change look with each age,art,should,yes,yes,
+Multiplayer,modes,should,yes,no,the simulation is deterministic already
+Campaigns and scenarios,modes,could,yes,skip,out of scope
+Scenario editor,modes,could,yes,skip,out of scope
+The original's sprites sounds music and name,assets,must,yes,skip,clean-room: never copied
+Rally points,extras,could,no,yes,ours: not in the original
+Attack-move,extras,could,no,yes,ours: not in the original
+Game speed 3x,extras,could,no,yes,ours: the original stops at 2x
+Headless AI vs AI match,tooling,should,no,yes,ours
+Plays in a browser,platform,should,no,yes,ours
