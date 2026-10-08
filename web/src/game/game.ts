@@ -771,6 +771,32 @@ export class Game {
   // ---- picking
 
   /** The entity drawn under a screen point. Units win over what is behind them. */
+  /** Pixels of each sprite canvas, read once, for hit tests on what is actually drawn. */
+  private pixels = new WeakMap<HTMLCanvasElement, Uint8ClampedArray>();
+
+  /** Whether the sprite has a visible pixel at scene point (x, y). */
+  private opaqueAt(v: View, x: number, y: number) {
+    const pic = v.pic;
+    const x0 = v.root.x - pic.ax * pic.w, y0 = v.root.y + v.sprite.y - pic.ay * pic.h;
+    let u = (x - x0) / pic.w, t = (y - y0) / pic.h;
+    if (u < 0 || u >= 1 || t < 0 || t >= 1) return false;
+    if (v.sprite.scale.x < 0) u = 1 - u; // mirrored units
+    const c = pic.canvas;
+    let data = this.pixels.get(c);
+    if (!data) { data = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data; this.pixels.set(c, data); }
+    const px = Math.floor(u * c.width), py = Math.floor(t * c.height);
+    // A pixel of slack around small sprites, so a thin spear or a little unit is still easy to click.
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const qx = px + dx, qy = py + dy;
+      if (qx < 0 || qy < 0 || qx >= c.width || qy >= c.height) continue;
+      if (data[(qy * c.width + qx) * 4 + 3] > 40) return true;
+    }
+    return false;
+  }
+
+  /** The entity under a screen point: whatever is drawn on top there. Units win over what is behind
+   *  them; a building or foundation also counts when you click its own ground, so a flat foundation
+   *  next to a tall Town Center can always be clicked. */
   private pick(sx: number, sy: number): Entity | null {
     const p = this.toScene(sx, sy);
     const wp = fromIso(p.x, p.y);
@@ -779,17 +805,16 @@ export class Game {
       if (!v.root.visible) continue;
       const e = this.world.entity(id);
       if (!e) continue;
-      const x0 = v.root.x - v.pic.ax * v.pic.w, y0 = v.root.y + v.sprite.y - v.pic.ay * v.pic.h;
-      const inX = (k: number) => p.x >= x0 + v.pic.w * k && p.x <= x0 + v.pic.w * (1 - k);
-      const inY = p.y >= y0 + v.pic.h * 0.05 && p.y <= y0 + v.pic.h;
-      if (e instanceof Building) {
-        if (!(e.footprint.distance(wp) === 0 || (inX(0.15) && inY))) continue;
-      } else if (!(inX(0.12) && inY)) continue;
-      const score = v.root.zIndex + (e instanceof Unit ? 1000 : 0);
+      const drawn = this.opaqueAt(v, p.x, p.y);
+      const ground = e instanceof Building && e.footprint.distance(wp) === 0;
+      if (!drawn && !ground) continue;
+      // Drawn pixels beat bare ground; among those, the one drawn in front wins.
+      const score = v.root.zIndex + (e instanceof Unit ? 1000 : 0) + (drawn ? 500 : 0);
       if (score > bestScore) { bestScore = score; best = e; }
     }
     return best;
   }
+
 
   // ---- input
 
@@ -922,7 +947,13 @@ export class Game {
       this.marker(e.clientX, e.clientY, playerColor(this.me));
       return;
     }
-    const target = this.pick(e.clientX, e.clientY);
+    let target = this.pick(e.clientX, e.clientY);
+    // Foundations lie flat and hide behind taller buildings. With villagers selected, a click on the
+    // ground of your own unfinished building always means "build this", whatever is drawn over it.
+    if (sel.some((x) => x instanceof Unit && x.isVillager)) {
+      const foundation = this.world.buildingsOf(this.me).find((b) => !b.complete && b.footprint.distance(at) === 0);
+      if (foundation) target = foundation;
+    }
     const r = this.world.smart(this.me, this.selection, target?.id ?? null, at);
     if (r === "attacked") this.marker(e.clientX, e.clientY, 0xff3333);
     else if (r === "converted" || r === "healed") this.marker(e.clientX, e.clientY, 0xffd659);
