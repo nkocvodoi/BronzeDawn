@@ -153,10 +153,15 @@ export class Game {
       this.terrain.addChild(ground);
     }
     const n = this.world.map.width;
-    // One extra tile of black on every side so the terrain's edge never peeks out.
+    // One extra tile of black on every side so the terrain's edge never peeks out. A fresh canvas and
+    // texture for each map: resizing the old canvas leaves the GPU copy at the first map's size, and
+    // a bigger map then draws no fog at all.
+    const old = this.fogSprite.texture;
+    this.fogCanvas = document.createElement("canvas");
     this.fogCanvas.width = n + 2;
     this.fogCanvas.height = n + 2;
     this.fogSprite.texture = Texture.from(this.fogCanvas);
+    if (old && old !== Texture.EMPTY) old.destroy(true);
     this.fogSprite.setFromMatrix(new Matrix(HALF_W, HALF_H, -HALF_W, HALF_H, 0, -2 * HALF_H));
     this.miniBase.width = n;
     this.miniBase.height = n;
