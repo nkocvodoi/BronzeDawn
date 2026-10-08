@@ -40,10 +40,11 @@ check((await page.textContent("#civ-name")) === "Greek" && (await page.getAttrib
 check((await g(() => game.speed)) === 1.5 && (await page.textContent("#speed")) === "1.5x", "the start screen sets the game speed");
 check(await g(() => game.started && game.world.ais.length === 1), "clicking Normal starts the game against one AI");
 
-// The town center starts selected: Q trains a villager.
+check(await page.evaluate(() => document.body.classList.contains("playing")), "the panels slide in when the game starts");
+// The town center starts selected: C trains a villager, as in the original.
 const food = await g(() => game.world.players[0].res.food);
-await page.keyboard.press("q");
-check(await g(() => game.world.buildingsOf(0).find((b) => b.def.id === "town_center").queue.length === 1), "Q on the town center queues a villager");
+await page.keyboard.press("c");
+check(await g(() => game.world.buildingsOf(0).find((b) => b.def.id === "town_center").queue.length === 1), "C on the town center queues a villager");
 check((await g(() => game.world.players[0].res.food)) === food - 50, "training cost 50 food");
 
 // Click a villager to select it.
@@ -61,12 +62,17 @@ check((await g(() => game.flashes)) > 0, "the berry bush flashes to show the ord
 await page.waitForFunction(() => game.flashes === 0, null, { timeout: 3000 }).catch(() => {});
 check((await g(() => game.flashes)) === 0, "the flash ends after a moment");
 
-// Q with a villager selected starts placing a house; a left click on open grass places it.
+// B opens the build menu, E then places a house, as in the original; a left click on open grass places it.
 await page.mouse.click(p.x, p.y - 8); // reselect nothing in particular
 await page.mouse.click(1, 1);         // top bar: no-op
 p = await at(v);
 await page.mouse.click(p.x, p.y - 14);
-await page.keyboard.press("q");
+check((await page.$$("#commands button")).length === 3, "a villager's panel shows Build, Stop and Delete");
+await page.keyboard.press("b");
+await wait(50);
+const buildIcons = await page.$$("#commands button");
+check(buildIcons.length > 5 && (await page.$$("#commands button.pop")).length === buildIcons.length, "B opens the build menu and its icons pop in");
+await page.keyboard.press("e");
 const spot = await g((v) => {
   const u = game.world.unit(v);
   for (let r = 3; r < 10; r++) for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
@@ -78,7 +84,7 @@ const spot = await g((v) => {
 const houses = await g(() => game.world.buildingsOf(0).filter((b) => b.def.id === "house").length);
 await page.mouse.move(spot.x, spot.y);
 await page.mouse.click(spot.x, spot.y);
-check((await g(() => game.world.buildingsOf(0).filter((b) => b.def.id === "house").length)) === houses + 1, "Q then a click places a house");
+check((await g(() => game.world.buildingsOf(0).filter((b) => b.def.id === "house").length)) === houses + 1, "B, E, then a click places a house");
 // Villagers bunch up at the bush, so the click may pick a neighbour: check whoever is selected.
 check(await g(() => game.world.unit(game.selection[0])?.order.kind === "build"), "the selected villager goes to build it");
 

@@ -6,7 +6,7 @@ import { Terrain } from "../core/grid";
 import { Res, ResBag, Rules } from "../core/rules";
 import { clock } from "../core/sim";
 import { World } from "../core/world";
-import { Arch, buildingPic, Facing, nodePic, Pic, playerColor, Pose, projectilePic, terrainTexture, Tool, unitPic, UnitLook, wallPic } from "./art";
+import { Arch, buildingPic, Facing, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
@@ -20,15 +20,28 @@ const ZOOMS = [0.5, 2 / 3, 1, 2];
 /** Game speeds, as in the original's settings (1.0, 1.5, 2.0), plus 3x for long games. */
 const SPEEDS = [1, 1.5, 2, 3];
 
-/** What a villager can build, in grid order. Walls and towers show their current tier. */
-const BUILD_ORDER = [
-  "house", "granary", "storage_pit", "barracks", "market", "farm",
-  "archery_range", "stable", "small_wall", "watch_tower", "government_center", "temple",
-  "academy", "siege_workshop", "town_center", "wonder",
-];
+/** Map sizes in tiles, after the original's Small to Huge. */
+const MAP_SIZES: [string, number][] = [["Small", 72], ["Medium", 96], ["Large", 120], ["Huge", 144]];
 
-/** Hotkeys go by position in the 6 x 3 command grid. */
-const KEYS = "QWERTYASDFGJZXCVBN"; // H stays "select the Town Center"
+/** The original's build keys: B opens the build menu, then a letter places the building. */
+const BUILD_KEYS: Record<string, string> = {
+  house: "E", granary: "G", storage_pit: "S", barracks: "B", market: "M", farm: "F",
+  archery_range: "A", stable: "L", small_wall: "W", watch_tower: "T", government_center: "C", temple: "P",
+  academy: "Y", siege_workshop: "K", town_center: "N", wonder: "O",
+};
+
+/** The original's train keys, by unit line (an upgraded unit keeps its line's key). */
+const TRAIN_KEYS: Record<string, string> = {
+  villager: "C", clubman: "T", axeman: "A", slinger: "L",
+  short_swordsman: "Z", broad_swordsman: "Z", long_swordsman: "Z", legion: "Z",
+  hoplite: "T", phalanx: "T", centurion: "T",
+  bowman: "T", improved_bowman: "A", composite_bowman: "A", chariot_archer: "R", horse_archer: "C", heavy_horse_archer: "C", elephant_archer: "E",
+  scout: "S", chariot: "R", scythe_chariot: "R", cavalry: "C", heavy_cavalry: "C", cataphract: "C", war_elephant: "E", armored_elephant: "E", camel_rider: "L",
+  stone_thrower: "C", catapult: "C", heavy_catapult: "C", ballista: "B", helepolis: "B", priest: "T",
+};
+
+/** Letters for whatever has no key of its own (technologies, advancing). H, P and digits stay global. */
+const SPARE_KEYS = "QWERUIODFGJKXVNM";
 
 const WALL_TIER: Record<string, 0 | 1 | 2> = { small_wall: 0, medium_wall: 1, fortification: 2 };
 
@@ -42,6 +55,7 @@ export class Game {
   /** How many simulation seconds pass per real second. The simulation still steps at a fixed 20 Hz. */
   speed = 1;
   private seed: number;
+  private mapSize = 72;
   private wallStart: Tile | null = null;
   private wallGhosts: Sprite[] = [];
 
@@ -89,9 +103,10 @@ export class Game {
 
   // ---- setup
 
-  private newGame(seed: number, civs: (string | null)[] = []) {
+  private newGame(seed: number, civs: (string | null)[] = [], size = this.mapSize) {
     this.seed = seed;
-    this.world = new World(this.rules, seed, ["You", "Enemy"], 72, true, { civs });
+    this.mapSize = size;
+    this.world = new World(this.rules, seed, ["You", "Enemy"], size, true, { civs });
     for (const v of this.views.values()) v.root.destroy({ children: true });
     this.views.clear();
     for (const g of this.ghosts.values()) g.view.root.destroy({ children: true });
@@ -106,12 +121,13 @@ export class Game {
 
   private buildWorld() {
     this.terrain.removeChildren().forEach((c) => c.destroy({ texture: true }));
-    const t = terrainTexture(this.world.map);
-    const ground = new Sprite(t.texture);
-    ground.position.set(t.x, t.y);
-    ground.width = t.w;
-    ground.height = t.h;
-    this.terrain.addChild(ground);
+    for (const t of terrainChunks(this.world.map)) {
+      const ground = new Sprite(t.texture);
+      ground.position.set(t.x, t.y);
+      ground.width = t.w;
+      ground.height = t.h;
+      this.terrain.addChild(ground);
+    }
     const n = this.world.map.width;
     // One extra tile of black on every side so the terrain's edge never peeks out.
     this.fogCanvas.width = n + 2;
@@ -148,11 +164,13 @@ export class Game {
 
   showStart() {
     this.started = false;
+    this.hud.playing(false);
     const civs = this.rules.civs.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
     this.hud.showOverlay("Bronze Dawn", [
       "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
       `Your civilization: <select id="civ"><option value="">Random</option>${civs}</select>`,
       `<span id="civ-info">A civilization picked at random. Its bonuses show at the top of the screen.</span>`,
+      `Map size: <select id="map-size">${MAP_SIZES.map(([n, t]) => `<option value="${t}"${t === this.mapSize ? " selected" : ""}>${n} (${t} x ${t})</option>`).join("")}</select>`,
       `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
       `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
       "Hard: the computer gathers 20% faster.",
@@ -166,13 +184,15 @@ export class Game {
     const civs = this.rules.civs;
     const mine = pick ?? (civs.length ? civs[Math.floor(Math.random() * civs.length)].id : null);
     const theirs = civs.length ? civs[(this.seed * 7 + 3) % civs.length].id : null;
-    this.newGame(this.seed, [mine, theirs]);
+    const size = Number((document.querySelector("#map-size") as HTMLSelectElement | null)?.value) || this.mapSize;
+    this.newGame(this.seed, [mine, theirs], size);
     // The speed chosen on the start screen; + and - still change it during the game.
     const chosen = Number((document.querySelector("#start-speed") as HTMLSelectElement | null)?.value);
     if (SPEEDS.includes(chosen)) { this.speed = chosen; this.hud.speed(chosen); }
     this.world.ais = [new AIController(1, d)];
     this.world.ais[0].attach(this.world);
     this.started = true;
+    this.hud.playing(true);
     this.hud.hideOverlay();
     const civ = this.world.players[this.me].civ;
     const enemyCiv = this.world.players[1].civ;
@@ -185,11 +205,13 @@ export class Game {
     this.hud.showOverlay("Controls", [
       "Left click / drag: select · Shift: add · Double click: all of that kind on screen",
       "Right click: move, gather, hunt, build, attack, convert or heal (priests), or set a rally point",
-      "Command keys follow the grid: Q W E R T Y / A S D F G J / Z X C V B N",
+      "Villagers: B opens the build menu, then E House · G Granary · S Storage Pit · B Barracks · M Market · F Farm",
+      "A Archery Range · L Stable · W Wall · T Tower · C Government Center · P Temple · Y Academy · K Siege Workshop · N Town Center · O Wonder",
+      "Train: C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Ctrl+1-9 save group · 1-9 recall · Delete destroy",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
-      "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · P pause",
+      "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · F3 pause",
       ...this.civLines(),
       "Press ? or Esc to close",
     ], "help");
@@ -622,39 +644,61 @@ export class Game {
 
   selectedEntities() { return this.selection.map((id) => this.world.entity(id)).filter((e): e is Entity => e !== null); }
 
+  /** Which menu the villager panel shows: its actions, or the build menu (opened with B). */
+  private menu: "main" | "build" = "main";
+  private menuFor = "";
+
   private commands(sel: Entity[]): Command[] {
     const w = this.world, me = this.me;
     const mine = sel.filter((e) => e.owner === me);
     if (!mine.length || w.winner !== null) return [];
-    const keyed = (cmds: Omit<Command, "key">[]) => cmds.slice(0, KEYS.length).map((c, i) => ({ ...c, key: KEYS[i] }));
+    // A new selection starts at its main menu, as in the original.
+    const selKey = mine.map((e) => e.id).join(",");
+    if (selKey !== this.menuFor) { this.menuFor = selKey; this.menu = "main"; }
+    const del: Command = { key: "Delete", title: "Delete", detail: "Del", blocker: null, icon: "delete", pin: true,
+      action: () => { for (const id of this.selection) w.destroy(me, id); } };
     const units = mine.filter((e): e is Unit => e instanceof Unit);
     if (units.some((u) => u.isVillager)) {
-      const out: Omit<Command, "key">[] = [];
-      for (const base of BUILD_ORDER) {
+      if (this.menu === "main") {
+        return [
+          { key: "B", title: "Build", detail: "open the build menu", blocker: null, icon: "build", action: () => { this.menu = "build"; } },
+          { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
+          del,
+        ];
+      }
+      const out: Command[] = [];
+      for (const base of Object.keys(BUILD_KEYS)) {
         const id = w.current(me, base);
         const def = this.rules.buildings.get(id);
         if (!def || !w.buildingShown(id, me)) continue;
-        out.push({ title: def.name, detail: w.buildingCost(me, id).text + (WALL_TIER[id] !== undefined ? " a tile, drag" : ""),
-          blocker: w.blockerBuilding(id, me), icon: id, action: () => this.beginPlacing(id) });
+        out.push({ key: BUILD_KEYS[base], title: def.name, detail: w.buildingCost(me, id).text + (WALL_TIER[id] !== undefined ? " a tile, drag a line" : ""),
+          blocker: w.blockerBuilding(id, me), icon: id, action: () => { this.beginPlacing(id); this.menu = "main"; } });
       }
-      out.push({ title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) });
-      return keyed(out);
+      out.push({ key: "Escape", title: "Back", detail: "", blocker: null, icon: "back", pin: true, action: () => { this.menu = "main"; } });
+      return out;
     }
     if (units.length) {
-      const out: Omit<Command, "key">[] = [
-        { title: "Attack-move", detail: "click a point", blocker: null, icon: "sword", action: () => { this.attackMovePending = true; this.hud.message("Click where to attack-move"); } },
-        { title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
+      const out: Command[] = [
+        { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
+        { key: "A", title: "Attack-move", detail: "click a point", blocker: null, icon: "attack_move", action: () => { this.attackMovePending = true; this.hud.message("Click where to attack-move"); } },
       ];
-      if (units.some((u) => u.isPriest)) out.push({ title: "Convert", detail: "right-click an enemy", blocker: null, icon: "temple", action: () => this.hud.message("Right-click an enemy to convert it, or a hurt unit of yours to heal it") });
-      return keyed(out);
+      if (units.some((u) => u.isPriest)) out.push({ key: "V", title: "Convert", detail: "right-click an enemy", blocker: null, icon: "temple", action: () => this.hud.message("Right-click an enemy to convert it, or a hurt unit of yours to heal it") });
+      out.push(del);
+      return out;
     }
     const b = mine[0];
-    if (mine.length !== 1 || !(b instanceof Building) || !b.complete) return [];
-    const out: Omit<Command, "key">[] = [];
+    if (mine.length !== 1 || !(b instanceof Building)) return [];
+    if (!b.complete) return [del];
+    const out: Command[] = [];
+    const used = new Set<string>(["H", "P"]);
+    const spare = () => { const k = [...SPARE_KEYS].find((x) => !used.has(x)) ?? ""; used.add(k); return k; };
     for (const t of b.def.trains ?? []) {
       const def = this.rules.units.get(t);
       if (!def || !w.unitShown(t, me)) continue;
-      out.push({ title: def.name, detail: w.unitCost(me, t).text, blocker: w.blockerUnit(t, me), icon: t, action: () => {
+      let key = TRAIN_KEYS[t] ?? "";
+      if (!key || used.has(key)) key = spare();
+      used.add(key);
+      out.push({ key, title: def.name, detail: w.unitCost(me, t).text, blocker: w.blockerUnit(t, me), icon: t, action: () => {
         const why = w.train(me, b.id, t);
         if (why) this.hud.message(why, "warn");
       } });
@@ -662,21 +706,23 @@ export class Game {
     const p = w.players[me];
     if (b.def.id === "town_center" && p.age + 1 < this.rules.ages.length) {
       const next = this.rules.ages[p.age + 1];
-      out.push({ title: next.name, detail: ResBag.of(next.cost).text, blocker: w.blockerForNextAge(me), icon: "age", action: () => {
+      used.add("A");
+      out.push({ key: "A", title: `Advance to the ${next.name}`, detail: ResBag.of(next.cost).text, blocker: w.blockerForNextAge(me), icon: "age", action: () => {
         const why = w.advanceAge(me, b.id);
         if (why) this.hud.message(why, "warn");
       } });
     }
     for (const t of w.techsAt(b, me)) {
-      out.push({ title: t.name, detail: ResBag.of(t.cost).text, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), action: () => {
+      out.push({ key: spare(), title: t.name, detail: ResBag.of(t.cost).text, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), action: () => {
         const why = w.research(me, b.id, t.id);
         if (why) this.hud.message(why, "warn");
       } });
     }
-    const cmds = keyed(out);
-    if (b.queue.length) cmds.push({ key: "Escape", title: "Cancel", detail: "last in queue", blocker: null, icon: "stop", action: () => w.cancel(me, b.id) });
-    return cmds;
+    if (b.queue.length) out.push({ key: "Escape", title: "Cancel", detail: "the last in the queue", blocker: null, icon: "back", pin: true, action: () => w.cancel(me, b.id) });
+    out.push(del);
+    return out;
   }
+
 
   private selectTownCenter() {
     const tc = this.world.buildingsOf(this.me).find((b) => b.def.id === "town_center");
@@ -816,6 +862,11 @@ export class Game {
     document.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       if (t.closest("#speed")) { this.setSpeed(0, (SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length); return; }
+      // Menu and ? open the controls and pause, as the original's menu did.
+      if (t.closest("#menu-btn, #help-btn") && this.started) {
+        if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; } else { this.showHelp(); this.paused = true; }
+        return;
+      }
       const s = t.closest("[data-start]") as HTMLElement | null;
       if (s) this.start(s.dataset.start as Difficulty);
       if (t.closest("[data-restart]")) this.restart();
@@ -1055,7 +1106,7 @@ export class Game {
     switch (ch) {
       case "H": this.selectTownCenter(); return;
       case ".": this.selectIdleVillager(); return;
-      case "P": this.paused = !this.paused; this.hud.message(this.paused ? "Paused (P to resume)" : "Resumed"); return;
+      case "F3": case "Pause": this.paused = !this.paused; this.hud.message(this.paused ? "Paused (F3 to resume)" : "Resumed"); return;
       case "+": case "=": this.setSpeed(1); return;   // game speed, as in the original
       case "-": case "_": this.setSpeed(-1); return;
       case "PageUp": this.zoom(0.85); return;

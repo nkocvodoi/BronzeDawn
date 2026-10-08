@@ -12,22 +12,41 @@
 </head>
 <body>
   <header id="topbar">
-    <span id="res-food">Food</span><span id="res-wood">Wood</span><span id="res-gold">Gold</span><span id="res-stone">Stone</span>
-    <span id="pop" class="strong">Pop</span><span id="civ-name" class="civ" hidden></span><span id="age" class="gold">Stone Age</span>
-    <span class="spacer"></span><span id="speed" title="Game speed: click, or + and -">1x</span><span id="clock">0:00</span>
+    <div class="left">
+      <span id="res-food" class="res">0</span><span id="res-wood" class="res">0</span><span id="res-gold" class="res">0</span><span id="res-stone" class="res">0</span>
+      <span id="pop">0/0</span>
+    </div>
+    <div class="center"><span id="civ-name" class="civ" hidden></span><span id="age">Stone Age</span></div>
+    <div class="right">
+      <span id="speed" title="Game speed: click, or + and -">1x</span><span id="clock">0:00</span>
+      <button id="menu-btn" title="Controls and pause (F1)">Menu</button>
+    </div>
   </header>
   <div id="messages"></div>
   <div id="dragbox" hidden></div>
   <footer id="panel">
-    <div id="minimap-frame"><canvas id="minimap" width="440" height="220"></canvas></div>
-    <div id="portrait-frame"><canvas id="portrait" width="96" height="96" hidden></canvas></div>
-    <section id="info">
-      <h2 id="info-title"></h2>
-      <div id="hp" class="bar" hidden><i id="hp-bar"></i></div>
-      <p id="info-0"></p><p id="info-1"></p><p id="info-2"></p><p id="info-3"></p>
-      <div id="progress" class="bar thin" hidden><i id="progress-bar"></i></div>
+    <div class="rivets"></div>
+    <section id="status">
+      <div id="portrait-box">
+        <canvas id="portrait" width="64" height="64"></canvas>
+        <div id="hp" class="bar"><i id="hp-bar"></i></div>
+        <div id="hp-text"></div>
+      </div>
+      <div id="status-text">
+        <div id="owner-line"></div>
+        <h2 id="info-title"></h2>
+        <div id="stats"></div>
+        <p id="info-0"></p><p id="info-1"></p>
+        <div id="queue"></div>
+        <div id="progress" class="bar thin" hidden><i id="progress-bar"></i></div>
+      </div>
+      <div id="multi" hidden></div>
     </section>
     <section id="commands"></section>
+    <section id="minimap-box">
+      <div id="minimap-frame"><canvas id="minimap" width="440" height="220"></canvas></div>
+      <div id="mini-buttons"><button id="help-btn" title="Controls (F1)">?</button></div>
+    </section>
   </footer>
   <div id="tooltip" hidden></div>
   <div id="overlay" hidden></div>

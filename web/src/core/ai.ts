@@ -55,6 +55,8 @@ function minBy<T>(xs: T[], f: (x: T) => number): T | null {
  */
 export class AIController {
   private waveSize: number;
+  /** A wave gathering at a point on the way, so it arrives together rather than one by one. */
+  private staging: { at: Vec2; target: Vec2; ids: number[]; since: number } | null = null;
   waves = 0;
   private thinks = 0;
   private level: (typeof LEVEL)[Difficulty];
@@ -363,6 +365,18 @@ export class AIController {
       if (t) w.convert(this.player, [pr.id], t.id);
     }
 
+    // A gathered wave goes in together once most of it has arrived, or after a minute.
+    if (this.staging) {
+      const st = this.staging;
+      const alive = st.ids.map((id) => w.unit(id)).filter((u): u is Unit => !!u);
+      const there = alive.filter((u) => dist(u, st.at) < 8).length;
+      if (!alive.length) this.staging = null;
+      else if (there >= alive.length * 0.75 || w.time - st.since > 60) {
+        w.move(this.player, alive.map((u) => u.id), this.enemyHome(w) ?? st.target, true);
+        this.staging = null;
+      }
+      return;
+    }
     if (w.time < this.level.firstAttack) return;
     const ready = idle.filter((u) => dist(u, home) <= 18);
     const p = w.players[this.player];
@@ -372,7 +386,13 @@ export class AIController {
     const target = this.enemyHome(w);
     if (!(ready.length >= this.waveSize || maxed || weak) || !target) return;
     const sendPriests = priests.filter((u) => u.order.kind === "idle" && dist(u, home) <= 18).map((u) => u.id);
-    w.move(this.player, ready.map((u) => u.id).concat(sendPriests), target, true);
+    const ids = ready.map((u) => u.id).concat(sendPriests);
+    // Far away (a big map): gather two thirds of the way there first. Close: go straight in.
+    if (home.distance(target) > 45) {
+      const at = home.lerp(target, 0.66);
+      w.move(this.player, ids, at, true);
+      this.staging = { at, target, ids, since: w.time };
+    } else w.move(this.player, ids, target, true);
     this.waves++;
     this.waveSize = Math.min(this.waveSize + 2, 16);
   }

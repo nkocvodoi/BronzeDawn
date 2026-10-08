@@ -62,6 +62,7 @@ export class World {
     this.rng = new RNG(seed);
     this.map = new GridMap(size, size);
     this.pathfinder = new Pathfinder(this.map);
+    this.pathfinder.maxExpanded = Math.max(9000, size * size); // a long walk across a Huge map still finds its way
     playerNames.forEach((n, i) => {
       const mods = new Mods(rules);
       const civId = options.civs?.[i];
@@ -741,7 +742,7 @@ export class World {
       if (u.repathTimer > 0 && !u.path.length) return "moving"; // waiting out a failed search
       this.pathfinder.maxExpanded = 4000; // approaching something nearby should never search the whole map
       u.path = this.pathfinder.find(u.pos, goal, (t) => e.distance(t.center) <= reach);
-      this.pathfinder.maxExpanded = 9000;
+      this.pathfinder.maxExpanded = Math.max(9000, this.map.width * this.map.height);
       u.pathTarget = goal;
       u.repathTimer = 0.6 + (u.id % 7) * 0.05;
       if (!u.path.length) {

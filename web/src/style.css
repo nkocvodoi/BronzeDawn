@@ -1,83 +1,130 @@
-/* A carved-stone and wood frame in the spirit of 90s strategy games. All art is generated in code. */
+/* The interface of a 90s isometric strategy game: a wooden top bar, and a bottom panel of dark planks
+   with a studded iron rail, a status box on the left, square command icons, a diamond minimap on the
+   right. Every texture is generated in code. */
 :root {
-  --edge-light: #b89a62;
-  --edge-dark: #2a1e10;
+  --edge-light: #c8a462;
+  --edge-dark: #1e1208;
   --text: #f3e4bd;
   --gold: #ffd659;
-  --panel-h: 150px;
-  --top-h: 32px;
+  --panel-h: 132px;
+  --top-h: 30px;
   --stone: none;
+  --wood: none;
   font-family: "Alegreya Sans", "Avenir Next", system-ui, sans-serif;
   color: var(--text);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
 canvas#game { position: fixed; inset: 0; display: block; }
-#minimap, #portrait { image-rendering: pixelated; }
+#minimap, #portrait, #commands img, #multi img, #queue img { image-rendering: pixelated; }
 [hidden] { display: none !important; }
 
-/* Bevelled stone: light top-left edge, dark bottom-right, like chiselled blocks. */
-.stone, #topbar, #panel {
-  background: var(--stone) #463c2e;
-  background-size: 64px 64px;
-  image-rendering: pixelated;
-  box-shadow: inset 2px 2px 0 rgba(255, 236, 190, .25), inset -2px -2px 0 rgba(0, 0, 0, .55);
+/* ---- top bar */
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0; height: var(--top-h); z-index: 5;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 10px;
+  background: var(--wood) #5a3a1e; background-size: 64px 32px; image-rendering: pixelated;
+  border-bottom: 2px solid var(--edge-dark);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, .35), inset 0 -2px 0 rgba(0, 0, 0, .5), 0 2px 6px rgba(0, 0, 0, .5);
+  font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; text-shadow: 1px 1px 0 #000;
+}
+#topbar .left { display: flex; gap: 16px; align-items: center; }
+#topbar .center { display: flex; gap: 14px; align-items: center; justify-content: center; font-family: Cinzel, serif; }
+#topbar .right { display: flex; gap: 12px; align-items: center; justify-content: flex-end; }
+#topbar .res { min-width: 66px; padding-left: 20px; background: no-repeat left center / 16px 16px; image-rendering: pixelated; }
+#age { color: var(--gold); }
+#topbar .civ { color: var(--text); cursor: help; border-bottom: 1px dotted var(--edge-light); }
+#pop.warn, #clock.warn { color: #ff9a3a; }
+#speed { padding: 0 7px; cursor: pointer; border: 1px solid var(--edge-light); background: rgba(0, 0, 0, .3); }
+#speed.fast { color: var(--gold); }
+#topbar button, #mini-buttons button {
+  font: inherit; font-size: 13px; color: var(--text); cursor: pointer; padding: 1px 12px;
+  background: linear-gradient(#7a5530, #4e331a); text-shadow: 1px 1px 0 #000;
+  border: 2px solid; border-color: var(--edge-light) var(--edge-dark) var(--edge-dark) var(--edge-light);
+}
+#topbar button:active, #mini-buttons button:active { border-color: var(--edge-dark) var(--edge-light) var(--edge-light) var(--edge-dark); }
+
+/* ---- bottom panel */
+#panel {
+  position: fixed; left: 0; right: 0; bottom: 0; height: var(--panel-h); z-index: 5;
+  display: grid; grid-template-columns: minmax(250px, 300px) 1fr 250px; gap: 10px; padding: 14px 10px 8px;
+  background: var(--wood) #4a2e18; background-size: 64px 32px; image-rendering: pixelated;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .6), 0 -2px 8px rgba(0, 0, 0, .6);
+  transition: transform .35s cubic-bezier(.2, .9, .3, 1.2);
+}
+body:not(.playing) #panel { transform: translateY(100%); }
+body:not(.playing) #topbar { transform: translateY(-100%); }
+#topbar { transition: transform .35s ease-out; }
+/* The iron rail along the top of the panel, with its studs. */
+#panel .rivets {
+  position: absolute; left: 0; right: 0; top: 0; height: 10px;
+  background:
+    radial-gradient(circle at 50% 50%, #d8d0c0 0 1.5px, #6a6058 2.5px, #2a2420 3.5px, transparent 4px) 0 0 / 46px 10px repeat-x,
+    linear-gradient(#5a524a, #2e2824 60%, #1a1614);
+  border-bottom: 1px solid #000;
 }
 .well {
-  background: rgba(10, 8, 5, .78);
-  border: 2px solid; border-color: var(--edge-dark) var(--edge-light) var(--edge-light) var(--edge-dark);
+  background: rgba(8, 5, 2, .78);
+  border: 2px solid; border-color: var(--edge-dark) #8a6a3a #8a6a3a var(--edge-dark);
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, .8);
 }
 
-#topbar {
-  position: fixed; top: 0; left: 0; right: 0; height: var(--top-h);
-  display: flex; align-items: center; gap: 22px; padding: 0 12px;
-  border-bottom: 2px solid var(--edge-dark);
-  font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; z-index: 5;
-  text-shadow: 1px 1px 0 #000;
-}
-#topbar span { min-width: 92px; }
-#topbar [id^=res-] { padding-left: 22px; background: no-repeat left center / 16px 16px; image-rendering: pixelated; }
-#topbar .spacer { flex: 1; min-width: 0; }
-#topbar .gold { color: var(--gold); font-family: Cinzel, serif; }
-#topbar .warn { color: #ff9a3a; }
-
-#panel {
-  position: fixed; left: 0; right: 0; bottom: 0; height: var(--panel-h);
-  display: flex; gap: 10px; padding: 9px; border-top: 2px solid var(--edge-light); z-index: 5;
-}
-#minimap-frame { flex: none; width: 230px; display: grid; place-items: center; }
-#minimap-frame, #portrait-frame, #info { background: rgba(10, 8, 5, .78); border: 2px solid; border-color: var(--edge-dark) var(--edge-light) var(--edge-light) var(--edge-dark); }
-#minimap { width: 220px; height: 110px; cursor: crosshair; }
-#portrait-frame { flex: none; width: 112px; display: grid; place-items: center; }
-#portrait { width: 96px; height: 96px; }
-#info { flex: 1; min-width: 180px; overflow: hidden; padding: 6px 10px; }
-#info h2 { margin: 0 0 4px; font-family: Cinzel, serif; font-size: 17px; letter-spacing: .02em; text-shadow: 1px 1px 0 #000; }
-#info p { margin: 0; font-size: 13px; line-height: 17px; min-height: 17px; }
-.bar { width: 170px; height: 8px; background: #2a0c08; border: 1px solid #000; margin: 2px 0 5px; }
-.bar.thin { height: 7px; margin-top: 5px; }
+/* Status box: portrait and hit points on the left, name and stats on the right. */
+#status { display: flex; gap: 8px; padding: 6px; overflow: hidden; }
+#status { background: rgba(8, 5, 2, .78); border: 2px solid; border-color: var(--edge-dark) #8a6a3a #8a6a3a var(--edge-dark); }
+#portrait-box { flex: none; width: 72px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+#portrait { width: 64px; height: 64px; border: 2px solid; border-color: #8a6a3a var(--edge-dark) var(--edge-dark) #8a6a3a; background: #2a3a4e; }
+#hp-text { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#status-text { flex: 1; min-width: 0; font-size: 13px; line-height: 16px; }
+#owner-line { font-size: 12px; opacity: .85; }
+#info-title { margin: 0 0 2px; font-family: Cinzel, serif; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 1px 1px 0 #000; }
+#stats { display: grid; grid-template-columns: repeat(2, auto); gap: 1px 12px; justify-content: start; font-variant-numeric: tabular-nums; }
+#stats span { padding-left: 17px; background: no-repeat left center / 13px 13px; image-rendering: pixelated; white-space: nowrap; }
+#stats .up { color: #8fe08f; }
+#status-text p { margin: 0; font-size: 12px; min-height: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#queue { display: flex; gap: 3px; margin-top: 2px; }
+#queue img { width: 24px; height: 24px; border: 1px solid #8a6a3a; }
+#queue img:first-child { width: 30px; height: 30px; border-color: var(--gold); }
+#multi { flex: 1; display: flex; flex-wrap: wrap; gap: 3px; align-content: flex-start; }
+#multi div { position: relative; width: 28px; height: 31px; }
+#multi img { width: 28px; height: 28px; border: 1px solid #8a6a3a; }
+#multi i { position: absolute; left: 1px; bottom: 0; height: 3px; background: #3c3; }
+.bar { width: 64px; height: 6px; background: #2a0c08; border: 1px solid #000; }
+.bar.thin { width: 150px; height: 6px; margin-top: 3px; }
 .bar i { display: block; height: 100%; background: #3c3; }
 #progress-bar { background: var(--gold); }
 
-#commands { flex: none; display: grid; grid-template-columns: repeat(5, 86px); grid-auto-rows: 58px; gap: 5px; align-content: start; padding: 2px; }
+/* Command icons: two rows of square buttons, as in the original. */
+#commands { display: grid; grid-template-columns: repeat(7, 48px); grid-template-rows: repeat(2, 48px); gap: 5px; align-content: center; justify-content: center; }
 #commands button {
-  all: unset; box-sizing: border-box; padding: 4px 6px; cursor: pointer;
-  display: flex; flex-direction: column; justify-content: space-between;
-  background: linear-gradient(#6e5534, #4a3820); color: var(--text);
+  all: unset; position: relative; width: 48px; height: 48px; box-sizing: border-box; cursor: pointer;
+  background: #2a2016; display: grid; place-items: center;
   border: 2px solid; border-color: var(--edge-light) var(--edge-dark) var(--edge-dark) var(--edge-light);
-  text-shadow: 1px 1px 0 #000;
+  box-shadow: 0 0 0 1px #000;
 }
-#commands button:hover { background: linear-gradient(#80653e, #5a4428); }
-#commands button:active { border-color: var(--edge-dark) var(--edge-light) var(--edge-light) var(--edge-dark); }
-#commands button.off { background: linear-gradient(#4a4440, #34302c); color: #9a948a; }
-#commands b { color: var(--gold); font-size: 11px; }
-#commands span { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#commands small { font-size: 10px; opacity: .9; white-space: nowrap; }
+#commands button img { width: 40px; height: 40px; }
+#commands button:hover { filter: brightness(1.2); }
+#commands button:active { border-color: var(--edge-dark) var(--edge-light) var(--edge-light) var(--edge-dark); transform: translate(1px, 1px); }
+#commands button.off img { filter: grayscale(1) brightness(.55); }
+#commands button b { position: absolute; right: 1px; top: -1px; font-size: 11px; color: var(--gold); text-shadow: 1px 1px 0 #000, -1px 0 0 #000; }
+#commands button.pressed { animation: press .18s; }
+/* A new menu pops its icons in, one after another. */
+#commands button.pop { animation: pop .22s cubic-bezier(.2, .9, .3, 1.35) both; animation-delay: calc(var(--i) * 22ms); }
+@keyframes pop { from { transform: scale(.4) translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes press { 50% { transform: scale(.88); filter: brightness(1.6); } }
+
+/* Minimap on the right, a diamond in a sunken frame. */
+#minimap-box { display: flex; gap: 6px; align-items: stretch; }
+#minimap-frame { flex: 1; display: grid; place-items: center; background: rgba(8, 5, 2, .85); border: 2px solid; border-color: var(--edge-dark) #8a6a3a #8a6a3a var(--edge-dark); }
+#minimap { width: 210px; height: 105px; cursor: crosshair; }
+#mini-buttons { display: flex; flex-direction: column; justify-content: flex-end; }
 
 #tooltip {
-  position: fixed; right: 8px; bottom: calc(var(--panel-h) + 8px); padding: 4px 10px; font-size: 13px;
-  background: rgba(10, 8, 5, .9); border: 2px solid var(--edge-light); z-index: 6; text-shadow: 1px 1px 0 #000;
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--panel-h) + 8px); max-width: min(720px, 90vw);
+  padding: 5px 12px; font-size: 13px; background: rgba(10, 6, 2, .92); border: 2px solid var(--edge-light); z-index: 6; text-shadow: 1px 1px 0 #000;
 }
-#tooltip.blocked { color: #ff9a3a; }
+#tooltip b { color: var(--gold); }
+#tooltip.blocked .why { color: #ff9a3a; }
 
 #messages { position: fixed; top: calc(var(--top-h) + 10px); left: 0; right: 0; text-align: center; pointer-events: none; z-index: 4; }
 #messages div { font-weight: 700; font-size: 16px; text-shadow: 1px 1px 0 #000, 0 0 6px #000; margin-bottom: 4px; transition: opacity 1s; }
@@ -86,13 +133,15 @@ canvas#game { position: fixed; inset: 0; display: block; }
 
 #dragbox { position: fixed; border: 1px solid #fff; pointer-events: none; z-index: 3; }
 
+/* ---- start, help and end screens */
 #overlay { position: fixed; inset: 0; display: grid; place-items: center; z-index: 10; background: rgba(0, 0, 0, .3); }
 #overlay .card {
   max-width: min(760px, calc(100vw - 32px)); padding: 26px 36px; text-align: center;
   background: var(--stone) #463c2e; background-size: 64px 64px;
   border: 3px solid; border-color: var(--edge-light) var(--edge-dark) var(--edge-dark) var(--edge-light);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, .6);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .6); animation: card .25s ease-out;
 }
+@keyframes card { from { transform: scale(.94); opacity: 0; } }
 #overlay h1 { margin: 0 0 14px; font-family: Cinzel, serif; font-size: 38px; color: var(--gold); text-shadow: 2px 2px 0 #000; }
 #overlay .lose h1 { color: #e84a3a; }
 #overlay .help h1 { color: var(--text); }
@@ -106,32 +155,15 @@ canvas#game { position: fixed; inset: 0; display: block; }
   text-shadow: 1px 1px 0 #000;
 }
 #overlay button:hover { background: linear-gradient(#80653e, #5a4428); }
-
-@media (max-width: 1000px) {
-  #topbar { gap: 10px; font-size: 13px; }
-  #topbar span { min-width: 0; }
-  #portrait-frame { display: none; }
-  #commands { grid-template-columns: repeat(5, 64px); }
-  #commands small { display: none; }
-}
-
-/* Six columns and three rows of commands, each with a pixel icon. */
-#commands { grid-template-columns: repeat(6, 78px); grid-auto-rows: 42px; gap: 4px; }
-#commands button { position: relative; padding: 2px 4px 2px 30px; justify-content: center; gap: 1px; }
-#commands button img { position: absolute; left: 3px; top: 50%; width: 24px; height: 24px; margin-top: -12px; image-rendering: pixelated; }
-#commands button b { position: absolute; right: 4px; top: 2px; font-size: 10px; }
-#commands span { font-size: 11px; line-height: 13px; white-space: normal; max-height: 26px; }
-#commands small { font-size: 9px; line-height: 11px; }
 #overlay select { font: inherit; padding: 4px 8px; background: #2a2218; color: var(--text); border: 2px solid var(--edge-light); }
-#clock.warn { color: #ff9a3a; }
-@media (max-width: 1100px) {
-  #commands { grid-template-columns: repeat(6, 62px); }
-  #commands small { display: none; }
-}
-#commands button { overflow: hidden; }
-#commands span, #commands small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
-#topbar #speed { min-width: 0; padding: 1px 8px; cursor: pointer; border: 1px solid var(--edge-light); background: rgba(0, 0, 0, .3); }
-#topbar #speed:hover { background: rgba(0, 0, 0, .55); }
-#topbar #speed.fast { color: var(--gold); }
-#topbar .civ { min-width: 0; font-family: Cinzel, serif; color: var(--text); cursor: help; border-bottom: 1px dotted var(--edge-light); }
 #civ-info { display: inline-block; max-width: 560px; font-size: 14px; color: var(--gold); min-height: 2.4em; }
+
+@media (max-width: 1100px) {
+  #panel { grid-template-columns: 220px 1fr 200px; }
+  #commands { grid-template-columns: repeat(7, 40px); grid-template-rows: repeat(2, 40px); gap: 4px; }
+  #commands button { width: 40px; height: 40px; }
+  #commands button img { width: 32px; height: 32px; }
+  #minimap { width: 180px; height: 90px; }
+  #topbar .res { min-width: 54px; }
+  #topbar .left { gap: 8px; }
+}
