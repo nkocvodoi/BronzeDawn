@@ -8,7 +8,7 @@ const seed = Number(params.get("seed")) || Math.floor(Math.random() * 999_999) +
 
 async function boot() {
   const app = new Application();
-  await app.init({ resizeTo: window, background: "#000000", antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
+  await app.init({ resizeTo: window, background: "#000000", antialias: false, roundPixels: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
   app.canvas.id = "game";
   document.body.prepend(app.canvas);
   const game = new Game(app, RULES, seed);

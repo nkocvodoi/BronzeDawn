@@ -6,12 +6,15 @@ import { Terrain } from "../core/grid";
 import { Res, ResBag, Rules } from "../core/rules";
 import { clock } from "../core/sim";
 import { World } from "../core/world";
-import { buildingPic, nodePic, Pic, playerColor, terrainChunks, unitPic } from "./art";
+import { buildingPic, Facing, nodePic, Pic, playerColor, Pose, terrainTexture, Tool, unitPic, UnitLook } from "./art";
 import { Command, HUD } from "./hud";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 
 /** The drawable side of one entity. */
-interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean }
+interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean; key: string; barW: number }
+
+/** Zoom steps where one art pixel covers a whole number of screen pixels: 4, 3, 2, 1. */
+const ZOOMS = [0.5, 2 / 3, 1, 2];
 
 const BUILD_KEYS: [string, string][] = [
   ["house", "Q"], ["granary", "W"], ["storage_pit", "E"], ["barracks", "R"],
@@ -34,6 +37,7 @@ export class Game {
   private fogCanvas = document.createElement("canvas");
   private views = new Map<number, View>();
   private cam = { x: 0, y: 0, zoom: 1 };
+  private pinch = 0;
 
   selection: number[] = [];
   private groups = new Map<number, number[]>();
@@ -76,13 +80,12 @@ export class Game {
 
   private buildWorld() {
     this.terrain.removeChildren().forEach((c) => c.destroy({ texture: true }));
-    for (const ch of terrainChunks(this.world.map)) {
-      const s = new Sprite(ch.texture);
-      s.position.set(ch.x, ch.y);
-      s.width = ch.size;
-      s.height = ch.size;
-      this.terrain.addChild(s);
-    }
+    const t = terrainTexture(this.world.map);
+    const ground = new Sprite(t.texture);
+    ground.position.set(t.x, t.y);
+    ground.width = t.w;
+    ground.height = t.h;
+    this.terrain.addChild(ground);
     const n = this.world.map.width;
     // One extra tile of black on every side so the terrain's edge never peeks out.
     this.fogCanvas.width = n + 2;
@@ -173,13 +176,16 @@ export class Game {
     const alpha = this.started ? Math.min(1, this.accumulator / World.dt) : 1;
     const sw = this.app.screen.width, sh = this.app.screen.height;
     this.worldLayer.scale.set(1 / this.cam.zoom);
-    this.worldLayer.position.set(sw / 2 - this.cam.x / this.cam.zoom, sh / 2 - this.cam.y / this.cam.zoom);
+    // Whole screen pixels, so the pixel art never shimmers while scrolling.
+    this.worldLayer.position.set(Math.round(sw / 2 - this.cam.x / this.cam.zoom), Math.round(sh / 2 - this.cam.y / this.cam.zoom));
     this.sync(alpha);
     if (w.tick !== this.fogStamp && (w.tick % 5 === 0 || this.fogStamp < 0)) { this.updateFog(); this.fogStamp = w.tick; }
     if (Math.floor(w.tick / 10) !== this.minimapStamp) { this.updateMinimap(); this.minimapStamp = Math.floor(w.tick / 10); }
     this.selection = this.selection.filter((id) => w.entity(id));
     const sel = this.selectedEntities();
     this.hud.update(w, this.me, sel);
+    const one = sel.length === 1 ? this.views.get(sel[0].id) : undefined;
+    this.hud.portrait(one?.pic.canvas ?? null);
     this.hud.setCommands(this.commands(sel));
     this.updateGhost();
   }
@@ -206,7 +212,11 @@ export class Game {
         }
         case "died": {
           const v = this.views.get(e.id);
-          if (v) { v.root.destroy({ children: true }); this.views.delete(e.id); }
+          if (v) {
+            if (v.isUnit && v.root.visible) this.corpse(v);
+            v.root.destroy({ children: true });
+            this.views.delete(e.id);
+          }
           this.selection = this.selection.filter((id) => id !== e.id);
           if (e.wasBuilding && this.explored(e.at.tile)) this.puff(e.at, true);
           else if (e.owner >= 0 && this.visible(e.at.tile)) this.puff(e.at, false);
@@ -232,6 +242,47 @@ export class Game {
       }
     }
     w.events.length = 0;
+  }
+
+  /** The fallen unit lies on the ground for a while, then fades. */
+  private corpse(v: View) {
+    const c = new Sprite(v.sprite.texture);
+    c.anchor.set(0.5, 0.75);
+    c.width = v.pic.w;
+    c.height = v.pic.h;
+    c.scale.x *= Math.sign(v.sprite.scale.x) || 1;
+    c.rotation = (Math.PI / 2) * (Math.sign(v.sprite.scale.x) || 1);
+    c.tint = 0x9a8a7a;
+    c.position.set(v.root.x, v.root.y - 4);
+    c.zIndex = v.root.zIndex - 0.2;
+    this.entities.addChild(c);
+    let t = 0;
+    const tick = (dt: { deltaMS: number }) => {
+      t += dt.deltaMS / 1000;
+      if (t > 8) c.alpha = Math.max(0, 1 - (t - 8) / 4);
+      if (t >= 12) { this.app.ticker.remove(tick); c.destroy(); }
+    };
+    this.app.ticker.add(tick);
+  }
+
+  /** How a unit looks this frame: facing, pose, animation frame, the tool in hand, what it carries. */
+  private unitLook(u: Unit, alpha: number): UnitLook {
+    const time = this.world.time + alpha * World.dt;
+    const facing: Facing = u.facing.x + u.facing.y < -0.2 ? "back" : "front"; // heading up the screen
+    const moving = u.prevPos.distance(u.pos) > 0.001;
+    const pose: Pose = u.busy ? "work" : moving ? "walk" : "idle";
+    const frame = pose === "walk" ? Math.floor(time * 8 + u.id) % 4 : pose === "work" ? Math.floor(time * 5 + u.id) % 3 : 0;
+    let tool: Tool = "none";
+    if (u.isVillager) {
+      const o = u.order;
+      if (o.kind === "build") tool = "hammer";
+      else if (o.kind === "gather" || o.kind === "return") {
+        const farm = o.kind === "gather" && this.world.building(o.id)?.isFarm;
+        tool = farm ? "hoe" : u.lastGather === Res.wood ? "axe" : u.lastGather === Res.food ? "basket" : u.lastGather === null ? "none" : "pick";
+      }
+    }
+    const carry = u.isVillager && u.carry >= 1 && u.carryRes !== null && pose !== "work" ? u.carryRes : null;
+    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry };
   }
 
   private puff(at: Vec2, big: boolean) {
@@ -265,15 +316,15 @@ export class Game {
     const own = e.owner === this.me;
     const ringColor = own ? 0xffffff : e.owner >= 0 ? playerColor(e.owner) : 0xffee55;
     if (e instanceof Unit) {
-      pic = unitPic(e.def.id, e.owner);
+      pic = unitPic(this.unitLook(e, 0));
       const big = e.def.id === "scout";
-      ring = new Graphics().ellipse(0, 0, big ? 17 : 12, big ? 8 : 6).stroke({ width: 1.5, color: ringColor });
-      barY = -pic.h + 2; barW = 26;
+      ring = new Graphics().ellipse(0, 0, big ? 18 : 12, big ? 8 : 6).stroke({ width: 2, color: ringColor });
+      barY = -pic.h * pic.ay - 6; barW = 26;
     } else if (e instanceof Building) {
-      pic = buildingPic(e.def, e.owner);
+      pic = this.buildingLook(e);
       const s = e.def.size, w = s * HALF_W, h = s * HALF_H;
-      ring = new Graphics().poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 1.5, color: ringColor });
-      barY = -pic.h + 40; barW = s * 22;
+      ring = new Graphics().poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 2, color: ringColor });
+      barY = -pic.h + 34; barW = s * 22;
     } else {
       const r = e as ResourceNode;
       pic = nodePic(r.def.id, this.world.map.shade[this.world.map.index(r.tile)]);
@@ -287,37 +338,47 @@ export class Game {
     sprite.anchor.set(pic.ax, pic.ay);
     const bar = new Graphics();
     bar.position.set(-barW / 2, barY);
-    (bar as Graphics & { barW: number }).barW = barW;
     ring.visible = false;
     bar.visible = false;
     root.addChild(ring, sprite, bar);
     this.entities.addChild(root);
-    const v = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit };
+    const v: View = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit, key: "", barW };
     this.views.set(e.id, v);
     return v;
   }
 
+  private setPic(v: View, pic: Pic) {
+    if (v.pic === pic) return;
+    v.pic = pic;
+    v.sprite.texture = pic.texture;
+    const flip = Math.sign(v.sprite.scale.x) || 1;
+    v.sprite.width = pic.w;
+    v.sprite.height = pic.h;
+    v.sprite.scale.x = Math.abs(v.sprite.scale.x) * flip;
+    v.sprite.anchor.set(pic.ax, pic.ay);
+  }
+
+  private buildingLook(b: Building): Pic {
+    const stage = b.complete ? 3 : b.progress < 0.3 ? 0 : b.progress < 0.7 ? 1 : 2;
+    const farmLeft = b.isFarm ? b.food / (b.def.resource?.food ?? 1) : 1;
+    return buildingPic(b.def, b.owner, b.owner >= 0 ? this.world.players[b.owner].age : 0, stage, farmLeft);
+  }
+
   private place(v: View, e: Entity, alpha: number) {
-    const time = this.world.time;
     if (e instanceof Unit) {
       const p = e.prevPos.lerp(e.pos, alpha);
       const s = iso(p);
-      v.root.position.set(s.x, s.y);
+      v.root.position.set(Math.round(s.x / 2) * 2, Math.round(s.y / 2) * 2);
       v.root.zIndex = depth(p) + 0.3;
+      this.setPic(v, unitPic(this.unitLook(e, alpha)));
       const dx = e.facing.x - e.facing.y;
       if (Math.abs(dx) > 0.2) v.sprite.scale.x = Math.abs(v.sprite.scale.x) * (dx < 0 ? -1 : 1);
-      const moving = e.prevPos.distance(e.pos) > 0.001;
-      if (moving || e.busy) {
-        const phase = time * (e.busy ? 10 : 14) + e.id;
-        v.sprite.y = -Math.abs(Math.sin(phase)) * (e.busy ? 2 : 2.5);
-        v.sprite.rotation = e.busy ? Math.sin(time * 10 + e.id) * 0.08 : 0;
-      } else { v.sprite.y = 0; v.sprite.rotation = 0; }
     } else if (e instanceof Building) {
       const fp = e.footprint;
       const s = iso(new Vec2(fp.maxX, fp.maxY));
       v.root.position.set(s.x, s.y);
       v.root.zIndex = depth(fp.center);
-      v.sprite.alpha = e.complete ? 1 : 0.35 + 0.55 * e.progress;
+      this.setPic(v, this.buildingLook(e));
     } else if (e instanceof ResourceNode) {
       const s = iso(e.center);
       v.root.position.set(s.x, s.y);
@@ -335,7 +396,7 @@ export class Game {
       this.place(v, e, alpha);
       const sel = selected.has(e.id);
       v.ring.visible = sel;
-      const bw = (v.bar as Graphics & { barW: number }).barW;
+      const bw = v.barW;
       v.bar.visible = sel && bw > 0;
       if (v.bar.visible) {
         const f = Math.max(0, e.hp / e.maxHp);
@@ -499,7 +560,7 @@ export class Game {
     if (why) { this.hud.message(why, "warn"); return; }
     this.cancelPlacing();
     this.placing = type;
-    const pic = buildingPic(this.rules.buildings.get(type)!, this.me);
+    const pic = buildingPic(this.rules.buildings.get(type)!, this.me, this.world.players[this.me].age);
     const g = new Sprite(pic.texture);
     g.width = pic.w; g.height = pic.h;
     g.anchor.set(pic.ax, pic.ay);
@@ -588,7 +649,10 @@ export class Game {
     mm.addEventListener("contextmenu", (e) => e.preventDefault());
     canvas.addEventListener("wheel", (e) => {
       e.preventDefault();
-      if (e.ctrlKey) this.zoom(1 + e.deltaY * 0.01);           // trackpad pinch
+      if (e.ctrlKey) {                                           // trackpad pinch, in steps
+        this.pinch += e.deltaY;
+        if (Math.abs(this.pinch) > 40) { this.zoom(this.pinch < 0 ? 0.5 : 2); this.pinch = 0; }
+      }
       else { this.cam.x += e.deltaX * this.cam.zoom; this.cam.y += e.deltaY * this.cam.zoom; this.clampCamera(); }
     }, { passive: false });
     window.addEventListener("keydown", (e) => this.keyDown(e));
@@ -686,8 +750,11 @@ export class Game {
     this.app.ticker.add(tick);
   }
 
+  /** Steps through the whole-pixel zoom levels; k < 1 zooms in. */
   private zoom(k: number) {
-    this.cam.zoom = Math.min(2.2, Math.max(0.6, this.cam.zoom * k));
+    const i = ZOOMS.indexOf(this.cam.zoom);
+    const next = ZOOMS[Math.min(ZOOMS.length - 1, Math.max(0, i + (k < 1 ? -1 : 1)))];
+    this.cam.zoom = next;
     this.clampCamera();
   }
 

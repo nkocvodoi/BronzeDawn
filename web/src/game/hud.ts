@@ -3,7 +3,7 @@ import { Building, Entity, ResourceNode, Unit } from "../core/entities";
 import { isRanged, RES_ALL, RES_KEY, RES_LABEL } from "../core/rules";
 import { clock } from "../core/sim";
 import type { World } from "../core/world";
-import { playerColor } from "./art";
+import { playerColor, resourceIcons, stoneTexture } from "./art";
 
 /** One command button: a hotkey, a label, a cost, and why it is greyed out. */
 export interface Command { key: string; title: string; detail: string; blocker: string | null; action: () => void }
@@ -29,7 +29,13 @@ export class HUD {
   commands: Command[] = [];
   private signature = "";
 
+  private portraitCanvas = $<HTMLCanvasElement>("#portrait");
+  private portraitSource: HTMLCanvasElement | null = null;
+
   constructor() {
+    // Pixel art for the frame: carved stone panels and resource icons.
+    document.documentElement.style.setProperty("--stone", `url(${stoneTexture()})`);
+    resourceIcons().forEach((url, i) => { this.res[i].style.backgroundImage = `url(${url})`; });
     this.grid.addEventListener("mousemove", (e) => {
       const b = (e.target as HTMLElement).closest("button");
       const c = b ? this.commands[Number(b.dataset.i)] : null;
@@ -107,6 +113,19 @@ export class HUD {
       if ((first.def.pop_provided ?? 0) > 0 && first.owner === me) this.lines[2].textContent = `Houses ${first.def.pop_provided} people`;
       if (first.def.drop_off && first.owner === me) this.lines[3].textContent = `Drop off: ${first.def.drop_off.join(", ")}`;
     }
+  }
+
+  /** The selected entity's picture, scaled up with hard pixels. */
+  portrait(src: HTMLCanvasElement | null) {
+    if (src === this.portraitSource) return;
+    this.portraitSource = src;
+    const c = this.portraitCanvas, g = c.getContext("2d")!;
+    g.clearRect(0, 0, c.width, c.height);
+    c.hidden = !src;
+    if (!src) return;
+    const k = Math.max(1, Math.floor(Math.min(c.width / src.width, c.height / src.height)));
+    g.imageSmoothingEnabled = false;
+    g.drawImage(src, (c.width - src.width * k) / 2, (c.height - src.height * k) / 2, src.width * k, src.height * k);
   }
 
   private showProgress(f: number) {

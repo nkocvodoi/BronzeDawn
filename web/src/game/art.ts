@@ -1,142 +1,108 @@
-// Every texture is drawn in code. No assets from anywhere.
-// The drawing uses y-up coordinates (origin bottom-left), the same numbers as the Mac build.
+// Every texture is pixel art drawn in code. No assets from anywhere.
+// One art pixel is PX world units; textures scale with nearest-neighbour.
 import { Texture } from "pixi.js";
 import type { BuildingDef } from "../core/rules";
 import { GridMap, Terrain } from "../core/grid";
-import { Tile } from "../core/geom";
-import { HALF_H, HALF_W, iso } from "./iso";
+import { HALF_H, HALF_W, fromIso } from "./iso";
+import { bayer, darken, hash, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
 
-export const PLAYER_COLORS = ["#3373eb", "#db3833", "#f2c733", "#40b34d"];
+export const PLAYER_COLORS = ["#2f6be6", "#d8322c", "#f0c530", "#3daf4a"];
 export const playerColor = (id: number) => (id >= 0 ? PLAYER_COLORS[id % PLAYER_COLORS.length] : "#ffffff");
+const playerRGB = (id: number): RGB => rgb(parseInt(playerColor(id).slice(1), 16));
 
-export interface Pic { texture: Texture; w: number; h: number; ax: number; ay: number }
-
-type Ctx = CanvasRenderingContext2D;
-const SCALE = 2;
-
-function rgb(r: number, g: number, b: number, a = 1) {
-  return `rgba(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)},${a})`;
-}
-
-function shade(hex: string, k: number) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
-  return rgb(Math.min(1, r * k), Math.min(1, g * k), Math.min(1, b * k));
-}
+/** A sprite picture. w, h are world units; ax, ay the anchor (y down, Pixi style). */
+export interface Pic { texture: Texture; canvas: HTMLCanvasElement; w: number; h: number; ax: number; ay: number }
 
 const cache = new Map<string, Pic>();
 
-/** A canvas with y pointing up, drawn at 2x for sharp sprites. anchor is in y-up fractions. */
-function pic(key: string, w: number, h: number, anchorX: number, anchorYUp: number, draw: (c: Ctx) => void): Pic {
+function pic(key: string, w: number, h: number, ax: number, ay: number, draw: (p: PixelCanvas) => void): Pic {
   const hit = cache.get(key);
   if (hit) return hit;
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil(w * SCALE);
-  canvas.height = Math.ceil(h * SCALE);
-  const c = canvas.getContext("2d")!;
-  c.translate(0, canvas.height);
-  c.scale(SCALE, -SCALE);
-  draw(c);
-  const p: Pic = { texture: Texture.from(canvas), w, h, ax: anchorX, ay: 1 - anchorYUp };
-  cache.set(key, p);
-  return p;
-}
-
-function ellipse(c: Ctx, x: number, y: number, w: number, h: number) {
-  c.beginPath();
-  c.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
-  c.fill();
-}
-
-function poly(c: Ctx, pts: [number, number][], fill: string) {
-  c.fillStyle = fill;
-  c.beginPath();
-  c.moveTo(pts[0][0], pts[0][1]);
-  for (const p of pts.slice(1)) c.lineTo(p[0], p[1]);
-  c.closePath();
-  c.fill();
-}
-
-function line(c: Ctx, pts: [number, number][], color: string, width: number) {
-  c.strokeStyle = color;
-  c.lineWidth = width;
-  c.lineCap = "round";
-  c.beginPath();
-  c.moveTo(pts[0][0], pts[0][1]);
-  for (const p of pts.slice(1)) c.lineTo(p[0], p[1]);
-  c.stroke();
-}
-
-function shadow(c: Ctx, x: number, y: number, w: number, h: number) {
-  c.fillStyle = rgb(0, 0, 0, 0.28);
-  ellipse(c, x, y, w, h);
-}
-
-// ---- terrain
-
-/** The map as chunks of canvas, each 1024 x 1024 points. Returns each chunk with its screen origin. */
-export function terrainChunks(map: GridMap): { texture: Texture; x: number; y: number; size: number }[] {
-  const W = (map.width + map.height) * HALF_W, H = (map.width + map.height) * HALF_H;
-  const left = -map.height * HALF_W;
-  const size = 1024;
-  const out: { texture: Texture; x: number; y: number; size: number }[] = [];
-  for (let cy = 0; cy < H; cy += size) {
-    for (let cx = 0; cx < W; cx += size) {
-      const canvas = document.createElement("canvas");
-      canvas.width = size * SCALE;
-      canvas.height = size * SCALE;
-      const c = canvas.getContext("2d")!;
-      c.scale(SCALE, SCALE);
-      c.translate(-(left + cx), -cy);
-      for (let y = 0; y < map.height; y++) {
-        for (let x = 0; x < map.width; x++) {
-          const center = iso(new Tile(x, y).center);
-          if (center.x + HALF_W < left + cx || center.x - HALF_W > left + cx + size) continue;
-          if (center.y + HALF_H < cy || center.y - HALF_H > cy + size) continue;
-          drawTile(c, map, x, y, center.x, center.y);
-        }
-      }
-      out.push({ texture: Texture.from(canvas), x: left + cx, y: cy, size });
-    }
-  }
+  const p = new PixelCanvas(w, h);
+  draw(p);
+  const canvas = p.toCanvas();
+  const texture = Texture.from(canvas);
+  texture.source.scaleMode = "nearest";
+  const out = { texture, canvas, w: w * PX, h: h * PX, ax, ay };
+  cache.set(key, out);
   return out;
 }
 
-function drawTile(c: Ctx, map: GridMap, x: number, y: number, cx: number, cy: number) {
-  const i = y * map.width + x;
-  const s = map.shade[i] / 255;
-  const t = map.terrain[i] as Terrain;
-  let color: string;
-  switch (t) {
-    case Terrain.grass: color = rgb(0.34 + s * 0.06, 0.52 + s * 0.08, 0.22 + s * 0.04); break;
-    case Terrain.dirt: color = rgb(0.55 + s * 0.05, 0.45 + s * 0.05, 0.28); break;
-    case Terrain.sand: color = rgb(0.80 + s * 0.04, 0.72 + s * 0.04, 0.48); break;
-    default: color = rgb(0.16, 0.36 + s * 0.06, 0.62 + s * 0.06);
-  }
-  const e = 0.7; // overlap so neighbours leave no seams
-  c.fillStyle = color;
-  c.beginPath();
-  c.moveTo(cx, cy - HALF_H - e);
-  c.lineTo(cx + HALF_W + e, cy);
-  c.lineTo(cx, cy + HALF_H + e);
-  c.lineTo(cx - HALF_W - e, cy);
-  c.closePath();
-  c.fill();
-  if (t === Terrain.grass && s > 0.55) {
-    c.fillStyle = rgb(0.28, 0.44, 0.17, 0.9);
-    for (let k = 0; k < 3; k++) {
-      const dx = ((Math.floor(s * 1000) + k * 37) % 30) - 15;
-      const dy = ((Math.floor(s * 777) + k * 23) % 12) - 6;
-      c.fillRect(cx + dx, cy + dy, 2, 3);
+// ---- palette
+
+const C = {
+  outline: rgb(0x1a120a),
+  skin: rgb(0xd9a477), skinDark: rgb(0xa8764f),
+  hair: rgb(0x3b2414),
+  cloth: rgb(0xb59a6a), clothDark: rgb(0x8a7350),
+  leather: rgb(0x5a3a20), leatherDark: rgb(0x3e2814),
+  wood: rgb(0x8a5a2e), woodDark: rgb(0x5c3a1c),
+  iron: rgb(0xaab0b8), ironDark: rgb(0x6c727a),
+  gold: rgb(0xf2c531), goldDark: rgb(0xb3861a),
+  stone: rgb(0xa9a49a), stoneDark: rgb(0x6f6a62),
+  berry: rgb(0xc8243a), leaf: rgb(0x3e8a34), leafDark: rgb(0x245c22), leafLight: rgb(0x68b048),
+  thatch: rgb(0xd0aa52), thatchDark: rgb(0x9a7630),
+  mud: rgb(0xb88a5a), mudDark: rgb(0x8a6440),
+  plaster: rgb(0xd8c8a2), plasterDark: rgb(0xa8967a),
+  tile: rgb(0xa8503a), tileDark: rgb(0x7a3626),
+  earth: rgb(0x8a6c48), earthDark: rgb(0x6a5236),
+};
+
+// ---- terrain
+
+const GROUND: Record<Terrain, RGB[]> = {
+  [Terrain.grass]: [rgb(0x5a8a38), rgb(0x5f903c), rgb(0x55843a), rgb(0x649540)],
+  [Terrain.dirt]: [rgb(0x96764a), rgb(0x8a6c44), rgb(0xa2825a), rgb(0x7e623c)],
+  [Terrain.sand]: [rgb(0xd2bc82), rgb(0xc8b278), rgb(0xdcc890), rgb(0xbea66c)],
+  [Terrain.water]: [rgb(0x2a5c9a), rgb(0x2e64a4), rgb(0x265490), rgb(0x3470b0)],
+};
+
+/** The whole map as one pixel texture, 16 x 8 art pixels per half tile. Returns it with its screen origin. */
+export function terrainTexture(map: GridMap): { texture: Texture; x: number; y: number; w: number; h: number } {
+  const tw = HALF_W / PX, th = HALF_H / PX; // art pixels per half tile: 16 x 8
+  const W = (map.width + map.height) * tw, H = (map.width + map.height) * th;
+  const left = -map.height * HALF_W;
+  const p = new PixelCanvas(W, H);
+  const n = map.width;
+  const terrainAt = (x: number, y: number): Terrain | null =>
+    x < 0 || y < 0 || x >= n || y >= map.height ? null : (map.terrain[y * n + x] as Terrain);
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const w = fromIso(left + (px + 0.5) * PX, (py + 0.5) * PX);
+      const tx = Math.floor(w.x), ty = Math.floor(w.y);
+      const t = terrainAt(tx, ty);
+      if (t === null) continue;
+      let use = t;
+      // Dithered borders between different ground.
+      const fx = w.x - tx, fy = w.y - ty;
+      const edges: [number, number, number][] = [[-1, 0, fx], [1, 0, 1 - fx], [0, -1, fy], [0, 1, 1 - fy]];
+      for (const [dx, dy, d] of edges) {
+        const o = terrainAt(tx + dx, ty + dy);
+        if (o === null || o === t || d > 0.3) continue;
+        if (bayer(px, py) < 0.55 * (1 - d / 0.3)) { use = o; break; }
+      }
+      const pal = GROUND[use];
+      const s = map.shade[ty * n + tx] / 255;
+      // Soft 2x2 clusters plus a slow per-tile tint, so the ground reads as texture, not noise.
+      let c = pal[Math.floor(hash(px >> 1, py >> 1, 7) * 1.6 + s * 2.4) % 4];
+      if (use === Terrain.grass) {
+        const r = hash(px >> 1, py, 3);
+        if (r < 0.018 && (px & 1) === 0) { c = rgb(0x46722c); p.set(px, py - 1, rgb(0x46722c)); }  // a tuft
+        else if (r < 0.022) c = rgb(0x7aa850);
+        else if (r < 0.0228 && s > 0.6) c = rgb(0xe8d870);                                      // a flower
+      } else if (use === Terrain.water) {
+        // Short wave highlights in rows.
+        if (hash(px >> 2, py, 11) < 0.12 && (py & 1) === 0) c = rgb(0x5a8ccc);
+        const shore = edges.some(([dx, dy, d]) => d < 0.12 && terrainAt(tx + dx, ty + dy) === Terrain.sand);
+        if (shore && bayer(px, py) < 0.5) c = rgb(0x8ab4d8);
+      } else if (use === Terrain.sand || use === Terrain.dirt) {
+        if (hash(px, py, 5) < 0.04) c = darken(c, 0.82);
+      }
+      p.set(px, py, c);
     }
-  } else if (t === Terrain.water && s > 0.7) {
-    c.strokeStyle = rgb(0.55, 0.72, 0.9, 0.5);
-    c.lineWidth = 1;
-    c.beginPath();
-    c.moveTo(cx - 8, cy);
-    c.lineTo(cx + 6, cy - 2);
-    c.stroke();
   }
+  const texture = p.toTexture();
+  return { texture, x: left, y: 0, w: W * PX, h: H * PX };
 }
 
 // ---- resources
@@ -144,181 +110,343 @@ function drawTile(c: Ctx, map: GridMap, x: number, y: number, cx: number, cy: nu
 export function nodePic(type: string, variant: number): Pic {
   if (type === "tree") {
     const v = variant % 3;
-    return pic(`tree${v}`, 44, 64, 0.5, 0.12, (c) => {
-      shadow(c, 8, 3, 30, 10);
-      c.fillStyle = rgb(0.40, 0.27, 0.15);
-      c.fillRect(19, 6, 6, 22);
-      const g = [[0.16, 0.42, 0.18], [0.20, 0.48, 0.16], [0.13, 0.38, 0.22]][v];
-      const blobs = v === 2 ? [[22, 26, 13], [22, 38, 11], [22, 50, 8]] : [[14, 32, 11], [30, 32, 11], [22, 42, 14]];
-      blobs.forEach(([x, y, r], i) => {
-        const k = 0.8 + i * 0.12;
-        c.fillStyle = rgb(g[0] * k, g[1] * k, g[2] * k);
-        ellipse(c, x - r, y - r * 0.85, r * 2, r * 1.7);
-      });
-      c.fillStyle = rgb(1, 1, 1, 0.12);
-      ellipse(c, 16, 44, 10, 7);
+    return pic(`tree${v}`, 24, 36, 0.5, 0.92, (p) => {
+      p.shadow(12, 33, 8, 2.5);
+      p.rect(11, 22, 3, 12, C.wood);
+      p.rect(13, 22, 1, 12, C.woodDark);
+      const leaf = (x: number, y: number) => {
+        const l = hash(x, y, v) < 0.15;
+        const light = x < 12 + (y - 14) * 0.3;
+        return l ? C.leafLight : light ? C.leaf : C.leafDark;
+      };
+      if (v === 1) {
+        // A conifer: stacked triangles.
+        for (const [top, half, base] of [[2, 4, 12], [8, 6, 19], [14, 8, 26]]) p.poly([[12, top], [12 + half, base], [12 - half, base]], leaf);
+      } else {
+        const blobs = v === 0 ? [[8, 17, 6], [16, 17, 6], [12, 11, 7], [12, 19, 6]] : [[12, 8, 5], [9, 14, 6], [15, 15, 6], [12, 20, 5]];
+        for (const [x, y, r] of blobs) p.ellipse(x, y, r, r * 0.9, leaf);
+      }
+      p.outline();
     });
   }
   if (type === "berry_bush") {
-    return pic("berry", 40, 30, 0.5, 0.25, (c) => {
-      shadow(c, 6, 2, 28, 9);
-      c.fillStyle = rgb(0.18, 0.45, 0.20); ellipse(c, 5, 6, 30, 20);
-      c.fillStyle = rgb(0.24, 0.55, 0.24); ellipse(c, 10, 12, 18, 12);
-      c.fillStyle = rgb(0.85, 0.12, 0.22);
-      for (const [x, y] of [[10, 12], [16, 18], [24, 14], [28, 20], [19, 10], [13, 20]]) ellipse(c, x, y, 4, 4);
+    return pic("berry", 18, 14, 0.5, 0.85, (p) => {
+      p.shadow(9, 11.5, 7, 2);
+      p.ellipse(9, 7.5, 7.5, 5, (x, y) => (hash(x, y, 2) < 0.2 ? C.leafLight : x < 8 ? C.leaf : C.leafDark));
+      for (const [x, y] of [[5, 6], [8, 4], [11, 7], [13, 5], [7, 9], [10, 10], [4, 9]]) { p.set(x, y, C.berry); p.set(x + 1, y, darken(C.berry, 0.7)); }
+      p.outline();
     });
   }
   const gold = type === "gold_mine";
-  return pic(type, 46, 32, 0.5, 0.25, (c) => {
-    shadow(c, 4, 2, 38, 10);
-    const base = gold ? rgb(0.55, 0.45, 0.30) : rgb(0.50, 0.50, 0.52);
-    const light = gold ? rgb(0.98, 0.80, 0.25) : rgb(0.78, 0.78, 0.80);
-    for (const [x, y, r] of [[8, 6, 11], [20, 5, 13], [14, 13, 10], [28, 10, 9]]) {
-      rock(c, x, y, r, base);
-      rock(c, x + 2, y + r * 0.45, r * 0.55, light);
+  return pic(type, 24, 15, 0.5, 0.85, (p) => {
+    p.shadow(12, 12.5, 10, 2.2);
+    const base = gold ? rgb(0x8a7454) : C.stone, dark = gold ? rgb(0x5e4c34) : C.stoneDark;
+    for (const [x, y, r] of [[6, 10, 5], [14, 9, 6], [10, 6, 5], [18, 11, 4]]) {
+      p.poly([[x - r, y + 2], [x - r * 0.4, y - r * 0.8], [x + r * 0.6, y - r * 0.7], [x + r, y + 2]], (px, py) => (px < x ? base : dark));
     }
+    if (gold) for (const [x, y] of [[7, 7], [13, 5], [15, 8], [10, 4], [19, 9]]) { p.set(x, y, C.gold); p.set(x + 1, y, C.goldDark); }
+    else for (const [x, y] of [[6, 8], [13, 6], [17, 10]]) p.set(x, y, lighten(C.stone, 0.4));
+    p.outline();
   });
-}
-
-function rock(c: Ctx, x: number, y: number, r: number, fill: string) {
-  poly(c, [[x, y], [x + r, y], [x + r * 1.1, y + r * 0.6], [x + r * 0.5, y + r], [x - r * 0.1, y + r * 0.55]], fill);
 }
 
 // ---- units
 
-export function unitPic(type: string, owner: number): Pic {
-  const pc = playerColor(owner);
-  const horse = type === "scout";
-  const w = horse ? 52 : 34, h = horse ? 50 : 44;
-  return pic(`u-${type}-${owner}`, w, h, 0.5, 0.1, (c) => {
-    const cx = w / 2;
-    shadow(c, cx - (horse ? 20 : 11), 1, horse ? 40 : 22, 8);
-    let baseY = 5;
-    if (horse) {
-      c.fillStyle = rgb(0.45, 0.30, 0.18);
-      for (const lx of [cx - 14, cx - 9, cx + 7, cx + 12]) c.fillRect(lx, 4, 3, 12);
-      ellipse(c, cx - 18, 12, 34, 14);
-      c.fillRect(cx + 10, 18, 6, 12);
-      ellipse(c, cx + 10, 26, 13, 7);
-      c.fillStyle = rgb(0.25, 0.16, 0.10);
-      c.fillRect(cx - 21, 14, 4, 9);
-      baseY = 18;
-    } else {
-      c.fillStyle = rgb(0.35, 0.24, 0.15);
-      c.fillRect(cx - 5, 4, 4, 11);
-      c.fillRect(cx + 1, 4, 4, 11);
-    }
-    // Villagers wear undyed cloth with a coloured sash, soldiers wear the player colour.
+export type Facing = "front" | "back";
+export type Pose = "idle" | "walk" | "work";
+/** What a villager has in hand, from the job it is doing. */
+export type Tool = "none" | "axe" | "pick" | "basket" | "hoe" | "hammer";
+
+export interface UnitLook { type: string; owner: number; facing: Facing; pose: Pose; frame: number; tool: Tool; carry: number | null }
+
+const CARRY_COLORS: [RGB, RGB][] = [[rgb(0xc8243a), rgb(0x6aa040)], [C.wood, C.woodDark], [C.gold, C.goldDark], [C.stone, C.stoneDark]];
+
+export function unitPic(look: UnitLook): Pic {
+  const { type, owner, facing, pose, frame, tool, carry } = look;
+  const key = `u-${type}-${owner}-${facing}-${pose}-${frame}-${tool}-${carry}`;
+  if (type === "scout") return pic(key, 30, 28, 0.5, 0.9, (p) => drawRider(p, look));
+  return pic(key, 22, 28, 0.5, 0.9, (p) => {
+    const pc = playerRGB(owner);
     const villager = type === "villager";
-    c.fillStyle = villager ? rgb(0.70, 0.58, 0.40) : shade(pc, 0.95);
-    c.beginPath();
-    c.roundRect(cx - 7, baseY + 9, 14, 15, 4);
-    c.fill();
-    c.fillStyle = villager ? pc : shade(pc, 0.65);
-    c.fillRect(cx - 7, baseY + 14, 14, 3);
-    c.fillStyle = rgb(0.88, 0.70, 0.52); ellipse(c, cx - 5, baseY + 23, 10, 10);
-    c.fillStyle = rgb(0.28, 0.18, 0.10); ellipse(c, cx - 5, baseY + 29, 10, 5);
-    switch (type) {
-      case "villager":
-        line(c, [[cx + 8, baseY + 8], [cx + 12, baseY + 24]], rgb(0.45, 0.32, 0.18), 2);
-        c.fillStyle = rgb(0.6, 0.6, 0.62); c.fillRect(cx + 9, baseY + 22, 7, 3);
-        break;
-      case "clubman":
-        line(c, [[cx + 8, baseY + 12], [cx + 14, baseY + 30]], rgb(0.42, 0.28, 0.14), 4);
-        break;
-      case "axeman":
-        line(c, [[cx + 8, baseY + 10], [cx + 12, baseY + 32]], rgb(0.42, 0.28, 0.14), 2.5);
-        c.fillStyle = rgb(0.70, 0.72, 0.76); ellipse(c, cx + 10, baseY + 25, 9, 9);
-        break;
-      case "bowman": {
-        c.strokeStyle = rgb(0.50, 0.34, 0.16); c.lineWidth = 2;
-        c.beginPath(); c.arc(cx + 6, baseY + 18, 11, -1.2, 1.2); c.stroke();
-        const a = [cx + 6 + 11 * Math.cos(-1.2), baseY + 18 + 11 * Math.sin(-1.2)] as [number, number];
-        const b = [cx + 6 + 11 * Math.cos(1.2), baseY + 18 + 11 * Math.sin(1.2)] as [number, number];
-        line(c, [a, b], rgb(0.9, 0.9, 0.85), 0.8);
-        break;
-      }
-      case "scout":
-        line(c, [[cx - 2, baseY + 12], [cx + 18, baseY + 30]], rgb(0.55, 0.40, 0.20), 2);
-        c.fillStyle = rgb(0.72, 0.74, 0.78); c.fillRect(cx + 16, baseY + 28, 4, 5);
-        break;
+    const cx = 11;
+    p.shadow(cx, 25.5, 6, 2);
+    // Legs: a stride when walking.
+    const lift = pose === "walk" ? [[0, 0], [1, 0], [0, 0], [0, 1]][frame % 4] : [0, 0];
+    p.rect(cx - 3, 19, 2, 6 - lift[0], C.leather);
+    p.rect(cx + 1, 19, 2, 6 - lift[1], C.leatherDark);
+    // Bundle on the back when carrying, drawn first so the body covers part of it.
+    if (carry !== null && facing === "front") drawBundle(p, cx - 7, 11, carry);
+    // Body.
+    const tunic = villager ? C.cloth : pc;
+    const tunicDark = villager ? C.clothDark : darken(pc, 0.7);
+    p.rect(cx - 4, 11, 8, 9, tunic);
+    p.rect(cx + 2, 11, 2, 9, tunicDark);
+    p.rect(cx - 4, 17, 8, 1, villager ? pc : C.leatherDark); // belt, or a sash in the player's colour
+    if (type === "axeman") p.rect(cx - 4, 11, 8, 2, C.iron);   // a bronze-age scale collar
+    // Arms swing opposite to the legs.
+    const swing = pose === "walk" ? [0, 1, 0, -1][frame % 4] : 0;
+    p.rect(cx - 5, 12 + swing, 1, 5, villager ? C.skin : tunicDark);
+    p.rect(cx + 4, 12 - swing, 1, 5, villager ? C.skinDark : tunicDark);
+    // Head.
+    p.rect(cx - 2, 5, 5, 6, C.skin);
+    p.rect(cx + 2, 5, 1, 6, C.skinDark);
+    if (facing === "front") {
+      p.rect(cx - 2, 4, 5, 2, C.hair);
+      p.set(cx - 1, 7, C.outline); p.set(cx + 1, 7, C.outline);
+    } else {
+      p.rect(cx - 2, 4, 5, 6, C.hair);
+      if (carry !== null) drawBundle(p, cx - 3, 11, carry);
     }
+    if (type === "clubman" || type === "axeman") p.rect(cx - 3, 3, 7, 2, type === "axeman" ? C.iron : C.leather); // cap
+    if (villager) p.rect(cx - 3, 3, 7, 1, pc); // a coloured headband
+    drawGear(p, cx, look);
+    p.outline();
   });
+}
+
+function drawBundle(p: PixelCanvas, x: number, y: number, carry: number) {
+  const [a, b] = CARRY_COLORS[carry];
+  if (carry === 1) {
+    for (let i = 0; i < 3; i++) { p.rect(x, y + i * 2, 6, 2, i % 2 ? b : a); p.set(x, y + i * 2, lighten(a, 0.3)); }
+  } else {
+    p.rect(x, y, 5, 6, carry === 0 ? rgb(0xa07840) : a);
+    p.rect(x + 3, y, 2, 6, darken(carry === 0 ? rgb(0xa07840) : a, 0.75));
+    if (carry === 0) { p.set(x + 1, y - 1, a); p.set(x + 2, y - 1, b); p.set(x + 3, y - 1, a); }
+  }
+}
+
+/** Tools and weapons, swung over three work frames: raised, mid, struck. */
+function drawGear(p: PixelCanvas, cx: number, look: UnitLook) {
+  const { type, pose, frame, tool } = look;
+  const hx = cx + 5, work = pose === "work";
+  const stage = work ? frame % 3 : 1;
+  const tipY = [2, 9, 16][stage], tipX = [hx + 1, hx + 5, hx + 3][stage];
+  const handle = (len: number) => { p.line(hx, 15, tipX, tipY + (16 - tipY) * (1 - len), C.wood); };
+  switch (type) {
+    case "villager":
+      switch (tool) {
+        case "axe": handle(1); p.rect(tipX - 1, tipY, 3, 3, C.iron); break;
+        case "pick": handle(1); p.line(tipX - 2, tipY + 1, tipX + 2, tipY - 1, C.ironDark); break;
+        case "hoe": handle(1); p.rect(tipX, tipY, 2, 2, C.ironDark); break;
+        case "hammer": handle(0.9); p.rect(tipX - 1, tipY - 1, 3, 2, C.ironDark); break;
+        case "basket": {
+          const by = work ? 14 + (frame % 2) : 15;
+          p.rect(cx - 3, by, 7, 4, rgb(0xa07840)); p.rect(cx - 3, by, 7, 1, rgb(0x7a5a2c));
+          if (work) p.set(cx, by - 1, C.berry);
+          break;
+        }
+        default: break;
+      }
+      break;
+    case "clubman":
+      p.line(hx, 15, tipX, tipY, C.woodDark); p.line(hx + 1, 15, tipX + 1, tipY, C.wood);
+      p.rect(tipX - 1, tipY - 1, 3, 3, C.woodDark);
+      break;
+    case "axeman":
+      handle(1); p.rect(tipX - 1, tipY - 1, 2, 4, C.iron); p.set(tipX + 1, tipY, C.ironDark);
+      break;
+    case "bowman": {
+      // The bow, drawn at full draw when shooting.
+      const bx = hx + (work && stage === 0 ? 1 : 0);
+      for (let i = -5; i <= 5; i++) p.set(bx + Math.round(2.2 - (i * i) / 12), 13 + i, C.woodDark);
+      p.line(bx - (work && stage === 0 ? 2 : 0), 8, bx - (work && stage === 0 ? 2 : 0), 18, rgb(0xe8e0c8));
+      p.rect(cx - 6, 9, 2, 6, C.leather); // quiver
+      break;
+    }
+    default: break;
+  }
+}
+
+function drawRider(p: PixelCanvas, look: UnitLook) {
+  const pc = playerRGB(look.owner);
+  const horse = rgb(0x7a4e2a), horseDark = rgb(0x52321a);
+  p.shadow(15, 25.5, 12, 2.2);
+  const gait = look.pose === "walk" ? look.frame % 4 : 0;
+  const legs = [[5, 0], [9, 1], [19, 0], [23, 1]];
+  legs.forEach(([x, phase]) => {
+    const up = (gait + phase * 2) % 4 === 1 ? 2 : 0;
+    p.rect(x, 18, 2, 7 - up, (x < 12) === (look.facing === "front") ? horse : horseDark);
+  });
+  p.ellipse(14, 16, 11, 4.5, (x) => (x < 14 ? horse : horseDark));
+  // Neck and head, toward screen right.
+  p.poly([[21, 15], [24, 8], [27, 8], [27, 12], [24, 16]], horse);
+  p.rect(25, 7, 4, 4, horse);
+  p.set(28, 10, horseDark);
+  p.rect(22, 6, 2, 3, C.hair); // mane
+  p.rect(2, 14, 2, 6, C.hair);  // tail
+  // Rider.
+  p.rect(12, 6, 6, 8, pc);
+  p.rect(16, 6, 2, 8, darken(pc, 0.7));
+  p.rect(13, 1, 4, 5, C.skin);
+  p.rect(13, 0, 4, look.facing === "front" ? 2 : 5, C.hair);
+  // A spear, couched when charging.
+  const strike = look.pose === "work" && look.frame % 3 === 2;
+  p.line(10, strike ? 10 : 2, strike ? 29 : 22, strike ? 10 : 12, C.wood);
+  p.set(strike ? 29 : 22, strike ? 10 : 12, C.iron);
+  p.outline();
 }
 
 // ---- buildings
 
-export function buildingPic(def: BuildingDef, owner: number): Pic {
+/** Stone Age buildings are mud and thatch; from the Tool Age on, plaster and fired tile. */
+export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3, farmLeft = 1): Pic {
   const s = def.size;
-  const W = s * HALF_W * 2, D = s * HALF_H * 2;
-  const wall = def.id === "farm" ? 0 : def.id === "watch_tower" ? 58 : def.id === "town_center" ? 34 : def.id === "house" ? 18 : 24;
-  const roofH = def.id === "farm" ? 0 : def.id === "watch_tower" ? 14 : 20;
-  const h = D + wall + roofH + 22;
-  const pc = playerColor(owner);
-  return pic(`b-${def.id}-${owner}`, W, h, 0.5, 0, (c) => {
-    const left: [number, number] = [0, D / 2], bottom: [number, number] = [W / 2, 0];
-    const right: [number, number] = [W, D / 2], top: [number, number] = [W / 2, D];
-    const inset = (k: number) => [left, bottom, right, top].map(([x, y]) => [W / 2 + (x - W / 2) * k, D / 2 + (y - D / 2) * k] as [number, number]);
+  const W = s * 32, D = s * 16;
+  const wallBy: Record<string, number> = { farm: 0, watch_tower: 30, town_center: 18, house: 9 };
+  const wall = wallBy[def.id] ?? 12;
+  const roof = def.id === "farm" ? 0 : def.id === "watch_tower" ? 7 : 10;
+  const H = D + wall + roof + 12;
+  const style = age >= 1 ? 1 : 0;
+  const farmStage = def.id === "farm" ? (farmLeft > 0.66 ? 2 : farmLeft > 0.33 ? 1 : 0) : 0;
+  return pic(`b-${def.id}-${owner}-${style}-${stage}-${farmStage}`, W, H, 0.5, 1, (p) => {
+    const pc = playerRGB(owner);
+    const y0 = H - D;
+    const top: [number, number] = [W / 2, y0], right: [number, number] = [W, y0 + D / 2];
+    const bottom: [number, number] = [W / 2, y0 + D], left: [number, number] = [0, y0 + D / 2];
+    const inset = (k: number) => [left, bottom, right, top].map(([x, y]) => [W / 2 + (x - W / 2) * k, y0 + D / 2 + (y - y0 - D / 2) * k] as [number, number]);
+    const ground = (x: number, y: number) => (hash(x, y, 9) < 0.2 ? C.earthDark : C.earth);
+
     if (def.id === "farm") {
-      poly(c, [left, bottom, right, top], rgb(0.50, 0.36, 0.20));
-      c.strokeStyle = rgb(0.38, 0.26, 0.14); c.lineWidth = 1.5;
-      c.beginPath();
+      p.poly([left, bottom, right, top], (x, y) => (hash(x, y, 4) < 0.15 ? C.earthDark : rgb(0x7c5a34)));
+      // Furrows with crops that thin out as the farm is used up.
+      const crop = [rgb(0x9aa040), rgb(0x8cb048), rgb(0x6aa83c)][farmStage];
       for (let i = 1; i < 8; i++) {
         const k = i / 8;
-        c.moveTo(left[0] + (top[0] - left[0]) * k, left[1] + (top[1] - left[1]) * k);
-        c.lineTo(bottom[0] + (right[0] - bottom[0]) * k, bottom[1] + (right[1] - bottom[1]) * k);
+        const ax = left[0] + (top[0] - left[0]) * k, ay = left[1] + (top[1] - left[1]) * k;
+        const bx = bottom[0] + (right[0] - bottom[0]) * k, by = bottom[1] + (right[1] - bottom[1]) * k;
+        p.line(ax, ay, bx, by, rgb(0x5e4226));
+        for (let j = 1; j < 10; j++) {
+          if (hash(i, j, 21) > 0.45 + farmStage * 0.25) continue;
+          const t = j / 10;
+          p.set(ax + (bx - ax) * t, ay + (by - ay) * t - 1, crop);
+        }
       }
-      c.stroke();
-      c.fillStyle = rgb(0.45, 0.65, 0.22);
-      for (let i = 0; i < 18; i++) {
-        ellipse(c, W * 0.25 + (((i * 37) % 50) / 50) * W * 0.5, D * 0.3 + (((i * 53) % 40) / 40) * D * 0.4, 3, 3);
-      }
-      c.fillStyle = pc;
-      c.fillRect(W / 2 - 1, D / 2, 2, 14);
-      c.fillRect(W / 2 + 1, D / 2 + 9, 8, 5);
+      p.rect(W / 2 - 1, y0 + D / 2 - 8, 1, 8, C.woodDark);
+      p.rect(W / 2, y0 + D / 2 - 8, 4, 3, pc);
       return;
     }
-    poly(c, [left, bottom, right, top], rgb(0.45, 0.38, 0.28));
-    const [l, bt, r, tp] = inset(def.id === "watch_tower" ? 0.62 : 0.84);
-    const up = (p: [number, number], dh: number): [number, number] => [p[0], p[1] + dh];
+
+    // Foundation.
+    p.poly([left, bottom, right, top], ground);
+    if (def.id === "house" && style === 0 && stage >= 2) { drawHut(p, W / 2, y0 + D / 2, W * 0.34, wall, pc); return; }
+    const k = def.id === "watch_tower" ? 0.6 : 0.84;
+    const [l, bt, r, tp] = inset(k);
+    const up = (pt: [number, number], h: number): [number, number] => [pt[0], pt[1] - h];
+    if (stage === 0) {
+      // Just staked out.
+      for (const pt of [l, bt, r, tp]) p.rect(pt[0] - 1, pt[1] - 4, 1, 4, C.woodDark);
+      p.outline();
+      return;
+    }
+    const wallH = stage === 1 ? Math.round(wall * 0.45) : wall;
     const stone = def.id === "watch_tower";
-    poly(c, [l, bt, up(bt, wall), up(l, wall)], stone ? rgb(0.52, 0.50, 0.48) : rgb(0.62, 0.48, 0.32));
-    poly(c, [bt, r, up(r, wall), up(bt, wall)], stone ? rgb(0.72, 0.70, 0.66) : rgb(0.80, 0.66, 0.46));
-    // Door.
-    const dw = Math.min(12, W * 0.12), dh = Math.min(wall * 0.6, 16);
-    poly(c, [[bt[0] + dw * 0.4, bt[1] + 1 + dw * 0.2], [bt[0] + dw * 1.4, bt[1] + dw * 0.7],
-      [bt[0] + dw * 1.4, bt[1] + dw * 0.7 + dh], [bt[0] + dw * 0.4, bt[1] + 1 + dw * 0.2 + dh]], rgb(0.25, 0.16, 0.10));
-    // An emblem on the right wall so the military buildings read apart at a glance.
-    const em: [number, number] = [(bt[0] + r[0]) / 2, (bt[1] + r[1]) / 2 + wall * 0.55];
-    if (def.id === "barracks") {
-      line(c, [[em[0] - 7, em[1] - 7], [em[0] + 7, em[1] + 7]], rgb(0.35, 0.22, 0.12), 3);
-      line(c, [[em[0] + 7, em[1] - 7], [em[0] - 7, em[1] + 7]], rgb(0.35, 0.22, 0.12), 3);
-    } else if (def.id === "archery_range") {
-      for (const [rad, col] of [[9, rgb(0.9, 0.9, 0.85)], [6, rgb(0.8, 0.15, 0.15)], [3, rgb(0.9, 0.9, 0.85)]] as [number, string][]) {
-        c.fillStyle = col; ellipse(c, em[0] - rad, em[1] - rad, rad * 2, rad * 2);
-      }
-    } else if (def.id === "stable") {
-      c.strokeStyle = rgb(0.35, 0.22, 0.12); c.lineWidth = 3;
-      c.beginPath(); c.arc(em[0], em[1], 7, Math.PI + 0.3, -0.3); c.stroke();
-      c.fillStyle = rgb(0.85, 0.72, 0.35); c.fillRect(l[0] + 6, l[1] + 1, 14, 8);
+    const wl = stone ? C.stone : style ? C.plaster : C.mud;
+    const wd = stone ? C.stoneDark : style ? C.plasterDark : C.mudDark;
+    const wallTex = (base: RGB) => (x: number, y: number) => {
+      if (stone) return (y % 4 === 0 || (x + (y >> 2) * 3) % 7 === 0) ? darken(base, 0.8) : base;
+      if (!style && y % 3 === 0 && hash(x, y, 1) < 0.6) return darken(base, 0.88);
+      return hash(x, y, 2) < 0.08 ? darken(base, 0.9) : base;
+    };
+    p.poly([l, bt, up(bt, wallH), up(l, wallH)], wallTex(wd));
+    p.poly([bt, r, up(r, wallH), up(bt, wallH)], wallTex(wl));
+    if (stage === 1) {
+      // Scaffolding over the half-built walls.
+      for (const pt of [l, bt, r]) p.rect(pt[0] - 1, pt[1] - wall, 1, wall, C.wood);
+      p.line(l[0], l[1] - wall + 2, bt[0], bt[1] - wall + 2, C.woodDark);
+      p.line(bt[0], bt[1] - wall + 2, r[0], r[1] - wall + 2, C.woodDark);
+      p.outline();
+      return;
     }
-    // Roof: thatch for most, the player's colour on the big ones.
-    const big = ["town_center", "barracks", "archery_range", "stable", "watch_tower"].includes(def.id);
-    const roof = big ? pc : "#c7a34d";
-    const peak: [number, number] = [W / 2, D / 2 + wall + roofH];
+    // Door, on the right-hand wall near the front corner.
+    const dx = bt[0] + 4, dy = bt[1] - 2;
+    const dh = Math.min(wall - 2, 7);
+    p.poly([[dx, dy - 1], [dx + 4, dy - 3], [dx + 4, dy - 3 - dh], [dx, dy - 1 - dh]], rgb(0x3a2412));
+    // Emblems so the military buildings read apart at a glance.
+    const ex = Math.round((bt[0] + r[0]) / 2) + 3, ey = Math.round((bt[1] + r[1]) / 2 - wall * 0.55);
+    if (def.id === "barracks") { p.line(ex - 3, ey - 3, ex + 3, ey + 3, C.woodDark); p.line(ex + 3, ey - 3, ex - 3, ey + 3, C.woodDark); }
+    if (def.id === "archery_range") { p.ellipse(ex, ey, 3.5, 3.5, rgb(0xf0e8d0)); p.ellipse(ex, ey, 2, 2, C.berry); }
+    if (def.id === "stable") { p.rect(ex - 3, ey - 2, 6, 1, C.woodDark); p.rect(ex - 3, ey + 1, 6, 1, C.woodDark); p.rect(l[0] + 3, l[1] - 5, 6, 4, C.thatch); }
+    if (def.id === "granary") p.ellipse(r[0] - 7, r[1] - 1, 4, 2.5, C.thatch);
+    if (def.id === "storage_pit") for (let i = 0; i < 3; i++) p.rect(l[0] + 2 + i * 3, l[1] - 6 + i, 2, 6, C.wood);
+    // Roof.
+    const peak: [number, number] = [W / 2, y0 + D / 2 - wall - roof];
     const ul = up(l, wall), ub = up(bt, wall), ur = up(r, wall), ut = up(tp, wall);
-    poly(c, [ul, ub, peak], shade(roof, big ? 0.66 : 0.78));
-    poly(c, [ub, ur, peak], shade(roof, big ? 0.85 : 1));
-    poly(c, [ur, ut, peak], shade(roof, big ? 0.95 : 1.1));
-    poly(c, [ut, ul, peak], shade(roof, big ? 0.76 : 0.9));
-    if (["house", "granary", "storage_pit"].includes(def.id)) line(c, [up(ul, 1), up(ub, 1), up(ur, 1)], pc, 3);
-    if (def.id === "granary") { c.fillStyle = rgb(0.85, 0.75, 0.40); ellipse(c, r[0] - 18, r[1] - 4, 14, 9); }
-    if (def.id === "storage_pit") {
-      c.fillStyle = rgb(0.50, 0.34, 0.18);
-      for (let i = 0; i < 3; i++) c.fillRect(l[0] + 4 + i * 5, l[1] - 6 + i, 4, 10);
+    const roofBase = stone ? C.stoneDark : style ? C.tile : C.thatch;
+    const roofTex = (k2: number) => (x: number, y: number) => {
+      const b = darken(roofBase, k2);
+      if (style || stone) return (y % 3 === 0) ? darken(b, 0.85) : b;
+      return hash(x, y >> 1, 6) < 0.25 ? darken(b, 0.82) : b;
+    };
+    if (stone) {
+      // A flat top with crenellations.
+      p.poly([ul, ub, ur, ut], roofTex(1.05));
+      for (const [a, b] of [[ul, ub], [ub, ur]] as [[number, number], [number, number]][]) {
+        for (let t = 0; t <= 1; t += 0.34) p.rect(a[0] + (b[0] - a[0]) * t - 1, a[1] + (b[1] - a[1]) * t - 3, 2, 3, C.stone);
+      }
+    } else {
+      p.poly([ut, ul, peak], roofTex(0.9));
+      p.poly([ur, ut, peak], roofTex(1.05));
+      p.poly([ul, ub, peak], roofTex(0.75));
+      p.poly([ub, ur, peak], roofTex(1));
     }
-    // Flag.
-    c.fillStyle = rgb(0.3, 0.22, 0.14); c.fillRect(peak[0] - 1, peak[1] - 2, 2, 20);
-    c.fillStyle = shade(pc, 1.05); c.fillRect(peak[0] + 1, peak[1] + 10, 11, 7);
+    // Banner in the player's colour.
+    const fx = stone ? W / 2 : peak[0], fy = stone ? ut[1] - 1 : peak[1];
+    p.rect(fx, fy - 10, 1, 10, C.woodDark);
+    p.rect(fx + 1, fy - 10, 5, 3, pc);
+    p.rect(fx + 1, fy - 7, 4, 1, darken(pc, 0.7));
+    // A coloured trim along the eaves of the big buildings.
+    if (["town_center", "barracks", "archery_range", "stable"].includes(def.id)) {
+      p.line(ul[0], ul[1], ub[0], ub[1], pc);
+      p.line(ub[0], ub[1], ur[0], ur[1], darken(pc, 0.8));
+    }
+    p.outline();
   });
+}
+
+/** A Stone Age round hut: mud walls and a thatched cone. */
+function drawHut(p: PixelCanvas, cx: number, cy: number, rx: number, wall: number, pc: RGB) {
+  const ry = rx / 2;
+  const mud = (x: number, y: number) => {
+    const shade = x < cx - rx * 0.3 ? 0.82 : x > cx + rx * 0.4 ? 1.05 : 0.95;
+    return darken(y % 3 === 0 && hash(x, y, 1) < 0.5 ? C.mudDark : C.mud, shade);
+  };
+  for (let y = Math.floor(cy - wall); y <= cy; y++) p.ellipse(cx, y, rx, ry, mud);
+  p.poly([[cx + 1, cy + ry - 1], [cx + 5, cy + ry - 2], [cx + 5, cy + ry - 9], [cx + 1, cy + ry - 8]], rgb(0x3a2412)); // door
+  const top = cy - wall;
+  const thatch = (x: number, y: number) => {
+    const k = x < cx - 2 ? 0.8 : x > cx + 3 ? 1.08 : 0.95;
+    return darken(hash(x, y >> 1, 6) < 0.25 ? C.thatchDark : C.thatch, k);
+  };
+  p.ellipse(cx, top + 1, rx + 2, ry + 1, thatch);
+  p.poly([[cx - rx - 2, top + 1], [cx, top - 16], [cx + rx + 2, top + 1]], thatch);
+  p.line(cx - rx - 1, top + 2, cx + rx + 1, top + 2, C.thatchDark);
+  p.rect(cx, top - 24, 1, 9, C.woodDark);
+  p.rect(cx + 1, top - 24, 5, 3, pc);
+  p.outline();
+}
+
+// ---- HUD art
+
+/** Small pixel icons for the resource bar, as data URLs. */
+export function resourceIcons(): string[] {
+  const draws: ((p: PixelCanvas) => void)[] = [
+    (p) => { p.ellipse(8, 7, 5, 4, rgb(0xc0503a)); p.ellipse(7, 6, 3, 2, rgb(0xe07a5a)); p.rect(11, 10, 3, 2, rgb(0xf0e8d0)); p.rect(13, 9, 2, 4, rgb(0xf0e8d0)); },
+    (p) => { for (let i = 0; i < 3; i++) { p.rect(2, 4 + i * 3, 12, 3, i % 2 ? C.woodDark : C.wood); p.ellipse(13, 5.5 + i * 3, 1.5, 1.5, rgb(0xd0a060)); } },
+    (p) => { p.poly([[2, 13], [5, 6], [11, 5], [14, 13]], C.goldDark); p.poly([[4, 12], [6, 7], [10, 7], [12, 12]], C.gold); p.set(7, 8, rgb(0xfff4b0)); },
+    (p) => { p.poly([[2, 13], [3, 6], [9, 4], [14, 7], [14, 13]], C.stoneDark); p.poly([[4, 11], [5, 7], [9, 6], [12, 8], [12, 11]], C.stone); },
+  ];
+  return draws.map((d) => { const p = new PixelCanvas(16, 16); d(p); p.outline(); return p.toCanvas().toDataURL(); });
+}
+
+/** A tileable stone texture for the panels. */
+export function stoneTexture(): string {
+  const p = new PixelCanvas(64, 64);
+  for (let y = 0; y < 64; y++) {
+    for (let x = 0; x < 64; x++) {
+      const n = hash(x >> 1, y >> 1, 31) * 0.6 + hash(x, y, 32) * 0.4;
+      const crack = ((x + y * 3) % 23 === 0 && hash(x, y, 33) < 0.5) || ((x * 2 - y) % 29 === 0 && hash(x, y, 34) < 0.4);
+      p.set(x, y, crack ? rgb(0x2a241c) : mix(rgb(0x3e362a), rgb(0x5a5040), n));
+    }
+  }
+  return p.toCanvas().toDataURL();
 }
