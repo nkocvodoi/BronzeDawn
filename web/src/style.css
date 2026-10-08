@@ -1,0 +1,86 @@
+:root {
+  --back: rgba(41, 31, 20, 0.94);
+  --edge: #9e7a42;
+  --text: #f5e6c2;
+  --gold: #ffd659;
+  --panel-h: 150px;
+  --top-h: 30px;
+  font-family: "Avenir Next", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--text);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
+canvas#game { position: fixed; inset: 0; display: block; }
+[hidden] { display: none !important; }
+
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0; height: var(--top-h);
+  display: flex; align-items: center; gap: 28px; padding: 0 14px;
+  background: var(--back); border-bottom: 1px solid var(--edge);
+  font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; z-index: 5;
+}
+#topbar span { min-width: 84px; }
+#topbar .spacer { flex: 1; min-width: 0; }
+#topbar .gold { color: var(--gold); }
+#topbar .warn { color: orange; }
+
+#panel {
+  position: fixed; left: 0; right: 0; bottom: 0; height: var(--panel-h);
+  display: flex; gap: 16px; padding: 8px; background: var(--back); border-top: 1px solid var(--edge); z-index: 5;
+}
+#minimap-frame { flex: none; width: 226px; border: 1px solid var(--edge); border-radius: 6px; background: rgba(0,0,0,.6); display: grid; place-items: center; }
+#minimap { width: 220px; height: 110px; cursor: crosshair; }
+#info { flex: 1; min-width: 180px; overflow: hidden; }
+#info h2 { margin: 2px 0 6px; font-size: 16px; }
+#info p { margin: 0; font-size: 12px; line-height: 18px; min-height: 18px; opacity: .95; }
+.bar { width: 160px; height: 7px; background: #444; margin: 2px 0 6px; }
+.bar.thin { height: 6px; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: #3c3; }
+#progress-bar { background: var(--gold); }
+
+#commands { flex: none; display: grid; grid-template-columns: repeat(5, 88px); grid-auto-rows: 56px; gap: 6px; align-content: start; }
+#commands button {
+  all: unset; box-sizing: border-box; padding: 4px 6px; border-radius: 6px; cursor: pointer;
+  background: #573f24; border: 1px solid var(--edge); display: flex; flex-direction: column; justify-content: space-between;
+}
+#commands button:hover { background: #6d5030; }
+#commands button.off { background: #383838; border-color: #666; color: #999; }
+#commands b { color: var(--gold); font-size: 11px; }
+#commands span { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#commands small { font-size: 9.5px; opacity: .85; white-space: nowrap; }
+
+#tooltip {
+  position: fixed; right: 8px; bottom: calc(var(--panel-h) + 8px); padding: 4px 8px; font-size: 12px;
+  background: rgba(0,0,0,.85); border: 1px solid var(--edge); border-radius: 4px; z-index: 6;
+}
+#tooltip.blocked { color: orange; }
+
+#messages { position: fixed; top: calc(var(--top-h) + 10px); left: 0; right: 0; text-align: center; pointer-events: none; z-index: 4; }
+#messages div { font-weight: 600; font-size: 15px; text-shadow: 0 1px 3px #000; margin-bottom: 4px; transition: opacity 1s; }
+#messages .warn { color: orange; }
+#messages .fade { opacity: 0; }
+
+#dragbox { position: fixed; border: 1px solid #fff; background: rgba(255,255,255,.08); pointer-events: none; z-index: 3; }
+
+#overlay { position: fixed; inset: 0; display: grid; place-items: center; z-index: 10; background: rgba(0,0,0,.25); }
+#overlay .card {
+  max-width: min(720px, calc(100vw - 32px)); padding: 26px 34px; text-align: center;
+  background: rgba(0,0,0,.85); border: 2px solid var(--edge); border-radius: 12px;
+}
+#overlay h1 { margin: 0 0 14px; font-size: 34px; color: var(--gold); }
+#overlay .lose h1 { color: #e33; }
+#overlay .help h1 { color: var(--text); }
+#overlay p { margin: 8px 0; font-size: 15px; }
+#overlay .choices { display: inline-flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; justify-content: center; }
+#overlay button {
+  font: inherit; font-weight: 600; color: var(--text); background: #573f24; border: 1px solid var(--edge);
+  border-radius: 8px; padding: 8px 18px; cursor: pointer;
+}
+#overlay button:hover { background: #6d5030; }
+
+@media (max-width: 900px) {
+  #topbar { gap: 12px; font-size: 12px; }
+  #topbar span { min-width: 0; }
+  #commands { grid-template-columns: repeat(5, 64px); }
+  #commands small { display: none; }
+}

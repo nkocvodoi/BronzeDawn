@@ -882,7 +882,8 @@ public final class World {
 
     // MARK: separation
 
-    /// Pushes overlapping units apart. Units at work are not pushed.
+    /// Pushes overlapping units apart. Units at work are not pushed, and units walking a path
+    /// are not pushed either: they pass through, or a crowd at a berry bush could hold them forever.
     private func separate() {
         let minD = 0.42
         let n = units.count
@@ -905,7 +906,7 @@ public final class World {
                         if len >= minD { continue }
                         let dir = len > 0.0001 ? d * (1 / len) : Vec2(Double((a.id * 37) % 7) - 3, 1) * 0.2
                         let push = (minD - len) * 0.5
-                        let aFree = !a.busy, bFree = !b.busy
+                        let aFree = !a.busy && a.path.isEmpty, bFree = !b.busy && b.path.isEmpty
                         if aFree {
                             let np = a.pos - dir * (bFree ? push : push * 2)
                             if map.passable(np.tile) { a.pos = np }

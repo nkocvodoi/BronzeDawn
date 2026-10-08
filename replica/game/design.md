@@ -5,7 +5,7 @@ Working title only. Run `/replica-brand` for the real name before release.
 ## 1. Scope
 
 - **Inspired by:** classic Stone Age to Tool Age real-time strategy (Age of Empires, 1997). Mechanics only, see section 9.
-- **Platform:** macOS 13+, Apple silicon and Intel (universal binary). Swift + SpriteKit, nothing to install beyond Xcode.
+- **Platform:** macOS 13+ (Swift + SpriteKit, universal binary), and the browser (TypeScript + PixiJS, hosted on GitHub Pages). Both read the same `data/rules.json`.
 - **Slice:** one skirmish mode, you against one AI on a seeded 72x72 map, 2 ages, 4 resources, 5 units, 9 buildings.
 - **Out of scope for now:** Bronze and Iron ages, technologies, civilizations, campaign, multiplayer, editor, audio.
 
@@ -83,6 +83,14 @@ See the README.
 `DawnCore` (no SpriteKit): rules, grid, pathfinder, world step at 20 Hz, fog, AI, map generator, headless simulation.
 `BronzeDawn`: SpriteKit scene, procedural art, HUD, input. Rendering interpolates between steps.
 
+### Web build
+
+`web/src/core` is the same simulation ported to TypeScript, kept function for function with `Sources/DawnCore`. It is written to be deterministic so lockstep multiplayer can come later: only `+ - * /` and `sqrt` in the simulation (directions come from a constant table, the AI scores matchups without `log`), integer RNG (xoshiro128**), and arrays rather than hash-ordered collections. `web/src/game` draws with PixiJS (WebGL): terrain baked into 1024-point canvas chunks, fog as one 74x74 texture under an iso matrix, entities as sprites sorted by depth. The HUD is HTML and CSS.
+
+Tests: `npm test` (16 unit tests and two headless matches, mirrors the Swift suite), `npm run sim` (AI against AI), `npm run smoke` (16 checks with real mouse and keyboard input in Chrome).
+
+Found while porting, fixed in both builds: units walking a path were pushed back by a crowd of busy gatherers and could stand still forever. Walking units now pass through.
+
 ## 9. Clean-room notes
 
 Taken: genre mechanics (gather, ages, counters, fog). Made fresh: every name, number, sprite (drawn in code), word and line of code. No third-party assets.
@@ -100,4 +108,6 @@ Taken: genre mechanics (gather, ages, counters, fog). Made fresh: every name, nu
 | M7 | G12 G13 | testHeadlessMatchEnds | yes |
 | M8 | G10 | testAgeUpNeedsTwoBuildingsAndFood | yes |
 | M9 | G14 | | yes |
-| M10 | Bronze Age, techs, audio | | next |
+| M10 | web port (core, renderer, HUD, Pages deploy) | npm test, npm run smoke | yes |
+| M11 | Bronze Age, techs, audio | | next |
+| M12 | lockstep multiplayer over WebRTC | desync check: two clients, same hash every 100 steps | later |

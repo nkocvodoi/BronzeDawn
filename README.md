@@ -18,6 +18,22 @@ open "build/Bronze Dawn.app"
 
 Khi vào game, bấm 1, 2 hoặc 3 để chọn độ khó Dễ, Thường hoặc Khó.
 
+## Chơi trên trình duyệt
+
+Bản web nằm trong thư mục `web/`, dùng TypeScript và PixiJS, đọc chung `data/rules.json` với bản Mac.
+
+```bash
+cd web
+npm install
+npm run dev          # mở http://localhost:5173
+npm test             # 16 test của phần mô phỏng, gồm 2 trận AI đấu AI
+npm run sim          # AI đấu AI không cần trình duyệt
+npm run build && npm run smoke   # chơi thử tự động bằng chuột và phím thật trên Chrome
+```
+
+Mỗi lần push lên `main`, workflow `.github/workflows/web.yml` sẽ test, build rồi đăng lên GitHub Pages.
+Chủ repo cần bật một lần: **Settings → Pages → Source: GitHub Actions**. Thêm `?seed=42` vào URL để chơi lại đúng một bản đồ.
+
 ## Cách chơi
 
 Bạn bắt đầu với 1 Town Center và 3 dân làng (villager). Nhiệm vụ: thu thập
@@ -31,9 +47,9 @@ tài nguyên, xây nhà, lên Tool Age rồi tiêu diệt đối thủ.
 | Công trình: Q W E R / T / X | Luyện quân / Lên đời (Advance) / Hủy |
 | Lính: A / S | Attack-move / Dừng |
 | H, `.` | Về Town Center, chọn villager đang rảnh |
-| Cmd+1..9, 1..9 | Lưu và gọi nhóm quân |
+| Cmd+1..9, 1..9 | Lưu và gọi nhóm quân (trên web: Ctrl hoặc Alt+1..9) |
 | Mũi tên, trackpad, pinch, + - | Cuộn và zoom bản đồ |
-| F1, P, Delete | Hướng dẫn, tạm dừng, phá unit hoặc công trình đã chọn |
+| F1 (web: ?), P, Delete | Hướng dẫn, tạm dừng, phá unit hoặc công trình đã chọn |
 
 Các mẹo:
 - Thức ăn ban đầu lấy từ bụi dâu. Khi dâu hết thì xây Farm (cần Granary trước).
@@ -47,6 +63,7 @@ data/rules.json          mọi con số trong game. Sửa ở đây là cân b�
 Sources/DawnCore/        mô phỏng (không dùng SpriteKit): luật, bản đồ, A*, sương mù, AI
 Sources/BronzeDawn/      SpriteKit: hình vẽ bằng code, HUD, điều khiển
 Tests/DawnCoreTests/     unit test và một trận AI đấu AI chạy headless
+web/                     bản trình duyệt: src/core (mô phỏng, port từ DawnCore), src/game (PixiJS + HUD HTML)
 replica/game/design.md   tài liệu thiết kế (viết theo /replica-game-design)
 replica/features.csv     ma trận tính năng, chấm điểm bằng /replica-diff
 ```
