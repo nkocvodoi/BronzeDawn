@@ -9,6 +9,8 @@ import type { World } from "./world";
 export function generateMap(w: World) {
   const map = w.map;
   const n = map.width;
+  // Everything spread over the map grows with its area; a Small map (72 x 72) is the baseline.
+  const scale = (map.width * map.height) / (72 * 72);
   for (let i = 0; i < map.shade.length; i++) map.shade[i] = w.rng.int(0, 255);
 
   const starts = startTiles(w.players.length, n);
@@ -16,7 +18,7 @@ export function generateMap(w: World) {
   const farFromStarts = (t: Tile, d: number) => starts.every((s) => t.center.distance(s.center) >= d);
 
   // Lakes, away from the bases.
-  for (let k = 0; k < 3; k++) {
+  for (let k = 0; k < Math.round(3 * scale); k++) {
     let c = new Tile(0, 0);
     for (let tries = 0; tries < 30; tries++) {
       c = new Tile(w.rng.int(8, n - 9), w.rng.int(8, n - 9));
@@ -75,24 +77,24 @@ export function generateMap(w: World) {
   }
 
   // The rest of the map.
-  for (let k = 0; k < 16; k++) {
+  for (let k = 0; k < Math.round(16 * scale); k++) {
     const c = new Tile(w.rng.int(2, n - 3), w.rng.int(2, n - 3));
     if (farFromStarts(c, 11)) forest(w, c, w.rng.int(2, 4), 0.75);
   }
-  for (let k = 0; k < 70; k++) {
+  for (let k = 0; k < Math.round(70 * scale); k++) {
     const c = new Tile(w.rng.int(1, n - 2), w.rng.int(1, n - 2));
     if (farFromStarts(c, 8)) w.addNode("lone_tree", c);
   }
   // Wild animals across the map: gazelles and elephants to hunt, lions to fear, alligators by the water.
-  for (let k = 0; k < 6; k++) {
+  for (let k = 0; k < Math.round(6 * scale); k++) {
     const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
     if (farFromStarts(c, 16)) herd(w, "gazelle", c, w.rng.int(3, 6));
   }
-  for (let k = 0; k < 3; k++) {
+  for (let k = 0; k < Math.round(3 * scale); k++) {
     const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
     if (farFromStarts(c, 16)) herd(w, "elephant", c, w.rng.int(1, 2));
   }
-  for (let k = 0; k < 3; k++) {
+  for (let k = 0; k < Math.round(3 * scale); k++) {
     const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
     if (farFromStarts(c, 20)) herd(w, "lion", c, w.rng.int(1, 2));
   }
@@ -105,13 +107,14 @@ export function generateMap(w: World) {
       const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => map.terrainAt(new Tile(x + dx, y + dy)) !== Terrain.water);
       if (!shore) continue;
       if (w.rng.chance(0.07)) w.addNode("fish", t);
-      else if (gators < 4 && w.rng.chance(0.01) && farFromStarts(t, 18)) {
+      else if (gators < Math.round(4 * scale) && w.rng.chance(0.01) && farFromStarts(t, 18)) {
         const land = map.nearestPassable(t, 2);
         if (land) { herd(w, "alligator", land, 1); gators++; }
       }
     }
   }
-  for (const kind of ["gold_mine", "gold_mine", "stone_mine", "stone_mine", "berry_bush", "berry_bush", "berry_bush"]) {
+  const extras = ["gold_mine", "gold_mine", "stone_mine", "stone_mine", "berry_bush", "berry_bush", "berry_bush"];
+  for (const kind of Array.from({ length: Math.round(scale) }, () => extras).flat()) {
     for (let tries = 0; tries < 30; tries++) {
       const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
       if (farFromStarts(c, 15)) { cluster(w, kind, c, kind === "berry_bush" ? 5 : 4); break; }

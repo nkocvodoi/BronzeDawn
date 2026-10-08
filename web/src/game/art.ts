@@ -135,7 +135,29 @@ export function terrainTexture(map: GridMap): { texture: Texture; x: number; y: 
     }
   }
   const texture = p.toTexture();
-  return { texture, x: left, y: 0, w: W * PX, h: H * PX };
+  return { texture, x: left, y: 0, w: W * PX, h: H * PX, canvas: p } as ReturnType<typeof terrainTexture> & { canvas: PixelCanvas };
+}
+
+/** The map ground cut into pieces no bigger than 2048 pixels, which every GPU accepts. Large maps need it. */
+export function terrainChunks(map: GridMap): { texture: Texture; x: number; y: number; w: number; h: number }[] {
+  const whole = terrainTexture(map) as ReturnType<typeof terrainTexture> & { canvas: PixelCanvas };
+  const src = whole.canvas;
+  if (src.w <= 2048 && src.h <= 2048) return [whole];
+  whole.texture.destroy(true);
+  const out: { texture: Texture; x: number; y: number; w: number; h: number }[] = [];
+  const size = 2048;
+  for (let cy = 0; cy < src.h; cy += size) {
+    for (let cx = 0; cx < src.w; cx += size) {
+      const cw = Math.min(size, src.w - cx), ch = Math.min(size, src.h - cy);
+      const piece = new PixelCanvas(cw, ch);
+      for (let y = 0; y < ch; y++) {
+        const from = ((cy + y) * src.w + cx) * 4;
+        piece.data.set(src.data.subarray(from, from + cw * 4), y * cw * 4);
+      }
+      out.push({ texture: piece.toTexture(), x: whole.x + cx * PX, y: whole.y + cy * PX, w: cw * PX, h: ch * PX });
+    }
+  }
+  return out;
 }
 
 // =====================================================================================
@@ -2412,6 +2434,12 @@ function iconFrame(p: PixelCanvas, bg: RGB) {
 function techGlyph(p: PixelCanvas, g: string) {
   const L = (x0: number, y0: number, x1: number, y1: number, c: RGB) => p.line(x0, y0, x1, y1, c);
   switch (g) {
+    case "delete": // the red cross of the original's delete button
+      for (let i = 0; i < 13; i++) { p.rect(5 + i, 5 + i, 2, 2, C.red); p.rect(17 - i, 5 + i, 2, 2, C.red); }
+      L(5, 6, 17, 18, lighten(C.red, 0.35)); break;
+    case "stop": p.poly([[8, 4], [16, 4], [20, 8], [20, 16], [16, 20], [8, 20], [4, 16], [4, 8]], C.red); p.rect(7, 11, 10, 3, C.white); break;
+    case "next": p.poly([[5, 9], [13, 9], [13, 5], [20, 12], [13, 19], [13, 15], [5, 15]], C.gold); L(6, 10, 12, 10, lighten(C.gold, 0.4)); break;
+    case "back": p.poly([[19, 9], [11, 9], [11, 5], [4, 12], [11, 19], [11, 15], [19, 15]], C.gold); L(12, 10, 18, 10, lighten(C.gold, 0.4)); break;
     case "sword": L(6, 18, 17, 5, C.ironLight); L(7, 18, 18, 6, C.iron); L(5, 14, 10, 19, C.bronze); L(4, 19, 6, 21, C.woodDark); break;
     case "shield": p.ellipse(12, 12, 7, 8, C.bronze); p.ellipse(12, 12, 5.5, 6.5, (x, y) => (x + y < 23 ? lighten(C.red, 0.2) : C.red)); p.ellipse(12, 12, 1.5, 1.5, C.bronzeLight); break;
     case "armor":
@@ -2433,6 +2461,8 @@ function techGlyph(p: PixelCanvas, g: string) {
 }
 
 const TECH_WORDS: [RegExp, string][] = [
+  [/^delete$/, "delete"], [/^stop$/, "stop"], [/^next$/, "next"], [/^back$/, "back"],
+  [/^build$/, "hammer"], [/^attack_move$/, "sword"],
   [/^(stone|tool|bronze|iron)_age$|^age_|advance|ascend/, "age"],
   [/coin|gold|bank|market|trade|currency|tax|mint/, "coin"],
   [/shield/, "shield"],
@@ -2492,6 +2522,39 @@ export function resourceIcons(): string[] {
     (p) => { p.poly([[2, 13], [3, 6], [9, 4], [14, 7], [14, 13]], C.stoneDark); p.poly([[4, 11], [5, 7], [9, 6], [12, 8], [12, 11]], C.stone); },
   ];
   return draws.map((d) => { const p = new PixelCanvas(16, 16); d(p); p.outline(); return p.toCanvas().toDataURL(); });
+}
+
+/** Planks of dark wood for the bottom panel, as in the original's interface. Tileable. */
+export function woodTexture(): string {
+  const p = new PixelCanvas(64, 32);
+  for (let y = 0; y < 32; y++) {
+    const plank = y >> 3, seam = (y & 7) === 0;
+    for (let x = 0; x < 64; x++) {
+      const grain = hash(x >> 3, y, 41 + plank) * 0.5 + Math.sin((x + plank * 17) * 0.35 + y * 0.9) * 0.18;
+      let c = mix(rgb(0x4a2e18), rgb(0x6e4626), 0.4 + grain * 0.5);
+      if (seam) c = rgb(0x24150a);
+      if (((x + plank * 23) & 31) === 0) c = rgb(0x2a190c); // board ends
+      p.set(x, y, c);
+    }
+  }
+  return p.toCanvas().toDataURL();
+}
+
+/** Small icons for the status box: attack, melee armor, pierce armor, range, hit points, faith, carry, line of sight. */
+export function statIcons(): Record<string, string> {
+  const draw: Record<string, (p: PixelCanvas) => void> = {
+    attack: (p) => { p.line(2, 11, 10, 3, C.iron); p.line(3, 11, 11, 3, C.ironDark); p.line(2, 8, 5, 11, C.bronze); },
+    armor: (p) => { p.poly([[3, 2], [10, 2], [10, 7], [6.5, 11], [3, 7]], (x) => (x < 7 ? C.iron : C.ironDark)); },
+    pierce: (p) => { p.poly([[3, 2], [10, 2], [10, 7], [6.5, 11], [3, 7]], (x) => (x < 7 ? C.bronze : C.bronzeDark)); p.line(1, 1, 7, 7, C.white); },
+    range: (p) => { for (let i = -5; i <= 5; i++) p.set(4 + Math.round(3 * (1 - (i * i) / 25)), 6 + i, C.woodDark); p.line(4, 1, 4, 11, C.white); p.line(3, 6, 11, 6, C.wood); },
+    hp: (p) => { p.ellipse(4.5, 5, 2.5, 2.5, C.red); p.ellipse(8.5, 5, 2.5, 2.5, C.red); p.poly([[2, 6], [11, 6], [6.5, 11]], C.red); },
+    faith: (p) => { p.ellipse(6.5, 6.5, 4.5, 4.5, C.glow); p.ellipse(6.5, 6.5, 2.5, 2.5, C.gold); },
+    carry: (p) => { p.rect(3, 4, 7, 7, rgb(0xa07840)); p.rect(3, 4, 7, 2, rgb(0x7a5a2c)); },
+    los: (p) => { p.ellipse(6.5, 6.5, 5, 3, C.white); p.ellipse(6.5, 6.5, 2, 2, rgb(0x3a6ab0)); },
+  };
+  const out: Record<string, string> = {};
+  for (const [k, d] of Object.entries(draw)) { const p = new PixelCanvas(13, 13); d(p); p.outline(); out[k] = p.toCanvas().toDataURL(); }
+  return out;
 }
 
 /** A tileable stone texture for the panels. */

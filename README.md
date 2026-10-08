@@ -46,14 +46,15 @@ tài nguyên, xây nhà, lên Tool Age rồi tiêu diệt đối thủ.
 | --- | --- |
 | Chuột trái / kéo | Chọn / chọn theo vùng. Giữ Shift để chọn thêm, double-click để chọn mọi unit cùng loại trên màn hình |
 | Chuột phải | Đi, thu hoạch, xây, tấn công. Khi đang chọn công trình: đặt điểm tập kết (rally point) |
-| Villager: Q W E R A S D F Z | House, Granary, Storage Pit, Barracks, Farm, Archery Range, Stable, Watch Tower, Town Center |
-| Công trình: Q W E R / T / X | Luyện quân / Lên đời (Advance) / Hủy |
-| Lính: A / S | Attack-move / Dừng |
+| Villager: B rồi một chữ (web, như Đế chế) | B mở menu xây; E House, G Granary, S Storage Pit, B Barracks, M Market, F Farm, A Archery Range, L Stable, W Wall, T Tower, C Government Center, P Temple, Y Academy, K Siege Workshop, N Town Center, O Wonder; Esc quay lại |
+| Công trình (web) | C Villager, T Clubman/Bowman/Hoplite/Priest, Z kiếm sĩ, S Scout, C Cavalry, R chariot, E voi, A lên đời ở Town Center; Esc hủy |
+| Lính: S / A | Dừng / Attack-move |
+| Map size (web) | Chọn Small 72, Medium 96, Large 120, Huge 144 ở màn hình bắt đầu |
 | H, `.` | Về Town Center, chọn villager đang rảnh |
 | Cmd+1..9, 1..9 | Lưu và gọi nhóm quân (trên web: Ctrl hoặc Alt+1..9) |
 | Mũi tên, trackpad, pinch, PageUp/PageDown | Cuộn và zoom bản đồ (bản Mac: + - để zoom) |
 | + / - (web) | Tốc độ game 1x, 1.5x, 2x, 3x như setting của Đế chế; bấm vào ô tốc độ trên thanh trên cùng cũng được |
-| F1 (web: ?), P, Delete | Hướng dẫn, tạm dừng, phá unit hoặc công trình đã chọn |
+| F1 (web: ? hoặc nút Menu), F3 (bản Mac: P), Delete | Hướng dẫn, tạm dừng, phá unit hoặc công trình đã chọn |
 
 Các mẹo:
 - Thức ăn ban đầu lấy từ bụi dâu. Khi dâu hết thì xây Farm (cần Granary trước).
