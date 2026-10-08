@@ -181,6 +181,7 @@ export class Game {
     this.hud.showOverlay("Bronze Dawn", [
       "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
       `Your civilization: <select id="civ"><option value="">Random</option>${civs}</select>`,
+      `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
       `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
       "Hard: the computer gathers 20% faster.",
       "Press ? at any time for the controls",
@@ -194,6 +195,9 @@ export class Game {
     const mine = pick ?? (civs.length ? civs[Math.floor(Math.random() * civs.length)].id : null);
     const theirs = civs.length ? civs[(this.seed * 7 + 3) % civs.length].id : null;
     this.newGame(this.seed, [mine, theirs]);
+    // The speed chosen on the start screen; + and - still change it during the game.
+    const chosen = Number((document.querySelector("#start-speed") as HTMLSelectElement | null)?.value);
+    if (SPEEDS.includes(chosen)) { this.speed = chosen; this.hud.speed(chosen); }
     this.world.ais = [new AIController(1, d)];
     this.world.ais[0].attach(this.world);
     this.started = true;
