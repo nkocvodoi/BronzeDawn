@@ -40,7 +40,8 @@ Bonus damage and counters,combat,must,yes,yes,
 Siege splash and dodging,combat,should,yes,yes,
 Trample,combat,should,yes,yes,
 Tower line,combat,should,yes,yes,
-Fog of war,fog,must,yes,yes,
+Fog of war,fog,must,yes,yes,solid black unexplored; a stipple over explored ground; wavy hard edges
+Dense forests and textured ground,map,should,yes,yes,forest floor; worn patches; curved coast with foam
 Computer opponent,ai,must,yes,yes,three levels
 Five AI levels Easiest to Hardest,ai,could,yes,partial,easy normal hard
 Up to eight players with teams and allies,players,should,yes,no,one against one

@@ -87,11 +87,26 @@ const GROUND: Record<Terrain, RGB[]> = {
   [Terrain.grass]: [rgb(0x5a8a38), rgb(0x5f903c), rgb(0x55843a), rgb(0x649540)],
   [Terrain.dirt]: [rgb(0x96764a), rgb(0x8a6c44), rgb(0xa2825a), rgb(0x7e623c)],
   [Terrain.sand]: [rgb(0xd2bc82), rgb(0xc8b278), rgb(0xdcc890), rgb(0xbea66c)],
-  [Terrain.water]: [rgb(0x2a5c9a), rgb(0x2e64a4), rgb(0x265490), rgb(0x3470b0)],
+  [Terrain.water]: [rgb(0x22489a), rgb(0x2650a4), rgb(0x1e4290), rgb(0x2c5aae)],
 };
 
-/** The whole map as one pixel texture, 16 x 8 art pixels per half tile. Returns it with its screen origin. */
-export function terrainTexture(map: GridMap): { texture: Texture; x: number; y: number; w: number; h: number } {
+/** Smooth value noise in 0..1: random heights on a grid of `size`, blended between. */
+function vnoise(x: number, y: number, size: number, salt: number) {
+  const gx = x / size, gy = y / size, x0 = Math.floor(gx), y0 = Math.floor(gy);
+  const fx = gx - x0, fy = gy - y0, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = hash(x0, y0, salt), b = hash(x0 + 1, y0, salt), c = hash(x0, y0 + 1, salt), d = hash(x0 + 1, y0 + 1, salt);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+
+// The original's grass is busy: lighter and darker swathes, yellow-green flecks, and worn patches of
+// bare earth here and there. These are the colours for that, and for the dark floor under a forest.
+const GRASS_DARK = rgb(0x4a7a2a), GRASS_LIGHT = rgb(0x74a240), GRASS_YELLOW = rgb(0x9cab44), GRASS_FLECK = rgb(0xb8b456);
+const WORN = [rgb(0x9a7a56), rgb(0x8c6e4c), rgb(0xa88a64)];
+const FOREST_FLOOR = rgb(0x34521e);
+
+/** The whole map as one pixel texture, 16 x 8 art pixels per half tile. Returns it with its screen origin.
+ *  `forest` marks tiles under trees (1) and next to them (2), whose ground is drawn darker. */
+export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Texture; x: number; y: number; w: number; h: number } {
   const tw = HALF_W / PX, th = HALF_H / PX; // art pixels per half tile: 16 x 8
   const W = (map.width + map.height) * tw, H = (map.width + map.height) * th;
   const left = -map.height * HALF_W;
@@ -112,24 +127,50 @@ export function terrainTexture(map: GridMap): { texture: Texture; x: number; y: 
       for (const [dx, dy, d] of edges) {
         const o = terrainAt(tx + dx, ty + dy);
         if (o === null || o === t || d > 0.3) continue;
+        if (o === Terrain.water || t === Terrain.water) continue; // a coastline is a crisp line, with foam on it
         if (bayer(px, py) < 0.55 * (1 - d / 0.3)) { use = o; break; }
+      }
+      // The coast follows a smooth, slightly wavering curve between tile centres, not the tile edges.
+      // Only the picture changes: which tiles are water stays as the map says.
+      const wet = (x: number, y: number) => ((terrainAt(x, y) ?? t) === Terrain.water ? 1 : 0);
+      const gx = w.x - 0.5, gy = w.y - 0.5, x0 = Math.floor(gx), y0 = Math.floor(gy), ux = gx - x0, uy = gy - y0;
+      const a00 = wet(x0, y0), a10 = wet(x0 + 1, y0), a01 = wet(x0, y0 + 1), a11 = wet(x0 + 1, y0 + 1);
+      let water = -1;
+      if (a00 + a10 + a01 + a11 > 0 && a00 + a10 + a01 + a11 < 4) {
+        water = (a00 * (1 - ux) + a10 * ux) * (1 - uy) + (a01 * (1 - ux) + a11 * ux) * uy + (vnoise(w.x, w.y, 0.7, 51) - 0.5) * 0.3;
+        use = water >= 0.5 ? Terrain.water : t === Terrain.water ? Terrain.sand : use;
       }
       const pal = GROUND[use];
       const s = map.shade[ty * n + tx] / 255;
       // Soft 2x2 clusters plus a slow per-tile tint, so the ground reads as texture, not noise.
       let c = pal[Math.floor(hash(px >> 1, py >> 1, 7) * 1.6 + s * 2.4) % 4];
       if (use === Terrain.grass) {
-        const r = hash(px >> 1, py, 3);
-        if (r < 0.018 && (px & 1) === 0) { c = rgb(0x46722c); p.set(px, py - 1, rgb(0x46722c)); }  // a tuft
-        else if (r < 0.022) c = rgb(0x7aa850);
-        else if (r < 0.0228 && s > 0.6) c = rgb(0xe8d870);                                      // a flower
+        // Broad swathes of light and dark across several tiles, then finer mottling inside them.
+        const broad = vnoise(w.x, w.y, 5, 21), fine = vnoise(px, py * 2, 6, 22);
+        c = mix(GRASS_DARK, GRASS_LIGHT, Math.min(1, Math.max(0, broad * 0.75 + fine * 0.45 - 0.1)));
+        if (broad > 0.62) c = mix(c, GRASS_YELLOW, (broad - 0.62) * 1.4);           // sun-dried patches
+        const r = hash(px, py, 3);
+        if (r < 0.06) c = mix(c, GRASS_FLECK, 0.55);                                  // yellow flecks
+        else if (r < 0.1) c = darken(c, 0.78);                                       // dark flecks
+        else if (r < 0.104 && (px & 1) === 0) { c = rgb(0x3e6a24); p.set(px, py - 1, rgb(0x3e6a24)); } // a tuft
+        // Worn patches of bare earth, ragged at the edge.
+        const worn = vnoise(w.x, w.y, 2.2, 23) * 0.7 + vnoise(w.x, w.y, 0.9, 24) * 0.3;
+        if (worn > 0.78 || (worn > 0.73 && bayer(px, py) < (worn - 0.73) / 0.05)) c = WORN[Math.floor(hash(px >> 1, py, 25) * 3)];
+        // The dark floor of a forest, fading out at its edge.
+        const f = forest?.[ty * n + tx] ?? 0;
+        if (f === 1) c = mix(c, FOREST_FLOOR, 0.7);
+        else if (f === 2 && bayer(px, py) < 0.45) c = mix(c, FOREST_FLOOR, 0.5);
       } else if (use === Terrain.water) {
-        // Short wave highlights in rows.
-        if (hash(px >> 2, py, 11) < 0.12 && (py & 1) === 0) c = rgb(0x5a8ccc);
-        const shore = edges.some(([dx, dy, d]) => d < 0.12 && terrainAt(tx + dx, ty + dy) === Terrain.sand);
-        if (shore && bayer(px, py) < 0.5) c = rgb(0x8ab4d8);
+        // Short wave strokes in rows, drifting in broad lighter and darker bands.
+        c = mix(c, rgb(0x16357a), vnoise(w.x, w.y, 4, 31) * 0.5);
+        if (hash(px >> 2, py, 11) < 0.1 && (py & 1) === 0) c = rgb(0x4a78c0);
+        // White foam along the shore, in short broken dashes, as the original's beaches have.
+        if (water >= 0 && water < 0.58 && hash(px >> 2, py >> 1, 12) < 0.7) c = rgb(0xeef2f6);
+        else if (water >= 0 && water < 0.7 && bayer(px, py) < 0.5) c = rgb(0x5a86c4);
       } else if (use === Terrain.sand || use === Terrain.dirt) {
-        if (hash(px, py, 5) < 0.04) c = darken(c, 0.82);
+        c = mix(c, darken(c, 0.82), vnoise(w.x, w.y, 2.5, 41) * 0.6);
+        if (hash(px, py, 5) < 0.05) c = darken(c, 0.8);
+        else if (hash(px, py, 6) < 0.03) c = lighten(c, 0.15);
       }
       p.set(px, py, c);
     }
@@ -139,8 +180,8 @@ export function terrainTexture(map: GridMap): { texture: Texture; x: number; y: 
 }
 
 /** The map ground cut into pieces no bigger than 2048 pixels, which every GPU accepts. Large maps need it. */
-export function terrainChunks(map: GridMap): { texture: Texture; x: number; y: number; w: number; h: number }[] {
-  const whole = terrainTexture(map) as ReturnType<typeof terrainTexture> & { canvas: PixelCanvas };
+export function terrainChunks(map: GridMap, forest?: Uint8Array): { texture: Texture; x: number; y: number; w: number; h: number }[] {
+  const whole = terrainTexture(map, forest) as ReturnType<typeof terrainTexture> & { canvas: PixelCanvas };
   const src = whole.canvas;
   if (src.w <= 2048 && src.h <= 2048) return [whole];
   whole.texture.destroy(true);

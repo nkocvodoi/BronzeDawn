@@ -10,6 +10,7 @@ import { Arch, buildingPic, Facing, nodePic, Pic, playerColor, Pose, projectileP
 import { CursorKind, cursors } from "./cursors";
 import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
+import { FogFilter } from "./fog";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 import { MouseLock } from "./mouselock";
 import { Sfx, Sound, VoiceKind } from "./sound";
@@ -83,6 +84,7 @@ export class Game {
   private effects = new Container();
   private fogSprite = new Sprite();
   private fogCanvas = document.createElement("canvas");
+  private fogFilter: FogFilter;
   private views = new Map<number, View>();
   /** Enemy buildings the player has seen. Under fog they are drawn as last seen, not as they are. */
   private seen = new Set<number>();
@@ -119,6 +121,9 @@ export class Game {
     this.world = new World(rules, seed, ["You", "Enemy"]);
     this.entities.sortableChildren = true;
     this.worldLayer.addChild(this.terrain, this.entities, this.effects, this.fogSprite);
+    // Hard black edges and a stipple over explored ground, drawn on the GPU from the smooth fog texture.
+    this.fogFilter = new FogFilter(app.renderer.resolution);
+    this.fogSprite.filters = [this.fogFilter.filter];
     app.stage.addChild(this.worldLayer);
     this.buildWorld();
     this.bindInput();
@@ -146,7 +151,18 @@ export class Game {
 
   private buildWorld() {
     this.terrain.removeChildren().forEach((c) => c.destroy({ texture: true }));
-    for (const t of terrainChunks(this.world.map)) {
+    // The ground under a forest is dark, and a little darker around it.
+    const map = this.world.map, forest = new Uint8Array(map.width * map.height);
+    for (const r of this.world.nodes) {
+      if (r.def.id !== "tree") continue;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const x = r.tile.x + dx, y = r.tile.y + dy;
+        if (x < 0 || y < 0 || x >= map.width || y >= map.height) continue;
+        const i = y * map.width + x;
+        forest[i] = dx === 0 && dy === 0 ? 1 : forest[i] || 2;
+      }
+    }
+    for (const t of terrainChunks(this.world.map, forest)) {
       const ground = new Sprite(t.texture);
       ground.position.set(t.x, t.y);
       ground.width = t.w;
@@ -324,6 +340,7 @@ export class Game {
     this.worldLayer.scale.set(1 / this.cam.zoom);
     // Whole screen pixels, so the pixel art never shimmers while scrolling.
     this.worldLayer.position.set(Math.round(sw / 2 - this.cam.x / this.cam.zoom), Math.round(sh / 2 - this.cam.y / this.cam.zoom));
+    this.fogFilter.update(this.worldLayer.x, this.worldLayer.y, this.worldLayer.scale.x, this.app.canvas.height);
     this.sync(alpha);
     if (w.tick !== this.fogStamp && (w.tick % 5 === 0 || this.fogStamp < 0)) { this.updateFog(); this.fogStamp = w.tick; }
     if (Math.floor(w.tick / 10) !== this.minimapStamp) { this.updateMinimap(); this.minimapStamp = Math.floor(w.tick / 10); }

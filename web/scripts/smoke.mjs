@@ -55,7 +55,9 @@ await page.keyboard.press("c");
 check(await g(() => game.world.buildingsOf(0).find((b) => b.def.id === "town_center").queue.length === 1), "C on the town center queues a villager");
 check((await g(() => game.world.players[0].res.food)) === food - 50, "training cost 50 food");
 
-// Click a villager to select it.
+// Click a villager to select it. The game holds still while the test aims at moving villagers, as a
+// player could pause to; at the larger default zoom a walking villager otherwise slips from under the click.
+await g(() => { game.paused = true; });
 const v = await g(() => game.world.unitsOf(0).find((u) => u.isVillager).id);
 let p = await at(v);
 await page.mouse.click(p.x, p.y - 14);
@@ -78,7 +80,8 @@ await page.mouse.click(p.x, p.y - 14);
 check((await page.$$("#commands button:not(.empty)")).length === 3, "a villager's panel shows Build, Stop and Delete");
 check((await page.$$("#commands button")).length === 12, "the command grid has the original's two rows of six");
 await page.keyboard.press("b");
-await wait(50);
+// The menu is redrawn on the next frame, which a software-rendered browser can take a while to reach.
+await page.waitForFunction(() => document.querySelector("#commands button:not(.empty)")?.getAttribute("aria-label") === "House", null, { timeout: 3000 }).catch(() => {});
 const buildIcons = await page.$$eval("#commands button:not(.empty)", (bs) => bs.map((b) => b.getAttribute("aria-label")));
 check(buildIcons[0] === "House" && buildIcons[1] === "Barracks" && !buildIcons.includes("Market"), "B opens the build menu: House first, then Barracks, and only what the Stone Age allows");
 await page.keyboard.press("e");
@@ -98,6 +101,7 @@ check((await g(() => game.world.buildingsOf(0).filter((b) => b.def.id === "house
 check(await g(() => game.world.unit(game.selection[0])?.order.kind === "build"), "the selected villager goes to build it");
 
 // Leave the half-built house for a tree, then right-click its foundation: the villager goes back and finishes it.
+await g(() => { game.paused = false; }); // the builder needs time to walk away
 const builder = await g(() => game.selection[0]);
 const house = await g((b) => game.world.buildingsOf(0).find((x) => x.def.id === "house" && !x.complete).id, builder);
 await g(([b, h]) => { const w = game.world, u = w.unit(b); w.gather(0, [b], w.nearestNode(1, u.pos, 30).id); game.selection = [b]; }, [builder, house]);

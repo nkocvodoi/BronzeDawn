@@ -62,8 +62,9 @@ export function generateMap(w: World) {
     const a = w.rng.int(0, 15);
     const at = (step: number, dist: number) => s.center.add(DIRS16[(a + step) % 16].mul(dist)).tile;
     cluster(w, "berry_bush", at(0, 6), 6);
-    forest(w, at(5, 10), 3.2, 0.85);
-    forest(w, at(8, 12), 2.2, 0.8);
+    // A thick wood near every base, as in the original: trees standing shoulder to shoulder.
+    forest(w, at(5, 11), 4.2, 0.95);
+    forest(w, at(8, 13), 2.8, 0.92);
     cluster(w, "gold_mine", at(10, 9), 5);
     cluster(w, "stone_mine", at(12, 10), 4);
     for (let k = 0; k < 6; k++) {
@@ -76,12 +77,12 @@ export function generateMap(w: World) {
     herd(w, "elephant", at(7, 14), 1);
   }
 
-  // The rest of the map.
-  for (let k = 0; k < Math.round(16 * scale); k++) {
+  // The rest of the map: fewer, bigger and denser woods than scattered copses, and lone trees between.
+  for (let k = 0; k < Math.round(11 * scale); k++) {
     const c = new Tile(w.rng.int(2, n - 3), w.rng.int(2, n - 3));
-    if (farFromStarts(c, 11)) forest(w, c, w.rng.int(2, 4), 0.75);
+    if (farFromStarts(c, 12)) forest(w, c, w.rng.int(3, 6), 0.93);
   }
-  for (let k = 0; k < Math.round(70 * scale); k++) {
+  for (let k = 0; k < Math.round(45 * scale); k++) {
     const c = new Tile(w.rng.int(1, n - 2), w.rng.int(1, n - 2));
     if (farFromStarts(c, 8)) w.addNode("lone_tree", c);
   }
