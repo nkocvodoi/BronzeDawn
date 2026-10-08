@@ -8,12 +8,15 @@ export class GridMap {
   readonly terrain: Uint8Array;
   /** Entity id of the building or resource on each tile, 0 for none. */
   readonly occupant: Int32Array;
+  /** 1 where an occupant blocks movement. Farms occupy tiles but are walked over. */
+  readonly solid: Uint8Array;
   /** Per-tile number for drawing variety. No effect on rules. */
   readonly shade: Uint8Array;
 
   constructor(readonly width: number, readonly height: number) {
     this.terrain = new Uint8Array(width * height);
     this.occupant = new Int32Array(width * height);
+    this.solid = new Uint8Array(width * height);
     this.shade = new Uint8Array(width * height);
   }
 
@@ -25,14 +28,20 @@ export class GridMap {
   passableXY(x: number, y: number) {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) return false;
     const i = y * this.width + x;
-    return this.terrain[i] !== Terrain.water && this.occupant[i] === 0;
+    return this.terrain[i] !== Terrain.water && this.solid[i] === 0;
   }
 
   passable(t: Tile) { return this.passableXY(t.x, t.y); }
 
-  setOccupant(fp: Footprint, id: number) {
-    for (const t of fp.tiles()) if (this.inside(t)) this.occupant[this.index(t)] = id;
+  setOccupant(fp: Footprint, id: number, solid = id !== 0) {
+    for (const t of fp.tiles()) {
+      if (!this.inside(t)) continue;
+      this.occupant[this.index(t)] = id;
+      this.solid[this.index(t)] = solid ? 1 : 0;
+    }
   }
+
+  solidAt(t: Tile) { return this.inside(t) && this.solid[this.index(t)] === 1; }
 
   /** True when a straight walk from a to b crosses only passable tiles. */
   clearLine(a: Vec2, b: Vec2) {
@@ -84,7 +93,7 @@ export class GridMap {
         if (!this.inside(n)) continue;
         const i = this.index(n);
         if (seen[i] || this.terrain[i] === Terrain.water) continue;
-        if (this.occupant[i] !== 0 && !ignoring(this.occupant[i])) continue;
+        if (this.solid[i] !== 0 && !ignoring(this.occupant[i])) continue;
         seen[i] = 1;
         stack.push(n);
       }

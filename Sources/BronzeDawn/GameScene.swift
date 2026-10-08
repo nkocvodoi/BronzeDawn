@@ -165,6 +165,7 @@ final class GameScene: SKScene {
             "Grow a Stone Age village, advance to the Tool Age, and destroy the enemy.",
             "",
             "Press 1 for Easy,  2 for Normal,  3 for Hard",
+            "Hard: the computer gathers 20% faster.",
             "",
             "F1 shows the controls at any time",
         ])

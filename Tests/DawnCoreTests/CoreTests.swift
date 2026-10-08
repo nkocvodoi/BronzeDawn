@@ -5,7 +5,7 @@ final class CoreTests: XCTestCase {
     static let rules: Rules = {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("data/rules.json")
+            .appendingPathComponent("data/rules-mac.json")
         return try! Rules(contentsOf: url)
     }()
 

@@ -156,7 +156,7 @@ public final class Rules {
 
         public var description: String {
             switch self {
-            case .notFound(let tried): return "rules.json not found. Tried:\n  " + tried.joined(separator: "\n  ")
+            case .notFound(let tried): return "rules-mac.json not found. Tried:\n  " + tried.joined(separator: "\n  ")
             case .bad(let why): return "rules.json: \(why)"
             }
         }
@@ -189,8 +189,9 @@ public final class Rules {
         try self.init(data: try Data(contentsOf: url))
     }
 
-    /// Finds rules.json: $BRONZE_DAWN_RULES, the app bundle's Resources, then
-    /// data/rules.json in the current directory or any folder above the binary.
+    /// Finds the Mac ruleset: $BRONZE_DAWN_RULES, the app bundle's Resources, then
+    /// data/rules-mac.json in the current directory or any folder above the binary.
+    /// (data/rules.json is the full four-age ruleset of the web build.)
     public static func locate() throws -> Rules {
         var tried: [String] = []
         var candidates: [URL] = []
@@ -198,13 +199,13 @@ public final class Rules {
             candidates.append(URL(fileURLWithPath: env))
         }
         if let res = Bundle.main.resourceURL {
-            candidates.append(res.appendingPathComponent("rules.json"))
+            candidates.append(res.appendingPathComponent("rules-mac.json"))
         }
         candidates.append(URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-            .appendingPathComponent("data/rules.json"))
+            .appendingPathComponent("data/rules-mac.json"))
         var dir = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath().deletingLastPathComponent()
         for _ in 0..<6 {
-            candidates.append(dir.appendingPathComponent("data/rules.json"))
+            candidates.append(dir.appendingPathComponent("data/rules-mac.json"))
             dir = dir.deletingLastPathComponent()
         }
         for url in candidates {

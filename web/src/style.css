@@ -1,86 +1,132 @@
+/* A carved-stone and wood frame in the spirit of 90s strategy games. All art is generated in code. */
 :root {
-  --back: rgba(41, 31, 20, 0.94);
-  --edge: #9e7a42;
-  --text: #f5e6c2;
+  --edge-light: #b89a62;
+  --edge-dark: #2a1e10;
+  --text: #f3e4bd;
   --gold: #ffd659;
   --panel-h: 150px;
-  --top-h: 30px;
-  font-family: "Avenir Next", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --top-h: 32px;
+  --stone: none;
+  font-family: "Alegreya Sans", "Avenir Next", system-ui, sans-serif;
   color: var(--text);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
 canvas#game { position: fixed; inset: 0; display: block; }
+#minimap, #portrait { image-rendering: pixelated; }
 [hidden] { display: none !important; }
+
+/* Bevelled stone: light top-left edge, dark bottom-right, like chiselled blocks. */
+.stone, #topbar, #panel {
+  background: var(--stone) #463c2e;
+  background-size: 64px 64px;
+  image-rendering: pixelated;
+  box-shadow: inset 2px 2px 0 rgba(255, 236, 190, .25), inset -2px -2px 0 rgba(0, 0, 0, .55);
+}
+.well {
+  background: rgba(10, 8, 5, .78);
+  border: 2px solid; border-color: var(--edge-dark) var(--edge-light) var(--edge-light) var(--edge-dark);
+}
 
 #topbar {
   position: fixed; top: 0; left: 0; right: 0; height: var(--top-h);
-  display: flex; align-items: center; gap: 28px; padding: 0 14px;
-  background: var(--back); border-bottom: 1px solid var(--edge);
-  font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; z-index: 5;
+  display: flex; align-items: center; gap: 22px; padding: 0 12px;
+  border-bottom: 2px solid var(--edge-dark);
+  font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; z-index: 5;
+  text-shadow: 1px 1px 0 #000;
 }
-#topbar span { min-width: 84px; }
+#topbar span { min-width: 92px; }
+#topbar [id^=res-] { padding-left: 22px; background: no-repeat left center / 16px 16px; image-rendering: pixelated; }
 #topbar .spacer { flex: 1; min-width: 0; }
-#topbar .gold { color: var(--gold); }
-#topbar .warn { color: orange; }
+#topbar .gold { color: var(--gold); font-family: Cinzel, serif; }
+#topbar .warn { color: #ff9a3a; }
 
 #panel {
   position: fixed; left: 0; right: 0; bottom: 0; height: var(--panel-h);
-  display: flex; gap: 16px; padding: 8px; background: var(--back); border-top: 1px solid var(--edge); z-index: 5;
+  display: flex; gap: 10px; padding: 9px; border-top: 2px solid var(--edge-light); z-index: 5;
 }
-#minimap-frame { flex: none; width: 226px; border: 1px solid var(--edge); border-radius: 6px; background: rgba(0,0,0,.6); display: grid; place-items: center; }
+#minimap-frame { flex: none; width: 230px; display: grid; place-items: center; }
+#minimap-frame, #portrait-frame, #info { background: rgba(10, 8, 5, .78); border: 2px solid; border-color: var(--edge-dark) var(--edge-light) var(--edge-light) var(--edge-dark); }
 #minimap { width: 220px; height: 110px; cursor: crosshair; }
-#info { flex: 1; min-width: 180px; overflow: hidden; }
-#info h2 { margin: 2px 0 6px; font-size: 16px; }
-#info p { margin: 0; font-size: 12px; line-height: 18px; min-height: 18px; opacity: .95; }
-.bar { width: 160px; height: 7px; background: #444; margin: 2px 0 6px; }
-.bar.thin { height: 6px; margin-top: 6px; }
+#portrait-frame { flex: none; width: 112px; display: grid; place-items: center; }
+#portrait { width: 96px; height: 96px; }
+#info { flex: 1; min-width: 180px; overflow: hidden; padding: 6px 10px; }
+#info h2 { margin: 0 0 4px; font-family: Cinzel, serif; font-size: 17px; letter-spacing: .02em; text-shadow: 1px 1px 0 #000; }
+#info p { margin: 0; font-size: 13px; line-height: 17px; min-height: 17px; }
+.bar { width: 170px; height: 8px; background: #2a0c08; border: 1px solid #000; margin: 2px 0 5px; }
+.bar.thin { height: 7px; margin-top: 5px; }
 .bar i { display: block; height: 100%; background: #3c3; }
 #progress-bar { background: var(--gold); }
 
-#commands { flex: none; display: grid; grid-template-columns: repeat(5, 88px); grid-auto-rows: 56px; gap: 6px; align-content: start; }
+#commands { flex: none; display: grid; grid-template-columns: repeat(5, 86px); grid-auto-rows: 58px; gap: 5px; align-content: start; padding: 2px; }
 #commands button {
-  all: unset; box-sizing: border-box; padding: 4px 6px; border-radius: 6px; cursor: pointer;
-  background: #573f24; border: 1px solid var(--edge); display: flex; flex-direction: column; justify-content: space-between;
+  all: unset; box-sizing: border-box; padding: 4px 6px; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: space-between;
+  background: linear-gradient(#6e5534, #4a3820); color: var(--text);
+  border: 2px solid; border-color: var(--edge-light) var(--edge-dark) var(--edge-dark) var(--edge-light);
+  text-shadow: 1px 1px 0 #000;
 }
-#commands button:hover { background: #6d5030; }
-#commands button.off { background: #383838; border-color: #666; color: #999; }
+#commands button:hover { background: linear-gradient(#80653e, #5a4428); }
+#commands button:active { border-color: var(--edge-dark) var(--edge-light) var(--edge-light) var(--edge-dark); }
+#commands button.off { background: linear-gradient(#4a4440, #34302c); color: #9a948a; }
 #commands b { color: var(--gold); font-size: 11px; }
-#commands span { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#commands small { font-size: 9.5px; opacity: .85; white-space: nowrap; }
+#commands span { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#commands small { font-size: 10px; opacity: .9; white-space: nowrap; }
 
 #tooltip {
-  position: fixed; right: 8px; bottom: calc(var(--panel-h) + 8px); padding: 4px 8px; font-size: 12px;
-  background: rgba(0,0,0,.85); border: 1px solid var(--edge); border-radius: 4px; z-index: 6;
+  position: fixed; right: 8px; bottom: calc(var(--panel-h) + 8px); padding: 4px 10px; font-size: 13px;
+  background: rgba(10, 8, 5, .9); border: 2px solid var(--edge-light); z-index: 6; text-shadow: 1px 1px 0 #000;
 }
-#tooltip.blocked { color: orange; }
+#tooltip.blocked { color: #ff9a3a; }
 
 #messages { position: fixed; top: calc(var(--top-h) + 10px); left: 0; right: 0; text-align: center; pointer-events: none; z-index: 4; }
-#messages div { font-weight: 600; font-size: 15px; text-shadow: 0 1px 3px #000; margin-bottom: 4px; transition: opacity 1s; }
-#messages .warn { color: orange; }
+#messages div { font-weight: 700; font-size: 16px; text-shadow: 1px 1px 0 #000, 0 0 6px #000; margin-bottom: 4px; transition: opacity 1s; }
+#messages .warn { color: #ff9a3a; }
 #messages .fade { opacity: 0; }
 
-#dragbox { position: fixed; border: 1px solid #fff; background: rgba(255,255,255,.08); pointer-events: none; z-index: 3; }
+#dragbox { position: fixed; border: 1px solid #fff; pointer-events: none; z-index: 3; }
 
-#overlay { position: fixed; inset: 0; display: grid; place-items: center; z-index: 10; background: rgba(0,0,0,.25); }
+#overlay { position: fixed; inset: 0; display: grid; place-items: center; z-index: 10; background: rgba(0, 0, 0, .3); }
 #overlay .card {
-  max-width: min(720px, calc(100vw - 32px)); padding: 26px 34px; text-align: center;
-  background: rgba(0,0,0,.85); border: 2px solid var(--edge); border-radius: 12px;
+  max-width: min(760px, calc(100vw - 32px)); padding: 26px 36px; text-align: center;
+  background: var(--stone) #463c2e; background-size: 64px 64px;
+  border: 3px solid; border-color: var(--edge-light) var(--edge-dark) var(--edge-dark) var(--edge-light);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .6);
 }
-#overlay h1 { margin: 0 0 14px; font-size: 34px; color: var(--gold); }
-#overlay .lose h1 { color: #e33; }
+#overlay h1 { margin: 0 0 14px; font-family: Cinzel, serif; font-size: 38px; color: var(--gold); text-shadow: 2px 2px 0 #000; }
+#overlay .lose h1 { color: #e84a3a; }
 #overlay .help h1 { color: var(--text); }
-#overlay p { margin: 8px 0; font-size: 15px; }
+#overlay .help p { font-size: 14px; }
+#overlay p { margin: 8px 0; font-size: 16px; text-shadow: 1px 1px 0 #000; }
 #overlay .choices { display: inline-flex; gap: 10px; margin: 10px 0; flex-wrap: wrap; justify-content: center; }
 #overlay button {
-  font: inherit; font-weight: 600; color: var(--text); background: #573f24; border: 1px solid var(--edge);
-  border-radius: 8px; padding: 8px 18px; cursor: pointer;
+  font: inherit; font-weight: 700; font-size: 16px; color: var(--text); cursor: pointer; padding: 8px 20px;
+  background: linear-gradient(#6e5534, #4a3820);
+  border: 2px solid; border-color: var(--edge-light) var(--edge-dark) var(--edge-dark) var(--edge-light);
+  text-shadow: 1px 1px 0 #000;
 }
-#overlay button:hover { background: #6d5030; }
+#overlay button:hover { background: linear-gradient(#80653e, #5a4428); }
 
-@media (max-width: 900px) {
-  #topbar { gap: 12px; font-size: 12px; }
+@media (max-width: 1000px) {
+  #topbar { gap: 10px; font-size: 13px; }
   #topbar span { min-width: 0; }
+  #portrait-frame { display: none; }
   #commands { grid-template-columns: repeat(5, 64px); }
   #commands small { display: none; }
 }
+
+/* Six columns and three rows of commands, each with a pixel icon. */
+#commands { grid-template-columns: repeat(6, 78px); grid-auto-rows: 42px; gap: 4px; }
+#commands button { position: relative; padding: 2px 4px 2px 30px; justify-content: center; gap: 1px; }
+#commands button img { position: absolute; left: 3px; top: 50%; width: 24px; height: 24px; margin-top: -12px; image-rendering: pixelated; }
+#commands button b { position: absolute; right: 4px; top: 2px; font-size: 10px; }
+#commands span { font-size: 11px; line-height: 13px; white-space: normal; max-height: 26px; }
+#commands small { font-size: 9px; line-height: 11px; }
+#overlay select { font: inherit; padding: 4px 8px; background: #2a2218; color: var(--text); border: 2px solid var(--edge-light); }
+#clock.warn { color: #ff9a3a; }
+@media (max-width: 1100px) {
+  #commands { grid-template-columns: repeat(6, 62px); }
+  #commands small { display: none; }
+}
+#commands button { overflow: hidden; }
+#commands span, #commands small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }

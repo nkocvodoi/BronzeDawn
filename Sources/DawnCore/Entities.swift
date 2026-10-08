@@ -137,6 +137,8 @@ public final class Player {
     public var pop = 0
     public var popCap = 0
     public var defeated = false
+    /// Gather speed multiplier. 1 for people; the hard AI gets an announced bonus.
+    public var gatherBonus = 1.0
     public var stats = PlayerStats()
 
     init(id: Int, name: String, res: ResBag) {

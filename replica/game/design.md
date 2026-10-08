@@ -91,6 +91,17 @@ Tests: `npm test` (16 unit tests and two headless matches, mirrors the Swift sui
 
 Found while porting, fixed in both builds: units walking a path were pushed back by a crowd of busy gatherers and could stand still forever. Walking units now pass through.
 
+### The four-age ruleset (web build)
+
+The web build now follows the original's gameplay, researched in `replica/game/aoe1-research.md` (sources linked there; mechanics and numbers only):
+four ages (Tool 500F, Bronze 800F, Iron 1000F 800G, each needing two different buildings of the age), 33 units with their upgrade lines,
+21 buildings including walls, the tower line and the Wonder, 65 technologies, 16 civilizations in five architecture sets, hunting with rotting meat,
+shore fishing, priests that convert and heal, siege splash that moving units dodge without Ballistics, trample, buildings taking a fifth of the damage,
+and conquest or Wonder victory. `scripts/gen-rules.py` writes `data/rules.json`; `balance.py` scores it age by age and lists three accepted
+imbalances that are the original's own (Axeman, Hoplite, Centurion). The Mac build keeps the two-age slice in `data/rules-mac.json`.
+
+Not yet: ships and docks, ruins and artifacts, sound.
+
 ## 9. Clean-room notes
 
 Taken: genre mechanics (gather, ages, counters, fog). Made fresh: every name, number, sprite (drawn in code), word and line of code. No third-party assets.

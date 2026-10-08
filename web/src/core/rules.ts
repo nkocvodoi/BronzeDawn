@@ -41,20 +41,56 @@ export class ResBag {
   }
 }
 
-export interface AgeDef { id: string; name: string; cost?: Record<string, number>; research_time?: number; requires_buildings?: number }
-export interface NodeDef { id: string; name: string; resource: string; amount: number }
+export interface AgeDef {
+  id: string; name: string; cost?: Record<string, number>; research_time?: number;
+  requires_buildings?: number;
+  /** The buildings that count toward requires_buildings (two different ones, as in the original). */
+  requires_from?: string[];
+}
+export interface NodeDef {
+  id: string; name: string; resource: string; amount: number;
+  /** Gather rate override (shore fish are faster). */
+  rate?: number;
+  /** "plant" food goes to a Granary, "meat" to a Storage Pit; the Town Center takes both. */
+  food_kind?: "plant" | "meat";
+  on_water?: boolean;
+}
+export interface AnimalDef {
+  id: string; name: string; hp: number; attack: number; armor: number; attack_cooldown?: number;
+  speed: number; los: number; food: number; behavior: "flee" | "defend" | "aggressive";
+  /** Food a carcass loses per second. */
+  decay: number; herd: [number, number]; near_water?: boolean;
+}
 export interface EconomyDef {
   carry: number;
   gather_rates: Record<string, number>;
   start: Record<string, number>;
   start_villagers: number;
   pop_max: number;
+  /** How long a finished Wonder must stand to win. */
+  wonder_seconds?: number;
 }
 export interface UnitDef {
   id: string; name: string; class: string; age: string; trained_at: string;
   cost: Record<string, number>; train_time: number; hp: number; attack: number;
   armor: number; pierce_armor: number; range: number; attack_cooldown: number;
   speed: number; los: number; pop: number; bonus?: Record<string, number>;
+  tags?: string[];
+  requires_tech?: string;
+  /** Overrides the damage type: "pierce" by default for anything with range. */
+  damage?: "melee" | "pierce";
+  /** Splash radius of a siege stone. */
+  area?: number;
+  min_range?: number;
+  projectile?: "arrow" | "stone" | "bolt" | "spear";
+  /** Elephants and scythe chariots hit everything this close to their target. */
+  trample?: number;
+  converts?: boolean;
+  heal?: number;
+  /** Conversion is this many times harder. */
+  convert_resist?: number;
+  /** Scouts do not chase villagers on their own. */
+  ignores_villagers?: boolean;
 }
 export interface BuildingDef {
   id: string; name: string; age: string; cost: Record<string, number>; size: number;
@@ -62,19 +98,45 @@ export interface BuildingDef {
   drop_off?: string[]; trains?: string[]; requires?: string[];
   resource?: Record<string, number>; attack?: number; range?: number;
   attack_cooldown?: number; armor?: number; pierce_armor?: number;
+  food_kinds?: ("plant" | "meat")[];
+  requires_tech?: string;
+  tags?: string[];
+  projectile?: "arrow" | "stone" | "bolt" | "spear";
 }
+
+/** What an effect applies to. Unit tags must all match; building tags match any, "!tag" excludes, "*" is every building. */
+export interface Target { tags?: string[]; units?: string[]; buildings?: string[]; buildings_tags?: string[] }
+export type Effect =
+  | { type: "stat"; stat: string; op: "add" | "mul"; value: number; target: Target }
+  | { type: "gather"; resource: string; rate: number; carry: number; kind?: "farm" | "hunt" | "forage" | "fish" }
+  | { type: "upgrade"; from: string; to: string }
+  | { type: "farm_food"; op: "add" | "mul"; value: number }
+  | { type: "mine_yield"; resource: string; value: number }
+  | { type: "flag"; flag: string }
+  | { type: "conversion"; stat: "chance" | "regen" | "resist"; value: number }
+  | { type: "carry"; value: number }
+  | { type: "heal"; value: number };
+export interface TechDef {
+  id: string; name: string; age: string; building: string; cost: Record<string, number>; time: number;
+  requires: string[]; effects: Effect[];
+}
+export interface CivDef { id: string; name: string; arch: string; effects: Effect[]; disabled: string[] }
 export interface RulesFile {
   resources: string[];
   ages: AgeDef[];
-  combat?: { min_damage?: number };
+  combat?: { min_damage?: number; building_factor?: number; building_min?: number };
   economy: EconomyDef;
   nodes: NodeDef[];
+  animals?: AnimalDef[];
   units: UnitDef[];
   buildings: BuildingDef[];
+  techs?: TechDef[];
+  civs?: CivDef[];
 }
 
 export const isWorker = (u: UnitDef) => u.class === "worker";
 export const isRanged = (u: UnitDef) => u.range > 0;
+export const hasTag = (u: UnitDef, t: string) => u.tags?.includes(t) ?? false;
 
 export class Rules {
   readonly ages: AgeDef[];
@@ -85,6 +147,12 @@ export class Rules {
   readonly unitOrder: string[];
   readonly buildings = new Map<string, BuildingDef>();
   readonly buildingOrder: string[];
+  readonly animals = new Map<string, AnimalDef>();
+  readonly techs = new Map<string, TechDef>();
+  readonly techOrder: string[];
+  readonly civs: CivDef[];
+  readonly buildingFactor: number;
+  readonly buildingMin: number;
 
   constructor(file: RulesFile) {
     for (const r of file.resources) {
@@ -93,12 +161,18 @@ export class Rules {
     this.ages = file.ages;
     this.economy = file.economy;
     this.minDamage = file.combat?.min_damage ?? 1;
+    this.buildingFactor = file.combat?.building_factor ?? 1;
+    this.buildingMin = file.combat?.building_min ?? this.minDamage;
+    for (const a of file.animals ?? []) this.animals.set(a.id, a);
+    for (const t of file.techs ?? []) this.techs.set(t.id, t);
+    this.techOrder = (file.techs ?? []).map((t) => t.id);
+    this.civs = file.civs ?? [];
     for (const n of file.nodes) this.nodes.set(n.id, n);
     for (const u of file.units) this.units.set(u.id, u);
     for (const b of file.buildings) this.buildings.set(b.id, b);
     this.unitOrder = file.units.map((u) => u.id);
     this.buildingOrder = file.buildings.map((b) => b.id);
-    for (const id of ["town_center", "house", "farm"]) {
+    for (const id of ["town_center", "house"]) {
       if (!this.buildings.has(id)) throw new Error(`rules.json: this build needs a '${id}' building`);
     }
     if (!this.units.has("villager")) throw new Error("rules.json: this build needs a 'villager' unit");

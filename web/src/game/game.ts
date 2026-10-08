@@ -3,20 +3,61 @@ import { AIController, Difficulty } from "../core/ai";
 import { Building, Entity, ResourceNode, Unit } from "../core/entities";
 import { Tile, Vec2 } from "../core/geom";
 import { Terrain } from "../core/grid";
-import { Res, ResBag, Rules } from "../core/rules";
+import { Effect, Res, ResBag, Rules, TechDef } from "../core/rules";
 import { clock } from "../core/sim";
 import { World } from "../core/world";
-import { buildingPic, nodePic, Pic, playerColor, terrainChunks, unitPic } from "./art";
+import { Arch, buildingPic, Facing, nodePic, Pic, playerColor, Pose, projectilePic, terrainTexture, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { Command, HUD } from "./hud";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 
 /** The drawable side of one entity. */
-interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean }
+interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean; key: string; barW: number; tiles: Tile[] }
 
-const BUILD_KEYS: [string, string][] = [
-  ["house", "Q"], ["granary", "W"], ["storage_pit", "E"], ["barracks", "R"],
-  ["farm", "A"], ["archery_range", "S"], ["stable", "D"], ["watch_tower", "F"], ["town_center", "Z"],
+/** Zoom steps where one art pixel covers a whole number of screen pixels: 4, 3, 2, 1. */
+const ZOOMS = [0.5, 2 / 3, 1, 2];
+
+/** What a villager can build, in grid order. Walls and towers show their current tier. */
+const BUILD_ORDER = [
+  "house", "granary", "storage_pit", "barracks", "market", "farm",
+  "archery_range", "stable", "small_wall", "watch_tower", "government_center", "temple",
+  "academy", "siege_workshop", "town_center", "wonder",
 ];
+
+/** Hotkeys go by position in the 6 x 3 command grid. */
+const KEYS = "QWERTYASDFGJZXCVBN"; // H stays "select the Town Center"
+
+const WALL_TIER: Record<string, 0 | 1 | 2> = { small_wall: 0, medium_wall: 1, fortification: 2 };
+
+/** One line on what a technology does, for its tooltip. */
+function describe(t: TechDef, rules: Rules): string {
+  const name = (id: string) => rules.units.get(id)?.name ?? rules.buildings.get(id)?.name ?? id;
+  const who = (e: Extract<Effect, { type: "stat" }>) => {
+    const t2 = e.target;
+    if (t2.units) return t2.units.map(name).join(", ");
+    if (t2.tags) return t2.tags.join(" ");
+    if (t2.buildings_tags) return t2.buildings_tags.includes("*") ? "buildings" : t2.buildings_tags.filter((x) => !x.startsWith("!")).join(", ");
+    return "";
+  };
+  const parts = t.effects.map((e) => {
+    switch (e.type) {
+      case "stat": {
+        const v = e.op === "add" ? `${e.value > 0 ? "+" : ""}${e.value}` : e.value < 1 ? `-${Math.round((1 - e.value) * 100)}%` : `+${Math.round((e.value - 1) * 100)}%`;
+        return `${v} ${e.stat.replace("_", " ")} (${who(e)})`;
+      }
+      case "gather": return `${e.resource} gathering +${Math.round((e.rate - 1) * 100)}%${e.carry ? `, carry +${e.carry}` : ""}`;
+      case "upgrade": return `${name(e.from)} becomes ${name(e.to)}`;
+      case "farm_food": return `farms ${e.op === "add" ? `+${e.value}` : `x${e.value}`} food`;
+      case "mine_yield": return `gold mines yield +${Math.round((e.value - 1) * 100)}%`;
+      case "flag": return e.flag === "ballistics" ? "siege leads moving targets" : "priests convert buildings and priests";
+      case "conversion": return `conversion ${e.stat} x${e.value}`;
+      case "carry": return `villagers carry ${e.value}`;
+      case "heal": return `priests heal x${e.value}`;
+    }
+  });
+  const unlocks = [...rules.units.values(), ...rules.buildings.values()].filter((d) => d.requires_tech === t.id).map((d) => d.name);
+  if (unlocks.length && !t.effects.some((e) => e.type === "upgrade")) parts.push(`unlocks ${unlocks.join(", ")}`);
+  return parts.join("; ");
+}
 
 export class Game {
   world: World;
@@ -24,6 +65,9 @@ export class Game {
   started = false;
   paused = false;
   revealMap = false;
+  private seed: number;
+  private wallStart: Tile | null = null;
+  private wallGhosts: Sprite[] = [];
 
   private hud = new HUD();
   private worldLayer = new Container();
@@ -33,7 +77,12 @@ export class Game {
   private fogSprite = new Sprite();
   private fogCanvas = document.createElement("canvas");
   private views = new Map<number, View>();
+  /** Enemy buildings the player has seen. Under fog they are drawn as last seen, not as they are. */
+  private seen = new Set<number>();
+  /** Enemy buildings destroyed out of sight: still drawn until the player looks again. */
+  private ghosts = new Map<number, { view: View; tiles: Tile[] }>();
   private cam = { x: 0, y: 0, zoom: 1 };
+  private pinch = 0;
 
   selection: number[] = [];
   private groups = new Map<number, number[]>();
@@ -51,6 +100,7 @@ export class Game {
   private dragBox = document.querySelector("#dragbox") as HTMLDivElement;
 
   constructor(private app: Application, private rules: Rules, seed: number) {
+    this.seed = seed;
     this.world = new World(rules, seed, ["You", "Enemy"]);
     this.entities.sortableChildren = true;
     this.worldLayer.addChild(this.terrain, this.entities, this.effects, this.fogSprite);
@@ -63,10 +113,14 @@ export class Game {
 
   // ---- setup
 
-  private newGame(seed: number) {
-    this.world = new World(this.rules, seed, ["You", "Enemy"]);
+  private newGame(seed: number, civs: (string | null)[] = []) {
+    this.seed = seed;
+    this.world = new World(this.rules, seed, ["You", "Enemy"], 72, true, { civs });
     for (const v of this.views.values()) v.root.destroy({ children: true });
     this.views.clear();
+    for (const g of this.ghosts.values()) g.view.root.destroy({ children: true });
+    this.ghosts.clear();
+    this.seen.clear();
     this.selection = [];
     this.groups.clear();
     this.cancelPlacing();
@@ -76,13 +130,12 @@ export class Game {
 
   private buildWorld() {
     this.terrain.removeChildren().forEach((c) => c.destroy({ texture: true }));
-    for (const ch of terrainChunks(this.world.map)) {
-      const s = new Sprite(ch.texture);
-      s.position.set(ch.x, ch.y);
-      s.width = ch.size;
-      s.height = ch.size;
-      this.terrain.addChild(s);
-    }
+    const t = terrainTexture(this.world.map);
+    const ground = new Sprite(t.texture);
+    ground.position.set(t.x, t.y);
+    ground.width = t.w;
+    ground.height = t.h;
+    this.terrain.addChild(ground);
     const n = this.world.map.width;
     // One extra tile of black on every side so the terrain's edge never peeks out.
     this.fogCanvas.width = n + 2;
@@ -119,39 +172,49 @@ export class Game {
 
   showStart() {
     this.started = false;
+    const civs = this.rules.civs.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
     this.hud.showOverlay("Bronze Dawn", [
-      "Grow a Stone Age village, advance to the Tool Age, and destroy the enemy.",
+      "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
+      `Your civilization: <select id="civ"><option value="">Random</option>${civs}</select>`,
       `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
+      "Hard: the computer gathers 20% faster.",
       "Press ? at any time for the controls",
     ]);
   }
 
   start(d: Difficulty) {
+    // The same map, now with civilizations: yours, and one for the computer.
+    const pick = (document.querySelector("#civ") as HTMLSelectElement | null)?.value || null;
+    const civs = this.rules.civs;
+    const mine = pick ?? (civs.length ? civs[Math.floor(Math.random() * civs.length)].id : null);
+    const theirs = civs.length ? civs[(this.seed * 7 + 3) % civs.length].id : null;
+    this.newGame(this.seed, [mine, theirs]);
     this.world.ais = [new AIController(1, d)];
+    this.world.ais[0].attach(this.world);
     this.started = true;
     this.hud.hideOverlay();
-    this.hud.message("Gather food and wood. Build houses. Good luck.");
+    const civ = this.world.players[this.me].civ;
+    this.hud.message(`${civ ? `You lead the ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
     this.selectTownCenter();
   }
 
   private showHelp() {
     this.hud.showOverlay("Controls", [
       "Left click / drag: select · Shift: add · Double click: all of that kind on screen",
-      "Right click: move, gather, build, attack, or set a rally point",
-      "Villager build keys: Q House · W Granary · E Storage Pit · R Barracks · A Farm",
-      "S Archery Range · D Stable · F Watch Tower · Z Town Center",
-      "Buildings: Q W train · T advance age · X cancel · Soldiers: A attack-move · S stop",
+      "Right click: move, gather, hunt, build, attack, convert or heal (priests), or set a rally point",
+      "Command keys follow the grid: Q W E R T Y / A S D F G H / Z X C V B N",
+      "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Ctrl+1-9 save group · 1-9 recall · Delete destroy",
       "Arrows / trackpad / screen edge: scroll · Pinch or + -: zoom · P pause",
       "Press ? or Esc to close",
     ], "help");
   }
 
-  private gameOver(winner: number) {
+  private gameOver(winner: number, how: "conquest" | "wonder" = "conquest") {
     const won = winner === this.me;
     const p = this.world.players[this.me].stats, e = this.world.players[1].stats;
     this.hud.showOverlay(won ? "Victory" : "Defeat", [
-      `Time ${clock(this.world.time)}`,
+      `${how === "wonder" ? "A Wonder stood its time. " : ""}Time ${clock(this.world.time)}`,
       `You: gathered ${Math.floor(p.gathered.total)}, trained ${p.trained}, killed ${p.kills}, lost ${p.lost}`,
       `Enemy: gathered ${Math.floor(e.gathered.total)}, trained ${e.trained}, killed ${e.kills}, lost ${e.lost}`,
       `<span class="choices"><button data-restart>New map (Enter)</button></span>`,
@@ -173,13 +236,16 @@ export class Game {
     const alpha = this.started ? Math.min(1, this.accumulator / World.dt) : 1;
     const sw = this.app.screen.width, sh = this.app.screen.height;
     this.worldLayer.scale.set(1 / this.cam.zoom);
-    this.worldLayer.position.set(sw / 2 - this.cam.x / this.cam.zoom, sh / 2 - this.cam.y / this.cam.zoom);
+    // Whole screen pixels, so the pixel art never shimmers while scrolling.
+    this.worldLayer.position.set(Math.round(sw / 2 - this.cam.x / this.cam.zoom), Math.round(sh / 2 - this.cam.y / this.cam.zoom));
     this.sync(alpha);
     if (w.tick !== this.fogStamp && (w.tick % 5 === 0 || this.fogStamp < 0)) { this.updateFog(); this.fogStamp = w.tick; }
     if (Math.floor(w.tick / 10) !== this.minimapStamp) { this.updateMinimap(); this.minimapStamp = Math.floor(w.tick / 10); }
     this.selection = this.selection.filter((id) => w.entity(id));
     const sel = this.selectedEntities();
     this.hud.update(w, this.me, sel);
+    const one = sel.length === 1 ? this.views.get(sel[0].id) : undefined;
+    this.hud.portrait(one?.pic.canvas ?? null);
     this.hud.setCommands(this.commands(sel));
     this.updateGhost();
   }
@@ -191,14 +257,23 @@ export class Game {
         case "projectile": {
           if (!this.visible(e.from.tile) && !this.visible(e.to.tile)) break;
           const a = iso(e.from), b = iso(e.to);
-          const arrow = new Graphics().rect(-5, -0.75, 10, 1.5).fill(0x262626);
-          arrow.rotation = Math.atan2(b.y - a.y, b.x - a.x);
+          const kind = (["arrow", "stone", "bolt", "spear"].includes(e.projectile) ? e.projectile : "arrow") as "arrow" | "stone" | "bolt" | "spear";
+          const pic = projectilePic(kind);
+          const arrow = new Sprite(pic.texture);
+          arrow.width = pic.w; arrow.height = pic.h;
+          arrow.anchor.set(pic.ax, pic.ay);
+          arrow.zIndex = 0;
           this.effects.addChild(arrow);
+          const arc = kind === "stone" ? 40 : 14;
           let t = 0;
           const tick = (dt: { deltaMS: number }) => {
             t += dt.deltaMS / 1000;
             const k = Math.min(1, t / e.flight);
-            arrow.position.set(a.x + (b.x - a.x) * k, a.y - 18 + (b.y - a.y + 4) * k - Math.sin(k * Math.PI) * 14);
+            const x = a.x + (b.x - a.x) * k, y = a.y - 18 + (b.y - a.y + 4) * k - Math.sin(k * Math.PI) * arc;
+            // Point along the flight: rising, then falling.
+            const vy = (b.y - a.y + 4) / e.flight - Math.cos(k * Math.PI) * Math.PI * arc / e.flight;
+            arrow.rotation = kind === "stone" ? t * 8 : Math.atan2(vy, (b.x - a.x) / e.flight);
+            arrow.position.set(x, y);
             if (k >= 1) { this.app.ticker.remove(tick); arrow.destroy(); }
           };
           this.app.ticker.add(tick);
@@ -206,7 +281,21 @@ export class Game {
         }
         case "died": {
           const v = this.views.get(e.id);
-          if (v) { v.root.destroy({ children: true }); this.views.delete(e.id); }
+          if (v && e.wasBuilding && e.owner !== this.me && this.seen.has(e.id) && !this.anyVisible(this.footprintTiles(v))) {
+            // Destroyed where the player cannot see: they find out when they look.
+            this.ghosts.set(e.id, { view: v, tiles: this.footprintTiles(v) });
+            v.bar.visible = false;
+            v.ring.visible = false;
+            this.views.delete(e.id);
+            this.seen.delete(e.id);
+            break;
+          }
+          this.seen.delete(e.id);
+          if (v) {
+            if (v.isUnit && v.root.visible) this.corpse(v);
+            v.root.destroy({ children: true });
+            this.views.delete(e.id);
+          }
           this.selection = this.selection.filter((id) => id !== e.id);
           if (e.wasBuilding && this.explored(e.at.tile)) this.puff(e.at, true);
           else if (e.owner >= 0 && this.visible(e.at.tile)) this.puff(e.at, false);
@@ -227,11 +316,66 @@ export class Game {
           break;
         }
         case "gameOver":
-          this.gameOver(e.winner);
+          this.gameOver(e.winner, e.how);
           break;
+        case "splash":
+          if (this.visible(e.at.tile)) this.puff(e.at, e.radius > 1);
+          break;
+        case "converted": {
+          // Redraw in the new owner's colours.
+          const v = this.views.get(e.id);
+          if (v) { v.root.destroy({ children: true }); this.views.delete(e.id); }
+          if (e.from === this.me) this.selection = this.selection.filter((id) => id !== e.id);
+          break;
+        }
       }
     }
     w.events.length = 0;
+  }
+
+  /** The fallen unit lies on the ground for a while, then fades. */
+  private corpse(v: View) {
+    const c = new Sprite(v.sprite.texture);
+    c.anchor.set(0.5, 0.75);
+    c.width = v.pic.w;
+    c.height = v.pic.h;
+    c.scale.x *= Math.sign(v.sprite.scale.x) || 1;
+    c.rotation = (Math.PI / 2) * (Math.sign(v.sprite.scale.x) || 1);
+    c.tint = 0x9a8a7a;
+    c.position.set(v.root.x, v.root.y - 4);
+    c.zIndex = v.root.zIndex - 0.2;
+    this.entities.addChild(c);
+    let t = 0;
+    const tick = (dt: { deltaMS: number }) => {
+      t += dt.deltaMS / 1000;
+      if (t > 8) c.alpha = Math.max(0, 1 - (t - 8) / 4);
+      if (t >= 12) { this.app.ticker.remove(tick); c.destroy(); }
+    };
+    this.app.ticker.add(tick);
+  }
+
+  /** How a unit looks this frame: facing, pose, animation frame, the tool in hand, what it carries. */
+  private unitLook(u: Unit, alpha: number): UnitLook {
+    const time = this.world.time + alpha * World.dt;
+    const facing: Facing = u.facing.x + u.facing.y < -0.2 ? "back" : "front"; // heading up the screen
+    const moving = u.prevPos.distance(u.pos) > 0.001;
+    const pose: Pose = u.busy ? "work" : moving ? "walk" : "idle";
+    const frame = pose === "walk" ? Math.floor(time * 8 + u.id) % 4 : pose === "work" ? Math.floor(time * 5 + u.id) % 3 : 0;
+    let tool: Tool = "none";
+    if (u.isVillager) {
+      const o = u.order;
+      const node = u.lastNodeType ?? "";
+      if (o.kind === "build") tool = "hammer";
+      else if (o.kind === "attack") tool = "spear"; // hunting
+      else if (o.kind === "gather" || o.kind === "return") {
+        if (node === "farm") tool = "hoe";
+        else if (node === "fish") tool = "net";
+        else if (node.startsWith("carcass_")) tool = "spear";
+        else tool = u.lastGather === Res.wood ? "axe" : u.lastGather === Res.food ? "basket" : u.lastGather === null ? "none" : "pick";
+      }
+    }
+    const carry = u.isVillager && u.carry >= 1 && u.carryRes !== null && pose !== "work" ? u.carryRes : null;
+    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry };
   }
 
   private puff(at: Vec2, big: boolean) {
@@ -254,6 +398,10 @@ export class Game {
   private visible(t: Tile) { return this.revealMap || this.world.fog[this.me].isVisible(t); }
   private explored(t: Tile) { return this.revealMap || this.world.fog[this.me].isExplored(t); }
 
+  private anyVisible(tiles: Tile[]) { return tiles.some((t) => this.visible(t)); }
+
+  private footprintTiles(v: View): Tile[] { return v.tiles; }
+
   private onScreen(p: Vec2) {
     const s = iso(p);
     return Math.abs(s.x - this.cam.x) < (this.app.screen.width / 2) * this.cam.zoom &&
@@ -265,15 +413,15 @@ export class Game {
     const own = e.owner === this.me;
     const ringColor = own ? 0xffffff : e.owner >= 0 ? playerColor(e.owner) : 0xffee55;
     if (e instanceof Unit) {
-      pic = unitPic(e.def.id, e.owner);
-      const big = e.def.id === "scout";
-      ring = new Graphics().ellipse(0, 0, big ? 17 : 12, big ? 8 : 6).stroke({ width: 1.5, color: ringColor });
-      barY = -pic.h + 2; barW = 26;
+      pic = unitPic(this.unitLook(e, 0));
+      const big = pic.w > 48;
+      ring = new Graphics().ellipse(0, 0, big ? 20 : 12, big ? 10 : 6).stroke({ width: 2, color: ringColor });
+      barY = -pic.h * pic.ay - 6; barW = 26;
     } else if (e instanceof Building) {
-      pic = buildingPic(e.def, e.owner);
+      pic = this.buildingLook(e);
       const s = e.def.size, w = s * HALF_W, h = s * HALF_H;
-      ring = new Graphics().poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 1.5, color: ringColor });
-      barY = -pic.h + 40; barW = s * 22;
+      ring = new Graphics().poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 2, color: ringColor });
+      barY = -pic.h + 34; barW = s * 22;
     } else {
       const r = e as ResourceNode;
       pic = nodePic(r.def.id, this.world.map.shade[this.world.map.index(r.tile)]);
@@ -287,37 +435,63 @@ export class Game {
     sprite.anchor.set(pic.ax, pic.ay);
     const bar = new Graphics();
     bar.position.set(-barW / 2, barY);
-    (bar as Graphics & { barW: number }).barW = barW;
     ring.visible = false;
     bar.visible = false;
     root.addChild(ring, sprite, bar);
     this.entities.addChild(root);
-    const v = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit };
+    const v: View = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit, key: "", barW, tiles: e instanceof Building ? e.footprint.tiles() : [] };
     this.views.set(e.id, v);
     return v;
   }
 
+  private setPic(v: View, pic: Pic) {
+    if (v.pic === pic) return;
+    v.pic = pic;
+    v.sprite.texture = pic.texture;
+    const flip = Math.sign(v.sprite.scale.x) || 1;
+    v.sprite.width = pic.w;
+    v.sprite.height = pic.h;
+    v.sprite.scale.x = Math.abs(v.sprite.scale.x) * flip;
+    v.sprite.anchor.set(pic.ax, pic.ay);
+  }
+
+  private arch(owner: number): Arch {
+    const a = owner >= 0 ? this.world.players[owner].civ?.arch : undefined;
+    return (["egyptian", "greek", "babylonian", "asian", "roman"].includes(a ?? "") ? a : "greek") as Arch;
+  }
+
+  private buildingLook(b: Building): Pic {
+    const stage = b.complete ? 3 : b.progress < 0.3 ? 0 : b.progress < 0.7 ? 1 : 2;
+    const tier = WALL_TIER[b.def.id];
+    if (tier !== undefined) {
+      // Walls join their neighbours: bits for a wall of the same owner at x-1, x+1, y-1, y+1.
+      const t = b.footprint.origin;
+      const isWall = (x: number, y: number) => {
+        const o = this.world.building(this.world.map.occupantAt(new Tile(x, y)));
+        return !!o && o.isWall && o.owner === b.owner;
+      };
+      const mask = (isWall(t.x - 1, t.y) ? 1 : 0) | (isWall(t.x + 1, t.y) ? 2 : 0) | (isWall(t.x, t.y - 1) ? 4 : 0) | (isWall(t.x, t.y + 1) ? 8 : 0);
+      return wallPic(tier, b.owner, mask, stage);
+    }
+    const farmLeft = b.isFarm ? b.food / Math.max(1, this.world.players[b.owner]?.mods.farmFood(b.def.resource?.food ?? 1) ?? 1) : 1;
+    return buildingPic(b.def, b.owner, b.owner >= 0 ? this.world.players[b.owner].age : 0, stage, farmLeft, this.arch(b.owner));
+  }
+
   private place(v: View, e: Entity, alpha: number) {
-    const time = this.world.time;
     if (e instanceof Unit) {
       const p = e.prevPos.lerp(e.pos, alpha);
       const s = iso(p);
-      v.root.position.set(s.x, s.y);
+      v.root.position.set(Math.round(s.x / 2) * 2, Math.round(s.y / 2) * 2);
       v.root.zIndex = depth(p) + 0.3;
+      this.setPic(v, unitPic(this.unitLook(e, alpha)));
       const dx = e.facing.x - e.facing.y;
       if (Math.abs(dx) > 0.2) v.sprite.scale.x = Math.abs(v.sprite.scale.x) * (dx < 0 ? -1 : 1);
-      const moving = e.prevPos.distance(e.pos) > 0.001;
-      if (moving || e.busy) {
-        const phase = time * (e.busy ? 10 : 14) + e.id;
-        v.sprite.y = -Math.abs(Math.sin(phase)) * (e.busy ? 2 : 2.5);
-        v.sprite.rotation = e.busy ? Math.sin(time * 10 + e.id) * 0.08 : 0;
-      } else { v.sprite.y = 0; v.sprite.rotation = 0; }
     } else if (e instanceof Building) {
       const fp = e.footprint;
       const s = iso(new Vec2(fp.maxX, fp.maxY));
       v.root.position.set(s.x, s.y);
       v.root.zIndex = depth(fp.center);
-      v.sprite.alpha = e.complete ? 1 : 0.35 + 0.55 * e.progress;
+      this.setPic(v, this.buildingLook(e));
     } else if (e instanceof ResourceNode) {
       const s = iso(e.center);
       v.root.position.set(s.x, s.y);
@@ -327,16 +501,16 @@ export class Game {
 
   private sync(alpha: number) {
     const selected = new Set(this.selection);
-    const show = (e: Entity, vis: boolean) => {
+    const show = (e: Entity, vis: boolean, frozen = false) => {
       let v = this.views.get(e.id);
       if (!vis) { if (v) v.root.visible = false; return; }
       if (!v) v = this.makeView(e);
       v.root.visible = true;
-      this.place(v, e, alpha);
+      if (!frozen) this.place(v, e, alpha);
       const sel = selected.has(e.id);
       v.ring.visible = sel;
-      const bw = (v.bar as Graphics & { barW: number }).barW;
-      v.bar.visible = sel && bw > 0;
+      const bw = v.barW;
+      v.bar.visible = sel && bw > 0 && !frozen;
       if (v.bar.visible) {
         const f = Math.max(0, e.hp / e.maxHp);
         v.bar.clear().rect(0, 0, bw, 4).fill(0x000000).rect(0, 0, bw * f, 4).fill(f > 0.5 ? 0x33cc33 : f > 0.25 ? 0xdddd33 : 0xdd3333);
@@ -344,7 +518,15 @@ export class Game {
     };
     const w = this.world;
     for (const u of w.units) show(u, u.owner === this.me || this.visible(u.pos.tile));
-    for (const b of w.buildings) show(b, b.owner === this.me || this.explored(b.footprint.origin));
+    for (const b of w.buildings) {
+      if (b.owner === this.me || this.revealMap) { show(b, true); continue; }
+      const now = this.anyVisible(b.footprint.tiles());
+      if (now) this.seen.add(b.id);
+      show(b, now || this.seen.has(b.id), !now);
+    }
+    for (const [id, g] of this.ghosts) {
+      if (this.anyVisible(g.tiles)) { g.view.root.destroy({ children: true }); this.ghosts.delete(id); }
+    }
     for (const n of w.nodes) show(n, this.explored(n.tile));
   }
 
@@ -448,45 +630,56 @@ export class Game {
     const w = this.world, me = this.me;
     const mine = sel.filter((e) => e.owner === me);
     if (!mine.length || w.winner !== null) return [];
+    const keyed = (cmds: Omit<Command, "key">[]) => cmds.slice(0, KEYS.length).map((c, i) => ({ ...c, key: KEYS[i] }));
     const units = mine.filter((e): e is Unit => e instanceof Unit);
     if (units.some((u) => u.isVillager)) {
-      const out: Command[] = [];
-      for (const [id, key] of BUILD_KEYS) {
+      const out: Omit<Command, "key">[] = [];
+      for (const base of BUILD_ORDER) {
+        const id = w.current(me, base);
         const def = this.rules.buildings.get(id);
-        if (def) out.push({ key, title: def.name, detail: this.rules.buildingCost(id).text, blocker: w.blockerBuilding(id, me), action: () => this.beginPlacing(id) });
+        if (!def || !w.buildingShown(id, me)) continue;
+        out.push({ title: def.name, detail: w.buildingCost(me, id).text + (WALL_TIER[id] !== undefined ? " a tile, drag" : ""),
+          blocker: w.blockerBuilding(id, me), icon: id, action: () => this.beginPlacing(id) });
       }
-      out.push({ key: "X", title: "Stop", detail: "", blocker: null, action: () => w.stop(me, this.selection) });
-      return out;
+      out.push({ title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) });
+      return keyed(out);
     }
     if (units.length) {
-      return [
-        { key: "A", title: "Attack-move", detail: "click a point", blocker: null, action: () => { this.attackMovePending = true; this.hud.message("Click where to attack-move"); } },
-        { key: "S", title: "Stop", detail: "", blocker: null, action: () => w.stop(me, this.selection) },
+      const out: Omit<Command, "key">[] = [
+        { title: "Attack-move", detail: "click a point", blocker: null, icon: "sword", action: () => { this.attackMovePending = true; this.hud.message("Click where to attack-move"); } },
+        { title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
       ];
+      if (units.some((u) => u.isPriest)) out.push({ title: "Convert", detail: "right-click an enemy", blocker: null, icon: "temple", action: () => this.hud.message("Right-click an enemy to convert it, or a hurt unit of yours to heal it") });
+      return keyed(out);
     }
     const b = mine[0];
     if (mine.length !== 1 || !(b instanceof Building) || !b.complete) return [];
-    const out: Command[] = [];
-    (b.def.trains ?? []).forEach((t, i) => {
+    const out: Omit<Command, "key">[] = [];
+    for (const t of b.def.trains ?? []) {
       const def = this.rules.units.get(t);
-      if (!def) return;
-      out.push({ key: "QWER"[Math.min(i, 3)], title: def.name, detail: this.rules.unitCost(t).text, blocker: w.blockerUnit(t, me), action: () => {
+      if (!def || !w.unitShown(t, me)) continue;
+      out.push({ title: def.name, detail: w.unitCost(me, t).text, blocker: w.blockerUnit(t, me), icon: t, action: () => {
         const why = w.train(me, b.id, t);
         if (why) this.hud.message(why, "warn");
       } });
-    });
+    }
     const p = w.players[me];
     if (b.def.id === "town_center" && p.age + 1 < this.rules.ages.length) {
       const next = this.rules.ages[p.age + 1];
-      out.push({ key: "T", title: `Advance: ${next.name}`, detail: ResBag.of(next.cost).text, blocker: w.blockerForNextAge(me), action: () => {
+      out.push({ title: next.name, detail: ResBag.of(next.cost).text, blocker: w.blockerForNextAge(me), icon: "age", action: () => {
         const why = w.advanceAge(me, b.id);
         if (why) this.hud.message(why, "warn");
       } });
     }
-    if (b.queue.length || b.researching !== null) {
-      out.push({ key: "X", title: "Cancel", detail: "refund", blocker: null, action: () => w.cancel(me, b.id) });
+    for (const t of w.techsAt(b, me)) {
+      out.push({ title: t.name, detail: ResBag.of(t.cost).text, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), action: () => {
+        const why = w.research(me, b.id, t.id);
+        if (why) this.hud.message(why, "warn");
+      } });
     }
-    return out;
+    const cmds = keyed(out);
+    if (b.queue.length) cmds.push({ key: "Escape", title: "Cancel", detail: "last in queue", blocker: null, icon: "stop", action: () => w.cancel(me, b.id) });
+    return cmds;
   }
 
   private selectTownCenter() {
@@ -499,7 +692,9 @@ export class Game {
     if (why) { this.hud.message(why, "warn"); return; }
     this.cancelPlacing();
     this.placing = type;
-    const pic = buildingPic(this.rules.buildings.get(type)!, this.me);
+    const tier = WALL_TIER[type];
+    const pic = tier !== undefined ? wallPic(tier, this.me, 0, 3)
+      : buildingPic(this.rules.buildings.get(type)!, this.me, this.world.players[this.me].age, 3, 1, this.arch(this.me));
     const g = new Sprite(pic.texture);
     g.width = pic.w; g.height = pic.h;
     g.anchor.set(pic.ax, pic.ay);
@@ -513,6 +708,13 @@ export class Game {
     this.placing = null;
     this.ghost?.destroy();
     this.ghost = null;
+    this.wallStart = null;
+    this.clearWallGhosts();
+  }
+
+  private clearWallGhosts() {
+    for (const g of this.wallGhosts) g.destroy();
+    this.wallGhosts = [];
   }
 
   private placementOrigin(type: string, sx: number, sy: number) {
@@ -524,6 +726,30 @@ export class Game {
   private updateGhost() {
     if (!this.placing || !this.ghost) return;
     const o = this.placementOrigin(this.placing, this.mouse.x, this.mouse.y);
+    const tier = WALL_TIER[this.placing];
+    if (tier !== undefined && this.wallStart) {
+      // A dragged wall: one ghost per tile along the line.
+      this.ghost.visible = false;
+      this.clearWallGhosts();
+      const tiles = this.world.wallTiles(this.wallStart, o);
+      const has = (x: number, y: number) => tiles.some((t) => t.x === x && t.y === y);
+      for (const t of tiles) {
+        const mask = (has(t.x - 1, t.y) ? 1 : 0) | (has(t.x + 1, t.y) ? 2 : 0) | (has(t.x, t.y - 1) ? 4 : 0) | (has(t.x, t.y + 1) ? 8 : 0);
+        const pic = wallPic(tier, this.me, mask, 3);
+        const g = new Sprite(pic.texture);
+        g.width = pic.w; g.height = pic.h;
+        g.anchor.set(pic.ax, pic.ay);
+        g.alpha = 0.6;
+        const sp = iso(new Vec2(t.x + 1, t.y + 1));
+        g.position.set(sp.x, sp.y);
+        g.zIndex = 100000 + t.x + t.y;
+        g.tint = this.world.canPlace(this.placing, t, this.me) ? 0xbbffbb : 0xff5555;
+        this.entities.addChild(g);
+        this.wallGhosts.push(g);
+      }
+      return;
+    }
+    this.ghost.visible = true;
     const size = this.rules.buildings.get(this.placing)!.size;
     const s = iso(new Vec2(o.x + size, o.y + size));
     this.ghost.position.set(s.x, s.y);
@@ -580,7 +806,11 @@ export class Game {
     const miniMove = (e: MouseEvent) => {
       const p = this.minimapToWorld(e);
       if (!p) return;
-      if (e.button === 2) this.world.smart(this.me, this.selection, null, p);
+      if (e.button === 2) {
+        const sel = this.selectedEntities().filter((x) => x.owner === this.me);
+        if (sel.length === 1 && sel[0] instanceof Building) this.world.setRally(this.me, sel[0].id, p);
+        else this.world.smart(this.me, this.selection, null, p);
+      }
       else this.centerOn(p);
     };
     mm.addEventListener("mousedown", (e) => { e.preventDefault(); miniMove(e); });
@@ -588,7 +818,10 @@ export class Game {
     mm.addEventListener("contextmenu", (e) => e.preventDefault());
     canvas.addEventListener("wheel", (e) => {
       e.preventDefault();
-      if (e.ctrlKey) this.zoom(1 + e.deltaY * 0.01);           // trackpad pinch
+      if (e.ctrlKey) {                                           // trackpad pinch, in steps
+        this.pinch += e.deltaY;
+        if (Math.abs(this.pinch) > 40) { this.zoom(this.pinch < 0 ? 0.5 : 2); this.pinch = 0; }
+      }
       else { this.cam.x += e.deltaX * this.cam.zoom; this.cam.y += e.deltaY * this.cam.zoom; this.clampCamera(); }
     }, { passive: false });
     window.addEventListener("keydown", (e) => this.keyDown(e));
@@ -607,6 +840,7 @@ export class Game {
     if (e.button !== 0) return;
     if (this.placing) {
       const o = this.placementOrigin(this.placing, e.clientX, e.clientY);
+      if (WALL_TIER[this.placing] !== undefined) { this.wallStart = o; return; } // drag to lay a wall
       const builders = this.selectedEntities().filter((x): x is Unit => x instanceof Unit && x.isVillager && x.owner === this.me).map((u) => u.id);
       const r = this.world.place(this.me, this.placing, o, builders);
       if ("error" in r) this.hud.message(r.error, "warn");
@@ -623,6 +857,15 @@ export class Game {
   }
 
   private mouseUp(e: MouseEvent) {
+    if (this.placing && this.wallStart && e.button === 0) {
+      const builders = this.selectedEntities().filter((x): x is Unit => x instanceof Unit && x.isVillager && x.owner === this.me).map((u) => u.id);
+      const r = this.world.placeWall(this.me, this.placing, this.wallStart, this.placementOrigin(this.placing, e.clientX, e.clientY), builders);
+      if ("error" in r) this.hud.message(r.error, "warn");
+      this.wallStart = null;
+      this.clearWallGhosts();
+      if (!e.shiftKey) this.cancelPlacing();
+      return;
+    }
     const a = this.dragStart;
     if (!a || e.button !== 0) return;
     this.dragStart = null;
@@ -638,7 +881,8 @@ export class Game {
         });
         return;
       }
-      if (e.shiftKey && hit.owner === me) {
+      if (e.shiftKey && hit.owner !== me) return; // shift only adds your own things
+      if (e.shiftKey) {
         const i = this.selection.indexOf(hit.id);
         if (i >= 0) this.selection.splice(i, 1); else this.selection.push(hit.id);
       } else this.selection = [hit.id];
@@ -668,6 +912,7 @@ export class Game {
     const target = this.pick(e.clientX, e.clientY);
     const r = this.world.smart(this.me, this.selection, target?.id ?? null, at);
     if (r === "attacked") this.marker(e.clientX, e.clientY, 0xff3333);
+    else if (r === "converted" || r === "healed") this.marker(e.clientX, e.clientY, 0xffd659);
     else if (r !== "nothing") this.marker(e.clientX, e.clientY, 0x33ff66);
   }
 
@@ -686,8 +931,11 @@ export class Game {
     this.app.ticker.add(tick);
   }
 
+  /** Steps through the whole-pixel zoom levels; k < 1 zooms in. */
   private zoom(k: number) {
-    this.cam.zoom = Math.min(2.2, Math.max(0.6, this.cam.zoom * k));
+    const i = ZOOMS.indexOf(this.cam.zoom);
+    const next = ZOOMS[Math.min(ZOOMS.length - 1, Math.max(0, i + (k < 1 ? -1 : 1)))];
+    this.cam.zoom = next;
     this.clampCamera();
   }
 
@@ -708,6 +956,8 @@ export class Game {
     }
     if (key === "Escape") {
       if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; return; }
+      const cancel = this.hud.commands.find((c) => c.key === "Escape");
+      if (!this.placing && !this.attackMovePending && cancel) { cancel.action(); return; }
       if (this.placing) this.cancelPlacing(); else if (this.attackMovePending) this.attackMovePending = false; else this.selection = [];
       return;
     }

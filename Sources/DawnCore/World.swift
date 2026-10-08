@@ -192,11 +192,19 @@ public final class World {
         for (i, u) in group.enumerated() {
             var dest = target + offsets[i]
             if !map.passable(dest.tile), let t = map.nearestPassable(to: dest.tile, maxRadius: 4) { dest = t.center }
-            u.order = .move(dest, attackMove: attackMove && !u.isVillager)
             u.resumeMove = nil
-            u.path = pathfinder.find(from: u.pos, toward: dest) { $0 == dest.tile }
+            let goal = dest.tile
+            u.path = pathfinder.find(from: u.pos, toward: dest) { $0 == goal }
+            if let last = u.path.last {
+                // Finish on the exact point only when it was reached and the last leg is clear;
+                // otherwise stop at the closest tile (the shore of a lake, the edge of a wall).
+                let before = u.path.count > 1 ? u.path[u.path.count - 2] : u.pos
+                if pathfinder.reached && map.clearLine(before, dest) { u.path[u.path.count - 1] = dest } else { dest = last }
+            } else if !pathfinder.reached {
+                dest = u.pos
+            }
+            u.order = .move(dest, attackMove: attackMove && !u.isVillager)
             u.pathTarget = dest
-            if !u.path.isEmpty { u.path[u.path.count - 1] = dest }
         }
     }
 
@@ -646,7 +654,7 @@ public final class World {
         case .arrived:
             face(u, src.center)
             u.busy = true
-            let rate = rules.gatherRate(res)
+            let rate = rules.gatherRate(res) * players[u.owner].gatherBonus
             if let n = src as? ResourceNode {
                 let take = min(rate * dt, n.amount, capacity - u.carry)
                 n.amount -= take

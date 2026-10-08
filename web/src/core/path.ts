@@ -58,6 +58,8 @@ export class Pathfinder {
   private closed: Uint32Array;
   private gen = 0;
   maxExpanded = 9000;
+  /** Whether the last find() reached a goal tile, rather than the closest tile it could. */
+  reached = false;
 
   constructor(private map: GridMap) {
     const n = map.width * map.height;
@@ -71,8 +73,9 @@ export class Pathfinder {
     const map = this.map, w = map.width;
     let start = from.tile;
     if (!map.passable(start)) { const near = map.nearestPassable(start, 3); if (near) start = near; }
+    this.reached = false;
     if (!map.inside(start)) return [];
-    if (isGoal(start)) return [];
+    if (isGoal(start)) { this.reached = true; return []; }
 
     const gen = ++this.gen;
     const tx = toward.x, ty = toward.y;
@@ -110,6 +113,7 @@ export class Pathfinder {
       }
     }
 
+    this.reached = found >= 0;
     let node = found >= 0 ? found : best;
     const tiles: Vec2[] = [];
     while (node >= 0 && node !== si) {

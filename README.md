@@ -20,7 +20,10 @@ Khi vào game, bấm 1, 2 hoặc 3 để chọn độ khó Dễ, Thường hoặ
 
 ## Chơi trên trình duyệt
 
-Bản web nằm trong thư mục `web/`, dùng TypeScript và PixiJS, đọc chung `data/rules.json` với bản Mac.
+Bản web nằm trong thư mục `web/`, dùng TypeScript và PixiJS. Bản web chơi theo luật đầy đủ kiểu Đế chế 1: 4 thời đại
+(Stone, Tool, Bronze, Iron), 33 loại quân, 21 công trình, 65 công nghệ, 16 dân tộc, săn thú, đánh cá, thầy tu cải đạo,
+tường thành, Wonder. Luật nằm trong `data/rules.json`, sinh ra từ `scripts/gen-rules.py`. Bản Mac giữ bộ luật 2 thời đại
+trong `data/rules-mac.json`. Toàn bộ hình là pixel art vẽ bằng code; xem tất cả ở `gallery.html` khi chạy `npm run dev`.
 
 ```bash
 cd web
