@@ -1,5 +1,6 @@
 import { Application } from "pixi.js";
 import { RULES } from "./core/data";
+import { ASSETS } from "./game/assets";
 import { Game } from "./game/game";
 
 // Bronze Dawn in the browser.   ?seed=42 plays a given map.   ?snapshot=600 fast-forwards (for screenshots).
@@ -7,6 +8,9 @@ const params = new URLSearchParams(location.search);
 const seed = Number(params.get("seed")) || Math.floor(Math.random() * 999_999) + 1;
 
 async function boot() {
+  // Art and sound from files, if any are installed; the game draws whatever is missing.
+  await ASSETS.load();
+  ASSETS.prefetchSounds();
   const app = new Application();
   await app.init({ resizeTo: window, background: "#000000", antialias: false, roundPixels: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
   app.canvas.id = "game";

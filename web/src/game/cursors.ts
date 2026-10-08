@@ -1,6 +1,7 @@
 // Mouse pointers that tell you what a right-click will do, drawn here in pixel art:
 // a sword over an enemy, an axe over trees, a pick over mines, a basket over food,
 // a hammer over a foundation and a staff for priests.
+import { ASSETS } from "./assets";
 
 export type CursorKind = "arrow" | "sword" | "axe" | "pick" | "basket" | "hammer" | "staff";
 
@@ -93,11 +94,15 @@ const DRAW: Record<CursorKind, { hot: [number, number]; draw: (px: Px) => void }
 let art: Record<CursorKind, { url: string; hot: [number, number] }> | null = null;
 let cache: Record<CursorKind, string> | null = null;
 
-/** Each pointer as an image and its hot spot, drawn once. */
+/** Each pointer as an image and its hot spot, drawn once; a file from the assets replaces any of them. */
 export function cursorArt() {
   if (art) return art;
   art = {} as Record<CursorKind, { url: string; hot: [number, number] }>;
-  for (const k of Object.keys(DRAW) as CursorKind[]) art[k] = { url: sprite((px) => DRAW[k].draw(px)), hot: DRAW[k].hot };
+  const files = ASSETS.manifest.cursors ?? {};
+  for (const k of Object.keys(DRAW) as CursorKind[]) {
+    const f = files[k];
+    art[k] = f && ASSETS.image(f.file) ? { url: ASSETS.url(f.file), hot: f.hot } : { url: sprite((px) => DRAW[k].draw(px)), hot: DRAW[k].hot };
+  }
   return art;
 }
 

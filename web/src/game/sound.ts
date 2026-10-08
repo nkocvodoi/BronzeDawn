@@ -1,6 +1,8 @@
-// Every sound in the game, made at run time with Web Audio: no recordings, nothing borrowed.
-// Effects are short envelopes over noise and oscillators; voices are a buzz through vowel
-// formants speaking a made-up tongue; the music is a drone, a lyre and a hand drum.
+// Every sound in the game. Recorded effects, voices and music come from the assets when there are any
+// (see assets.ts); everything else is made at run time with Web Audio: effects are short envelopes
+// over noise and oscillators, voices a buzz through vowel formants speaking a made-up tongue, the
+// music a drone, a lyre and a hand drum.
+import { ASSETS } from "./assets";
 
 export type Sfx =
   | "chop" | "mine" | "forage" | "hammer" | "farm" | "fish" | "spear"
@@ -70,6 +72,7 @@ export class Sound {
       this.noiseBuf = ctx.createBuffer(1, n, n);
       const d = this.noiseBuf.getChannelData(0);
       for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+      void ASSETS.decodeSounds(ctx); // recorded effects from the assets, where there are any
       // Silent while the tab is hidden or minimised, as a desktop game is when you Alt+Tab away.
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) void ctx.suspend();
@@ -229,6 +232,7 @@ export class Sound {
     this.playing++;
     setTimeout(() => this.playing--, 400);
     const out = this.place(vol, pan), t = now + 0.01, j = 0.9 + Math.random() * 0.2;
+    if (this.sample(name, out, t, j)) return;
     switch (name) {
       case "chop": // an axe in wood: a dull knock and a woody crack
         this.tone(out, t, "sine", 210 * j, 120, 0.09, 0.5);
@@ -378,12 +382,27 @@ export class Sound {
     src.stop(t + dur + 0.05); vib.stop(t + dur + 0.05);
   }
 
-  /** A unit answers: when picked, or when it gets an order. */
+  /** Plays a recorded variant of an effect from the assets, slightly detuned so repeats differ. */
+  private sample(name: string, out: AudioNode, t: number, pitch = 1) {
+    const buf = ASSETS.sound(name);
+    if (!buf) return false;
+    const src = this.ctx!.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = pitch;
+    src.connect(out);
+    src.start(t);
+    return true;
+  }
+
+  /** A unit answers: when picked, or when it gets an order. Recorded lines are named "voice-<kind>" and
+   *  "voice-<kind>-ack" in the assets; without them it speaks in the made-up tongue below. */
   voice(kind: VoiceKind, seed: number, ack: boolean) {
     if (!this.ready || !this.sfxOn) return;
     const c = this.ctx!, now = c.currentTime;
     if (now - (this.last.get("voice") ?? -1) < 0.45) return;
     this.last.set("voice", now);
+    const recorded = ack && ASSETS.sound(`voice-${kind}-ack`) ? `voice-${kind}-ack` : `voice-${kind}`;
+    if (this.sample(recorded, this.place(0.7, 0), now + 0.02)) return;
     const lines = SAYINGS[kind];
     const words = lines[(seed + (ack ? 1 : 0) * 3 + Math.floor(Math.random() * 2)) % lines.length];
     const base = { villager: 150, soldier: 118, rider: 135, priest: 105, siege: 125 }[kind] * (0.92 + (seed % 5) * 0.04);
@@ -417,7 +436,20 @@ export class Sound {
 
   /** Starts the music: a drone, a lyre wandering the mode, a drum, and now and then a flute. */
   startMusic() {
-    if (!this.ctx || this.musicTimer) return;
+    if (!this.ctx || this.musicTimer || this.track) return;
+    // Recorded tracks from the assets play in turn, through the music volume; else the music is composed live.
+    const urls = ASSETS.musicUrls();
+    if (urls.length) {
+      const a = new Audio();
+      a.crossOrigin = "anonymous";
+      let i = Math.floor(Math.random() * urls.length);
+      const next = () => { a.src = urls[i++ % urls.length]; void a.play().catch(() => {}); };
+      a.addEventListener("ended", next);
+      this.ctx.createMediaElementSource(a).connect(this.musicBus);
+      this.track = a;
+      next();
+      return;
+    }
     this.nextBar = this.ctx.currentTime + 0.5;
     this.bar = 0;
     this.musicTimer = window.setInterval(() => this.scheduleMusic(), 200);
@@ -426,7 +458,10 @@ export class Sound {
   stopMusic() {
     if (this.musicTimer) clearInterval(this.musicTimer);
     this.musicTimer = 0;
+    if (this.track) { this.track.pause(); this.track = null; }
   }
+
+  private track: HTMLAudioElement | null = null;
 
   private scheduleMusic() {
     const c = this.ctx!;
