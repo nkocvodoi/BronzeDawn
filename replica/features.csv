@@ -32,3 +32,5 @@ Multiplayer,modes,could,yes,skip,lockstep later: commands already go through one
 Map editor,modes,could,yes,skip,
 The original's art audio and names,assets,must,yes,skip,clean-room: never copied
 Headless AI vs AI match,tooling,should,no,yes,ours: the integration test
+Plays in a browser with nothing to install,platform,should,no,yes,ours: PixiJS build on GitHub Pages
+Deterministic simulation for lockstep,platform,could,no,yes,ours: groundwork for multiplayer
