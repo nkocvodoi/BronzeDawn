@@ -70,8 +70,13 @@ export class Sound {
       this.noiseBuf = ctx.createBuffer(1, n, n);
       const d = this.noiseBuf.getChannelData(0);
       for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+      // Silent while the tab is hidden or minimised, as a desktop game is when you Alt+Tab away.
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) void ctx.suspend();
+        else void ctx.resume();
+      });
     }
-    if (this.ctx.state === "suspended") void this.ctx.resume();
+    if (this.ctx.state === "suspended" && !document.hidden) void this.ctx.resume();
   }
 
   get ready() { return !!this.ctx && this.ctx.state === "running"; }
