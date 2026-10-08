@@ -3,10 +3,11 @@ import { AIController, Difficulty } from "../core/ai";
 import { Building, Entity, ResourceNode, Unit } from "../core/entities";
 import { Tile, Vec2 } from "../core/geom";
 import { Terrain } from "../core/grid";
-import { Effect, Res, ResBag, Rules, TechDef } from "../core/rules";
+import { Res, ResBag, Rules } from "../core/rules";
 import { clock } from "../core/sim";
 import { World } from "../core/world";
 import { Arch, buildingPic, Facing, nodePic, Pic, playerColor, Pose, projectilePic, terrainTexture, Tool, unitPic, UnitLook, wallPic } from "./art";
+import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 
@@ -31,36 +32,6 @@ const KEYS = "QWERTYASDFGJZXCVBN"; // H stays "select the Town Center"
 
 const WALL_TIER: Record<string, 0 | 1 | 2> = { small_wall: 0, medium_wall: 1, fortification: 2 };
 
-/** One line on what a technology does, for its tooltip. */
-function describe(t: TechDef, rules: Rules): string {
-  const name = (id: string) => rules.units.get(id)?.name ?? rules.buildings.get(id)?.name ?? id;
-  const who = (e: Extract<Effect, { type: "stat" }>) => {
-    const t2 = e.target;
-    if (t2.units) return t2.units.map(name).join(", ");
-    if (t2.tags) return t2.tags.join(" ");
-    if (t2.buildings_tags) return t2.buildings_tags.includes("*") ? "buildings" : t2.buildings_tags.filter((x) => !x.startsWith("!")).join(", ");
-    return "";
-  };
-  const parts = t.effects.map((e) => {
-    switch (e.type) {
-      case "stat": {
-        const v = e.op === "add" ? `${e.value > 0 ? "+" : ""}${e.value}` : e.value < 1 ? `-${Math.round((1 - e.value) * 100)}%` : `+${Math.round((e.value - 1) * 100)}%`;
-        return `${v} ${e.stat.replace("_", " ")} (${who(e)})`;
-      }
-      case "gather": return `${e.resource} gathering +${Math.round((e.rate - 1) * 100)}%${e.carry ? `, carry +${e.carry}` : ""}`;
-      case "upgrade": return `${name(e.from)} becomes ${name(e.to)}`;
-      case "farm_food": return `farms ${e.op === "add" ? `+${e.value}` : `x${e.value}`} food`;
-      case "mine_yield": return `gold mines yield +${Math.round((e.value - 1) * 100)}%`;
-      case "flag": return e.flag === "ballistics" ? "siege leads moving targets" : "priests convert buildings and priests";
-      case "conversion": return `conversion ${e.stat} x${e.value}`;
-      case "carry": return `villagers carry ${e.value}`;
-      case "heal": return `priests heal x${e.value}`;
-    }
-  });
-  const unlocks = [...rules.units.values(), ...rules.buildings.values()].filter((d) => d.requires_tech === t.id).map((d) => d.name);
-  if (unlocks.length && !t.effects.some((e) => e.type === "upgrade")) parts.push(`unlocks ${unlocks.join(", ")}`);
-  return parts.join("; ");
-}
 
 export class Game {
   world: World;
@@ -181,6 +152,7 @@ export class Game {
     this.hud.showOverlay("Bronze Dawn", [
       "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
       `Your civilization: <select id="civ"><option value="">Random</option>${civs}</select>`,
+      `<span id="civ-info">A civilization picked at random. Its bonuses show at the top of the screen.</span>`,
       `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
       `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
       "Hard: the computer gathers 20% faster.",
@@ -203,6 +175,8 @@ export class Game {
     this.started = true;
     this.hud.hideOverlay();
     const civ = this.world.players[this.me].civ;
+    const enemyCiv = this.world.players[1].civ;
+    this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules) : [], enemyCiv?.name ?? null);
     this.hud.message(`${civ ? `You lead the ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
     this.selectTownCenter();
   }
@@ -216,8 +190,18 @@ export class Game {
       "H town center · . idle villager · Ctrl+1-9 save group · 1-9 recall · Delete destroy",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · P pause",
+      ...this.civLines(),
       "Press ? or Esc to close",
     ], "help");
+  }
+
+  /** Your civilization and its bonuses, and the enemy's, for the help screen. */
+  private civLines(): string[] {
+    const out: string[] = [];
+    const mine = this.world.players[this.me].civ, theirs = this.world.players[1]?.civ;
+    if (mine) out.push(`<b>You: ${mine.name}</b> · ${describeCiv(mine, this.rules).join(" · ")}`);
+    if (theirs) out.push(`Enemy: ${theirs.name} · ${describeCiv(theirs, this.rules).join(" · ")}`);
+    return out;
   }
 
   private gameOver(winner: number, how: "conquest" | "wonder" = "conquest") {
@@ -796,6 +780,14 @@ export class Game {
   private bindInput() {
     const canvas = this.app.canvas;
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    // The start screen describes the chosen civilization as you pick it.
+    document.addEventListener("change", (e) => {
+      const t = e.target as HTMLSelectElement;
+      if (t.id !== "civ") return;
+      const info = document.querySelector("#civ-info");
+      const c = this.rules.civs.find((x) => x.id === t.value);
+      if (info) info.textContent = c ? `${c.name}: ${describeCiv(c, this.rules).join("; ")}` : "A civilization picked at random. Its bonuses show at the top of the screen.";
+    });
     document.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       if (t.closest("#speed")) { this.setSpeed(0, (SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length); return; }

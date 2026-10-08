@@ -33,7 +33,9 @@ await page.waitForFunction(() => window.game);
 check(await page.isVisible("#overlay [data-start]"), "start screen offers the difficulty choice");
 
 await page.selectOption("#start-speed", "1.5");
+check((await page.textContent("#civ-info")).includes("Academy units"), "choosing a civilization shows its bonuses");
 await page.click("[data-start=normal]");
+check((await page.textContent("#civ-name")) === "Greek" && (await page.getAttribute("#civ-name", "title")).includes("Enemy:"), "the top bar names your civilization, with bonuses and the enemy's on hover");
 check((await g(() => game.speed)) === 1.5 && (await page.textContent("#speed")) === "1.5x", "the start screen sets the game speed");
 check(await g(() => game.started && game.world.ais.length === 1), "clicking Normal starts the game against one AI");
 

@@ -133,3 +133,5 @@ canvas#game { position: fixed; inset: 0; display: block; }
 #topbar #speed { min-width: 0; padding: 1px 8px; cursor: pointer; border: 1px solid var(--edge-light); background: rgba(0, 0, 0, .3); }
 #topbar #speed:hover { background: rgba(0, 0, 0, .55); }
 #topbar #speed.fast { color: var(--gold); }
+#topbar .civ { min-width: 0; font-family: Cinzel, serif; color: var(--text); cursor: help; border-bottom: 1px dotted var(--edge-light); }
+#civ-info { display: inline-block; max-width: 560px; font-size: 14px; color: var(--gold); min-height: 2.4em; }
