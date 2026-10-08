@@ -32,6 +32,7 @@ await page.goto(`http://localhost:${port}/?seed=5`);
 await page.waitForFunction(() => window.game);
 check(await page.isVisible("#overlay [data-start]"), "start screen offers the difficulty choice");
 
+await page.selectOption("#civ", "greek");   // a fixed civilization: some change costs
 await page.selectOption("#start-speed", "1.5");
 check((await page.textContent("#civ-info")).includes("Academy units"), "choosing a civilization shows its bonuses");
 await page.click("[data-start=normal]");
@@ -56,6 +57,9 @@ const berry = await g((v) => game.world.nearestNode(0, game.world.unit(v).pos, 2
 p = await at(berry);
 await page.mouse.click(p.x, p.y - 8, { button: "right" });
 check(await g((v) => game.world.unit(v).order.kind === "gather", v), "right clicking berries orders a gather");
+check((await g(() => game.flashes)) > 0, "the berry bush flashes to show the order");
+await page.waitForFunction(() => game.flashes === 0, null, { timeout: 3000 }).catch(() => {});
+check((await g(() => game.flashes)) === 0, "the flash ends after a moment");
 
 // Q with a villager selected starts placing a house; a left click on open grass places it.
 await page.mouse.click(p.x, p.y - 8); // reselect nothing in particular
@@ -75,7 +79,8 @@ const houses = await g(() => game.world.buildingsOf(0).filter((b) => b.def.id ==
 await page.mouse.move(spot.x, spot.y);
 await page.mouse.click(spot.x, spot.y);
 check((await g(() => game.world.buildingsOf(0).filter((b) => b.def.id === "house").length)) === houses + 1, "Q then a click places a house");
-check(await g((v) => game.world.unit(v).order.kind === "build", v), "the selected villager goes to build it");
+// Villagers bunch up at the bush, so the click may pick a neighbour: check whoever is selected.
+check(await g(() => game.world.unit(game.selection[0])?.order.kind === "build"), "the selected villager goes to build it");
 
 // Drag a box around the start villagers.
 const box = await g(() => {
