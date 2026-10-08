@@ -11,7 +11,7 @@ import { Command, HUD } from "./hud";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 
 /** The drawable side of one entity. */
-interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean; key: string; barW: number }
+interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean; key: string; barW: number; tiles: Tile[] }
 
 /** Zoom steps where one art pixel covers a whole number of screen pixels: 4, 3, 2, 1. */
 const ZOOMS = [0.5, 2 / 3, 1, 2];
@@ -36,6 +36,10 @@ export class Game {
   private fogSprite = new Sprite();
   private fogCanvas = document.createElement("canvas");
   private views = new Map<number, View>();
+  /** Enemy buildings the player has seen. Under fog they are drawn as last seen, not as they are. */
+  private seen = new Set<number>();
+  /** Enemy buildings destroyed out of sight: still drawn until the player looks again. */
+  private ghosts = new Map<number, { view: View; tiles: Tile[] }>();
   private cam = { x: 0, y: 0, zoom: 1 };
   private pinch = 0;
 
@@ -71,6 +75,9 @@ export class Game {
     this.world = new World(this.rules, seed, ["You", "Enemy"]);
     for (const v of this.views.values()) v.root.destroy({ children: true });
     this.views.clear();
+    for (const g of this.ghosts.values()) g.view.root.destroy({ children: true });
+    this.ghosts.clear();
+    this.seen.clear();
     this.selection = [];
     this.groups.clear();
     this.cancelPlacing();
@@ -125,12 +132,14 @@ export class Game {
     this.hud.showOverlay("Bronze Dawn", [
       "Grow a Stone Age village, advance to the Tool Age, and destroy the enemy.",
       `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
+      "Hard: the computer gathers 20% faster.",
       "Press ? at any time for the controls",
     ]);
   }
 
   start(d: Difficulty) {
     this.world.ais = [new AIController(1, d)];
+    this.world.ais[0].attach(this.world);
     this.started = true;
     this.hud.hideOverlay();
     this.hud.message("Gather food and wood. Build houses. Good luck.");
@@ -212,6 +221,16 @@ export class Game {
         }
         case "died": {
           const v = this.views.get(e.id);
+          if (v && e.wasBuilding && e.owner !== this.me && this.seen.has(e.id) && !this.anyVisible(this.footprintTiles(v))) {
+            // Destroyed where the player cannot see: they find out when they look.
+            this.ghosts.set(e.id, { view: v, tiles: this.footprintTiles(v) });
+            v.bar.visible = false;
+            v.ring.visible = false;
+            this.views.delete(e.id);
+            this.seen.delete(e.id);
+            break;
+          }
+          this.seen.delete(e.id);
           if (v) {
             if (v.isUnit && v.root.visible) this.corpse(v);
             v.root.destroy({ children: true });
@@ -305,6 +324,10 @@ export class Game {
   private visible(t: Tile) { return this.revealMap || this.world.fog[this.me].isVisible(t); }
   private explored(t: Tile) { return this.revealMap || this.world.fog[this.me].isExplored(t); }
 
+  private anyVisible(tiles: Tile[]) { return tiles.some((t) => this.visible(t)); }
+
+  private footprintTiles(v: View): Tile[] { return v.tiles; }
+
   private onScreen(p: Vec2) {
     const s = iso(p);
     return Math.abs(s.x - this.cam.x) < (this.app.screen.width / 2) * this.cam.zoom &&
@@ -342,7 +365,7 @@ export class Game {
     bar.visible = false;
     root.addChild(ring, sprite, bar);
     this.entities.addChild(root);
-    const v: View = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit, key: "", barW };
+    const v: View = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit, key: "", barW, tiles: e instanceof Building ? e.footprint.tiles() : [] };
     this.views.set(e.id, v);
     return v;
   }
@@ -388,16 +411,16 @@ export class Game {
 
   private sync(alpha: number) {
     const selected = new Set(this.selection);
-    const show = (e: Entity, vis: boolean) => {
+    const show = (e: Entity, vis: boolean, frozen = false) => {
       let v = this.views.get(e.id);
       if (!vis) { if (v) v.root.visible = false; return; }
       if (!v) v = this.makeView(e);
       v.root.visible = true;
-      this.place(v, e, alpha);
+      if (!frozen) this.place(v, e, alpha);
       const sel = selected.has(e.id);
       v.ring.visible = sel;
       const bw = v.barW;
-      v.bar.visible = sel && bw > 0;
+      v.bar.visible = sel && bw > 0 && !frozen;
       if (v.bar.visible) {
         const f = Math.max(0, e.hp / e.maxHp);
         v.bar.clear().rect(0, 0, bw, 4).fill(0x000000).rect(0, 0, bw * f, 4).fill(f > 0.5 ? 0x33cc33 : f > 0.25 ? 0xdddd33 : 0xdd3333);
@@ -405,7 +428,15 @@ export class Game {
     };
     const w = this.world;
     for (const u of w.units) show(u, u.owner === this.me || this.visible(u.pos.tile));
-    for (const b of w.buildings) show(b, b.owner === this.me || this.explored(b.footprint.origin));
+    for (const b of w.buildings) {
+      if (b.owner === this.me || this.revealMap) { show(b, true); continue; }
+      const now = this.anyVisible(b.footprint.tiles());
+      if (now) this.seen.add(b.id);
+      show(b, now || this.seen.has(b.id), !now);
+    }
+    for (const [id, g] of this.ghosts) {
+      if (this.anyVisible(g.tiles)) { g.view.root.destroy({ children: true }); this.ghosts.delete(id); }
+    }
     for (const n of w.nodes) show(n, this.explored(n.tile));
   }
 
@@ -641,7 +672,11 @@ export class Game {
     const miniMove = (e: MouseEvent) => {
       const p = this.minimapToWorld(e);
       if (!p) return;
-      if (e.button === 2) this.world.smart(this.me, this.selection, null, p);
+      if (e.button === 2) {
+        const sel = this.selectedEntities().filter((x) => x.owner === this.me);
+        if (sel.length === 1 && sel[0] instanceof Building) this.world.setRally(this.me, sel[0].id, p);
+        else this.world.smart(this.me, this.selection, null, p);
+      }
       else this.centerOn(p);
     };
     mm.addEventListener("mousedown", (e) => { e.preventDefault(); miniMove(e); });
@@ -702,7 +737,8 @@ export class Game {
         });
         return;
       }
-      if (e.shiftKey && hit.owner === me) {
+      if (e.shiftKey && hit.owner !== me) return; // shift only adds your own things
+      if (e.shiftKey) {
         const i = this.selection.indexOf(hit.id);
         if (i >= 0) this.selection.splice(i, 1); else this.selection.push(hit.id);
       } else this.selection = [hit.id];

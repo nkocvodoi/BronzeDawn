@@ -7,7 +7,7 @@ export type Order =
   | { kind: "idle" }
   | { kind: "move"; to: Vec2; attackMove: boolean }
   | { kind: "gather"; id: number }
-  | { kind: "return"; resume: number | null }
+  | { kind: "return"; resume: number | null; drop?: number }
   | { kind: "build"; id: number }
   | { kind: "attack"; id: number };
 
@@ -53,6 +53,8 @@ export class Unit extends Entity {
   facing = new Vec2(1, 0);
   /** Gathering, building or striking this step (for animation). */
   busy = false;
+  /** An enemy this unit could not reach, skipped by auto-targeting until the given time. */
+  unreachable: { id: number; until: number } | null = null;
 
   constructor(id: number, owner: number, readonly def: UnitDef, pos: Vec2) {
     super(id, owner, def.hp);
@@ -81,6 +83,8 @@ export class Building extends Entity {
   food: number;
   cooldown = 0;
   housingWarned = false;
+  /** Farms: the villager working it. */
+  farmer: number | null = null;
 
   constructor(id: number, owner: number, readonly def: BuildingDef, origin: Tile, complete: boolean) {
     super(id, owner, def.hp);
@@ -128,6 +132,8 @@ export class Player {
   pop = 0;
   popCap = 0;
   defeated = false;
+  /** Gather speed multiplier. 1 for people; the hard AI gets an announced bonus. */
+  gatherBonus = 1;
   stats = new PlayerStats();
   constructor(readonly id: number, readonly name: string, public res: ResBag) {}
 }

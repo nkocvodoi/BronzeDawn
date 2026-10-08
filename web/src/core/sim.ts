@@ -17,6 +17,7 @@ export function clock(t: number) {
 export function runMatch(rules: Rules, seed: number, minutes = 45, levels: Difficulty[] = ["normal", "normal"]): SimReport {
   const w = new World(rules, seed, levels.map((_, i) => `AI ${i + 1}`));
   w.ais = levels.map((d, i) => new AIController(i, d));
+  for (const ai of w.ais) ai.attach(w);
   const problems: string[] = [];
   const limit = Math.floor((minutes * 60) / World.dt);
   const ageAt = new Map<number, number>();

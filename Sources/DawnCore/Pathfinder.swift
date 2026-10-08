@@ -11,6 +11,8 @@ public final class Pathfinder {
     private var closed: [UInt32]
     private var generation: UInt32 = 0
     public var maxExpanded = 9000
+    /// Whether the last find() reached a goal tile, rather than the closest tile it could.
+    public private(set) var reached = false
 
     public init(map: GridMap) {
         self.map = map
@@ -66,8 +68,9 @@ public final class Pathfinder {
         let w = map.width
         var start = from.tile
         if !map.passable(start), let near = map.nearestPassable(to: start, maxRadius: 3) { start = near }
+        reached = false
         guard map.inside(start) else { return [] }
-        if isGoal(start) { return [] }
+        if isGoal(start) { reached = true; return [] }
 
         generation &+= 1
         let gen = generation
@@ -117,6 +120,7 @@ public final class Pathfinder {
             }
         }
 
+        reached = found >= 0
         var node = found >= 0 ? found : best
         var tiles: [Tile] = []
         while node >= 0 && node != si {

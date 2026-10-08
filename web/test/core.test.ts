@@ -4,6 +4,7 @@ import { Tile, Vec2 } from "../src/core/geom";
 import { Terrain } from "../src/core/grid";
 import { Res } from "../src/core/rules";
 import { runMatch } from "../src/core/sim";
+import { AIController } from "../src/core/ai";
 import { World } from "../src/core/world";
 
 /** An empty grass map, for tests that set up their own scene. */
@@ -158,6 +159,83 @@ describe("combat", () => {
   });
 });
 
+describe("fixes from the logic review", () => {
+  it("a move into a lake stops at the shore instead of walking into water", () => {
+    const w = blank(30);
+    for (let y = 10; y < 20; y++) for (let x = 10; x < 20; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    const c = w.spawnUnit("clubman", 0, new Tile(3, 3).center);
+    w.move(0, [c.id], new Vec2(15, 15));
+    for (let i = 0; i < 600; i++) {
+      w.step();
+      expect(w.map.terrainAt(c.pos.tile)).not.toBe(Terrain.water);
+    }
+    expect(c.order.kind).toBe("idle");
+    expect(c.pos.distance(new Vec2(15, 15))).toBeLessThan(9);
+  });
+
+  it("never walks through a building on the way", () => {
+    const w = blank(30);
+    w.fog[0].revealAll();
+    const ring = [[10, 10], [12, 10], [14, 10], [10, 12], [14, 12], [10, 14], [12, 14], [14, 14]];
+    for (const [x, y] of ring) w.addBuilding("house", 1, new Tile(x, y), true);
+    const c = w.spawnUnit("clubman", 0, new Tile(3, 3).center);
+    w.move(0, [c.id], new Vec2(13, 13));
+    for (let i = 0; i < 400; i++) { w.step(); expect(w.map.solidAt(c.pos.tile)).toBe(false); }
+  });
+
+  it("the AI only places buildings on ground it has explored", () => {
+    const w = new World(RULES, 3, ["A", "B"]);
+    w.ais = [new AIController(0, "normal"), new AIController(1, "normal")];
+    w.ais.forEach((a) => a.attach(w));
+    let placed = 0;
+    for (let i = 0; i < 20 * 600; i++) {
+      const before = w.buildings.length;
+      w.step();
+      for (const b of w.buildings.slice(before)) {
+        placed++;
+        for (const t of b.footprint.tiles()) expect(w.fog[b.owner].isExplored(t)).toBe(true);
+      }
+    }
+    expect(placed).toBeGreaterThan(10);
+  });
+
+  it("farms are walked over and take one farmer each", () => {
+    const w = blank();
+    w.addBuilding("town_center", 0, new Tile(2, 2), true);
+    const farm = w.addBuilding("farm", 0, new Tile(8, 8), true);
+    expect(w.map.passable(new Tile(8, 8))).toBe(true);
+    const a = w.spawnUnit("villager", 0, new Tile(7, 8).center);
+    const b = w.spawnUnit("villager", 0, new Tile(7, 9).center);
+    w.gather(0, [a.id, b.id], farm.id);
+    run(w, 10);
+    const working = [a, b].filter((u) => u.order.kind === "gather" && u.order.id === farm.id);
+    expect(working.length).toBe(1);
+  });
+
+  it("deleting a foundation refunds what was not built", () => {
+    const w = blank();
+    w.fog[0].revealAll();
+    const v = w.spawnUnit("villager", 0, new Tile(3, 3).center);
+    const wood = w.players[0].res.wood;
+    const r = w.place(0, "barracks", new Tile(8, 8), [v.id]) as { id: number };
+    w.destroy(0, r.id);
+    expect(w.players[0].res.wood).toBe(wood);
+  });
+
+  it("soldiers stop retrying an enemy they cannot reach", () => {
+    const w = blank(30);
+    for (let y = 0; y < 30; y++) for (let x = 14; x < 17; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    const c = w.spawnUnit("clubman", 0, new Tile(12, 12).center);
+    w.spawnUnit("villager", 1, new Tile(18, 12).center);
+    let searches = 0;
+    const find = w.pathfinder.find.bind(w.pathfinder);
+    w.pathfinder.find = (...args) => { searches++; return find(...args); };
+    run(w, 20);
+    expect(c.alive).toBe(true);
+    expect(searches).toBeLessThan(10);
+  });
+});
+
 describe("maps and matches", () => {
   it("makes a fair, connected map", () => {
     const w = new World(RULES, 7);
@@ -178,7 +256,7 @@ describe("maps and matches", () => {
   });
 
   it("ends a headless match with the stronger AI winning", () => {
-    for (const seed of [1, 2]) {
+    for (const seed of [1, 2, 3]) {
       const r = runMatch(RULES, seed, 45, ["hard", "easy"]);
       expect(r.winner, r.lines.join("\n")).toBe(0);
       expect(r.problems).toEqual([]);

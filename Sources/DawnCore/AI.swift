@@ -3,11 +3,13 @@ import Foundation
 public enum Difficulty: String, CaseIterable {
     case easy, normal, hard
 
-    var firstAttack: Double { [900.0, 660, 540][index] }
+    var firstAttack: Double { [900.0, 660, 600][index] }
     var firstWave: Int { [6, 8, 10][index] }
-    var villagerTarget: Int { [18, 24, 28][index] }
+    var villagerTarget: Int { [18, 24, 26][index] }
     /// How many military buildings it trains from at once.
-    var producers: Int { [1, 2, 9][index] }
+    var producers: Int { [1, 2, 3][index] }
+    /// Hard plays like normal with an open economic bonus, as many classic RTS AIs do.
+    var gather: Double { [1, 1, 1.2][index] }
     /// Whether it reads the enemy army and trains the counter.
     var counters: Bool { self != .easy }
     private var index: Int { Difficulty.allCases.firstIndex(of: self)! }
@@ -32,6 +34,7 @@ public final class AIController {
 
     func think(_ w: World) {
         let p = w.players[player]
+        p.gatherBonus = difficulty.gather
         guard !p.defeated else { return }
         thinks += 1
         if difficulty == .easy && thinks % 2 == 0 { return }
@@ -339,7 +342,7 @@ public final class AIController {
             for dy in -r...r {
                 for dx in -r...r where max(abs(dx), abs(dy)) == r {
                     let origin = Tile(c.x + dx - size / 2, c.y + dy - size / 2)
-                    guard w.canPlace(type, at: origin) else { continue }
+                    guard w.canPlace(type, at: origin, for: player) else { continue }
                     if hasGap(w, origin, size, checkNodes: margin) { return origin }
                 }
             }

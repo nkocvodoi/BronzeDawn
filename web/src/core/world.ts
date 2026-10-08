@@ -91,8 +91,8 @@ export class World {
     const b = new Building(this.nextId++, owner, this.rules.buildings.get(type)!, origin, complete);
     this.buildings.push(b);
     this.byId.set(b.id, b);
-    this.map.setOccupant(b.footprint, b.id);
-    this.nudgeUnits(b.footprint);
+    this.map.setOccupant(b.footprint, b.id, !b.isFarm);
+    if (!b.isFarm) this.nudgeUnits(b.footprint);
     return b;
   }
 
@@ -195,12 +195,18 @@ export class World {
         const t = this.map.nearestPassable(dest.tile, 4);
         if (t) dest = t.center;
       }
-      u.order = { kind: "move", to: dest, attackMove: attackMove && !u.isVillager };
       u.resumeMove = null;
       const goal = dest.tile;
       u.path = this.pathfinder.find(u.pos, dest, (t) => t.equals(goal));
+      if (u.path.length) {
+        // Finish on the exact point only when it was reached and the last leg is clear;
+        // otherwise stop at the closest tile (the shore of a lake, the edge of a wall).
+        const before = u.path.length > 1 ? u.path[u.path.length - 2] : u.pos;
+        if (this.pathfinder.reached && this.map.clearLine(before, dest)) u.path[u.path.length - 1] = dest;
+        else dest = u.path[u.path.length - 1];
+      } else if (!this.pathfinder.reached) dest = u.pos;
+      u.order = { kind: "move", to: dest, attackMove: attackMove && !u.isVillager };
       u.pathTarget = dest;
-      if (u.path.length) u.path[u.path.length - 1] = dest;
     });
   }
 
@@ -248,7 +254,7 @@ export class World {
     if (!e) { this.move(player, ids, at); return "moved"; }
     if (this.isEnemy(player, e.owner)) { this.attack(player, ids, e.id); return "attacked"; }
     const villagers = group.filter((u) => u.isVillager).map((u) => u.id);
-    const others = group.filter((u) => !u.isVillager).map((u) => u.id);
+    const movers = group.filter((u) => !u.isVillager).map((u) => u.id);
     let result: SmartResult = "moved";
     if (villagers.length) {
       if (e instanceof ResourceNode) { this.gather(player, villagers, e.id); result = "gathered"; }
@@ -260,14 +266,14 @@ export class World {
             const u = this.unit(id);
             return !!u && u.carry > 0 && u.carryRes !== null && e.dropsOff(u.carryRes);
           });
-          for (const id of carriers) { const u = this.unit(id)!; u.order = { kind: "return", resume: null }; u.path = []; }
-          const rest = villagers.filter((id) => !carriers.includes(id));
-          if (rest.length) this.move(player, rest, at);
-          result = carriers.length ? "returned" : "moved";
+          for (const id of carriers) { const u = this.unit(id)!; u.order = { kind: "return", resume: null, drop: e.id }; u.path = []; }
+          movers.push(...villagers.filter((id) => !carriers.includes(id)));
+          if (carriers.length) result = "returned";
         }
-      } else this.move(player, villagers, at);
+      } else movers.push(...villagers);
     }
-    if (others.length) this.move(player, others, at);
+    // One move for everyone left, so they share one formation instead of piling up.
+    if (movers.length) this.move(player, movers, at);
     return result;
   }
 
@@ -327,7 +333,14 @@ export class World {
   /** The Delete key: the owner destroys one of their own units or buildings. */
   destroy(player: number, id: number) {
     const e = this.entity(id);
-    if (e && e.owner === player) this.kill(e, 0);
+    if (!e || e.owner !== player) return;
+    if (e instanceof Building && !e.complete) {
+      // An unfinished foundation gives back the part of its cost not yet built.
+      const back = this.rules.buildingCost(e.def.id);
+      for (let i = 0; i < 4; i++) back.values[i] = Math.floor(back.values[i] * (1 - e.progress));
+      this.players[player].res.add(back);
+    }
+    this.kill(e, 0);
   }
 
   // ---- the step
@@ -461,7 +474,9 @@ export class World {
     const stale = u.pathTarget ? u.pathTarget.distance(goal) > 1.0 : true;
     if (!u.path.length || (stale && u.repathTimer <= 0)) {
       if (u.repathTimer > 0 && !u.path.length) return "moving"; // waiting out a failed search
+      this.pathfinder.maxExpanded = 4000; // approaching something nearby should never search the whole map
       u.path = this.pathfinder.find(u.pos, goal, (t) => e.distance(t.center) <= reach);
+      this.pathfinder.maxExpanded = 9000;
       u.pathTarget = goal;
       u.repathTimer = 0.6 + (u.id % 7) * 0.05;
       if (!u.path.length) {
@@ -479,7 +494,7 @@ export class World {
     let budget = u.def.speed * dt;
     while (budget > 0 && u.path.length) {
       const next = u.path[0];
-      if (!this.map.passable(next.tile) && this.map.occupantAt(next.tile) !== 0) {
+      if (this.map.solidAt(next.tile)) {
         u.path = []; u.repathTimer = 0;
         return true;
       }
@@ -511,7 +526,7 @@ export class World {
       case "idle":
         if (!u.isVillager && u.scanTimer <= 0) {
           u.scanTimer = 0.5;
-          const t = this.nearestEnemy(u.owner, u.pos, u.def.los);
+          const t = this.nearestEnemy(u.owner, u.pos, u.def.los, this.skipFor(u));
           if (t) u.order = { kind: "attack", id: t.id };
         }
         break;
@@ -519,7 +534,7 @@ export class World {
       case "move": {
         if (o.attackMove && u.scanTimer <= 0) {
           u.scanTimer = 0.5;
-          const t = this.nearestEnemy(u.owner, u.pos, u.def.los);
+          const t = this.nearestEnemy(u.owner, u.pos, u.def.los, this.skipFor(u));
           if (t) {
             u.resumeMove = o.to;
             u.order = { kind: "attack", id: t.id };
@@ -528,15 +543,24 @@ export class World {
           }
         }
         if (!u.path.length) {
-          if (u.pos.distance(o.to) > 0.15 && this.map.clearLine(u.pos, o.to)) u.path = [o.to];
-          else { u.order = IDLE; return; }
+          if (u.pos.distance(o.to) <= 0.15) { u.order = IDLE; return; }
+          if (this.map.clearLine(u.pos, o.to)) u.path = [o.to];
+          else {
+            // Something was built across the way: find a new path, no more than twice a second.
+            u.repathTimer -= dt;
+            if (u.repathTimer > 0) return;
+            u.repathTimer = 0.5;
+            const goal = o.to.tile;
+            u.path = this.pathfinder.find(u.pos, o.to, (t) => t.equals(goal));
+            if (!u.path.length) { u.order = IDLE; return; }
+          }
         }
         if (this.followPath(u, dt)) u.order = IDLE;
         break;
       }
 
       case "gather": this.updateGather(u, o.id, dt); break;
-      case "return": this.updateReturn(u, o.resume, dt); break;
+      case "return": this.updateReturn(u, o.resume, dt, o.drop); break;
       case "build": this.updateBuild(u, o.id, dt); break;
 
       case "attack": {
@@ -566,10 +590,21 @@ export class World {
             if (isRanged(u.def)) this.fire(u.pos, u.id, t, dmg);
             else this.applyDamage(t, dmg, u.id);
           }
-        } else if (a === "blocked") u.order = IDLE;
+        } else if (a === "blocked") {
+          u.unreachable = { id: t.id, until: this.time + 10 };
+          u.order = IDLE;
+        }
         break;
       }
     }
+  }
+
+  /** Auto-targeting skips an enemy this unit recently failed to reach. */
+  private skipFor(u: Unit): ((e: Entity) => boolean) | undefined {
+    const r = u.unreachable;
+    if (!r) return undefined;
+    if (r.until < this.time) { u.unreachable = null; return undefined; }
+    return (e) => e.id === r.id;
   }
 
   private gatherSource(u: Unit, id: number): { src: Entity; res: Res } | null {
@@ -594,11 +629,19 @@ export class World {
     if (u.carry > 0 && u.carryRes !== res) u.carry = 0;
     const capacity = this.rules.economy.carry;
     if (u.carry >= capacity) { u.order = { kind: "return", resume: id }; u.path = []; return; }
+    // One farmer per farm: a second villager looks for an empty farm nearby.
+    if (src instanceof Building && src.farmer !== u.id && this.unit(src.farmer ?? -1)?.order.kind === "gather") {
+      const other = this.freeFarm(u.owner, u.pos, src.id);
+      if (other) { u.order = { kind: "gather", id: other.id }; u.path = []; u.repathTimer = 0; }
+      else if (src.distance(u.pos) < 1.5) u.order = IDLE;
+      return;
+    }
     const a = this.approach(u, src, 0.9, dt);
     if (a === "arrived") {
+      if (src instanceof Building) src.farmer = u.id;
       this.face(u, src.center);
       u.busy = true;
-      const rate = this.rules.gatherRate(res);
+      const rate = this.rules.gatherRate(res) * this.players[u.owner].gatherBonus;
       if (src instanceof ResourceNode) {
         const take = Math.min(rate * dt, src.amount, capacity - u.carry);
         src.amount -= take;
@@ -624,13 +667,15 @@ export class World {
     }
   }
 
-  private updateReturn(u: Unit, resume: number | null, dt: number) {
+  private updateReturn(u: Unit, resume: number | null, dt: number, dropId?: number) {
     if (u.carry <= 0 || u.carryRes === null) {
       u.order = resume !== null && this.gatherSource(u, resume) ? { kind: "gather", id: resume } : IDLE;
       return;
     }
     const r = u.carryRes;
-    const drop = this.nearestDropOff(r, u.owner, u.pos);
+    // 6: the drop-off the player right-clicked, while it stands; otherwise the nearest one.
+    const chosen = dropId !== undefined ? this.building(dropId) : null;
+    const drop = chosen && chosen.complete && chosen.dropsOff(r) ? chosen : this.nearestDropOff(r, u.owner, u.pos);
     if (!drop) {
       u.order = IDLE;
       this.events.push({ kind: "message", player: u.owner, text: `No place to drop off ${RES_KEY[r]}` });
@@ -754,16 +799,16 @@ export class World {
 
   // ---- queries
 
-  nearestEnemy(player: number, p: Vec2, r: number): Entity | null {
+  nearestEnemy(player: number, p: Vec2, r: number, skip?: (e: Entity) => boolean): Entity | null {
     let best: Entity | null = null, bestD = r;
     for (const u of this.units) {
-      if (!u.alive || !this.isEnemy(player, u.owner)) continue;
+      if (!u.alive || !this.isEnemy(player, u.owner) || skip?.(u)) continue;
       const d = u.pos.distance(p);
       if (d <= bestD) { bestD = d; best = u; }
     }
     if (best) return best;
     for (const b of this.buildings) {
-      if (!b.alive || !this.isEnemy(player, b.owner)) continue;
+      if (!b.alive || !this.isEnemy(player, b.owner) || skip?.(b)) continue;
       const d = b.distance(p);
       if (d <= bestD) { bestD = d; best = b; }
     }
@@ -786,6 +831,18 @@ export class World {
       if (!n.alive || n.res !== r || n.id === excluding) continue;
       const d = n.center.distance(p);
       if (d < bestD) { bestD = d; best = n; }
+    }
+    return best;
+  }
+
+  /** The nearest finished farm of this owner nobody is working, within 10 tiles. */
+  freeFarm(owner: number, p: Vec2, excluding: number | null = null): Building | null {
+    let best: Building | null = null, bestD = 10;
+    for (const b of this.buildings) {
+      if (!b.alive || !b.isFarm || !b.complete || b.owner !== owner || b.id === excluding) continue;
+      if (b.farmer !== null && this.unit(b.farmer)?.order.kind === "gather") continue;
+      const d = b.distance(p);
+      if (d < bestD) { bestD = d; best = b; }
     }
     return best;
   }

@@ -7,10 +7,11 @@ import type { World } from "./world";
 export type Difficulty = "easy" | "normal" | "hard";
 export const DIFFICULTIES: Difficulty[] = ["easy", "normal", "hard"];
 
-const LEVEL = {
-  easy: { firstAttack: 900, firstWave: 6, villagerTarget: 18, producers: 1, counters: false },
-  normal: { firstAttack: 660, firstWave: 8, villagerTarget: 24, producers: 2, counters: true },
-  hard: { firstAttack: 540, firstWave: 10, villagerTarget: 28, producers: 9, counters: true },
+export const LEVEL = {
+  easy: { firstAttack: 900, firstWave: 6, villagerTarget: 18, producers: 1, counters: false, gather: 1 },
+  normal: { firstAttack: 660, firstWave: 8, villagerTarget: 24, producers: 2, counters: true, gather: 1 },
+  // Hard plays like normal with a bigger army and an open economic bonus, as many classic RTS AIs do.
+  hard: { firstAttack: 600, firstWave: 10, villagerTarget: 26, producers: 3, counters: true, gather: 1.2 },
 };
 
 /** Equal-spend strength of a against b (Lanchester square law), the same formula as balance.py. */
@@ -41,6 +42,11 @@ export class AIController {
   constructor(readonly player: number, readonly difficulty: Difficulty = "normal") {
     this.level = LEVEL[difficulty];
     this.waveSize = this.level.firstWave;
+  }
+
+  /** Called once when the AI joins a world: applies its open economic bonus. */
+  attach(w: World) {
+    w.players[this.player].gatherBonus = this.level.gather;
   }
 
   /** The plan, once a second. */
@@ -120,8 +126,11 @@ export class AIController {
     // Farms when the berries near home are gone.
     const foodNear = w.nearestNode(Res.food, home, 16) !== null;
     const farms = bs.filter((b) => b.isFarm);
-    const wantFarms = Math.max(0, Math.floor(villagers.length * 0.4) - (foodNear ? 4 : 0));
-    if (farms.length < wantFarms && p.res.wood >= 75 && w.blockerBuilding("farm", this.player) === null) {
+    // One farmer per farm: as many farms as food workers wanted, less those still on berries.
+    const foodWorkers = Math.ceil(this.shares(p)[Res.food] * villagers.length);
+    const wantFarms = Math.max(0, foodWorkers - (foodNear ? 4 : 0));
+    const building = farms.filter((f) => !f.complete).length;
+    if (farms.length < wantFarms && building < 2 && p.res.wood >= 75 && w.blockerBuilding("farm", this.player) === null) {
       const granary = bs.find((b) => b.def.id === "granary" && b.complete)?.center ?? home;
       this.placeNear(w, "farm", granary, 2, 9, villagers, false);
     }
@@ -323,7 +332,7 @@ export class AIController {
         for (let dx = -r; dx <= r; dx++) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
           const origin = new Tile(c.x + dx - half, c.y + dy - half);
-          if (w.canPlace(type, origin) && this.hasGap(w, origin, size, margin)) return origin;
+          if (w.canPlace(type, origin, this.player) && this.hasGap(w, origin, size, margin)) return origin;
         }
       }
     }
