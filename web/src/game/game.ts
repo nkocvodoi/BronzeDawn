@@ -924,9 +924,47 @@ export class Game {
     }
     const target = this.pick(e.clientX, e.clientY);
     const r = this.world.smart(this.me, this.selection, target?.id ?? null, at);
-    if (r === "attacked") this.marker(e.clientX, e.clientY, 0xff3333);
-    else if (r === "converted" || r === "healed") this.marker(e.clientX, e.clientY, 0xffd659);
-    else if (r !== "nothing") this.marker(e.clientX, e.clientY, 0x33ff66);
+    const color = r === "attacked" ? 0xff3333 : r === "converted" || r === "healed" ? 0xffd659 : 0x33ff66;
+    // As in the original: the tree, bush, mine, animal, foundation or enemy you ordered them onto flashes.
+    if (target && r !== "moved" && r !== "nothing") this.flash(target, color);
+    else if (r !== "nothing") this.marker(e.clientX, e.clientY, color);
+  }
+
+  /** How many target flashes are running (for the smoke test). */
+  flashes = 0;
+
+  /** Blinks the targeted thing a few times and rings it, so you see what your units were sent to. */
+  private flash(e: Entity, color: number) {
+    const v = this.views.get(e.id);
+    if (!v) return;
+    const ring = new Graphics();
+    if (e instanceof Building) {
+      const sz = e.def.size, w = sz * HALF_W, h = sz * HALF_H;
+      ring.poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 2, color });
+    } else {
+      const rx = Math.max(14, v.pic.w * 0.42), ry = rx / 2;
+      ring.ellipse(0, 0, rx, ry).stroke({ width: 2, color });
+    }
+    ring.zIndex = -0.4;
+    v.root.addChild(ring);
+    this.flashes++;
+    let t = 0;
+    const blinks = 3, period = 0.22;
+    const tick = (dt: { deltaMS: number }) => {
+      t += dt.deltaMS / 1000;
+      const on = Math.floor(t / (period / 2)) % 2 === 0;
+      if (!v.root.destroyed) {
+        v.sprite.alpha = on ? 1 : 0.35;
+        ring.alpha = on ? 1 : 0.3;
+        ring.scale.set(1 + 0.12 * Math.sin((t / period) * Math.PI));
+      }
+      if (t >= blinks * period || v.root.destroyed) {
+        this.app.ticker.remove(tick);
+        this.flashes--;
+        if (!v.root.destroyed) { v.sprite.alpha = 1; ring.destroy(); }
+      }
+    };
+    this.app.ticker.add(tick);
   }
 
   private marker(sx: number, sy: number, color: number | string) {
