@@ -177,7 +177,7 @@ export class Game {
     const civ = this.world.players[this.me].civ;
     const enemyCiv = this.world.players[1].civ;
     this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules) : [], enemyCiv?.name ?? null);
-    this.hud.message(`${civ ? `You lead the ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
+    this.hud.message(`${civ ? `Your civilization: ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
     this.selectTownCenter();
   }
 
@@ -185,7 +185,7 @@ export class Game {
     this.hud.showOverlay("Controls", [
       "Left click / drag: select · Shift: add · Double click: all of that kind on screen",
       "Right click: move, gather, hunt, build, attack, convert or heal (priests), or set a rally point",
-      "Command keys follow the grid: Q W E R T Y / A S D F G H / Z X C V B N",
+      "Command keys follow the grid: Q W E R T Y / A S D F G J / Z X C V B N",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Ctrl+1-9 save group · 1-9 recall · Delete destroy",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
