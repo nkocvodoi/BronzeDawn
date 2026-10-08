@@ -112,6 +112,23 @@ describe("production", () => {
     expect(w.train(0, b.id, "clubman")).toBeNull();
   });
 
+  it("a villager who left a foundation can come back and finish it", () => {
+    const w = blank();
+    w.fog[0].revealAll();
+    w.addBuilding("town_center", 0, new Tile(2, 2), true);
+    const bush = w.addNode("berry_bush", new Tile(16, 4))!;
+    const v = w.spawnUnit("villager", 0, new Tile(8, 8).center);
+    const b = w.building((w.place(0, "house", new Tile(10, 10), [v.id]) as { id: number }).id)!;
+    run(w, 8);
+    const half = b.progress;
+    expect(w.smart(0, [v.id], bush.id, bush.center)).toBe("gathered");
+    run(w, 5);
+    expect(b.progress).toBe(half);
+    expect(w.smart(0, [v.id], b.id, b.center)).toBe("built");
+    run(w, 20);
+    expect(b.complete).toBe(true);
+  });
+
   it("checks placement and builds a house", () => {
     const w = blank();
     w.addBuilding("town_center", 0, new Tile(5, 5), true);

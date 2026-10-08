@@ -82,6 +82,15 @@ check((await g(() => game.world.buildingsOf(0).filter((b) => b.def.id === "house
 // Villagers bunch up at the bush, so the click may pick a neighbour: check whoever is selected.
 check(await g(() => game.world.unit(game.selection[0])?.order.kind === "build"), "the selected villager goes to build it");
 
+// Leave the half-built house for a tree, then right-click its foundation: the villager goes back and finishes it.
+const builder = await g(() => game.selection[0]);
+const house = await g((b) => game.world.buildingsOf(0).find((x) => x.def.id === "house" && !x.complete).id, builder);
+await g(([b, h]) => { const w = game.world, u = w.unit(b); w.gather(0, [b], w.nearestNode(1, u.pos, 30).id); game.selection = [b]; }, [builder, house]);
+await wait(500);
+p = await g((h) => { const b = game.world.building(h); game.look(b.center); const fp = b.footprint; return game.screenOf(new b.center.constructor(fp.maxX - 0.3, fp.maxY - 0.3)); }, house);
+await page.mouse.click(p.x, p.y, { button: "right" });
+check(await g(([b, h]) => { const o = game.world.unit(b).order; return o.kind === "build" && o.id === h; }, [builder, house]), "right-clicking a half-built house sends the villager back to finish it");
+
 // Drag a box around the start villagers.
 const box = await g(() => {
   const us = game.world.unitsOf(0);
