@@ -11,43 +11,39 @@
   <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
+  <!-- Laid out on an 800 x 600 screen, as the original, and scaled to the window with --u. -->
   <header id="topbar">
     <div class="left">
       <span id="res-wood" class="res" title="Wood">0</span><span id="res-food" class="res" title="Food">0</span><span id="res-gold" class="res" title="Gold">0</span><span id="res-stone" class="res" title="Stone">0</span>
-      <span id="pop">0/0</span>
+      <span id="pop" title="Population">0/0</span>
     </div>
-    <div class="center"><span id="civ-name" class="civ" hidden></span><span id="age">Stone Age</span></div>
+    <div class="center"><span id="age">Stone Age</span><span id="clock" hidden></span></div>
     <div class="right">
-      <button id="lock-btn" class="toggle" title="Keep the mouse inside the game: click the map to lock it, Alt+Tab or Esc to let go">Lock mouse</button><button id="fs-btn" title="Full screen (hold Esc to leave)">Full screen</button>
-      <button id="sfx-btn" class="toggle" title="Sound effects on or off">Sound</button><button id="music-btn" class="toggle" title="Music on or off">Music</button>
-      <span id="speed" title="Game speed: click, or + and -">1x</span><span id="clock">0:00</span>
-      <button id="menu-btn" title="Controls and pause (F1)">Menu</button>
+      <button id="diplomacy-btn" title="The players and their civilizations">Diplomacy</button><button id="menu-btn" title="Pause, options and help (F10)">Menu</button>
     </div>
   </header>
   <div id="messages"></div>
   <div id="dragbox" hidden></div>
+  <div id="scores" hidden></div>
   <footer id="panel">
-    <div class="rivets"></div>
     <section id="status">
+      <div id="owner-line"></div>
+      <h2 id="info-title"></h2>
       <div id="portrait-box">
         <canvas id="portrait" width="64" height="64"></canvas>
-        <div id="hp" class="bar"><i id="hp-bar"></i></div>
-        <div id="hp-text"></div>
-      </div>
-      <div id="status-text">
-        <div id="owner-line"></div>
-        <h2 id="info-title"></h2>
         <div id="stats"></div>
-        <p id="info-0"></p><p id="info-1"></p>
-        <div id="queue"></div>
-        <div id="progress" class="bar thin" hidden><i id="progress-bar"></i></div>
       </div>
-      <div id="multi" hidden></div>
+      <div id="hp" class="bar"><i id="hp-bar"></i></div>
+      <div id="hp-text"></div>
+      <p id="info-0"></p><p id="info-1"></p>
+      <div id="queue"></div>
+      <div id="progress" class="bar thin" hidden><i id="progress-bar"></i></div>
     </section>
     <section id="commands"></section>
     <section id="minimap-box">
-      <div id="minimap-frame"><canvas id="minimap" width="440" height="220"></canvas></div>
-      <div id="mini-buttons"><button id="help-btn" title="Controls (F1)">?</button></div>
+      <canvas id="minimap" width="440" height="220"></canvas>
+      <button id="score-btn" title="Scores (F4)">S</button>
+      <button id="help-btn" title="Controls (F1)">?</button>
     </section>
   </footer>
   <div id="tooltip" hidden></div>

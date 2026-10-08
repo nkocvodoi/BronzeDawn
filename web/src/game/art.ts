@@ -2557,6 +2557,98 @@ export function statIcons(): Record<string, string> {
   return out;
 }
 
+/** The size of one tile of the carved interface stone, in art pixels. It is drawn at 2 screen units a pixel. */
+export const RELIEF_W = 200, RELIEF_H = 63;
+
+/** Carved stone for the top bar and bottom panel, in the colour and motifs of each architecture:
+ *  invented glyph columns for the Egyptians, a key band and fluting for the Greeks, glazed brick and
+ *  rosettes for Babylon, lacquered panels with cloud scrolls for the Asian peoples, framed marble for
+ *  Rome. Every motif is drawn here; it tiles left to right. */
+export function reliefTexture(arch: string, plain = false): string {
+  const W = RELIEF_W, H = RELIEF_H;
+  const p = new PixelCanvas(W, H);
+  const tones: Record<string, [number, number]> = {
+    egyptian: [0xe2cca4, 0xb4966a], greek: [0xe8e4da, 0xb2ac9e], babylonian: [0xcfa874, 0x94693e],
+    asian: [0x9a4632, 0x5a2216], roman: [0xd2cec6, 0x8c8880],
+  };
+  const [lightHex, darkHex] = tones[arch] ?? tones.egyptian;
+  const light = rgb(lightHex), dark = rgb(darkHex);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const n = hash(x >> 2, y >> 2, 51) * 0.35 + hash(x, y, 52) * 0.25 + hash(x >> 4, y >> 3, 53) * 0.4;
+    p.set(x, y, mix(dark, light, 0.45 + n * 0.55));
+  }
+  // A carved line: a shadowed groove with its lit lower edge, as light falls from the top left.
+  // Shallow, so the carving reads as relief behind the buttons rather than a pattern on top of them.
+  const shade = darken(dark, 0.8), lit = lighten(light, 0.22);
+  const groove = (x0: number, y0: number, x1: number, y1: number) => { p.line(x0 + 1, y0 + 1, x1 + 1, y1 + 1, lit); p.line(x0, y0, x1, y1, shade); };
+  const ring = (cx: number, cy: number, r: number) => {
+    for (let a = 0; a < 40; a++) {
+      const t = (a / 40) * Math.PI * 2, x = Math.round(cx + Math.cos(t) * r), y = Math.round(cy + Math.sin(t) * r);
+      p.set(x + 1, y + 1, lit); p.set(x, y, shade);
+    }
+  };
+  // Every style has a carved border along the top and bottom. The top bar's stone stops there.
+  groove(0, 1, W - 1, 1); groove(0, H - 3, W - 1, H - 3);
+  if (plain) return p.toCanvas().toDataURL();
+  if (arch === "greek") {
+    // A key band along the top and the bottom, and fluted pilasters.
+    for (const by of [4, H - 11]) {
+      for (let x = 0; x < W; x += 10) {
+        groove(x, by + 6, x, by); groove(x, by, x + 7, by); groove(x + 7, by, x + 7, by + 4);
+        groove(x + 7, by + 4, x + 3, by + 4); groove(x + 3, by + 4, x + 3, by + 2); groove(x, by + 6, x + 10, by + 6);
+      }
+    }
+    for (const px of [40, 140]) for (let k = 0; k < 4; k++) groove(px + k * 4, 14, px + k * 4, H - 15);
+  } else if (arch === "babylonian") {
+    // Courses of brick, with a row of rosettes through the middle.
+    for (let y = 4; y < H - 3; y += 8) {
+      groove(0, y, W - 1, y);
+      for (let x = (y / 8) % 2 ? 0 : 10; x < W; x += 20) groove(x, y, x, Math.min(y + 8, H - 4));
+    }
+    for (let x = 20; x < W; x += 40) {
+      ring(x, 32, 7); ring(x, 32, 2);
+      for (let k = 0; k < 8; k++) { const t = (k / 8) * Math.PI * 2; groove(x + Math.cos(t) * 3, 32 + Math.sin(t) * 3, x + Math.cos(t) * 6, 32 + Math.sin(t) * 6); }
+    }
+  } else if (arch === "asian") {
+    // Lacquered panels in raised frames, each with a cloud scroll.
+    for (let x = 0; x < W; x += 50) {
+      groove(x + 3, 6, x + 46, 6); groove(x + 3, 6, x + 3, H - 8); groove(x + 46, 6, x + 46, H - 8); groove(x + 3, H - 8, x + 46, H - 8);
+      for (let a = 0; a < 60; a++) {
+        const t = a / 60 * Math.PI * 3.2, r = 2 + a * 0.22;
+        p.set(Math.round(x + 25 + Math.cos(t) * r), Math.round(30 + Math.sin(t) * r * 0.7), shade);
+      }
+    }
+  } else if (arch === "roman") {
+    // Marble in recessed frames, with a chain of leaves between them.
+    for (let x = 0; x < W; x += 100) {
+      for (const [x0, x1] of [[x + 6, x + 44], [x + 56, x + 94]]) {
+        groove(x0, 8, x1, 8); groove(x0, 8, x0, H - 10); groove(x1, 8, x1, H - 10); groove(x0, H - 10, x1, H - 10);
+        groove(x0 + 4, 12, x1 - 4, 12); groove(x0 + 4, H - 14, x1 - 4, H - 14);
+      }
+      for (let y = 10; y < H - 10; y += 6) { groove(x + 48, y, x + 51, y + 3); groove(x + 52, y, x + 49, y + 3); }
+    }
+  } else {
+    // Egyptian: a few columns of invented signs between ruled lines, as on a temple wall, with plain
+    // dressed stone between the groups.
+    let seed = 0;
+    groove(0, 5, W - 1, 5); groove(0, H - 7, W - 1, H - 7);
+    for (let x = 0; x < W; x += 20) {
+      if (x % 100 >= 40) continue;
+      groove(x, 5, x, H - 6); groove(x + 20, 5, x + 20, H - 6);
+      for (let y = 8; y + 12 < H - 4; y += 13) {
+        const cx = x + 10, cy = y + 5, kind = Math.floor(hash(x, y, 60 + seed++) * 6);
+        if (kind === 0) ring(cx, cy, 4);                                                   // a sun
+        else if (kind === 1) { for (let k = -4; k < 4; k += 2) { groove(cx + k, cy - 1, cx + k + 1, cy + 1); } } // water
+        else if (kind === 2) { groove(cx - 4, cy + 4, cx, cy - 4); groove(cx, cy - 4, cx + 4, cy + 4); groove(cx - 4, cy + 4, cx + 4, cy + 4); } // a hill
+        else if (kind === 3) { groove(cx, cy - 5, cx, cy + 5); ring(cx, cy - 3, 2); }      // a staff
+        else if (kind === 4) { groove(cx - 4, cy, cx + 4, cy); groove(cx - 4, cy - 3, cx - 4, cy + 3); groove(cx + 4, cy - 3, cx + 4, cy + 3); } // a frame
+        else { ring(cx, cy + 1, 3); groove(cx - 4, cy - 4, cx + 4, cy - 4); }               // a bowl
+      }
+    }
+  }
+  return p.toCanvas().toDataURL();
+}
+
 /** A tileable stone texture for the panels. */
 export function stoneTexture(): string {
   const p = new PixelCanvas(64, 64);

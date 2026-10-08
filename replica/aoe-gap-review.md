@@ -75,6 +75,36 @@ Thấy thêm khi chơi:
 - Chưa có điểm số trên màn hình (bản gốc có bảng điểm các người chơi, bật tắt bằng phím).
 - Chưa có tàu, đồi, kiểu bản đồ có biển, ruins/artifact, nhiều người chơi: đã có trong roadmap.
 
+## Đối chiếu bằng ảnh chụp bản gốc (800×600, 5 ảnh, 2026-10-08)
+
+Đã xác nhận:
+- Thanh trên cao khoảng 18 px: tài nguyên bên trái (gỗ, thức ăn, vàng, đá), tên thời đại ở giữa, bên phải
+  chỉ có Diplomacy và Menu. Không có dân số, không có đồng hồ.
+- Bảng dưới cao khoảng 126 px (21%). Ô thông tin đen rộng khoảng 133 px: văn minh và tên ở góc trên, chân
+  dung, chỉ số kèm biểu tượng, thanh máu và số máu ở dưới.
+- Lưới nút 6 cột × 2 hàng, nút khoảng 50×52 px, bắt đầu ngay sau ô thông tin, không ghi phím tắt. Mỗi loại
+  lệnh có chỗ cố định: Town Center để Villager ở hàng trên, nút lên đời ở hàng dưới cùng cột. Nút X đỏ ở
+  hàng dưới, cột 6.
+- Chọn nhiều unit: ô thông tin chỉ hiện unit đầu tiên.
+- Khung giao diện đổi theo văn minh (Ai Cập: phù điêu sa thạch).
+- Unit được chọn có hình thoi trắng mảnh dưới đất và thanh máu phía trên (không phải khung chữ nhật).
+- Dòng gợi ý khi rê chuột ("Click to select this building.") ở góc dưới bên trái vùng bản đồ.
+- Tên dân làng đổi theo việc: Builder, Woodcutter…
+- Menu xây ở Stone Age chỉ hiện những gì xây được: House, Barracks, Granary, Storage Pit, Dock.
+- Sương mù: vùng đã khám phá phủ lưới chấm tối, mép vùng nhìn thấy lượn theo ô.
+
+## Đã làm (bước 1, nhánh `aoe-feel`)
+
+- HUD theo khung 800×600, phóng theo cửa sổ bằng `--u`; zoom bản đồ lúc vào trận cũng theo tỉ lệ đó.
+- Thanh trên chỉ còn tài nguyên, dân số, thời đại, Diplomacy, Menu. Tốc độ, âm thanh, nhạc, khóa chuột,
+  toàn màn hình chuyển vào Menu (F10). Diplomacy liệt kê người chơi, văn minh và bonus.
+- Bảng dưới theo đúng vị trí đo được; nút X ở hàng dưới cột 6; Town Center và nhà nghiên cứu xếp nút theo hàng.
+- Khung đá chạm khắc tự vẽ theo 5 kiểu kiến trúc (`reliefTexture` trong `art.ts`).
+- Hình thoi khi chọn; chọn nhiều hiện unit đầu tiên; tên dân làng theo việc; dòng gợi ý góc dưới trái;
+  tin nhắn góc trên trái; nút S và F4 hiện điểm (cách tính điểm tự đặt, chưa theo bản gốc).
+
+Còn khác có chủ ý: dân số vẫn hiện trên thanh trên (bản gốc không có) vì không có nó rất khó chơi.
+
 ## Đề xuất thứ tự làm
 
 1. HUD co giãn theo cửa sổ và lưới nút lệnh kiểu bản gốc (mục 2, 3). Một đến hai buổi, thấy khác ngay.

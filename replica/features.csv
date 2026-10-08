@@ -60,7 +60,9 @@ Save and load a game,setup,should,yes,no,
 Status box command icons and diamond minimap,hud,must,yes,yes,
 Build menu with the original's keys,hud,must,yes,yes,B then a letter
 Train keys of the original,hud,should,yes,yes,
-Score display and timers on screen,hud,could,yes,partial,Wonder timer only
+Score display and timers on screen,hud,could,yes,partial,Wonder timer; S or F4 shows a score of our own making
+Interface laid out and scaled as the original at 800x600,hud,should,yes,yes,carved stone in the style of each architecture
+Villagers named by their work,hud,could,yes,yes,Builder Woodcutter Forager Hunter Fisherman Farmer Gold Miner Stone Miner
 Sound effects,audio,should,yes,yes,synthesized at run time with Web Audio: tools combat buildings alerts
 Unit voices and acknowledgements,audio,should,yes,yes,formant-synthesized made-up tongue; priests chant when converting
 Music,audio,could,yes,yes,procedural: drone lyre hand drum flute in D dorian

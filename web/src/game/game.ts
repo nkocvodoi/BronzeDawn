@@ -39,9 +39,10 @@ const SPEEDS = [1, 1.5, 2, 3];
 /** Map sizes in tiles, after the original's Small to Huge. */
 const MAP_SIZES: [string, number][] = [["Small", 72], ["Medium", 96], ["Large", 120], ["Huge", 144]];
 
-/** The original's build keys: B opens the build menu, then a letter places the building. */
+/** The original's build keys: B opens the build menu, then a letter places the building.
+ *  In the original's order on the buttons: House, Barracks, Granary, Storage Pit, then the later ones. */
 const BUILD_KEYS: Record<string, string> = {
-  house: "E", granary: "G", storage_pit: "S", barracks: "B", market: "M", farm: "F",
+  house: "E", barracks: "B", granary: "G", storage_pit: "S", market: "M", farm: "F",
   archery_range: "A", stable: "L", small_wall: "W", watch_tower: "T", government_center: "C", temple: "P",
   academy: "Y", siege_workshop: "K", town_center: "N", wonder: "O",
 };
@@ -220,9 +221,15 @@ export class Game {
     if (SPEEDS.includes(chosen)) { this.speed = chosen; this.hud.speed(chosen); }
     this.world.ais = [new AIController(1, d)];
     this.world.ais[0].attach(this.world);
+    // Start zoomed so the map fills the screen as it did at 800 x 600, with the interface scaled to match.
+    const u = Math.min(window.innerWidth / 800, window.innerHeight / 600);
+    this.cam.zoom = ZOOMS.reduce((a, b) => (Math.abs(b - 1 / u) < Math.abs(a - 1 / u) ? b : a));
     this.started = true;
+    this.paused = false;
     this.hud.playing(true);
     this.hud.hideOverlay();
+    this.hud.clearMessages();
+    this.hud.theme(this.arch(this.me)); // the interface is carved in your civilization's style
     this.sound.unlock();
     this.sound.startMusic();
     const civ = this.world.players[this.me].civ;
@@ -241,13 +248,39 @@ export class Game {
       "Train: C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
-      "Up to 25 units in one selection · The pointer shows what a right-click will do · Sound and Music switch in the top bar",
-      "Lock mouse: click the map and the mouse stays in the game; Alt+Tab or Esc lets go · Full screen: hold Esc to leave",
+      "Up to 25 units in one selection · The pointer shows what a right-click will do · F4 or S: scores · F10: menu",
+      "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), full screen (hold Esc to leave)",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · F3 pause",
       ...this.civLines(),
       "Press ? or Esc to close",
     ], "help");
+  }
+
+  /** The game menu: options that the top bar used to hold, help, and leaving the game. */
+  private showMenu() {
+    const t = (id: string, label: string, on: boolean) => `<button id="${id}" class="toggle${on ? "" : " off"}">${label}</button>`;
+    this.hud.showOverlay("Menu", [
+      `<span class="stack">
+        <button id="resume-btn">Return to game (Esc)</button>
+        <button id="help-open">Controls (F1)</button>
+        <button id="speed">Game speed ${this.speed}x</button>
+        ${t("sfx-btn", "Sound effects", this.sound.sfxOn)}
+        ${t("music-btn", "Music", this.sound.musicOn)}
+        ${t("lock-btn", "Keep the mouse in the game", this.lock.wanted)}
+        <button id="fs-btn">${document.fullscreenElement ? "Leave full screen" : "Full screen"}</button>
+        <button data-restart>Quit to a new map</button>
+      </span>`,
+    ], "menu");
+  }
+
+  /** The players and their civilizations, with what each civilization is good at. */
+  private showDiplomacy() {
+    const rows = this.world.players.map((p) => {
+      const bonuses = p.civ ? describeCiv(p.civ, this.rules).join("; ") : "no bonuses";
+      return `<tr><td style="color:${playerColor(p.id)}"><b>${p.name}</b></td><td>${p.civ?.name ?? "-"}</td><td>${p.id === this.me ? "You" : "Enemy"}</td><td>${bonuses}</td></tr>`;
+    }).join("");
+    this.hud.showOverlay("Diplomacy", [`<table>${rows}</table>`, `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`], "menu");
   }
 
   /** Your civilization and its bonuses, and the enemy's, for the help screen. */
@@ -297,7 +330,8 @@ export class Game {
     this.selection = this.selection.filter((id) => w.entity(id));
     const sel = this.selectedEntities();
     this.hud.update(w, this.me, sel);
-    const one = sel.length === 1 ? this.views.get(sel[0].id) : undefined;
+    // The status box shows the first of a group, so its picture too.
+    const one = sel.length ? this.views.get(sel[0].id) : undefined;
     this.hud.portrait(one?.pic.canvas ?? null);
     this.hud.setCommands(this.commands(sel));
     this.updateGhost();
@@ -334,6 +368,23 @@ export class Game {
     return t.owner >= 0 ? "sword" : "arrow";
   }
 
+  /** The help line for what is under the pointer, in the original's manner. */
+  private rolloverText(k: CursorKind): string | null {
+    if (!this.started || this.hud.overlayShown) return null;
+    if (this.placing) return "Click to place the building. Right-click to cancel.";
+    if (this.attackMovePending) return "Click where to attack-move.";
+    const t = this.pick(this.mouse.x, this.mouse.y);
+    const verb: Partial<Record<CursorKind, string>> = {
+      sword: "Right-click to attack", axe: "Right-click to cut wood", pick: "Right-click to mine", basket: "Right-click to gather food",
+      hammer: "Right-click to build", staff: "Right-click to convert or heal",
+    };
+    if (!t) return null;
+    const what = t instanceof ResourceNode ? t.name : t.owner === this.me ? "" : `${t.owner >= 0 ? `${this.world.players[t.owner].name}'s ` : ""}${t.name}`;
+    if (verb[k]) return `${verb[k]}${what ? ` ${what}` : ""}.`;
+    if (t.owner === this.me) return t instanceof Building ? "Click to select this building." : "Click to select this unit.";
+    return `${what}.`;
+  }
+
   private updateCursor() {
     // Menus and the end screen need the real mouse back.
     if (this.lock.locked && this.hud.overlayShown) this.lock.unlock();
@@ -341,7 +392,9 @@ export class Game {
     if (now - this.cursorAt < 70) return; // a pick test is cheap, but not every frame
     this.cursorAt = now;
     const k = this.cursorFor(this.mouse.x, this.mouse.y);
-    if (this.lock.locked) this.lock.show(document.elementFromPoint(this.mouse.x, this.mouse.y) === this.app.canvas ? k : "arrow");
+    const overMap = document.elementFromPoint(this.mouse.x, this.mouse.y) === this.app.canvas;
+    if (this.lock.locked) this.lock.show(overMap ? k : "arrow");
+    this.hud.rollover(overMap ? this.rolloverText(k) : null);
     if (k === this.cursor) return;
     this.cursor = k;
     this.app.canvas.style.cursor = cursors()[k];
@@ -565,8 +618,9 @@ export class Game {
     const ringColor = own ? 0xffffff : e.owner >= 0 ? playerColor(e.owner) : 0xffee55;
     if (e instanceof Unit) {
       pic = unitPic(this.unitLook(e, 0));
-      const big = pic.w > 48;
-      ring = new Graphics().ellipse(0, 0, big ? 20 : 12, big ? 10 : 6).stroke({ width: 2, color: ringColor });
+      // A flat diamond on the ground under the unit, as the original marks what you picked.
+      const big = pic.w > 48, rw = big ? 20 : 12, rh = rw / 2;
+      ring = new Graphics().poly([-rw, 0, 0, -rh, rw, 0, 0, rh]).stroke({ width: 1.5, color: ringColor });
       barY = -pic.h * pic.ay - 6; barW = 26;
     } else if (e instanceof Building) {
       pic = this.buildingLook(e);
@@ -806,12 +860,13 @@ export class Game {
           { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
           del,
         ];
-      }
-      const out: Command[] = [];
+      }      const out: Command[] = [];
       for (const base of Object.keys(BUILD_KEYS)) {
         const id = w.current(me, base);
         const def = this.rules.buildings.get(id);
         if (!def || !w.buildingShown(id, me)) continue;
+        // As in the original, a building appears in the menu once your age allows it.
+        if (this.rules.ages.findIndex((a) => a.id === def.age) > w.players[me].age) continue;
         out.push({ key: BUILD_KEYS[base], title: def.name, detail: w.buildingCost(me, id).text + (WALL_TIER[id] !== undefined ? " a tile, drag a line" : ""),
           blocker: w.blockerBuilding(id, me), icon: id, action: () => { this.beginPlacing(id); this.menu = "main"; } });
       }
@@ -848,13 +903,13 @@ export class Game {
     if (b.def.id === "town_center" && p.age + 1 < this.rules.ages.length) {
       const next = this.rules.ages[p.age + 1];
       used.add("A");
-      out.push({ key: "A", title: `Advance to the ${next.name}`, detail: ResBag.of(next.cost).text, blocker: w.blockerForNextAge(me), icon: "age", action: () => {
+      out.push({ key: "A", title: `Advance to the ${next.name}`, detail: ResBag.of(next.cost).text, blocker: w.blockerForNextAge(me), icon: "age", row: 1, action: () => {
         const why = w.advanceAge(me, b.id);
         if (why) this.hud.message(why, "warn");
       } });
     }
     for (const t of w.techsAt(b, me)) {
-      out.push({ key: spare(), title: t.name, detail: ResBag.of(t.cost).text, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), action: () => {
+      out.push({ key: spare(), title: t.name, detail: ResBag.of(t.cost).text, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), row: 1, action: () => {
         const why = w.research(me, b.id, t.id);
         if (why) this.hud.message(why, "warn");
       } });
@@ -1016,10 +1071,17 @@ export class Game {
       }
       if (t.closest("#fs-btn")) { this.toggleFullscreen(); return; }
       if (t.closest("#speed")) { this.setSpeed(0, (SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length); return; }
-      // Menu and ? open the controls and pause, as the original's menu did.
-      if (t.closest("#menu-btn, #help-btn") && this.started) {
-        if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; } else { this.showHelp(); this.paused = true; }
-        return;
+      // Menu, Diplomacy and ? open their screens and pause, as the original's did.
+      if (this.started) {
+        const open = (show: () => void) => {
+          if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; } else { show(); this.paused = true; }
+        };
+        if (t.closest("#menu-btn")) { open(() => this.showMenu()); return; }
+        if (t.closest("#help-btn")) { open(() => this.showHelp()); return; }
+        if (t.closest("#diplomacy-btn")) { open(() => this.showDiplomacy()); return; }
+        if (t.closest("#score-btn")) { this.hud.toggleScores(this.world); return; }
+        if (t.closest("#resume-btn")) { this.hud.hideOverlay(); this.paused = false; return; }
+        if (t.closest("#help-open")) { this.showHelp(); return; }
       }
       const s = t.closest("[data-start]") as HTMLElement | null;
       if (s) this.start(s.dataset.start as Difficulty);
@@ -1084,7 +1146,7 @@ export class Game {
     const lockBtn = document.querySelector("#lock-btn"), fs = document.querySelector("#fs-btn");
     lockBtn?.classList.toggle("off", !this.lock.wanted);
     lockBtn?.classList.toggle("active", this.lock.locked);
-    if (fs) fs.textContent = document.fullscreenElement ? "Window" : "Full screen";
+    if (fs) fs.textContent = document.fullscreenElement ? "Leave full screen" : "Full screen";
   }
 
   /** The two sound switches in the top bar show whether they are on. */
@@ -1213,7 +1275,7 @@ export class Game {
       ring.poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 2, color });
     } else {
       const rx = Math.max(14, v.pic.w * 0.42), ry = rx / 2;
-      ring.ellipse(0, 0, rx, ry).stroke({ width: 2, color });
+      ring.poly([-rx, 0, 0, -ry, rx, 0, 0, ry]).stroke({ width: 2, color });
     }
     ring.zIndex = -0.4;
     v.root.addChild(ring);
@@ -1270,11 +1332,13 @@ export class Game {
       return;
     }
     if (this.world.winner !== null) { if (key === "Enter") this.restart(); return; }
-    if (key === "?" || key === "F1") {
+    if (key === "?" || key === "F1" || key === "F10") {
       e.preventDefault();
-      if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; } else { this.showHelp(); this.paused = true; }
+      if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; }
+      else { if (key === "F10") this.showMenu(); else this.showHelp(); this.paused = true; }
       return;
     }
+    if (key === "F4") { e.preventDefault(); this.hud.toggleScores(this.world); return; }
     if (key === "Escape") {
       if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; return; }
       const cancel = this.hud.commands.find((c) => c.key === "Escape");

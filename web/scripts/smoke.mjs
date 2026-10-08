@@ -3,20 +3,25 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
-const dist = new URL("../dist/", import.meta.url).pathname;
+const dist = fileURLToPath(new URL("../dist/", import.meta.url)); // a real path on Windows too
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" };
 const server = createServer(async (req, res) => {
   const path = join(dist, decodeURIComponent(new URL(req.url, "http://x").pathname).replace(/\/$/, "/index.html"));
-  try { res.writeHead(200, { "content-type": types[extname(path)] ?? "application/octet-stream" }); res.end(await readFile(path)); }
-  catch { res.writeHead(404); res.end(); }
+  let body;
+  try { body = await readFile(path); } catch { res.writeHead(404); res.end(); return; }
+  res.writeHead(200, { "content-type": types[extname(path)] ?? "application/octet-stream" });
+  res.end(body);
 }).listen(0);
 const port = server.address().port;
 
 const executablePath = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const browser = await chromium.launch({ executablePath, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+// Pointer lock would swallow the test's mouse: keep the mouse free, as a player can in the menu.
+await page.addInitScript(() => { try { localStorage.setItem("bd-mouselock", "off"); } catch {} });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
@@ -36,8 +41,11 @@ await page.selectOption("#civ", "greek");   // a fixed civilization: some change
 await page.selectOption("#start-speed", "1.5");
 check((await page.textContent("#civ-info")).includes("Academy units"), "choosing a civilization shows its bonuses");
 await page.click("[data-start=normal]");
-check((await page.textContent("#civ-name")) === "Greek" && (await page.getAttribute("#civ-name", "title")).includes("Enemy:"), "the top bar names your civilization, with bonuses and the enemy's on hover");
-check((await g(() => game.speed)) === 1.5 && (await page.textContent("#speed")) === "1.5x", "the start screen sets the game speed");
+await page.click("#diplomacy-btn");
+const diplomacy = await page.textContent("#overlay");
+check(diplomacy.includes("Greek") && diplomacy.includes("Academy units") && diplomacy.includes("Enemy"), "Diplomacy lists your civilization with its bonuses, and the enemy's");
+await page.keyboard.press("Escape");
+check((await g(() => game.speed)) === 1.5, "the start screen sets the game speed");
 check(await g(() => game.started && game.world.ais.length === 1), "clicking Normal starts the game against one AI");
 
 check(await page.evaluate(() => document.body.classList.contains("playing")), "the panels slide in when the game starts");
@@ -67,11 +75,12 @@ await page.mouse.click(p.x, p.y - 8); // reselect nothing in particular
 await page.mouse.click(1, 1);         // top bar: no-op
 p = await at(v);
 await page.mouse.click(p.x, p.y - 14);
-check((await page.$$("#commands button")).length === 3, "a villager's panel shows Build, Stop and Delete");
+check((await page.$$("#commands button:not(.empty)")).length === 3, "a villager's panel shows Build, Stop and Delete");
+check((await page.$$("#commands button")).length === 12, "the command grid has the original's two rows of six");
 await page.keyboard.press("b");
 await wait(50);
-const buildIcons = await page.$$("#commands button");
-check(buildIcons.length > 5 && (await page.$$("#commands button.pop")).length === buildIcons.length, "B opens the build menu and its icons pop in");
+const buildIcons = await page.$$eval("#commands button:not(.empty)", (bs) => bs.map((b) => b.getAttribute("aria-label")));
+check(buildIcons[0] === "House" && buildIcons[1] === "Barracks" && !buildIcons.includes("Market"), "B opens the build menu: House first, then Barracks, and only what the Stone Age allows");
 await page.keyboard.press("e");
 const spot = await g((v) => {
   const u = game.world.unit(v);
@@ -131,13 +140,16 @@ check((await g(() => game.screenOf(game.world.startTiles[1].center).x)) < 1000, 
 
 // + speeds the game up as in the original: at 2x, game time runs about twice as fast as real time.
 await page.keyboard.press("+");
-check((await g(() => game.speed)) === 2 && (await page.textContent("#speed")) === "2x", "+ raises the game speed to 2x");
+check((await g(() => game.speed)) === 2, "+ raises the game speed to 2x");
 const g0 = await g(() => game.world.time), r0 = Date.now();
 await wait(2000);
 const ratio = ((await g(() => game.world.time)) - g0) / ((Date.now() - r0) / 1000);
 check(ratio > 1.6, `game time runs ${ratio.toFixed(1)}x real time at 2x`);
+await page.click("#menu-btn");
+check(await page.isVisible("#overlay .menu") && (await g(() => game.paused)), "Menu opens the game menu and pauses");
 await page.click("#speed");
-check((await g(() => game.speed)) === 3, "clicking the speed steps to 3x");
+check((await g(() => game.speed)) === 3 && (await page.textContent("#speed")) === "Game speed 3x", "the speed in the menu steps to 3x");
+await page.keyboard.press("Escape");
 await page.keyboard.press("-");
 check((await g(() => game.speed)) === 2, "- lowers it again");
 
