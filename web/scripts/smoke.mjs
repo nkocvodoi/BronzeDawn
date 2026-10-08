@@ -32,7 +32,9 @@ await page.goto(`http://localhost:${port}/?seed=5`);
 await page.waitForFunction(() => window.game);
 check(await page.isVisible("#overlay [data-start]"), "start screen offers the difficulty choice");
 
+await page.selectOption("#start-speed", "1.5");
 await page.click("[data-start=normal]");
+check((await g(() => game.speed)) === 1.5 && (await page.textContent("#speed")) === "1.5x", "the start screen sets the game speed");
 check(await g(() => game.started && game.world.ais.length === 1), "clicking Normal starts the game against one AI");
 
 // The town center starts selected: Q trains a villager.
@@ -104,6 +106,18 @@ check((await g(() => game.world.time)) > t0 + 2, "the simulation runs in real ti
 const mm = await page.locator("#minimap").boundingBox();
 await page.mouse.click(mm.x + mm.width * 0.75, mm.y + mm.height * 0.5);
 check((await g(() => game.screenOf(game.world.startTiles[1].center).x)) < 1000, "clicking the minimap moves the camera");
+
+// + speeds the game up as in the original: at 2x, game time runs about twice as fast as real time.
+await page.keyboard.press("+");
+check((await g(() => game.speed)) === 2 && (await page.textContent("#speed")) === "2x", "+ raises the game speed to 2x");
+const g0 = await g(() => game.world.time), r0 = Date.now();
+await wait(2000);
+const ratio = ((await g(() => game.world.time)) - g0) / ((Date.now() - r0) / 1000);
+check(ratio > 1.6, `game time runs ${ratio.toFixed(1)}x real time at 2x`);
+await page.click("#speed");
+check((await g(() => game.speed)) === 3, "clicking the speed steps to 3x");
+await page.keyboard.press("-");
+check((await g(() => game.speed)) === 2, "- lowers it again");
 
 await page.screenshot({ path: process.env.SHOT ?? "smoke.png" });
 check(errors.length === 0, `no errors in the console${errors.length ? ": " + errors.join(" | ") : ""}`);

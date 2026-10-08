@@ -51,7 +51,8 @@ tài nguyên, xây nhà, lên Tool Age rồi tiêu diệt đối thủ.
 | Lính: A / S | Attack-move / Dừng |
 | H, `.` | Về Town Center, chọn villager đang rảnh |
 | Cmd+1..9, 1..9 | Lưu và gọi nhóm quân (trên web: Ctrl hoặc Alt+1..9) |
-| Mũi tên, trackpad, pinch, + - | Cuộn và zoom bản đồ |
+| Mũi tên, trackpad, pinch, PageUp/PageDown | Cuộn và zoom bản đồ (bản Mac: + - để zoom) |
+| + / - (web) | Tốc độ game 1x, 1.5x, 2x, 3x như setting của Đế chế; bấm vào ô tốc độ trên thanh trên cùng cũng được |
 | F1 (web: ?), P, Delete | Hướng dẫn, tạm dừng, phá unit hoặc công trình đã chọn |
 
 Các mẹo:
