@@ -64,7 +64,15 @@ export function describe(t: TechDef, rules: Rules): string {
 export function describeCiv(c: CivDef, rules: Rules): string[] {
   const name = (id: string) => rules.units.get(id)?.name ?? rules.buildings.get(id)?.name ?? rules.techs.get(id)?.name ?? id;
   const out = describeEffects(c.effects, rules);
-  // A unit and the technology that upgrades to it share a name: list it once.
-  if (c.disabled.length) out.push(`no ${[...new Set(c.disabled.map(name))].join(", ")}`);
+  // A technology that only upgrades to or unlocks a missing unit or building goes without saying.
+  const off = new Set(c.disabled);
+  const implied = (id: string) => {
+    const t = rules.techs.get(id);
+    if (!t) return false;
+    const unlocks = [...rules.units.values(), ...rules.buildings.values()].filter((d) => d.requires_tech === id);
+    return t.effects.some((e) => e.type === "upgrade" && off.has(e.to)) || unlocks.some((d) => off.has(d.id));
+  };
+  const shown = [...new Set(c.disabled.filter((id) => !implied(id)).map(name))];
+  if (shown.length) out.push(`no ${shown.join(", ")}`);
   return out;
 }

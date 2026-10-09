@@ -76,7 +76,9 @@
   },
   "start_villagers": 3,
   "pop_max": 50,
-  "wonder_seconds": 900
+  "wonder_seconds": 900,
+  "repair_rate": 0.5,
+  "repair_cost": 0.5
  },
  "nodes": [
   {
@@ -3125,7 +3127,31 @@
      }
     }
    ],
-   "disabled": []
+   "disabled": [
+    "slinger",
+    "improved_bowman",
+    "improved_bow",
+    "composite_bowman",
+    "composite_bow",
+    "heavy_horse_archer",
+    "heavy_horse_archer_tech",
+    "elephant_archer",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "phalanx",
+    "phalanx_tech",
+    "centurion",
+    "centurion_tech",
+    "bronze_shield",
+    "iron_shield",
+    "tower_shield",
+    "nobility",
+    "aristocracy",
+    "architecture"
+   ]
   },
   {
    "id": "babylonian",
@@ -3156,7 +3182,27 @@
      "carry": 0
     }
    ],
-   "disabled": []
+   "disabled": [
+    "heavy_horse_archer",
+    "heavy_horse_archer_tech",
+    "elephant_archer",
+    "heavy_cavalry",
+    "heavy_cavalry_tech",
+    "cataphract",
+    "cataphract_tech",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "ballista",
+    "helepolis",
+    "helepolis_tech",
+    "phalanx",
+    "phalanx_tech",
+    "centurion",
+    "centurion_tech",
+    "iron_shield",
+    "tower_shield"
+   ]
   },
   {
    "id": "choson",
@@ -3198,7 +3244,37 @@
      }
     }
    ],
-   "disabled": []
+   "disabled": [
+    "composite_bowman",
+    "composite_bow",
+    "chariot_archer",
+    "heavy_horse_archer",
+    "heavy_horse_archer_tech",
+    "elephant_archer",
+    "chariot",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "camel_rider",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "catapult",
+    "catapult_tech",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "phalanx",
+    "phalanx_tech",
+    "centurion",
+    "centurion_tech",
+    "chain_armor_infantry",
+    "chain_armor_archers",
+    "chain_armor_cavalry",
+    "iron_shield",
+    "tower_shield",
+    "aristocracy",
+    "alchemy",
+    "engineering"
+   ]
   },
   {
    "id": "egyptian",
@@ -3234,7 +3310,39 @@
      }
     }
    ],
-   "disabled": []
+   "disabled": [
+    "broad_swordsman",
+    "broad_sword",
+    "long_swordsman",
+    "long_sword",
+    "legion",
+    "legion_tech",
+    "horse_archer",
+    "heavy_horse_archer",
+    "heavy_horse_archer_tech",
+    "cavalry",
+    "heavy_cavalry",
+    "heavy_cavalry_tech",
+    "cataphract",
+    "cataphract_tech",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "catapult",
+    "catapult_tech",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "ballista",
+    "helepolis",
+    "helepolis_tech",
+    "phalanx",
+    "phalanx_tech",
+    "centurion",
+    "centurion_tech",
+    "bronze_shield",
+    "iron_shield",
+    "tower_shield",
+    "siegecraft"
+   ]
   },
   {
    "id": "greek",
@@ -3253,7 +3361,35 @@
      }
     }
    ],
-   "disabled": []
+   "disabled": [
+    "broad_swordsman",
+    "broad_sword",
+    "long_swordsman",
+    "long_sword",
+    "legion",
+    "legion_tech",
+    "improved_bowman",
+    "improved_bow",
+    "composite_bowman",
+    "composite_bow",
+    "chariot_archer",
+    "horse_archer",
+    "heavy_horse_archer",
+    "heavy_horse_archer_tech",
+    "elephant_archer",
+    "chariot",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "cataphract",
+    "cataphract_tech",
+    "camel_rider",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "metallurgy",
+    "monotheism",
+    "jihad"
+   ]
   },
   {
    "id": "hittite",
@@ -3283,7 +3419,35 @@
      }
     }
    ],
-   "disabled": []
+   "disabled": [
+    "slinger",
+    "long_swordsman",
+    "long_sword",
+    "legion",
+    "legion_tech",
+    "improved_bowman",
+    "improved_bow",
+    "composite_bowman",
+    "composite_bow",
+    "heavy_cavalry",
+    "heavy_cavalry_tech",
+    "cataphract",
+    "cataphract_tech",
+    "ballista",
+    "helepolis",
+    "helepolis_tech",
+    "centurion",
+    "centurion_tech",
+    "afterlife",
+    "jihad",
+    "mysticism",
+    "monotheism",
+    "medicine",
+    "polytheism",
+    "fanaticism",
+    "architecture",
+    "irrigation"
+   ]
   },
   {
    "id": "minoan",
@@ -3307,7 +3471,37 @@
      "value": 1.25
     }
    ],
-   "disabled": []
+   "disabled": [
+    "legion",
+    "legion_tech",
+    "horse_archer",
+    "heavy_horse_archer",
+    "heavy_horse_archer_tech",
+    "chariot_archer",
+    "elephant_archer",
+    "chariot",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "heavy_cavalry",
+    "heavy_cavalry_tech",
+    "cataphract",
+    "cataphract_tech",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "astrology",
+    "afterlife",
+    "jihad",
+    "mysticism",
+    "monotheism",
+    "fanaticism",
+    "fortification",
+    "fortification_tech",
+    "guard_tower",
+    "guard_tower_tech",
+    "ballista_tower",
+    "ballista_tower_tech"
+   ]
   },
   {
    "id": "persian",
@@ -3334,7 +3528,27 @@
     }
    ],
    "disabled": [
-    "academy"
+    "academy",
+    "hoplite",
+    "phalanx",
+    "phalanx_tech",
+    "centurion",
+    "centurion_tech",
+    "chariot_archer",
+    "chariot",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "ballista",
+    "helepolis",
+    "helepolis_tech",
+    "ballista_tower",
+    "ballista_tower_tech",
+    "aristocracy",
+    "craftsmanship",
+    "siegecraft",
+    "irrigation"
    ]
   },
   {
@@ -3360,7 +3574,28 @@
      "carry": 0
     }
    ],
-   "disabled": []
+   "disabled": [
+    "horse_archer",
+    "heavy_horse_archer",
+    "heavy_horse_archer_tech",
+    "heavy_cavalry",
+    "heavy_cavalry_tech",
+    "cataphract",
+    "cataphract_tech",
+    "catapult",
+    "catapult_tech",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "ballista",
+    "helepolis",
+    "helepolis_tech",
+    "metallurgy",
+    "chain_armor_infantry",
+    "chain_armor_archers",
+    "chain_armor_cavalry",
+    "architecture",
+    "siegecraft"
+   ]
   },
   {
    "id": "shang",
@@ -3390,7 +3625,28 @@
      }
     }
    ],
-   "disabled": []
+   "disabled": [
+    "long_swordsman",
+    "long_sword",
+    "legion",
+    "legion_tech",
+    "elephant_archer",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "phalanx",
+    "phalanx_tech",
+    "centurion",
+    "centurion_tech",
+    "ballista_tower",
+    "ballista_tower_tech",
+    "aristocracy",
+    "alchemy",
+    "engineering",
+    "siegecraft"
+   ]
   },
   {
    "id": "sumerian",
@@ -3425,7 +3681,34 @@
      "value": 2
     }
    ],
-   "disabled": []
+   "disabled": [
+    "legion",
+    "legion_tech",
+    "improved_bowman",
+    "improved_bow",
+    "composite_bowman",
+    "composite_bow",
+    "elephant_archer",
+    "cavalry",
+    "heavy_cavalry",
+    "heavy_cavalry_tech",
+    "cataphract",
+    "cataphract_tech",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "ballista",
+    "helepolis",
+    "helepolis_tech",
+    "astrology",
+    "afterlife",
+    "jihad",
+    "monotheism",
+    "fanaticism",
+    "metallurgy",
+    "iron_shield",
+    "tower_shield",
+    "craftsmanship"
+   ]
   },
   {
    "id": "yamato",
@@ -3467,7 +3750,43 @@
      }
     }
    ],
-   "disabled": []
+   "disabled": [
+    "broad_swordsman",
+    "broad_sword",
+    "long_swordsman",
+    "long_sword",
+    "legion",
+    "legion_tech",
+    "chariot_archer",
+    "elephant_archer",
+    "chariot",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "camel_rider",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "catapult",
+    "catapult_tech",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "ballista",
+    "helepolis",
+    "helepolis_tech",
+    "astrology",
+    "jihad",
+    "mysticism",
+    "monotheism",
+    "medicine",
+    "fanaticism",
+    "fortification",
+    "fortification_tech",
+    "guard_tower",
+    "guard_tower_tech",
+    "ballista_tower",
+    "ballista_tower_tech",
+    "tower_shield"
+   ]
   },
   {
    "id": "carthaginian",
@@ -3497,7 +3816,34 @@
      }
     }
    ],
-   "disabled": []
+   "disabled": [
+    "legion",
+    "legion_tech",
+    "composite_bowman",
+    "composite_bow",
+    "chariot_archer",
+    "heavy_horse_archer",
+    "heavy_horse_archer_tech",
+    "chariot",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "cataphract",
+    "cataphract_tech",
+    "catapult",
+    "catapult_tech",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "metallurgy",
+    "chain_armor_infantry",
+    "chain_armor_archers",
+    "chain_armor_cavalry",
+    "fortification",
+    "fortification_tech",
+    "siegecraft",
+    "astrology",
+    "monotheism",
+    "fanaticism"
+   ]
   },
   {
    "id": "macedonian",
@@ -3544,7 +3890,36 @@
     }
    ],
    "disabled": [
-    "temple"
+    "temple",
+    "priest",
+    "long_swordsman",
+    "long_sword",
+    "legion",
+    "legion_tech",
+    "chariot_archer",
+    "elephant_archer",
+    "chariot",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "camel_rider",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "helepolis",
+    "helepolis_tech",
+    "astrology",
+    "afterlife",
+    "jihad",
+    "mysticism",
+    "monotheism",
+    "medicine",
+    "polytheism",
+    "fanaticism",
+    "fortification",
+    "fortification_tech",
+    "nobility",
+    "engineering",
+    "craftsmanship",
+    "siegecraft"
    ]
   },
   {
@@ -3603,7 +3978,30 @@
      }
     }
    ],
-   "disabled": []
+   "disabled": [
+    "long_swordsman",
+    "long_sword",
+    "legion",
+    "legion_tech",
+    "elephant_archer",
+    "cataphract",
+    "cataphract_tech",
+    "helepolis",
+    "helepolis_tech",
+    "centurion",
+    "centurion_tech",
+    "mysticism",
+    "monotheism",
+    "medicine",
+    "polytheism",
+    "metallurgy",
+    "tower_shield",
+    "aristocracy",
+    "logistics",
+    "engineering",
+    "craftsmanship",
+    "irrigation"
+   ]
   },
   {
    "id": "roman",
@@ -3646,7 +4044,31 @@
      }
     }
    ],
-   "disabled": []
+   "disabled": [
+    "composite_bowman",
+    "composite_bow",
+    "chariot_archer",
+    "horse_archer",
+    "heavy_horse_archer",
+    "heavy_horse_archer_tech",
+    "elephant_archer",
+    "heavy_cavalry",
+    "heavy_cavalry_tech",
+    "cataphract",
+    "cataphract_tech",
+    "camel_rider",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "astrology",
+    "afterlife",
+    "guard_tower",
+    "guard_tower_tech",
+    "ballista_tower",
+    "ballista_tower_tech",
+    "alchemy",
+    "irrigation"
+   ]
   },
   {
    "id": "lac_viet",
