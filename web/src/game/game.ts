@@ -56,8 +56,9 @@ const SPEEDS = [1, 1.5, 2, 3];
 /** Watching the computers, the game also runs faster. */
 const WATCH_SPEEDS = [...SPEEDS, 5, 10];
 
-/** Map sizes in tiles, after the original's Small to Huge. */
-const MAP_SIZES: [string, number][] = [["Small", 72], ["Medium", 96], ["Large", 120], ["Huge", 144]];
+/** Map sizes in tiles, after the original's Small to Huge, and the Rise of Rome's Gigantic (its size in
+ *  tiles is our guess). */
+const MAP_SIZES: [string, number][] = [["Small", 72], ["Medium", 96], ["Large", 120], ["Huge", 144], ["Gigantic", 200]];
 /** The smallest map for a number of players, so every start has room: up to 4 fit any map. */
 const minMapSize = (players: number) => (players <= 4 ? 0 : players <= 6 ? 96 : 120);
 

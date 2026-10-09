@@ -7,13 +7,24 @@ import type { World } from "./world";
  * player with a town center, villagers, berries, a forest, gold and stone close by.
  */
 /** The kinds of map, as the start screen offers them. Inland is the land with lakes it always was. */
-export type MapType = "inland" | "coastal" | "continental" | "mediterranean" | "large_islands" | "small_islands";
+export type MapType = "inland" | "coastal" | "continental" | "mediterranean" | "large_islands" | "small_islands"
+  | "highland" | "hill_country" | "narrows";
 export const MAP_TYPES: [MapType, string][] = [
   ["inland", "Inland (lakes)"], ["coastal", "Coastal (sea on two sides)"],
   ["continental", "Continental (sea all around)"], ["mediterranean", "Mediterranean (a sea in the middle)"],
   ["large_islands", "Large Islands (an island each: transports needed)"], ["small_islands", "Small Islands (an island each, and more to settle)"],
+  ["highland", "Highland (high ground, a sea on one side)"], ["hill_country", "Hill Country (hills and cliffs, small lakes)"],
+  ["narrows", "Narrows (two shores, joined by narrow land bridges)"],
 ];
 const islands = (t: MapType) => t === "large_islands" || t === "small_islands";
+/** Maps with no sea, only lakes. */
+const landOnly = (t: MapType) => t === "inland" || t === "hill_country";
+/** How hilly each kind of map is: hills and cliffs per Small map, and whether the hills are broad and high. */
+const RELIEF: Record<MapType, [number, number, boolean]> = {
+  inland: [5, 3, false], coastal: [5, 3, false], continental: [5, 3, false], mediterranean: [5, 3, false],
+  large_islands: [2, 0, false], small_islands: [2, 0, false],
+  highland: [9, 4, true], hill_country: [11, 8, true], narrows: [4, 2, false],
+};
 
 export function generateMap(w: World, type: MapType = "inland", withRelics = true) {
   const map = w.map;
@@ -26,17 +37,17 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
   w.startTiles = starts;
   const farFromStarts = (t: Tile, d: number) => starts.every((s) => t.center.distance(s.center) >= d);
 
-  // The sea, for every map but Inland. Inland draws no random numbers here, so its maps stay as they were.
-  if (type !== "inland") sea(w, type);
+  // The sea, for every map but the land ones. Inland draws no random numbers here, so its maps stay as they were.
+  if (!landOnly(type)) sea(w, type);
 
-  // Lakes, away from the bases.
-  for (let k = 0; k < Math.round((type === "inland" ? 3 : 1) * scale); k++) {
+  // Lakes, away from the bases: Hill Country has a few small ones among its hills.
+  for (let k = 0; k < Math.round((type === "inland" ? 3 : type === "hill_country" ? 2 : 1) * scale); k++) {
     let c = new Tile(0, 0);
     for (let tries = 0; tries < 30; tries++) {
       c = new Tile(w.rng.int(8, n - 9), w.rng.int(8, n - 9));
       if (farFromStarts(c, 18)) break;
     }
-    const r = w.rng.int(3, 6);
+    const r = type === "hill_country" ? w.rng.int(2, 4) : w.rng.int(3, 6);
     blob(w, c, r, (t) => { map.terrain[map.index(t)] = Terrain.water; });
   }
   // Shore.
@@ -136,23 +147,24 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
 
   // Land paths between the bases, except where the sea is meant to part them.
   if (!islands(type)) connect(w, starts);
-  if (type !== "inland") deepFish(w, starts);
+  if (!landOnly(type)) deepFish(w, starts);
   w.nodes = w.nodes.filter((x) => x.alive);
-  hills(w, starts, islands(type) ? 2 : 5);
-  if (!islands(type)) cliffs(w, starts, 3);
+  const [hilly, cliffy, high] = RELIEF[type];
+  hills(w, starts, hilly, high);
+  if (cliffy) cliffs(w, starts, cliffy);
   if (withRelics) relics(w, starts);
 }
 
 /** Rolling hills, 0 to 3 high, rising no more than a step from one tile to the next. Bases, shores and
  *  water stay low. Like the Ruins they have their own random numbers, so the rest of a seed stays put. */
-function hills(w: World, starts: Tile[], perSmallMap: number) {
+function hills(w: World, starts: Tile[], perSmallMap: number, high = false) {
   const map = w.map, n = map.width;
   const rng = new RNG((w.seed * 48271 + 7) >>> 0);
   const e = map.elevation;
   for (let k = 0; k < Math.round(perSmallMap * (n * n) / (72 * 72)); k++) {
     const c = new Tile(rng.int(4, n - 5), rng.int(4, n - 5));
     if (!starts.every((s) => s.center.distance(c.center) >= 16)) continue;
-    const r = rng.int(5, 10), top = rng.int(1, 3);
+    const r = high ? rng.int(7, 13) : rng.int(5, 10), top = high ? rng.int(2, 3) : rng.int(1, 3);
     blob(w, c, r, (t) => {
       const h = Math.min(top, Math.ceil(top * (1 - t.center.distance(c.center) / r) * 1.6));
       const i = map.index(t);
@@ -279,6 +291,33 @@ function sea(w: World, type: MapType) {
       for (let tries = 0; tries < 30; tries++) {
         const c = new Tile(w.rng.int(8, n - 9), w.rng.int(8, n - 9));
         if (w.startTiles.every((s) => s.center.distance(c.center) > n * 0.35)) { blob(w, c, n * 0.07, land); break; }
+      }
+    }
+  } else if (type === "highland") {
+    // One side is sea; the rest is high ground (its hills come later).
+    const side = w.rng.int(0, 3), depth = coastline(w, n, 6, 12);
+    for (let i = 0; i < n; i++) for (let d = 0; d < depth[i]; d++) {
+      if (side === 0) wet(d, i); else if (side === 1) wet(n - 1 - d, i); else if (side === 2) wet(i, d); else wet(i, n - 1 - d);
+    }
+  } else if (type === "narrows") {
+    // A wavering sea across the middle between the first two bases, with two narrow land bridges over it.
+    const [a, b] = [w.startTiles[0], w.startTiles[1] ?? new Tile(n - 1 - w.startTiles[0].x, n - 1 - w.startTiles[0].y)];
+    // The band runs across the line between the two bases: along the other diagonal, or straight across.
+    const ux = b.x - a.x, uy = b.y - a.y, len = Math.hypot(ux, uy) || 1;
+    const half = Math.max(3, Math.round(n * 0.07));
+    const wobble = coastline(w, 2 * n, 0, 3);
+    const mid = new Vec2(n / 2, n / 2);
+    const across = (x: number, y: number) => ((x + 0.5 - mid.x) * ux + (y + 0.5 - mid.y) * uy) / len; // distance from the middle line
+    const along = (x: number, y: number) => ((x + 0.5 - mid.x) * -uy + (y + 0.5 - mid.y) * ux) / len;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const k = Math.max(0, Math.min(2 * n - 1, Math.round(along(x, y) + n)));
+      if (Math.abs(across(x, y)) <= half + wobble[k]) wet(x, y);
+    }
+    // Two bridges, a third of the way in from either end of the band, three tiles wide.
+    const span = n * 0.25;
+    for (const at of [-span, span]) {
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        if (Math.abs(along(x, y) - at) <= 1.5 && Math.abs(across(x, y)) <= half + 4) map.terrain[y * n + x] = Terrain.grass;
       }
     }
   } else {

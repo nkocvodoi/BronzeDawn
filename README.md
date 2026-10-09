@@ -49,7 +49,9 @@ tài nguyên, xây nhà, lên Tool Age rồi tiêu diệt đối thủ.
 | Villager: B rồi một chữ (web, như Đế chế) | B mở menu xây; E House, G Granary, S Storage Pit, B Barracks, M Market, F Farm, A Archery Range, L Stable, W Wall, T Tower, C Government Center, P Temple, Y Academy, K Siege Workshop, N Town Center, O Wonder; Esc quay lại |
 | Công trình (web) | C Villager, T Clubman/Bowman/Hoplite/Priest, Z kiếm sĩ, S Scout, C Cavalry, R chariot, E voi, A lên đời ở Town Center; Esc hủy |
 | Lính: S / A | Dừng / Attack-move |
-| Map size (web) | Chọn Small 72, Medium 96, Large 120, Huge 144 ở màn hình bắt đầu |
+| Map size (web) | Chọn Small 72, Medium 96, Large 120, Huge 144, Gigantic 200 ở màn hình bắt đầu |
+| Tùy chọn trận (web) | Màn hình bắt đầu: kiểu bản đồ (9 kiểu), cách thắng (chuẩn, chỉ chinh phục, theo điểm, hết giờ), thời đại khởi đầu, tài nguyên (Low đến Death Match), giới hạn dân số, mở bản đồ, Ruins và Artifact |
+| Ruins, Artifact (web) | Đưa một unit đến gần để chiếm; Artifact của bạn bấm chuột phải để di chuyển, chở được bằng thuyền. Giữ hết một loại 15 phút là thắng |
 | H, `.` | Về Town Center, chọn villager đang rảnh |
 | Cmd+1..9, 1..9 | Lưu và gọi nhóm quân (trên web: Ctrl hoặc Alt+1..9) |
 | Mũi tên, trackpad, pinch, PageUp/PageDown | Cuộn và zoom bản đồ (bản Mac: + - để zoom) |

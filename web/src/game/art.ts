@@ -121,13 +121,18 @@ const GRASS_DARK = rgb(0x4a7a2a), GRASS_LIGHT = rgb(0x74a240), GRASS_YELLOW = rg
 const WORN = [rgb(0x9a7a56), rgb(0x8c6e4c), rgb(0xa88a64)];
 const FOREST_FLOOR = rgb(0x34521e);
 
-/** The whole map as one pixel texture, 16 x 8 art pixels per half tile. Returns it with its screen origin.
- *  `forest` marks tiles under trees (1) and next to them (2), whose ground is drawn darker. */
-export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Texture; x: number; y: number; w: number; h: number } {
-  const tw = HALF_W / PX, th = HALF_H / PX; // art pixels per half tile: 16 x 8
-  const W = (map.width + map.height) * tw, H = (map.width + map.height) * th;
-  const left = -map.height * HALF_W;
-  const p = new PixelCanvas(W, H);
+/** The map's size as one picture, in art pixels (16 x 8 per half tile), and where it sits on screen. */
+function terrainFrame(map: GridMap) {
+  const tw = HALF_W / PX, th = HALF_H / PX;
+  return { W: (map.width + map.height) * tw, H: (map.width + map.height) * th, left: -map.height * HALF_W };
+}
+
+/** A window of the map's ground as a pixel texture: the art pixels from (x0, y0), w by h, of the whole
+ *  picture. `forest` marks tiles under trees (1) and next to them (2), whose ground is drawn darker. */
+export function terrainTexture(map: GridMap, forest?: Uint8Array, win?: { x0: number; y0: number; w: number; h: number }): { texture: Texture; x: number; y: number; w: number; h: number } {
+  const { W, H, left } = terrainFrame(map);
+  const x0 = win?.x0 ?? 0, y0 = win?.y0 ?? 0, cw = win?.w ?? W, ch = win?.h ?? H;
+  const p = new PixelCanvas(cw, ch);
   const n = map.width;
   const terrainAt = (x: number, y: number): Terrain | null =>
     x < 0 || y < 0 || x >= n || y >= map.height ? null : (map.terrain[y * n + x] as Terrain);
@@ -145,8 +150,8 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
     const list = (named[key] ?? []).filter((f) => ASSETS.image(f));
     if (list.length) tileFiles[t] = list;
   }
-  for (let py = 0; py < H; py++) {
-    for (let px = 0; px < W; px++) {
+  for (let py = y0; py < y0 + ch; py++) {
+    for (let px = x0; px < x0 + cw; px++) {
       const w = fromIso(left + (px + 0.5) * PX, (py + 0.5) * PX);
       const tx = Math.floor(w.x), ty = Math.floor(w.y);
       const t = terrainAt(tx, ty);
@@ -183,7 +188,7 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
         const r = hash(px, py, 3);
         if (r < 0.06) c = mix(c, GRASS_FLECK, 0.55);                                  // yellow flecks
         else if (r < 0.1) c = darken(c, 0.78);                                       // dark flecks
-        else if (r < 0.104 && (px & 1) === 0) { c = rgb(0x3e6a24); p.set(px, py - 1, rgb(0x3e6a24)); } // a tuft
+        else if (r < 0.104 && (px & 1) === 0) { c = rgb(0x3e6a24); p.set(px - x0, py - y0 - 1, rgb(0x3e6a24)); } // a tuft
         // Worn patches of bare earth, ragged at the edge.
         const worn = vnoise(w.x, w.y, 2.2, 23) * 0.7 + vnoise(w.x, w.y, 0.9, 24) * 0.3;
         if (worn > 0.78 || (worn > 0.73 && bayer(px, py) < (worn - 0.73) / 0.05)) c = WORN[Math.floor(hash(px >> 1, py, 25) * 3)];
@@ -237,30 +242,22 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
           c = k >= 1 ? lighten(c, Math.min(0.35, k - 1)) : darken(c, Math.max(0.6, k));
         }
       }
-      p.set(px, py, c);
+      p.set(px - x0, py - y0, c);
     }
   }
-  const texture = p.toTexture();
-  return { texture, x: left, y: 0, w: W * PX, h: H * PX, canvas: p } as ReturnType<typeof terrainTexture> & { canvas: PixelCanvas };
+  return { texture: p.toTexture(), x: left + x0 * PX, y: y0 * PX, w: cw * PX, h: ch * PX };
 }
 
 /** The map ground cut into pieces no bigger than 2048 pixels, which every GPU accepts. Large maps need it. */
 export function terrainChunks(map: GridMap, forest?: Uint8Array): { texture: Texture; x: number; y: number; w: number; h: number }[] {
-  const whole = terrainTexture(map, forest) as ReturnType<typeof terrainTexture> & { canvas: PixelCanvas };
-  const src = whole.canvas;
-  if (src.w <= 2048 && src.h <= 2048) return [whole];
-  whole.texture.destroy(true);
+  // Each piece is drawn on its own, so even a Gigantic map never needs the whole picture in memory at once.
+  const { W, H } = terrainFrame(map);
   const out: { texture: Texture; x: number; y: number; w: number; h: number }[] = [];
   const size = 2048;
-  for (let cy = 0; cy < src.h; cy += size) {
-    for (let cx = 0; cx < src.w; cx += size) {
-      const cw = Math.min(size, src.w - cx), ch = Math.min(size, src.h - cy);
-      const piece = new PixelCanvas(cw, ch);
-      for (let y = 0; y < ch; y++) {
-        const from = ((cy + y) * src.w + cx) * 4;
-        piece.data.set(src.data.subarray(from, from + cw * 4), y * cw * 4);
-      }
-      out.push({ texture: piece.toTexture(), x: whole.x + cx * PX, y: whole.y + cy * PX, w: cw * PX, h: ch * PX });
+  for (let cy = 0; cy < H; cy += size) {
+    for (let cx = 0; cx < W; cx += size) {
+      const w = Math.min(size, W - cx), h = Math.min(size, H - cy);
+      out.push(terrainTexture(map, forest, { x0: cx, y0: cy, w, h }));
     }
   }
   return out;
