@@ -154,7 +154,7 @@ export interface CivDef { id: string; name: string; arch: string; effects: Effec
 export interface RulesFile {
   resources: string[];
   ages: AgeDef[];
-  combat?: { min_damage?: number; building_factor?: number; building_min?: number };
+  combat?: { min_damage?: number; building_factor?: number; building_min?: number; elevation_chance?: number; elevation_factor?: number };
   economy: EconomyDef;
   nodes: NodeDef[];
   animals?: AnimalDef[];
@@ -172,6 +172,9 @@ export class Rules {
   readonly ages: AgeDef[];
   readonly economy: EconomyDef;
   readonly minDamage: number;
+  /** From higher ground: the chance of a hit doing `elevationFactor` times the damage. */
+  readonly elevationChance: number;
+  readonly elevationFactor: number;
   readonly nodes = new Map<string, NodeDef>();
   readonly units = new Map<string, UnitDef>();
   readonly unitOrder: string[];
@@ -191,6 +194,8 @@ export class Rules {
     this.ages = file.ages;
     this.economy = file.economy;
     this.minDamage = file.combat?.min_damage ?? 1;
+    this.elevationChance = file.combat?.elevation_chance ?? 0.25;
+    this.elevationFactor = file.combat?.elevation_factor ?? 3;
     this.buildingFactor = file.combat?.building_factor ?? 1;
     this.buildingMin = file.combat?.building_min ?? this.minDamage;
     for (const a of file.animals ?? []) this.animals.set(a.id, a);

@@ -103,6 +103,8 @@ const GROUND: Record<Terrain, RGB[]> = {
   [Terrain.dirt]: [rgb(0x96764a), rgb(0x8a6c44), rgb(0xa2825a), rgb(0x7e623c)],
   [Terrain.sand]: [rgb(0xd2bc82), rgb(0xc8b278), rgb(0xdcc890), rgb(0xbea66c)],
   [Terrain.water]: [rgb(0x22489a), rgb(0x2650a4), rgb(0x1e4290), rgb(0x2c5aae)],
+  [Terrain.shallows]: [rgb(0x4f8fae), rgb(0x5898b4), rgb(0x4886a6), rgb(0x60a0b8)],
+  [Terrain.cliff]: [rgb(0x7e6a52), rgb(0x76624a), rgb(0x887458), rgb(0x6c5a44)],
 };
 
 /** Smooth value noise in 0..1: random heights on a grid of `size`, blended between. */
@@ -129,6 +131,14 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
   const n = map.width;
   const terrainAt = (x: number, y: number): Terrain | null =>
     x < 0 || y < 0 || x >= n || y >= map.height ? null : (map.terrain[y * n + x] as Terrain);
+  // Ground height, smooth between tile centres, for shading the hills: slopes facing the top left are lit.
+  const elev = (x: number, y: number) => {
+    const gx = Math.min(n - 1, Math.max(0, x - 0.5)), gy = Math.min(map.height - 1, Math.max(0, y - 0.5));
+    const x0 = Math.floor(gx), y0 = Math.floor(gy), x1 = Math.min(n - 1, x0 + 1), y1 = Math.min(map.height - 1, y0 + 1);
+    const ux = gx - x0, uy = gy - y0, e = map.elevation;
+    return (e[y0 * n + x0] * (1 - ux) + e[y0 * n + x1] * ux) * (1 - uy) + (e[y1 * n + x0] * (1 - ux) + e[y1 * n + x1] * ux) * uy;
+  };
+  const hilly = map.elevation.some((v) => v > 0);
   const named = ASSETS.manifest.terrain ?? {};
   const tileFiles: Partial<Record<Terrain, string[]>> = {};
   for (const [t, key] of [[Terrain.grass, "grass"], [Terrain.dirt, "dirt"], [Terrain.sand, "sand"], [Terrain.water, "water"]] as const) {
@@ -188,6 +198,16 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
         // White foam along the shore, in short broken dashes, as the original's beaches have.
         if (water >= 0 && water < 0.58 && hash(px >> 2, py >> 1, 12) < 0.7) c = rgb(0xeef2f6);
         else if (water >= 0 && water < 0.7 && bayer(px, py) < 0.5) c = rgb(0x5a86c4);
+      } else if (use === Terrain.shallows) {
+        // Sand showing through clear water, with ripples.
+        c = mix(c, GROUND[Terrain.sand][0], 0.25 + vnoise(w.x, w.y, 1.5, 33) * 0.25);
+        if (hash(px >> 2, py, 13) < 0.12 && (py & 1) === 0) c = rgb(0x8cc4d8);
+      } else if (use === Terrain.cliff) {
+        // A rock face: vertical cracks, ledges, and the side away from the light in shadow.
+        const crack = hash(px >> 1, 0, 71) < 0.18 || hash(px, py >> 2, 72) < 0.04;
+        c = crack ? rgb(0x4a3c2e) : mix(c, rgb(0xa8947a), Math.max(0, vnoise(px, py * 3, 3, 73) - 0.4));
+        if ((py + (px >> 2)) % 7 === 0) c = darken(c, 0.82); // ledges
+        if (fx + fy > 1.1) c = darken(c, 0.7);
       } else if (use === Terrain.sand || use === Terrain.dirt) {
         c = mix(c, darken(c, 0.82), vnoise(w.x, w.y, 2.5, 41) * 0.6);
         if (hash(px, py, 5) < 0.05) c = darken(c, 0.8);
@@ -207,6 +227,14 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
             const f = use === Terrain.grass ? forest?.[ty * n + tx] ?? 0 : 0;
             if (f === 1) c = mix(c, FOREST_FLOOR, 0.5);
           }
+        }
+      }
+      if (hilly && use !== Terrain.water) {
+        const h = elev(w.x, w.y);
+        if (h > 0.01) {
+          const slope = (elev(w.x - 0.4, w.y) - elev(w.x + 0.4, w.y)) + (elev(w.x, w.y - 0.4) - elev(w.x, w.y + 0.4)) * 0.6;
+          const k = 1 + h * 0.035 + slope * 0.22;
+          c = k >= 1 ? lighten(c, Math.min(0.35, k - 1)) : darken(c, Math.max(0.6, k));
         }
       }
       p.set(px, py, c);
@@ -1194,6 +1222,30 @@ export function rubblePic(size: number, salt: number): Pic {
       const dx = hash(k, salt, 93) > 0.5 ? 1 : -1;
       p.line(x0, y0, x0 + dx * (4 + size * 2), y0 + 2 + size, beam);
     }
+  });
+}
+
+/** A piece of cliff standing on one tile: a jagged block of rock, lit from the top left. Neighbouring
+ *  pieces overlap, so a line of them reads as one wall. */
+export function cliffPic(variant: number): Pic {
+  const v = variant % 4;
+  return pic(`cliff${v}`, 40, 38, 0.5, 30 / 38, (p) => {
+    const base = rgb(0x8a745a), lit = rgb(0xb09a7a), dark = rgb(0x5a4834), deep = rgb(0x3e3024);
+    p.shadow(20, 31, 17, 4);
+    const top = 5 + (v & 1) * 2;
+    // A ragged skyline: a point every few pixels at its own height.
+    const face: [number, number][] = [[2, 30], [2, 20]];
+    for (let x = 4; x <= 36; x += 4) face.push([x, top + Math.floor(hash(x, v, 81) * 9) + (x < 8 || x > 32 ? 5 : 0)]);
+    face.push([38, 20], [38, 30], [20, 36]);
+    p.poly(face, (x, y) => {
+      const n = hash(x >> 1, y >> 2, 80 + v);
+      const c = x < 14 + (y - top) * 0.3 ? lit : x > 28 ? dark : base;
+      return n < 0.12 ? darken(c, 0.8) : n > 0.93 ? lighten(c, 0.15) : c;
+    });
+    for (let i = 0; i < 5; i++) { const x = 8 + ((i * 7 + v * 3) % 26); p.line(x, top + 8 + (i % 3) * 3, x + 1, 30, deep); } // cracks
+    for (const y of [top + 9, top + 17]) p.line(5, y, 34, y + 3, darken(base, 0.75)); // strata
+    p.poly([[2, 30], [20, 36], [38, 30], [38, 32], [20, 38], [2, 32]], deep);
+    p.outline(C.outline, 0.3);
   });
 }
 

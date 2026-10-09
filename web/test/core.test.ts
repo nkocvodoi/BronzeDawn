@@ -953,6 +953,60 @@ describe("ruins and artifacts", () => {
   });
 });
 
+describe("hills, cliffs and shallows", () => {
+  it("from higher ground, about a quarter of the hits do three times the damage", () => {
+    const hits = (attackerHigh: boolean) => {
+      const w = blank(30);
+      if (attackerHigh) for (let y = 0; y < 30; y++) for (let x = 0; x < 8; x++) w.map.elevation[w.map.index(new Tile(x, y))] = 2;
+      const archer = w.spawnUnit("bowman", 0, new Tile(6, 10).center);
+      const target = w.spawnUnit("hoplite", 1, new Tile(9, 10).center);
+      target.hp = target.maxHp = 100000;
+      w.setStandGround(0, [archer.id], true);
+      w.setStandGround(1, [target.id], true);
+      w.attack(0, [archer.id], target.id);
+      run(w, 300);
+      return 100000 - target.hp;
+    };
+    const flat = hits(false), high = hits(true);
+    // Triple damage a quarter of the time is 1.5 times as much in all.
+    expect(high / flat).toBeGreaterThan(1.3);
+    expect(high / flat).toBeLessThan(1.7);
+  });
+
+  it("land units wade through shallows and boats sail over them; nobody crosses a cliff", () => {
+    const w = blank(30);
+    for (let y = 0; y < 30; y++) {
+      w.map.terrain[w.map.index(new Tile(10, y))] = Terrain.cliff;
+      for (let x = 18; x < 30; x++) w.map.terrain[w.map.index(new Tile(x, y))] = x < 22 ? Terrain.shallows : Terrain.water;
+    }
+    const c = w.spawnUnit("clubman", 0, new Tile(15, 5).center);
+    w.move(0, [c.id], new Tile(20, 5).center);
+    run(w, 10);
+    expect(c.pos.distance(new Tile(20, 5).center)).toBeLessThan(1); // into the shallows
+    w.move(0, [c.id], new Tile(5, 5).center);
+    run(w, 15);
+    expect(c.pos.x).toBeGreaterThan(11); // the cliff is in the way all along
+    const boat = w.spawnUnit("fishing_boat", 0, new Tile(25, 5).center);
+    w.move(0, [boat.id], new Tile(19, 8).center);
+    run(w, 15);
+    expect(boat.pos.distance(new Tile(19, 8).center)).toBeLessThan(1);
+    // No building on the shallows.
+    expect(w.canPlace("house", new Tile(18, 12), 0)).toBe(false);
+  });
+
+  it("maps have hills that rise a step at a time, flat bases, and cliffs that cut no base off", () => {
+    for (const seed of [2, 9, 13]) {
+      const w = new World(RULES, seed, ["A", "B", "C", "D"], 96, true);
+      const m = w.map, n = m.width;
+      expect(m.elevation.some((e) => e >= 2)).toBe(true);
+      for (let y = 0; y < n; y++) for (let x = 0; x + 1 < n; x++) expect(Math.abs(m.elevation[y * n + x] - m.elevation[y * n + x + 1])).toBeLessThanOrEqual(1);
+      for (const s of w.startTiles) expect(m.elevationAt(s)).toBe(0);
+      const seen = m.reachable(new Tile(w.startTiles[0].x + 2, w.startTiles[0].y + 2), (id) => w.building(id) !== null);
+      for (const s of w.startTiles) expect(seen[m.index(new Tile(s.x + 2, s.y + 2))]).toBe(1);
+    }
+  });
+});
+
 describe("maps and matches", () => {
   it("makes a fair, connected map", () => {
     const w = new World(RULES, 7);

@@ -1,5 +1,5 @@
 import { DIRS16, Footprint, RNG, Tile, Vec2 } from "./geom";
-import { Terrain } from "./grid";
+import { Terrain, walkable } from "./grid";
 import type { World } from "./world";
 
 /**
@@ -138,7 +138,80 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
   if (!islands(type)) connect(w, starts);
   if (type !== "inland") deepFish(w, starts);
   w.nodes = w.nodes.filter((x) => x.alive);
+  hills(w, starts, islands(type) ? 2 : 5);
+  if (!islands(type)) cliffs(w, starts, 3);
   if (withRelics) relics(w, starts);
+}
+
+/** Rolling hills, 0 to 3 high, rising no more than a step from one tile to the next. Bases, shores and
+ *  water stay low. Like the Ruins they have their own random numbers, so the rest of a seed stays put. */
+function hills(w: World, starts: Tile[], perSmallMap: number) {
+  const map = w.map, n = map.width;
+  const rng = new RNG((w.seed * 48271 + 7) >>> 0);
+  const e = map.elevation;
+  for (let k = 0; k < Math.round(perSmallMap * (n * n) / (72 * 72)); k++) {
+    const c = new Tile(rng.int(4, n - 5), rng.int(4, n - 5));
+    if (!starts.every((s) => s.center.distance(c.center) >= 16)) continue;
+    const r = rng.int(5, 10), top = rng.int(1, 3);
+    blob(w, c, r, (t) => {
+      const h = Math.min(top, Math.ceil(top * (1 - t.center.distance(c.center) / r) * 1.6));
+      const i = map.index(t);
+      if (h > e[i]) e[i] = h;
+    });
+  }
+  for (let i = 0; i < e.length; i++) {
+    const t = new Tile(i % n, Math.floor(i / n));
+    const ground = map.terrain[i];
+    if (ground === Terrain.water || ground === Terrain.shallows || ground === Terrain.sand) e[i] = 0;
+    else if (starts.some((s) => s.center.distance(t.center) < 10)) e[i] = 0;
+  }
+  // No tile more than a step above its neighbours: slopes, not walls (the walls are the cliffs).
+  for (let changed = true; changed;) {
+    changed = false;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const i = y * n + x;
+      let low = e[i];
+      if (x > 0) low = Math.min(low, e[i - 1] + 1);
+      if (x < n - 1) low = Math.min(low, e[i + 1] + 1);
+      if (y > 0) low = Math.min(low, e[i - n] + 1);
+      if (y < n - 1) low = Math.min(low, e[i + n] + 1);
+      if (low < e[i]) { e[i] = low; changed = true; }
+    }
+  }
+}
+
+/** A few short cliffs along the brows of the hills, as the Rise of Rome's maps have. A cliff that
+ *  would cut one base off from another is not kept. */
+function cliffs(w: World, starts: Tile[], perSmallMap: number) {
+  const map = w.map, n = map.width;
+  const rng = new RNG((w.seed * 69621 + 3) >>> 0);
+  const free = (t: Tile) => map.inside(t) && map.elevationAt(t) >= 1 && walkable(map.terrainAt(t)) && map.terrainAt(t) !== Terrain.shallows
+    && map.occupantAt(t) === 0 && starts.every((s) => s.center.distance(t.center) >= 14);
+  const brow = (t: Tile) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => map.elevationAt(new Tile(t.x + dx, t.y + dy)) < map.elevationAt(t));
+  const connected = () => {
+    if (starts.length < 2) return true;
+    const seen = map.reachable(new Tile(starts[0].x + 2, starts[0].y + 2), (id) => w.building(id) !== null);
+    return starts.every((s) => seen[map.index(new Tile(s.x + 2, s.y + 2))] === 1);
+  };
+  for (let k = 0; k < Math.round(perSmallMap * (n * n) / (72 * 72)); k++) {
+    for (let tries = 0; tries < 40; tries++) {
+      const start = new Tile(rng.int(4, n - 5), rng.int(4, n - 5));
+      if (!free(start) || !brow(start)) continue;
+      // Along the brow: the line runs across the slope, so it faces down the hill.
+      const downX = map.elevationAt(new Tile(start.x + 1, start.y)) < map.elevationAt(start) || map.elevationAt(new Tile(start.x - 1, start.y)) < map.elevationAt(start);
+      const [dx, dy] = downX ? [0, 1] : [1, 0];
+      const ridge: Tile[] = [];
+      for (let i = -rng.int(1, 3); i <= rng.int(2, 4); i++) {
+        const t = new Tile(start.x + dx * i, start.y + dy * i);
+        if (free(t)) ridge.push(t);
+      }
+      if (ridge.length < 3) continue;
+      const before = ridge.map((t) => map.terrain[map.index(t)]);
+      for (const t of ridge) map.terrain[map.index(t)] = Terrain.cliff;
+      if (connected()) break;
+      ridge.forEach((t, i) => { map.terrain[map.index(t)] = before[i]; });
+    }
+  }
 }
 
 /** Ruins and Artifacts out on the open land, away from every base and from each other. They have their
@@ -307,7 +380,8 @@ function connect(w: World, starts: Tile[]) {
           if (!w.map.inside(t)) continue;
           const node = w.node(w.map.occupantAt(t));
           if (node) { node.alive = false; w.map.setOccupant(new Footprint(t, 1), 0); }
-          if (w.map.terrainAt(t) === Terrain.water) w.map.terrain[w.map.index(t)] = Terrain.sand;
+          // A way across the water is a ford: shallows that land units wade and boats still sail.
+          if (w.map.terrainAt(t) === Terrain.water) w.map.terrain[w.map.index(t)] = Terrain.shallows;
         }
       }
     }

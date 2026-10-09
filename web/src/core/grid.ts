@@ -1,7 +1,13 @@
 import { Footprint, Tile, Vec2 } from "./geom";
 
-export enum Terrain { grass, sand, water, dirt }
-export const walkable = (t: Terrain) => t !== Terrain.water;
+/** Shallows are water that land units wade through and boats sail over; cliffs stop everyone. */
+export enum Terrain { grass, sand, water, dirt, shallows, cliff }
+/** Where land units go. */
+export const walkable = (t: Terrain) => t !== Terrain.water && t !== Terrain.cliff;
+/** Where boats go. */
+export const sailable = (t: Terrain) => t === Terrain.water || t === Terrain.shallows;
+/** Where a land building may stand. */
+export const buildable = (t: Terrain) => t === Terrain.grass || t === Terrain.sand || t === Terrain.dirt;
 
 /** The tile grid shared by pathfinding, placement and fog of war. */
 export class GridMap {
@@ -12,6 +18,8 @@ export class GridMap {
   readonly solid: Uint8Array;
   /** Per-tile number for drawing variety. No effect on rules. */
   readonly shade: Uint8Array;
+  /** Height of the ground, 0 (lowest) to 3. Shooting or striking down from higher ground can hit three times as hard. */
+  readonly elevation: Uint8Array;
   /** Who is moving: boats go on water and land units on land. The world sets it around each boat's
    *  turn and puts it back; every passability question below answers for it. */
   naval = false;
@@ -21,7 +29,10 @@ export class GridMap {
     this.occupant = new Int32Array(width * height);
     this.solid = new Uint8Array(width * height);
     this.shade = new Uint8Array(width * height);
+    this.elevation = new Uint8Array(width * height);
   }
+
+  elevationAt(t: Tile) { return this.inside(t) ? this.elevation[this.index(t)] : 0; }
 
   inside(t: Tile) { return t.x >= 0 && t.y >= 0 && t.x < this.width && t.y < this.height; }
   index(t: Tile) { return t.y * this.width + t.x; }
@@ -31,7 +42,7 @@ export class GridMap {
   passableXY(x: number, y: number) {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) return false;
     const i = y * this.width + x;
-    return (this.terrain[i] === Terrain.water) === this.naval && this.solid[i] === 0;
+    return (this.naval ? sailable(this.terrain[i]) : walkable(this.terrain[i])) && this.solid[i] === 0;
   }
 
   /** Water no boat can leave: every neighbour is water too (for deep-sea fish). */
@@ -109,7 +120,7 @@ export class GridMap {
         const n = new Tile(t.x + dx, t.y + dy);
         if (!this.inside(n)) continue;
         const i = this.index(n);
-        if (seen[i] || this.terrain[i] === Terrain.water) continue;
+        if (seen[i] || !walkable(this.terrain[i])) continue;
         if (this.solid[i] !== 0 && !ignoring(this.occupant[i])) continue;
         seen[i] = 1;
         stack.push(n);

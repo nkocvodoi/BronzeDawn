@@ -446,7 +446,8 @@ rules = {
         {"id": "iron", "name": "Iron Age", "cost": cost(f=1000, g=800), "research_time": 160, "requires_buildings": 2,
          "requires_from": ["temple", "government_center", "siege_workshop", "academy"]},
     ],
-    "combat": {"min_damage": 1, "building_factor": 0.2, "building_min": 0.1},
+    # From higher ground each hit has a 25% chance of triple damage (the original's manual).
+    "combat": {"min_damage": 1, "building_factor": 0.2, "building_min": 0.1, "elevation_chance": 0.25, "elevation_factor": 3},
     "economy": {
         "carry": 10,
         "gather_rates": {F: 0.45, W: 0.45, G: 0.45, S: 0.45},
