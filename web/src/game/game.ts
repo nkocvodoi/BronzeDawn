@@ -48,6 +48,8 @@ const ZOOMS = [0.5, 2 / 3, 1, 2];
 
 /** Game speeds, as in the original's settings (1.0, 1.5, 2.0), plus 3x for long games. */
 const SPEEDS = [1, 1.5, 2, 3];
+/** Watching the computers, the game also runs faster. */
+const WATCH_SPEEDS = [...SPEEDS, 5, 10];
 
 /** Map sizes in tiles, after the original's Small to Huge. */
 const MAP_SIZES: [string, number][] = [["Small", 72], ["Medium", 96], ["Large", 120], ["Huge", 144]];
@@ -80,7 +82,13 @@ const WALL_TIER: Record<string, 0 | 1 | 2> = { small_wall: 0, medium_wall: 1, fo
 
 export class Game {
   world: World;
-  readonly me = 0;
+  /** The player whose eyes, resources and buildings the screen shows: you, or while watching, any of them. */
+  me = 0;
+  /** Watch mode: every player is a computer, and you only look. */
+  watching = false;
+  /** Watching, whether the whole map is shown, or only what the player you follow sees. */
+  private watchAll = true;
+  private get speeds() { return this.watching ? WATCH_SPEEDS : SPEEDS; }
   started = false;
   paused = false;
   revealMap = false;
@@ -165,7 +173,8 @@ export class Game {
     this.mapSize = size;
     this.ended = false;
     const n = Math.max(2, civs.length);
-    const names = ["You", ...Array.from({ length: n - 1 }, (_, i) => (n === 2 ? "Enemy" : `Enemy ${i + 1}`))];
+    const names = this.watching ? Array.from({ length: n }, (_, i) => `Computer ${i + 1}`)
+      : ["You", ...Array.from({ length: n - 1 }, (_, i) => (n === 2 ? "Enemy" : `Enemy ${i + 1}`))];
     this.world = new World(this.rules, seed, names, size, true, { civs, teams });
     for (const v of this.views.values()) v.root.destroy({ children: true });
     this.views.clear();
@@ -252,6 +261,7 @@ export class Game {
         + `<option value="team"${this.computersTeamUp ? " selected" : ""}>allied against you</option></select>`,
       `<span id="players-info">${this.playersNote(this.opponents)}</span>`,
       `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
+      `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
       `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
       "Hard: the computer gathers 20% faster.",
       "Press ? at any time for the controls",
@@ -259,6 +269,9 @@ export class Game {
   }
 
   start(d: Difficulty) {
+    this.watching = (document.querySelector("#watch") as HTMLInputElement | null)?.checked === true;
+    this.me = 0;
+    this.watchAll = true;
     // The same map, now with civilizations: yours, and one for the computer.
     const pick = (document.querySelector("#civ") as HTMLSelectElement | null)?.value || null;
     const civs = this.rules.civs;
@@ -275,8 +288,9 @@ export class Game {
     this.newGame(this.seed, [mine, ...theirs], size, teamUp ? [0, ...theirs.map(() => 1)] : []);
     // The speed chosen on the start screen; + and - still change it during the game.
     const chosen = Number((document.querySelector("#start-speed") as HTMLSelectElement | null)?.value);
-    if (SPEEDS.includes(chosen)) { this.speed = chosen; this.hud.speed(chosen); }
-    this.world.ais = this.world.players.filter((p) => p.id !== this.me).map((p) => new AIController(p.id, d));
+    if (this.speeds.includes(chosen)) { this.speed = chosen; this.hud.speed(chosen); }
+    this.world.ais = this.world.players.filter((p) => this.watching || p.id !== this.me).map((p) => new AIController(p.id, d));
+    this.revealMap = this.watching;
     for (const ai of this.world.ais) ai.attach(this.world);
     this.applyReseed();
     // Start zoomed so the map fills the screen as it did at 800 x 600, with the interface scaled to match.
@@ -296,7 +310,8 @@ export class Game {
     const others = this.world.players.filter((p) => p.id !== this.me).map((p) => p.civ?.name ?? p.name);
     this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules) : [], others.join(", ") || null);
     if (size > chosenSize) this.hud.message(`The map was made ${MAP_SIZES.find(([, t]) => t === size)?.[0] ?? size} to fit ${opp + 1} players`);
-    this.hud.message(`${civ ? `Your civilization: ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
+    if (this.watching) this.hud.message(`Watching ${this.world.players.length} computers. V: follow a player or see everything · + and -: speed up to 10x`);
+    else this.hud.message(`${civ ? `Your civilization: ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
     this.selectTownCenter();
   }
 
@@ -312,10 +327,25 @@ export class Game {
       "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · Tab: the next unit of the selection · F4 or S: population, scores or nothing above the minimap · F10: menu",
       "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
-      "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · F3 pause",
+      "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar), and 5x, 10x when watching · F3 pause",
+      "Watching the computers: V follows one player (its fog, resources and panel), then the next, then everything",
       ...this.civLines(),
       "Press ? or Esc to close",
     ], "help");
+  }
+
+  /** Watching: everything, then each player in turn, seen through their eyes (fog, resources, panel). */
+  private nextView() {
+    const n = this.world.players.length;
+    if (this.watchAll) { this.watchAll = false; this.me = 0; }
+    else if (this.me + 1 < n) this.me++;
+    else { this.watchAll = true; this.me = 0; }
+    this.revealMap = this.watchAll;
+    this.selection = [];
+    this.fogStamp = this.minimapStamp = -1;
+    const p = this.world.players[this.me];
+    this.hud.message(this.watchAll ? "Seeing everything (V: follow a player)" : `Following ${p.name}${p.civ ? ` (${p.civ.name})` : ""}: what it sees, its resources and population`);
+    if (!this.watchAll) this.selectTownCenter();
   }
 
   /** S or F4: the list above the minimap shows population, then scores, then nothing. */
@@ -370,7 +400,7 @@ export class Game {
   private showDiplomacy() {
     const rows = this.world.players.map((p) => {
       const bonuses = p.civ ? describeCiv(p.civ, this.rules).join("; ") : "no bonuses";
-      return `<tr><td style="color:${playerColor(p.id)}"><b>${p.name}</b></td><td>${p.civ?.name ?? "-"}</td><td>${p.id === this.me ? "You" : this.world.allied(this.me, p.id) ? "Ally" : "Enemy"}</td><td>${bonuses}</td></tr>`;
+      return `<tr><td style="color:${playerColor(p.id)}"><b>${p.name}</b></td><td>${p.civ?.name ?? "-"}</td><td>${this.watching ? "Computer" : p.id === this.me ? "You" : this.world.allied(this.me, p.id) ? "Ally" : "Enemy"}</td><td>${bonuses}</td></tr>`;
     }).join("");
     this.hud.showOverlay("Diplomacy", [`<table>${rows}</table>`, `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`], "menu");
   }
@@ -391,9 +421,9 @@ export class Game {
   private gameOver(winner: number, how: "conquest" | "wonder" = "conquest") {
     if (this.ended) return;
     this.ended = true;
-    const won = winner >= 0 && this.world.allied(this.me, winner) && !this.world.players[this.me].defeated;
+    const won = !this.watching && winner >= 0 && this.world.allied(this.me, winner) && !this.world.players[this.me].defeated;
     this.sound.stopMusic();
-    this.sound.play(won ? "victory" : "defeat");
+    this.sound.play(won || this.watching ? "victory" : "defeat");
     // The original's end screen: each player's score in its five parts.
     const sc = scores(this.world);
     const head = `<tr><th></th><th>Military</th><th>Economy</th><th>Religion</th><th>Technology</th><th>Other</th><th>Total</th></tr>`;
@@ -402,11 +432,12 @@ export class Game {
       return `<tr><td style="color:${playerColor(p.id)}"><b>${p.name}</b>${p.civ ? ` (${p.civ.name})` : ""}</td>`
         + [s.military, s.economy, s.religion, s.technology, s.other].map((v) => `<td>${v}</td>`).join("") + `<td><b>${s.total}</b></td></tr>`;
     }).join("");
-    this.hud.showOverlay(won ? "Victory" : "Defeat", [
+    const title = this.watching ? `${winner >= 0 ? this.world.players[winner].name : "Nobody"} wins` : won ? "Victory" : "Defeat";
+    this.hud.showOverlay(title, [
       `${how === "wonder" ? "A Wonder stood its time. " : ""}Time ${clock(this.world.time)}`,
       `<table class="score">${head}${rows}</table>`,
       `<span class="choices"><button data-restart>New map (Enter)</button></span>`,
-    ], won ? "win" : "lose");
+    ], won || this.watching ? "win" : "lose");
   }
 
   // ---- the loop
@@ -552,7 +583,7 @@ export class Game {
 
   private handleEvents() {
     const w = this.world;
-    if (this.started && !this.ended && w.winner === null && w.players[this.me].defeated) this.gameOver(-1);
+    if (this.started && !this.watching && !this.ended && w.winner === null && w.players[this.me].defeated) this.gameOver(-1);
     for (const e of w.events) {
       switch (e.kind) {
         case "hit":
@@ -1015,7 +1046,7 @@ export class Game {
   private commands(sel: Entity[]): Command[] {
     const w = this.world, me = this.me;
     const mine = sel.filter((e) => e.owner === me);
-    if (!mine.length || w.winner !== null) return [];
+    if (!mine.length || w.winner !== null || this.watching) return [];
     // A new selection starts at its main menu, as in the original.
     const selKey = mine.map((e) => e.id).join(",");
     if (selKey !== this.menuFor) { this.menuFor = selKey; this.menu = "main"; }
@@ -1268,7 +1299,7 @@ export class Game {
         return;
       }
       if (t.closest("#fs-btn")) { this.toggleFullscreen(); return; }
-      if (t.closest("#speed")) { this.setSpeed(0, (SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length); return; }
+      if (t.closest("#speed")) { this.setSpeed(0, (this.speeds.indexOf(this.speed) + 1) % this.speeds.length); return; }
       // Menu, Diplomacy and ? open their screens and pause, as the original's did.
       if (this.started) {
         const open = (show: () => void) => {
@@ -1363,6 +1394,9 @@ export class Game {
   }
 
   private restart() {
+    this.watching = false;
+    this.me = 0;
+    this.revealMap = false;
     this.newGame(Math.floor(Math.random() * 999_999) + 1);
     this.showStart();
   }
@@ -1460,7 +1494,7 @@ export class Game {
   }
 
   private rightClick(e: MouseEvent) {
-    if (this.world.winner !== null) return;
+    if (this.world.winner !== null || this.watching) return;
     if (this.placing) { this.cancelPlacing(); return; }
     this.attackMovePending = false;
     this.repairPending = false;
@@ -1573,6 +1607,7 @@ export class Game {
       return;
     }
     if (key === "F4") { e.preventDefault(); this.scoresToggled(); return; }
+    if (this.watching && ch === "V") { this.nextView(); return; }
     // Tab: the next unit of the selection comes first, so its status and orders show.
     if (key === "Tab") {
       e.preventDefault();
@@ -1631,9 +1666,9 @@ export class Game {
 
   /** Steps the game speed up or down, or to a given index. */
   setSpeed(step: number, to?: number) {
-    const i = SPEEDS.indexOf(this.speed);
-    const next = to !== undefined ? to : Math.min(SPEEDS.length - 1, Math.max(0, i + step));
-    this.speed = SPEEDS[next];
+    const sp = this.speeds, i = Math.max(0, sp.indexOf(this.speed));
+    const next = to !== undefined ? to : Math.min(sp.length - 1, Math.max(0, i + step));
+    this.speed = sp[next];
     this.hud.speed(this.speed);
     this.hud.message(`Game speed ${this.speed}x`);
   }

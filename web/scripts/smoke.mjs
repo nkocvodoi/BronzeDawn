@@ -198,6 +198,20 @@ await page.keyboard.press("Tab");
 check(await g((p) => game.selection[0] === p[1] && game.selection[1] === p[0], pair), "Tab brings the next unit of the selection forward");
 
 await page.screenshot({ path: process.env.SHOT ?? "smoke.png" });
+
+// Watch mode: a new map with every player a computer; you only look.
+await g(() => game.restart());
+await page.waitForSelector("#watch");
+await page.check("#watch");
+await page.click("[data-start=normal]");
+await wait(300);
+check(await g(() => game.watching && game.world.ais.length === game.world.players.length && game.revealMap), "watch mode: every player is a computer and the map is shown");
+await g(() => { game.selection = [game.world.buildingsOf(0)[0].id]; });
+await wait(200);
+check((await page.$$("#commands button:not(.empty)")).length === 0, "watching, there are no orders to give");
+await page.keyboard.press("v");
+check(await g(() => !game.revealMap && game.me === 0), "V follows one player");
+
 check(errors.length === 0, `no errors in the console${errors.length ? ": " + errors.join(" | ") : ""}`);
 await browser.close();
 server.close();

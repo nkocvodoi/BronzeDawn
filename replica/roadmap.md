@@ -25,7 +25,7 @@ rồi chấm lại.
 | Chiến đấu | Công thức sát thương gốc, giáp xuyên, công trình nhận 1/5 sát thương, đá văng và né được, voi giẫm, tháp canh 4 cấp, tường kéo dài |
 | Tôn giáo | Thầy tu cải đạo và chữa thương, faith hồi dần, Monotheism |
 | Thắng | Chinh phục, Wonder (đứng 15 phút) |
-| AI | 3 mức, chơi đủ 4 thời đại, săn, nghiên cứu, tập hợp quân trước khi đánh; mức Khó thu nhanh hơn 20% (ghi rõ trên màn hình) |
+| AI | 3 mức, chơi đủ 4 thời đại, săn, nghiên cứu, tập hợp quân trước khi đánh; mức Khó thu nhanh hơn 20% (ghi rõ trên màn hình); chế độ chỉ xem các máy đánh nhau (V đổi góc nhìn, tới 10x) |
 | Giao diện | Bố cục kiểu bản gốc, phím xây B + chữ, phím luyện quân của bản gốc, đối tượng nháy khi giao việc, tốc độ 1x đến 3x, hiển thị dân tộc, tùy chọn ruộng tự trồng lại (kiểu AoE2, bật sẵn, tắt trong Menu), thời gian còn lại khi luyện quân, nghiên cứu, lên đời và xây (thanh trên cùng đếm ngược lúc lên đời) |
 | Hình | Pixel art vẽ bằng code cho mọi unit, thú, công trình (4 thời đại, 4 giai đoạn xây), tường nối liền |
 | Kiểm thử | 34 unit test, smoke test bằng chuột và phím thật trên Chrome, trận AI đấu AI chạy không cần màn hình, CI và deploy lên GitHub Pages |
