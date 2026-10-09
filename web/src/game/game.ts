@@ -24,9 +24,6 @@ interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics;
 /** The original's limit on how many units one selection holds. */
 const MAX_SELECTION = 25;
 
-/** The smallest map for a number of players, so every start has room: up to 4 fit any map. */
-const minMapSize = (players: number) => (players <= 4 ? 0 : players <= 6 ? 96 : 120);
-
 const store = {
   get(k: string) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k: string, v: string) { try { localStorage.setItem(k, v); } catch { /* private window */ } },
@@ -50,6 +47,8 @@ const SPEEDS = [1, 1.5, 2, 3];
 
 /** Map sizes in tiles, after the original's Small to Huge. */
 const MAP_SIZES: [string, number][] = [["Small", 72], ["Medium", 96], ["Large", 120], ["Huge", 144]];
+/** The smallest map for a number of players, so every start has room: up to 4 fit any map. */
+const minMapSize = (players: number) => (players <= 4 ? 0 : players <= 6 ? 96 : 120);
 
 /** The original's build keys: B opens the build menu, then a letter places the building.
  *  In the original's order on the buttons: House, Barracks, Granary, Storage Pit, then the later ones. */
