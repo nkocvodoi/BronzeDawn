@@ -75,8 +75,38 @@
    "gold": 0,
    "stone": 150
   },
+  "start_levels": {
+   "medium": {
+    "food": 500,
+    "wood": 500,
+    "gold": 250,
+    "stone": 250
+   },
+   "high": {
+    "food": 1000,
+    "wood": 1000,
+    "gold": 750,
+    "stone": 750
+   },
+   "deathmatch": {
+    "food": 20000,
+    "wood": 20000,
+    "gold": 10000,
+    "stone": 20000
+   }
+  },
   "start_villagers": 3,
   "pop_max": 50,
+  "pop_limits": [
+   25,
+   50,
+   75,
+   100,
+   125,
+   150,
+   175,
+   200
+  ],
   "fishing_boats_per_dock": 5,
   "wonder_seconds": 900,
   "trade_gold_per_tile": 1.1,

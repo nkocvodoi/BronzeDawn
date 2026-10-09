@@ -215,6 +215,23 @@ check((await page.$$("#commands button:not(.empty)")).length === 0, "watching, t
 await page.keyboard.press("v");
 check(await g(() => !game.revealMap && game.me === 0), "V follows one player");
 
+// The original's game settings: a later age, a bigger stockpile, another population limit, an explored
+// map and a time limit, all taken from the start screen.
+await g(() => game.restart());
+await page.waitForSelector("#victory");
+await page.uncheck("#watch");
+await page.selectOption("#victory", "time-30");
+await page.selectOption("#start-age", "2");
+await page.selectOption("#resources", "high");
+await page.selectOption("#pop-limit", "100");
+await page.check("#reveal");
+await page.click("[data-start=normal]");
+await wait(300);
+const set = await g(() => ({ age: game.world.players[0].age, food: game.world.players[0].res.food, pop: game.world.popMax,
+  explored: game.world.fog[0].exploredShare, v: game.world.victory }));
+check(set.age === 2 && set.food >= 900 && set.pop === 100 && set.explored === 1, "the start screen sets the age, resources, population limit and an explored map");
+check(set.v.kind === "time" && /Time left 29:\d\d|Time left 30:00/.test(await page.textContent("#clock")), "a time limit counts down in the top bar");
+
 check(errors.length === 0, `no errors in the console${errors.length ? ": " + errors.join(" | ") : ""}`);
 await browser.close();
 server.close();

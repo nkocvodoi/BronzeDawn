@@ -21,6 +21,9 @@ export class Fog {
     return t.x >= 0 && t.y >= 0 && t.x < this.width && t.y < this.height && this.explored[t.y * this.width + t.x] === 1;
   }
 
+  /** "Reveal map": the land is known from the start, but what moves on it still needs a look. */
+  exploreAll() { this.explored.fill(1); this.exploredCount = this.explored.length; }
+
   revealAll() { this.visible.fill(1); this.explored.fill(1); this.exploredCount = this.explored.length; }
 
   /** The share of the map ever seen, 0 to 1. */

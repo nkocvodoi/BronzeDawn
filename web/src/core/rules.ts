@@ -67,8 +67,12 @@ export interface EconomyDef {
   carry: number;
   gather_rates: Record<string, number>;
   start: Record<string, number>;
+  /** Other starting stockpiles, by the start screen's name for them. "low" is `start`. */
+  start_levels?: Record<string, Record<string, number>>;
   start_villagers: number;
+  /** The default population limit; the start screen may pick another from `pop_limits`. */
   pop_max: number;
+  pop_limits?: number[];
   /** Fishing boats a player may have, alive or in training, for each finished Dock. */
   fishing_boats_per_dock?: number;
   /** How long a finished Wonder must stand to win. */

@@ -229,4 +229,4 @@ export type GameEvent =
   | { kind: "message"; player: number; text: string }
   | { kind: "underAttack"; player: number; at: Vec2 }
   | { kind: "ageReached"; player: number; age: number }
-  | { kind: "gameOver"; winner: number; how: "conquest" | "wonder" };
+  | { kind: "gameOver"; winner: number; how: "conquest" | "wonder" | "score" | "time" };

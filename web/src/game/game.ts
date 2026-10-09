@@ -7,7 +7,7 @@ import { Res, ResBag, Rules } from "../core/rules";
 import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import { MAP_TYPES, MapType } from "../core/mapgen";
-import { World } from "../core/world";
+import { Victory, WinHow, World } from "../core/world";
 import { Arch, buildingPic, CIV_RELIEFS, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
 import { drawTimeline } from "./timeline";
@@ -61,6 +61,20 @@ const MAP_SIZES: [string, number][] = [["Small", 72], ["Medium", 96], ["Large", 
 /** The smallest map for a number of players, so every start has room: up to 4 fit any map. */
 const minMapSize = (players: number) => (players <= 4 ? 0 : players <= 6 ? 96 : 120);
 
+/** The original's victory settings. The score targets and time limits on offer are ours. */
+const VICTORIES: [string, string, Victory][] = [
+  ["standard", "Standard: conquest, or a Wonder that stands", { kind: "standard" }],
+  ["conquest", "Conquest only", { kind: "conquest" }],
+  ...[300, 500, 800].map((k): [string, string, Victory] => [`score-${k}`, `Score: first to ${k} points`, { kind: "score", target: k }]),
+  ...[15, 30, 60, 90].map((m): [string, string, Victory] => [`time-${m}`, `Time limit: best score after ${m} minutes`, { kind: "time", target: m * 60 }]),
+];
+/** What the end screen says about how the game was won. */
+const HOW_TEXT: Record<WinHow, string> = { conquest: "", wonder: "A Wonder stood its time. ", score: "The target score was reached. ", time: "Time ran out: the best score wins. " };
+/** Starting resources: Low is the original's default. */
+const RESOURCE_LEVELS: [string, string][] = [["low", "Low"], ["medium", "Medium"], ["high", "High"], ["deathmatch", "Death Match"]];
+/** A remembered choice, if it is still one of the choices. */
+const remembered = (key: string, ids: string[], fallback: string) => { const v = store.get(key); return v && ids.includes(v) ? v : fallback; };
+
 /** The original's build keys: B opens the build menu, then a letter places the building.
  *  In the original's order on the buttons: House, Barracks, Granary, Storage Pit, then the later ones. */
 const BUILD_KEYS: Record<string, string> = {
@@ -111,6 +125,12 @@ export class Game {
   farmsBlock = store.get("bd-farms-block") === "on";
   /** The kind of map: Inland with lakes, or one with a sea. Remembered. */
   mapType: MapType = MAP_TYPES.some(([id]) => id === store.get("bd-map-type")) ? (store.get("bd-map-type") as MapType) : "inland";
+  /** The rest of the original's game settings, remembered between games. */
+  victoryId = remembered("bd-victory", VICTORIES.map(([id]) => id), "standard");
+  resources = remembered("bd-resources", RESOURCE_LEVELS.map(([id]) => id), "low");
+  startAge = 0;
+  popLimit = 50;
+  exploredStart = store.get("bd-reveal") === "on";
   /** The game is over for you: won, or defeated while the others play on. */
   private ended = false;
   private seed: number;
@@ -165,6 +185,8 @@ export class Game {
 
   constructor(private app: Application, private rules: Rules, seed: number) {
     this.seed = seed;
+    this.startAge = Number(remembered("bd-start-age", rules.ages.map((_, i) => String(i)), "0"));
+    this.popLimit = Number(remembered("bd-pop-limit", (rules.economy.pop_limits ?? []).map(String), String(rules.economy.pop_max)));
     this.world = new World(rules, seed, ["You", "Enemy"]);
     this.entities.sortableChildren = true;
     this.worldLayer.addChild(this.terrain, this.entities, this.effects, this.fogSprite);
@@ -187,7 +209,10 @@ export class Game {
     const n = Math.max(2, civs.length);
     const names = this.watching ? Array.from({ length: n }, (_, i) => `Computer ${i + 1}`)
       : ["You", ...Array.from({ length: n - 1 }, (_, i) => (n === 2 ? "Enemy" : `Enemy ${i + 1}`))];
-    this.world = new World(this.rules, seed, names, size, true, { civs, teams, farmsBlock: this.farmsBlock, mapType: this.mapType });
+    this.world = new World(this.rules, seed, names, size, true, {
+      civs, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, startAge: this.startAge, resources: this.resources,
+      popLimit: this.popLimit, revealMap: this.exploredStart, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2],
+    });
     for (const v of this.views.values()) v.root.destroy({ children: true });
     this.views.clear();
     for (const g of this.ghosts.values()) g.view.root.destroy({ children: true });
@@ -263,6 +288,7 @@ export class Game {
     this.started = false;
     this.hud.playing(false);
     const civs = this.rules.civs.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+    const opts = (xs: [string, string][], on: string) => xs.map(([id, name]) => `<option value="${id}"${id === on ? " selected" : ""}>${name}</option>`).join("");
     this.hud.showOverlay("Bronze Dawn", [
       "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
       `Your civilization: <select id="civ"><option value="">Random</option>${civs}</select>`,
@@ -274,6 +300,11 @@ export class Game {
         + `<option value="team"${this.computersTeamUp ? " selected" : ""}>allied against you</option></select>`,
       `<span id="players-info">${this.playersNote(this.opponents)}</span>`,
       `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
+      `Victory: <select id="victory">${opts(VICTORIES.map(([id, name]) => [id, name]), this.victoryId)}</select>`,
+      `Starting age: <select id="start-age">${opts(this.rules.ages.map((a, i) => [String(i), a.name]), String(this.startAge))}</select>`
+        + ` Resources: <select id="resources">${opts(RESOURCE_LEVELS, this.resources)}</select>`
+        + ` Population limit: <select id="pop-limit">${opts((this.rules.economy.pop_limits ?? [this.rules.economy.pop_max]).map((k) => [String(k), String(k)]), String(this.popLimit))}</select>`,
+      `<label><input type="checkbox" id="reveal"${this.exploredStart ? " checked" : ""}> Reveal map: the land is known from the start (units are still hidden by the fog)</label>`,
       `<label><input type="checkbox" id="farms-block"${this.farmsBlock ? " checked" : ""}> Farms block the way, as in the original (off: walk over them, as in the remaster)</label>`,
       `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
       `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
@@ -286,6 +317,18 @@ export class Game {
     this.watching = (document.querySelector("#watch") as HTMLInputElement | null)?.checked === true;
     const fb = document.querySelector("#farms-block") as HTMLInputElement | null;
     if (fb) { this.farmsBlock = fb.checked; store.set("bd-farms-block", fb.checked ? "on" : "off"); }
+    const rv = document.querySelector("#reveal") as HTMLInputElement | null;
+    if (rv) { this.exploredStart = rv.checked; store.set("bd-reveal", rv.checked ? "on" : "off"); }
+    const pickFrom = (sel: string, key: string, ids: string[]) => {
+      const v = (document.querySelector(sel) as HTMLSelectElement | null)?.value;
+      if (v === undefined || !ids.includes(v)) return null;
+      store.set(key, v);
+      return v;
+    };
+    this.victoryId = pickFrom("#victory", "bd-victory", VICTORIES.map(([id]) => id)) ?? this.victoryId;
+    this.resources = pickFrom("#resources", "bd-resources", RESOURCE_LEVELS.map(([id]) => id)) ?? this.resources;
+    this.startAge = Number(pickFrom("#start-age", "bd-start-age", this.rules.ages.map((_, i) => String(i))) ?? this.startAge);
+    this.popLimit = Number(pickFrom("#pop-limit", "bd-pop-limit", (this.rules.economy.pop_limits ?? []).map(String)) ?? this.popLimit);
     this.me = 0;
     this.watchAll = true;
     // The same map, now with civilizations: yours, and one for the computer.
@@ -450,7 +493,7 @@ export class Game {
   }
 
   /** Victory or defeat, once. You lose as soon as you are out, even while the computers fight on. */
-  private gameOver(winner: number, how: "conquest" | "wonder" = "conquest") {
+  private gameOver(winner: number, how: WinHow = "conquest") {
     if (this.ended) return;
     this.ended = true;
     const won = !this.watching && winner >= 0 && this.world.allied(this.me, winner) && !this.world.players[this.me].defeated;
@@ -466,7 +509,7 @@ export class Game {
     }).join("");
     const title = this.watching ? `${winner >= 0 ? this.world.players[winner].name : "Nobody"} wins` : won ? "Victory" : "Defeat";
     this.hud.showOverlay(title, [
-      `${how === "wonder" ? "A Wonder stood its time. " : ""}Time ${clock(this.world.time)}`,
+      `${HOW_TEXT[how]}Time ${clock(this.world.time)}`,
       `<span class="choices tabs"><button data-tab="timeline" class="on">Timeline</button><button data-tab="score">Score</button></span>`,
       `<div data-pane="timeline">${TIMELINE_HTML}</div>`,
       `<div data-pane="score" hidden><table class="score">${head}${rows}</table></div>`,

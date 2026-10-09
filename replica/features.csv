@@ -55,8 +55,8 @@ Priests convert and heal,religion,should,yes,yes,
 Win by conquest,win,must,yes,yes,
 Wonder victory,win,should,yes,yes,
 Ruins and artifacts victory,win,should,yes,no,
-Score and score or time-limit victory,win,could,yes,partial,the original's five-part score; no score or time-limit victory yet
-Game setup options (reveal map starting age resources population limit),setup,should,yes,partial,civ; map size; speed; difficulty; number of computers and teams; farms blocking
+Score and score or time-limit victory,win,could,yes,yes,the original's five-part score; Score victory (300/500/800) and Time Limit (15 to 90 minutes); a team scores its average
+Game setup options (reveal map starting age resources population limit),setup,should,yes,yes,civ; map size; speed; difficulty; number of computers and teams; farms blocking; victory; starting age; resources Low to Death Match; population limit 25 to 200; reveal map
 Save and load a game,setup,should,yes,no,
 Status box command icons and diamond minimap,hud,must,yes,yes,
 Build menu with the original's keys,hud,must,yes,yes,B then a letter
