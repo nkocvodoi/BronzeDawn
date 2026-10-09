@@ -449,6 +449,27 @@ describe("the original's rules", () => {
     expect(w.blockerUnit("camel_rider", 1)).not.toContain("Not available");
   });
 
+  it("time left: the item in progress, the whole queue, and a foundation at its builders' pace", () => {
+    const w = blank();
+    const tc = w.addBuilding("town_center", 0, new Tile(2, 2), true);
+    w.players[0].res.set(Res.food, 500);
+    w.train(0, tc.id, "villager");
+    w.train(0, tc.id, "villager");
+    const t = RULES.units.get("villager")!.train_time;
+    expect(w.queueTimeLeft(tc)).toEqual({ current: t, total: 2 * t });
+    run(w, 5);
+    expect(w.queueTimeLeft(tc).current).toBeCloseTo(t - 5, 0);
+    expect(w.queueTimeLeft(tc).total).toBeCloseTo(2 * t - 5, 0);
+
+    const house = w.addBuilding("house", 0, new Tile(10, 10), false);
+    expect(w.buildTimeLeft(house)).toBeNull(); // nobody on it
+    const a = w.spawnUnit("villager", 0, new Tile(9, 10).center), b = w.spawnUnit("villager", 0, new Tile(9, 11).center);
+    w.build(0, [a.id, b.id], house.id);
+    run(w, 2);
+    const full = RULES.buildings.get("house")!.build_time;
+    expect(w.buildTimeLeft(house)!).toBeLessThan(full / 2); // two builders: half the time
+  });
+
   it("a Wonder that stands long enough wins", () => {
     const w = blank();
     w.players[0].age = 3;

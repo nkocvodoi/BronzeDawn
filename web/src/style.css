@@ -88,10 +88,18 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 .bar i { display: block; height: 100%; background: #0c0; }
 #hp-text { font-variant-numeric: tabular-nums; }
 #status p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#queue { display: flex; gap: calc(var(--u) * 2); margin-top: calc(var(--u) * 2); }
+/* What a building is working on: icons beside its picture, the first one in progress. */
+#queue { display: flex; flex-wrap: wrap; align-content: flex-start; gap: calc(var(--u) * 2); }
+#queue:empty { display: none; }
 #queue img { width: calc(var(--u) * 18); height: calc(var(--u) * 18); }
 #queue img:first-child { outline: calc(var(--u) * 1) solid var(--gold); }
 #progress-bar { background: var(--gold); }
+/* The progress bar carries the time left, so it reads at a glance. */
+#progress { position: relative; height: calc(var(--u) * 11); background: #4a3a14; }
+#progress-text {
+  position: absolute; inset: 0; text-align: center; font-size: calc(var(--u) * 9); line-height: calc(var(--u) * 11);
+  color: #fff; text-shadow: 0 0 calc(var(--u) * 2) #000, 0 0 calc(var(--u) * 1) #000; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 
 /* Command icons: six columns by two rows, right of the status box. Each kind of order keeps its place. */
 #commands {
