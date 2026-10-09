@@ -7,11 +7,13 @@ import type { World } from "./world";
  * player with a town center, villagers, berries, a forest, gold and stone close by.
  */
 /** The kinds of map, as the start screen offers them. Inland is the land with lakes it always was. */
-export type MapType = "inland" | "coastal" | "continental" | "mediterranean";
+export type MapType = "inland" | "coastal" | "continental" | "mediterranean" | "large_islands" | "small_islands";
 export const MAP_TYPES: [MapType, string][] = [
   ["inland", "Inland (lakes)"], ["coastal", "Coastal (sea on two sides)"],
   ["continental", "Continental (sea all around)"], ["mediterranean", "Mediterranean (a sea in the middle)"],
+  ["large_islands", "Large Islands (an island each: transports needed)"], ["small_islands", "Small Islands (an island each, and more to settle)"],
 ];
+const islands = (t: MapType) => t === "large_islands" || t === "small_islands";
 
 export function generateMap(w: World, type: MapType = "inland") {
   const map = w.map;
@@ -132,7 +134,8 @@ export function generateMap(w: World, type: MapType = "inland") {
     }
   }
 
-  connect(w, starts);
+  // Land paths between the bases, except where the sea is meant to part them.
+  if (!islands(type)) connect(w, starts);
   if (type !== "inland") deepFish(w, starts);
   w.nodes = w.nodes.filter((x) => x.alive);
 }
@@ -164,6 +167,22 @@ function sea(w: World, type: MapType) {
     const sides = [coastline(w, n, 4, 8), coastline(w, n, 4, 8), coastline(w, n, 4, 8), coastline(w, n, 4, 8)];
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
       if (x < sides[0][y] || n - 1 - x < sides[1][y] || y < sides[2][x] || n - 1 - y < sides[3][x]) wet(x, y);
+    }
+  } else if (islands(type)) {
+    // All sea, then an island for every base, and on Small Islands a few more out in the water.
+    map.terrain.fill(Terrain.water);
+    const big = type === "large_islands";
+    const land = (t: Tile) => { map.terrain[map.index(t)] = Terrain.grass; };
+    for (const s of w.startTiles) {
+      blob(w, s, n * (big ? 0.25 : 0.2), land);
+      for (let k = 0; k < 3; k++) blob(w, new Tile(s.x + w.rng.int(-6, 6), s.y + w.rng.int(-6, 6)), n * (big ? 0.14 : 0.11), land);
+    }
+    const scale = (n * n) / (72 * 72);
+    for (let k = 0; k < Math.round((big ? 1 : 4) * scale); k++) {
+      for (let tries = 0; tries < 30; tries++) {
+        const c = new Tile(w.rng.int(8, n - 9), w.rng.int(8, n - 9));
+        if (w.startTiles.every((s) => s.center.distance(c.center) > n * 0.35)) { blob(w, c, n * 0.07, land); break; }
+      }
     }
   } else {
     // A sea in the middle, made of a few overlapping rounds so its shore is not a circle.

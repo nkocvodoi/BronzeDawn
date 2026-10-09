@@ -107,6 +107,8 @@ export interface UnitDef {
   gathers?: string[];
   /** A boat's own gather rate, whatever it gathers. */
   gather_rate?: number;
+  /** Transports: how many land units they carry. */
+  capacity?: number;
 }
 export interface BuildingDef {
   id: string; name: string; age: string; cost: Record<string, number>; size: number;

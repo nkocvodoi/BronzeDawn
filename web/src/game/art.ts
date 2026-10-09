@@ -1275,9 +1275,11 @@ function drawFish(p: PixelCanvas, v: number, sea = false) {
 
 // ---- boats
 
-const BOATS = new Set(["fishing_boat", "fishing_ship", "scout_ship", "war_galley", "trireme", "catapult_trireme", "juggernaught", "fire_galley"]);
+const BOATS = new Set(["fishing_boat", "fishing_ship", "light_transport", "heavy_transport", "scout_ship", "war_galley", "trireme", "catapult_trireme", "juggernaught", "fire_galley"]);
 /** How each war ship is drawn: half the hull's length, rows of oars, and what stands on deck. */
-const WARSHIP: Record<string, { L: number; oars: number; deck: "archer" | "catapult" | "fire"; tall: number }> = {
+const WARSHIP: Record<string, { L: number; oars: number; deck: "archer" | "catapult" | "fire" | "cargo"; tall: number }> = {
+  light_transport: { L: 15, oars: 1, deck: "cargo", tall: 15 },
+  heavy_transport: { L: 19, oars: 2, deck: "cargo", tall: 19 },
   scout_ship: { L: 15, oars: 1, deck: "archer", tall: 18 },
   war_galley: { L: 18, oars: 1, deck: "archer", tall: 21 },
   trireme: { L: 20, oars: 3, deck: "archer", tall: 23 },
@@ -1361,6 +1363,10 @@ function drawWarship(p: PixelCanvas, look: UnitLook, k: (typeof WARSHIP)[string]
     const arm = hit ? -1 : 1;
     p.line(cx + 5, wy - 9, cx + 5 + 5 * arm, wy - 15, C.wood);
     p.rect(cx + 4 + 5 * arm, wy - 16, 3, 2, C.stone);
+  } else if (k.deck === "cargo") {
+    // A deckhouse amidships and bales lashed fore and aft.
+    p.rect(cx - 6, wy - 10, 9, 5, C.wood); p.rect(cx - 6, wy - 11, 9, 1, C.woodDark);
+    p.rect(cx + 5, wy - 8, 3, 3, rgb(0xb89a68)); p.rect(cx - 11, wy - 8, 3, 3, rgb(0xb89a68));
   } else {
     // A brazier at the bow, burning.
     p.rect(cx + L - 6, wy - 9, 4, 3, C.iron);
@@ -2774,7 +2780,7 @@ function techGlyph(p: PixelCanvas, g: string) {
 
 const TECH_WORDS: [RegExp, string][] = [
   [/^delete$/, "delete"], [/^stop$/, "stop"], [/^next$/, "next"], [/^back$/, "back"],
-  [/^(build|repair)$/, "hammer"], [/^(attack_move|attack_ground)$/, "sword"], [/^stand_ground$/, "shield"],
+  [/^(build|repair)$/, "hammer"], [/^(attack_move|attack_ground)$/, "sword"], [/^stand_ground$/, "shield"], [/^unload$/, "back"],
   [/^(stone|tool|bronze|iron)_age$|^age_|advance|ascend/, "age"],
   [/coin|gold|bank|market|trade|currency|tax|mint/, "coin"],
   [/shield/, "shield"],
