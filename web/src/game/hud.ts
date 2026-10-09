@@ -271,7 +271,11 @@ export class HUD {
           + (d.pierce_armor || st.pierce_armor ? this.stat("pierce", d.pierce_armor, st.pierce_armor, "Pierce armor") : "")
           + (d.range > 0 ? this.stat("range", d.range, st.range, "Range") : "");
       }
-      if (first.isTransport) this.lines[0].textContent = `Carrying ${first.cargo.length}/${first.def.capacity}${first.unloadAt ? " · putting in" : ""}`;
+      if (first.isTrader) {
+        const o = first.order;
+        this.lines[0].textContent = o.kind === "trade" ? (o.loaded ? `Bringing ${Math.round(first.carry)} gold home` : "Sailing for goods")
+          : "Right-click another player's Dock to trade";
+      } else if (first.isTransport) this.lines[0].textContent = `Carrying ${first.cargo.length}/${first.def.capacity}${first.unloadAt ? " · putting in" : ""}`;
       else if (first.carry > 0 && first.carryRes !== null) this.lines[0].textContent = `Carrying ${Math.floor(first.carry)} ${first.carryKind === "meat" ? "meat" : RES_KEY[first.carryRes]}`;
       return;
     }

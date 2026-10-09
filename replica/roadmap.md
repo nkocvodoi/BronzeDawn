@@ -53,12 +53,13 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 ### Giai đoạn 3: nước và tàu (lớn)
 - [x] Dock (cũng là công trình tính để lên Tool Age), đặt dưới nước sát bờ
 - [x] Thuyền đánh cá (nâng cấp Fishing Ship) và cá ngoài khơi; AI tự xây Dock và đánh cá
-- [ ] Thuyền buôn và buôn bán giữa các dock
+- [x] Thuyền buôn (Trade Boat, Merchant Ship) và buôn bán giữa các dock
 - [x] Tàu chiến: scout ship, war galley, trireme, catapult trireme, juggernaught, fire galley (bonus tàu của các dân tộc đã có tác dụng)
 - [x] Thuyền chở quân (Light 5 chỗ, Heavy 10 chỗ; chìm thì quân chết theo)
 - [x] Bản đồ có biển: coastal, continental, mediterranean
 - [x] Bản đồ đảo (small islands, large islands); AI chưa biết dùng thuyền chở quân (phần 4)
-- [ ] AI biết dùng thuyền
+- [x] AI biết dùng thuyền: Dock, thuyền đánh cá, hải quân nhỏ, chở quân sang đảo
+- [ ] AI trên bản đồ đảo còn yếu: mỗi chuyến chỉ chở 5 lính nên hay bị tiêu diệt dần; cần gom nhiều chuyến, có tàu chiến hộ tống
 - Mọi bonus tàu của các dân tộc đã có tác dụng, kể cả thuyền chở quân nhanh hơn 30% của Carthaginian.
 
 ### Giai đoạn 4: bản đồ và luật còn lại (vừa)

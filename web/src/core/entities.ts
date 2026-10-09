@@ -12,6 +12,7 @@ export type Order =
   | { kind: "build"; id: number }
   | { kind: "repair"; id: number }
   | { kind: "board"; id: number }
+  | { kind: "trade"; with: number; home: number | null; loaded: boolean }
   | { kind: "attack"; id: number; auto?: boolean }
   | { kind: "attackGround"; at: Vec2 }
   | { kind: "convert"; id: number; sacrifice?: boolean }
@@ -101,6 +102,8 @@ export class Unit extends Entity {
   get isPriest() { return this.def.converts === true; }
   /** Boats move on water only. */
   get isBoat() { return this.def.naval === true; }
+  /** Trades between Docks. */
+  get isTrader() { return this.def.trades === true; }
   /** Carries land units over the water. */
   get isTransport() { return (this.def.capacity ?? 0) > 0; }
   /** Gathers resources: villagers, and fishing boats. */

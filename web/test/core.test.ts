@@ -671,6 +671,22 @@ describe("the original's rules", () => {
     }
   });
 
+  it("trade: a trade boat sails to another player's Dock and brings gold home, more the further it goes", () => {
+    const w = blank(60);
+    for (let y = 0; y < 60; y++) for (let x = 6; x < 60; x++) w.map.terrain[y * 60 + x] = Terrain.water;
+    const mine = w.addBuilding("dock", 0, new Tile(6, 4), true);
+    const theirs = w.addBuilding("dock", 1, new Tile(6, 44), true);
+    const boat = w.spawnUnit("trade_boat", 0, new Tile(10, 8).center);
+    expect(w.smart(0, [boat.id], theirs.id, theirs.center)).toBe("traded");
+    const trip = w.tradeGold(theirs, mine);
+    expect(trip).toBeGreaterThan(30);
+    run(w, 70);
+    expect(w.players[0].res.gold).toBeGreaterThanOrEqual(trip);
+    expect(w.players[0].res.gold % trip).toBe(0);
+    expect(boat.order.kind).toBe("trade"); // and off again
+    expect(w.tradeGold(mine, w.addBuilding("dock", 1, new Tile(6, 12), true))).toBeLessThan(trip);
+  });
+
   it("the last team standing wins", () => {
     const w = new World(RULES, 4, ["A", "B", "C"], 72, true, { teams: [0, 1, 1] });
     for (const e of [...w.unitsOf(0), ...w.buildingsOf(0)]) w.applyDamage(e, 1e6, -1);

@@ -73,6 +73,8 @@ export interface EconomyDef {
   fishing_boats_per_dock?: number;
   /** How long a finished Wonder must stand to win. */
   wonder_seconds?: number;
+  /** Gold a trade trip brings for each tile between the two Docks. */
+  trade_gold_per_tile?: number;
   /** Repair speed, as a share of the building speed. */
   repair_rate?: number;
   /** What a full bar of repair costs, as a share of the building's price. */
@@ -109,6 +111,8 @@ export interface UnitDef {
   gather_rate?: number;
   /** Transports: how many land units they carry. */
   capacity?: number;
+  /** Trade boats: they carry goods between Docks for gold. */
+  trades?: boolean;
 }
 export interface BuildingDef {
   id: string; name: string; age: string; cost: Record<string, number>; size: number;

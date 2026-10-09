@@ -84,8 +84,10 @@ export class AIController {
 
     const mine = w.unitsOf(this.player);
     const villagers = mine.filter((u) => u.isVillager);
-    const army = mine.filter((u) => u.isSoldier);
-    const priests = mine.filter((u) => u.isPriest);
+    // The army on land, and the war ships apart: they go where the water goes.
+    const army = mine.filter((u) => u.isSoldier && !u.isBoat && u.aboard === null);
+    const navy = mine.filter((u) => u.isSoldier && u.isBoat);
+    const priests = mine.filter((u) => u.isPriest && u.aboard === null);
     const bs = w.buildingsOf(this.player);
     const tc = bs.find((b) => b.def.id === "town_center");
     if (!tc) {
@@ -95,12 +97,125 @@ export class AIController {
     }
     const home = tc.center;
     this.defend(w, army, villagers, bs);
-    this.economy(w, tc, villagers, bs);
+    // The Dock first: on a map with a sea it feeds the town, counts for the Tool Age, and on islands is the way out.
     this.fishing(w, tc, villagers, bs);
+    this.economy(w, tc, villagers, bs);
     this.repair(w, villagers, bs);
     this.research(w, bs, army);
     this.military(w, army, bs, villagers.length);
+    this.navy(w, home, navy, bs);
     this.attack(w, home, army, priests);
+  }
+
+  // ---- at sea
+
+  /** On a map with a sea: a few war ships from the Tool Age, more than the enemy has. They keep enemy
+   *  boats off our fishing grounds, and once there are four go for the enemy's Docks and boats. */
+  private navy(w: World, home: Vec2, navy: Unit[], bs: Building[]) {
+    const p = w.players[this.player];
+    const dock = bs.find((b) => b.def.on_water && b.complete);
+    if (!dock || p.age < 1 || !w.nodes.some((n) => n.def.boats_only)) return;
+    const enemyShips = w.units.filter((u) => u.alive && u.isBoat && u.isSoldier && w.isEnemy(this.player, u.owner)).length;
+    // A small fleet: one more than the enemy shows, within a cap by age, and never more than a fifth of
+    // the population, so a race of ships does not starve the army that has to finish the game.
+    const want = Math.min([0, 2, 3, 4][Math.min(p.age, 3)], enemyShips + 1, Math.floor(p.popCap / 5));
+    if (navy.length < Math.max(want, Math.min(2, [0, 2, 3, 4][Math.min(p.age, 3)])) && dock.queue.length === 0
+      && p.pop + 1 <= p.popCap - (this.needsFerry ? 1 : 0)) {
+      const cat = w.current(this.player, "catapult_trireme");
+      const cats = navy.filter((u) => u.def.tags?.includes("catapult_ship")).length;
+      const pick = cats * 3 < navy.length && w.blockerUnit(cat, this.player) === null ? cat : w.current(this.player, "scout_ship");
+      if (w.blockerUnit(pick, this.player) === null && this.affordable(w, w.unitCost(this.player, pick))) w.train(this.player, dock.id, pick);
+    }
+    const idle = navy.filter((u) => u.order.kind === "idle");
+    if (!idle.length) return;
+    const enemy = (u: Unit) => u.alive && u.isBoat && w.isEnemy(this.player, u.owner);
+    const near = minBy(w.units.filter((u) => enemy(u) && u.pos.distance(dock.center) < 22), (u) => u.pos.distance(dock.center));
+    if (near) { w.attack(this.player, idle.map((u) => u.id), near.id); return; }
+    if (navy.length < 4) return;
+    const docks = w.buildings.filter((b) => b.alive && b.def.on_water && w.isEnemy(this.player, b.owner));
+    const prey: { center: Vec2 }[] = [...docks, ...w.units.filter(enemy).map((u) => ({ center: u.pos }))];
+    const goal = minBy(prey, (x) => x.center.distance(home));
+    if (goal) w.move(this.player, idle.map((u) => u.id), goal.center, true);
+  }
+
+  /** A wave on its way by sea: the transport, who is to go, and how far it has got. */
+  private ferry: { transport: number; ids: number[]; target: Vec2; since: number; sailing: boolean } | null = null;
+  /** Across the sea from the enemy, with no transport yet. */
+  private needsFerry = false;
+
+  /** Whether there is room to train one more on land, keeping two places for a transport when one is needed
+   *  (counting what is already in the queues). */
+  private ferryRoom(w: World, bs: Building[]) {
+    if (!this.needsFerry) return true;
+    const p = w.players[this.player];
+    const queued = bs.reduce((n, b) => n + b.queue.filter((q) => q.kind === "unit").length, 0);
+    return p.pop + queued + 3 <= p.popCap || p.popCap < w.rules.economy.pop_max - 2;
+  }
+  private seaCheck: { key: number; across: boolean; at: number } | null = null;
+
+  /** Whether the way to a target is over the water: no path by land from home (rechecked now and then). */
+  private overSea(w: World, home: Vec2, target: Vec2) {
+    const key = w.map.index(target.tile);
+    if (this.seaCheck && this.seaCheck.key === key && this.thinks - this.seaCheck.at < 60) return this.seaCheck.across;
+    const seen = w.map.reachable(w.map.nearestPassable(home.tile, 4) ?? home.tile, (id) => w.building(id) !== null);
+    const to = w.map.nearestPassable(target.tile, 4) ?? target.tile;
+    const across = !seen[w.map.index(to)];
+    this.seaCheck = { key, across, at: this.thinks };
+    return across;
+  }
+
+  /** A transport from the Dock, when the way to the enemy is over the sea and there is none. */
+  private trainTransport(w: World) {
+    const p = w.players[this.player];
+    if (w.unitsOf(this.player).some((u) => u.isTransport)) return;
+    const docks = w.buildingsOf(this.player).filter((b) => b.def.on_water && b.complete);
+    if (!docks.length || docks.some((d) => d.queue.some((q) => q.kind === "unit" && w.rules.units.get(q.id)?.capacity))) return;
+    // No room left for one: as a player would, give up one unit to make room (an idle soldier, else a villager).
+    if (p.pop + 1 > p.popCap) {
+      const mine = w.unitsOf(this.player).filter((u) => u.aboard === null);
+      const spare = mine.find((u) => u.isSoldier && !u.isBoat && u.order.kind === "idle") ?? mine.find((u) => u.isVillager && u.order.kind !== "build");
+      if (spare) w.destroy(this.player, spare.id);
+    }
+    const dock = docks.find((d) => d.queue.length === 0) ?? docks[0];
+    const type = w.current(this.player, "light_transport");
+    if (w.blockerUnit(type, this.player) === null && this.affordable(w, w.unitCost(this.player, type))) w.train(this.player, dock.id, type);
+  }
+
+  /** Starts a wave by sea: a transport (trained if there is none) takes as many as it carries. */
+  private startFerry(w: World, home: Vec2, target: Vec2, ids: number[]): boolean {
+    const transports = w.unitsOf(this.player).filter((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle");
+    this.needsFerry = !transports.length && !w.unitsOf(this.player).some((u) => u.isTransport);
+    if (!transports.length) { this.trainTransport(w); return false; }
+    const t = transports[0];
+    const landing = w.landingNear(home);
+    if (!landing) return false;
+    const go = ids.slice(0, t.def.capacity ?? 5);
+    w.move(this.player, [t.id], landing.center);
+    w.board(this.player, go, t.id);
+    this.ferry = { transport: t.id, ids: go, target, since: w.time, sailing: false };
+    return true;
+  }
+
+  /** Loads, sails, lands, and lets the wave loose on the far shore. */
+  private runFerry(w: World) {
+    const f = this.ferry!;
+    const t = w.unit(f.transport);
+    const alive = f.ids.map((id) => w.unit(id)).filter((u): u is Unit => !!u);
+    if (!t || !alive.length) { this.ferry = null; return; }
+    if (!f.sailing) {
+      const aboard = alive.filter((u) => u.aboard === t.id), ashore = alive.filter((u) => u.aboard === null);
+      for (const u of ashore) if (u.order.kind === "idle") w.board(this.player, [u.id], t.id);
+      if (aboard.length && (!ashore.length || w.time - f.since > 60)) { w.unload(this.player, [t.id], f.target); f.sailing = true; }
+      return;
+    }
+    if (t.cargo.length) {
+      if (t.unloadAt === null && t.order.kind === "idle") w.unload(this.player, [t.id], f.target); // put in again
+      return;
+    }
+    const landed = alive.filter((u) => u.aboard === null);
+    w.move(this.player, landed.map((u) => u.id), f.target, true);
+    for (const u of landed) this.sent.add(u.id);
+    this.ferry = null;
   }
 
   private count(bs: Building[], type: string) { return bs.filter((b) => b.def.id === type).length; }
@@ -132,7 +247,7 @@ export class AIController {
     const ageBlock = w.blockerForNextAge(this.player);
     const saving = p.age < this.level.maxAge && villagers.length >= 14 + p.age * 4 && (ageBlock === null || ageBlock === "Not enough resources");
     const tcBusy = tc.queue.some((q) => q.kind === "age");
-    if (tc.complete && !tcBusy && tc.queue.length < 2 && villagers.length + tc.queue.length < target && !saving && p.res.food >= 50) {
+    if (tc.complete && !tcBusy && tc.queue.length < 2 && villagers.length + tc.queue.length < target && !saving && this.ferryRoom(w, bs) && p.res.food >= 50) {
       w.train(this.player, tc.id, "villager");
     }
 
@@ -269,11 +384,13 @@ export class AIController {
       if (!this.dockAt) return;
       if (!w.canPlace("dock", this.dockAt, this.player)) {
         if (!w.canPlace("dock", this.dockAt)) { this.dockAt = null; return; } // someone built there
-        // Not seen yet: a villager walks to the shore to look, as a player would before building there.
+        // Not seen yet: a villager walks to the shore to look, as a player would before building there,
+        // as close as it can get to the part of the site it has not seen.
+        const hidden = new Footprint(this.dockAt, 3).tiles().find((t) => !w.fog[this.player].isExplored(t));
         const scout = this.dockScout !== null ? w.unit(this.dockScout) : null;
-        if (!scout || scout.order.kind !== "move") {
-          const v = this.pickBuilder(villagers, this.dockAt.center);
-          if (v) { w.move(this.player, [v.id], this.dockAt.center); this.dockScout = v.id; }
+        if (hidden && (!scout || scout.order.kind !== "move")) {
+          const v = scout && scout.alive ? scout : this.pickBuilder(villagers, hidden.center);
+          if (v) { w.move(this.player, [v.id], hidden.center); this.dockScout = v.id; }
         }
         return;
       }
@@ -287,7 +404,7 @@ export class AIController {
     const boats = w.unitsOf(this.player).filter((u) => u.isBoat && u.isGatherer);
     const want = [3, 4, 5, 5][Math.min(p.age, 3)];
     const type = w.current(this.player, "fishing_boat");
-    if (boats.length + dock.queue.length < want && dock.queue.length === 0 && w.blockerUnit(type, this.player) === null
+    if (boats.length + dock.queue.length < want && dock.queue.length === 0 && p.pop + 1 <= p.popCap - (this.needsFerry ? 1 : 0) && w.blockerUnit(type, this.player) === null
       && this.affordable(w, w.unitCost(this.player, type))) w.train(this.player, dock.id, type);
     for (const b of boats) {
       if (b.order.kind !== "idle") continue;
@@ -383,6 +500,8 @@ export class AIController {
   private military(w: World, army: Unit[], bs: Building[], villagers: number) {
     const p = w.players[this.player];
     if (villagers < 10 && !army.length && w.time <= 400) return;
+    // Waiting for a transport to cross the sea: leave room in the population for it.
+    if (!this.ferryRoom(w, bs)) return;
     const enemyArmy = w.units.filter((u) => u.alive && w.isEnemy(this.player, u.owner) && !u.isVillager);
     const producing = bs.filter((b) => b.complete && b.def.id !== "town_center" && b.queue.some((q) => q.kind === "unit")).length;
     let slots = this.level.producers + (p.age >= 2 ? 1 : 0) - producing;
@@ -462,6 +581,11 @@ export class AIController {
       if (t) w.convert(this.player, [pr.id], t.id);
     }
 
+    // Across the sea from the enemy (islands)? Then keep room for a transport from the start.
+    const far = this.enemyHome(w);
+    if (far && this.thinks % 10 === 0) this.needsFerry = this.overSea(w, home, far) && !w.unitsOf(this.player).some((u) => u.isTransport);
+    if (this.needsFerry && w.time >= this.level.firstAttack * 0.8) this.trainTransport(w);
+    if (this.ferry) { this.runFerry(w); return; }
     // A gathered wave goes in together once most of it has arrived, or after a minute.
     if (this.staging) {
       const st = this.staging;
@@ -484,6 +608,11 @@ export class AIController {
     if (!(ready.length >= this.waveSize || maxed || weak) || !target) return;
     const sendPriests = priests.filter((u) => u.order.kind === "idle" && dist(u, home) <= 18).map((u) => u.id);
     const ids = ready.map((u) => u.id).concat(sendPriests);
+    // Over the water (islands): by transport, as many as it carries a trip.
+    if (this.overSea(w, home, target)) {
+      if (this.startFerry(w, home, target, ids)) { this.waves++; this.waveSize = Math.min(this.waveSize + 1, 10); }
+      return;
+    }
     // Far away (a big map): gather two thirds of the way there first. Close: go straight in.
     if (home.distance(target) > 45) {
       const at = home.lerp(target, 0.66);

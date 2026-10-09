@@ -79,6 +79,7 @@
   "pop_max": 50,
   "fishing_boats_per_dock": 5,
   "wonder_seconds": 900,
+  "trade_gold_per_tile": 1.1,
   "repair_rate": 0.5,
   "repair_cost": 0.5
  },
@@ -1387,6 +1388,61 @@
    "requires_tech": "juggernaught_tech"
   },
   {
+   "id": "trade_boat",
+   "name": "Trade Boat",
+   "class": "boat",
+   "age": "stone",
+   "trained_at": "dock",
+   "cost": {
+    "wood": 100
+   },
+   "train_time": 25,
+   "hp": 200,
+   "attack": 0,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 0,
+   "attack_cooldown": 1.5,
+   "speed": 2.1,
+   "los": 4,
+   "pop": 1,
+   "tags": [
+    "boat",
+    "trade"
+   ],
+   "naval": true,
+   "convert_resist": 2,
+   "trades": true
+  },
+  {
+   "id": "merchant_ship",
+   "name": "Merchant Ship",
+   "class": "boat",
+   "age": "bronze",
+   "trained_at": "dock",
+   "cost": {
+    "wood": 100
+   },
+   "train_time": 25,
+   "hp": 250,
+   "attack": 0,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 0,
+   "attack_cooldown": 1.5,
+   "speed": 2.5,
+   "los": 4,
+   "pop": 1,
+   "tags": [
+    "boat",
+    "trade"
+   ],
+   "naval": true,
+   "convert_resist": 2,
+   "trades": true,
+   "requires_tech": "merchant_ship_tech"
+  },
+  {
    "id": "light_transport",
    "name": "Light Transport",
    "class": "boat",
@@ -1600,6 +1656,8 @@
     "trireme",
     "catapult_trireme",
     "juggernaught",
+    "trade_boat",
+    "merchant_ship",
     "light_transport",
     "heavy_transport",
     "fire_galley"
@@ -3157,6 +3215,25 @@
      "type": "upgrade",
      "from": "fishing_boat",
      "to": "fishing_ship"
+    }
+   ]
+  },
+  {
+   "id": "merchant_ship_tech",
+   "name": "Merchant Ship",
+   "age": "bronze",
+   "building": "dock",
+   "cost": {
+    "food": 200,
+    "wood": 75
+   },
+   "time": 40,
+   "requires": [],
+   "effects": [
+    {
+     "type": "upgrade",
+     "from": "trade_boat",
+     "to": "merchant_ship"
     }
    ]
   },

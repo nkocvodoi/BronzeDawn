@@ -78,7 +78,7 @@ const TRAIN_KEYS: Record<string, string> = {
   scout: "S", chariot: "R", scythe_chariot: "R", cavalry: "C", heavy_cavalry: "C", cataphract: "C", war_elephant: "E", armored_elephant: "E", camel_rider: "L",
   stone_thrower: "C", catapult: "C", heavy_catapult: "C", ballista: "B", helepolis: "B", priest: "T",
   fishing_boat: "F", fishing_ship: "F",
-  light_transport: "T", heavy_transport: "T",
+  light_transport: "T", heavy_transport: "T", trade_boat: "R", merchant_ship: "R",
   scout_ship: "E", war_galley: "E", trireme: "E", catapult_trireme: "C", juggernaught: "C", fire_galley: "G",
 };
 
@@ -339,6 +339,7 @@ export class Game {
       "Right click: move, gather, hunt, build, repair, attack, convert or heal (priests), or set a rally point · Shift + right click: a waypoint",
       "Villagers: B opens the build menu, then E House · G Granary · S Storage Pit · B Barracks · D Dock (in the water at the shore) · M Market · F Farm",
       "A Archery Range · L Stable · W Wall · T Tower · C Government Center · P Temple · Y Academy · K Siege Workshop · N Town Center · O Wonder",
+      "Trade (R at the Dock): right-click another player's Dock with a trade boat; it brings gold back, more the further it sails",
       "Transports (T at the Dock): right-click one with land units to go aboard, then right-click the land (or U) to put them ashore",
       "Train: F Fishing Boat at the Dock · C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",

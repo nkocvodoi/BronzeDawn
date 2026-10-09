@@ -1275,9 +1275,11 @@ function drawFish(p: PixelCanvas, v: number, sea = false) {
 
 // ---- boats
 
-const BOATS = new Set(["fishing_boat", "fishing_ship", "light_transport", "heavy_transport", "scout_ship", "war_galley", "trireme", "catapult_trireme", "juggernaught", "fire_galley"]);
+const BOATS = new Set(["fishing_boat", "fishing_ship", "light_transport", "heavy_transport", "trade_boat", "merchant_ship", "scout_ship", "war_galley", "trireme", "catapult_trireme", "juggernaught", "fire_galley"]);
 /** How each war ship is drawn: half the hull's length, rows of oars, and what stands on deck. */
 const WARSHIP: Record<string, { L: number; oars: number; deck: "archer" | "catapult" | "fire" | "cargo"; tall: number }> = {
+  trade_boat: { L: 16, oars: 0, deck: "cargo", tall: 19 },
+  merchant_ship: { L: 19, oars: 0, deck: "cargo", tall: 23 },
   light_transport: { L: 15, oars: 1, deck: "cargo", tall: 15 },
   heavy_transport: { L: 19, oars: 2, deck: "cargo", tall: 19 },
   scout_ship: { L: 15, oars: 1, deck: "archer", tall: 18 },
