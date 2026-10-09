@@ -108,6 +108,8 @@ export class Unit extends Entity {
   get isTransport() { return (this.def.capacity ?? 0) > 0; }
   /** Gathers resources: villagers, and fishing boats. */
   get isGatherer() { return this.isVillager || (this.def.gathers?.length ?? 0) > 0; }
+  /** Ruins and Artifacts: nobody can hurt or convert them; they go to whoever comes near. */
+  get isRelic() { return this.def.class === "relic"; }
   /** Fights: not villagers, priests, animals or boats that only fish. */
   get isSoldier() { return !this.isVillager && !this.isPriest && !this.isAnimal && this.def.attack > 0; }
 }
@@ -229,4 +231,4 @@ export type GameEvent =
   | { kind: "message"; player: number; text: string }
   | { kind: "underAttack"; player: number; at: Vec2 }
   | { kind: "ageReached"; player: number; age: number }
-  | { kind: "gameOver"; winner: number; how: "conquest" | "wonder" | "score" | "time" };
+  | { kind: "gameOver"; winner: number; how: "conquest" | "wonder" | "score" | "time" | "ruins" | "artifacts" };

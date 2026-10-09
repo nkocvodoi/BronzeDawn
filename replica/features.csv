@@ -2,11 +2,11 @@ feature,area,priority,original,clone,notes
 Isometric tile map with terrain and water,map,must,yes,yes,
 Seeded random maps,map,must,yes,yes,
 Map sizes Small to Huge,map,should,yes,yes,72 96 120 144
-Gigantic map size,map,could,yes,no,
-Map types: islands coastal inland highland and the Rise of Rome four,map,should,yes,partial,inland; coastal; continental; mediterranean; large and small islands (no highland hill country or narrows yet)
-Elevation hills and cliffs,map,should,yes,no,flat ground only
-Elevation damage bonus,combat,could,yes,no,needs elevation
-Shallows land units can cross,map,could,yes,no,
+Gigantic map size,map,could,yes,yes,200 x 200 (the size in tiles is our guess); the ground is drawn piece by piece
+Map types: islands coastal inland highland and the Rise of Rome four,map,should,yes,yes,inland; coastal; continental; mediterranean; large and small islands; highland; hill country; narrows (how each is laid out is our reading of the names)
+Elevation hills and cliffs,map,should,yes,yes,hills 0 to 3 high on every map; short cliffs on the land maps that never cut a base off
+Elevation damage bonus,combat,could,yes,yes,the original rule: from higher ground each hit has a 25% chance of triple damage
+Shallows land units can cross,map,could,yes,yes,fords where the land paths between bases cross water; boats sail over them too
 Scroll and zoom the camera,camera,must,yes,yes,
 Click box shift and double-click selection,selection,must,yes,yes,
 Selection limit of 25,selection,could,yes,yes,
@@ -54,7 +54,7 @@ Martyrdom,religion,could,yes,yes,Sacrifice (Q) after the Iron Age tech; the AI n
 Priests convert and heal,religion,should,yes,yes,
 Win by conquest,win,must,yes,yes,
 Wonder victory,win,should,yes,yes,
-Ruins and artifacts victory,win,should,yes,no,
+Ruins and artifacts victory,win,should,yes,yes,5 Ruins and 5 Artifacts a map; taken by coming near; Artifacts can be moved and carried in transports; holding all of either for 15 minutes wins; 10 points each and 50 for all; the AI goes for them
 Score and score or time-limit victory,win,could,yes,yes,the original's five-part score; Score victory (300/500/800) and Time Limit (15 to 90 minutes); a team scores its average
 Game setup options (reveal map starting age resources population limit),setup,should,yes,yes,civ; map size; speed; difficulty; number of computers and teams; farms blocking; victory; starting age; resources Low to Death Match; population limit 25 to 200; reveal map
 Save and load a game,setup,should,yes,no,

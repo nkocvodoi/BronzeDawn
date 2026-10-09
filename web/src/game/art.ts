@@ -103,6 +103,8 @@ const GROUND: Record<Terrain, RGB[]> = {
   [Terrain.dirt]: [rgb(0x96764a), rgb(0x8a6c44), rgb(0xa2825a), rgb(0x7e623c)],
   [Terrain.sand]: [rgb(0xd2bc82), rgb(0xc8b278), rgb(0xdcc890), rgb(0xbea66c)],
   [Terrain.water]: [rgb(0x22489a), rgb(0x2650a4), rgb(0x1e4290), rgb(0x2c5aae)],
+  [Terrain.shallows]: [rgb(0x4f8fae), rgb(0x5898b4), rgb(0x4886a6), rgb(0x60a0b8)],
+  [Terrain.cliff]: [rgb(0x7e6a52), rgb(0x76624a), rgb(0x887458), rgb(0x6c5a44)],
 };
 
 /** Smooth value noise in 0..1: random heights on a grid of `size`, blended between. */
@@ -119,24 +121,37 @@ const GRASS_DARK = rgb(0x4a7a2a), GRASS_LIGHT = rgb(0x74a240), GRASS_YELLOW = rg
 const WORN = [rgb(0x9a7a56), rgb(0x8c6e4c), rgb(0xa88a64)];
 const FOREST_FLOOR = rgb(0x34521e);
 
-/** The whole map as one pixel texture, 16 x 8 art pixels per half tile. Returns it with its screen origin.
- *  `forest` marks tiles under trees (1) and next to them (2), whose ground is drawn darker. */
-export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Texture; x: number; y: number; w: number; h: number } {
-  const tw = HALF_W / PX, th = HALF_H / PX; // art pixels per half tile: 16 x 8
-  const W = (map.width + map.height) * tw, H = (map.width + map.height) * th;
-  const left = -map.height * HALF_W;
-  const p = new PixelCanvas(W, H);
+/** The map's size as one picture, in art pixels (16 x 8 per half tile), and where it sits on screen. */
+function terrainFrame(map: GridMap) {
+  const tw = HALF_W / PX, th = HALF_H / PX;
+  return { W: (map.width + map.height) * tw, H: (map.width + map.height) * th, left: -map.height * HALF_W };
+}
+
+/** A window of the map's ground as a pixel texture: the art pixels from (x0, y0), w by h, of the whole
+ *  picture. `forest` marks tiles under trees (1) and next to them (2), whose ground is drawn darker. */
+export function terrainTexture(map: GridMap, forest?: Uint8Array, win?: { x0: number; y0: number; w: number; h: number }): { texture: Texture; x: number; y: number; w: number; h: number } {
+  const { W, H, left } = terrainFrame(map);
+  const x0 = win?.x0 ?? 0, y0 = win?.y0 ?? 0, cw = win?.w ?? W, ch = win?.h ?? H;
+  const p = new PixelCanvas(cw, ch);
   const n = map.width;
   const terrainAt = (x: number, y: number): Terrain | null =>
     x < 0 || y < 0 || x >= n || y >= map.height ? null : (map.terrain[y * n + x] as Terrain);
+  // Ground height, smooth between tile centres, for shading the hills: slopes facing the top left are lit.
+  const elev = (x: number, y: number) => {
+    const gx = Math.min(n - 1, Math.max(0, x - 0.5)), gy = Math.min(map.height - 1, Math.max(0, y - 0.5));
+    const x0 = Math.floor(gx), y0 = Math.floor(gy), x1 = Math.min(n - 1, x0 + 1), y1 = Math.min(map.height - 1, y0 + 1);
+    const ux = gx - x0, uy = gy - y0, e = map.elevation;
+    return (e[y0 * n + x0] * (1 - ux) + e[y0 * n + x1] * ux) * (1 - uy) + (e[y1 * n + x0] * (1 - ux) + e[y1 * n + x1] * ux) * uy;
+  };
+  const hilly = map.elevation.some((v) => v > 0);
   const named = ASSETS.manifest.terrain ?? {};
   const tileFiles: Partial<Record<Terrain, string[]>> = {};
   for (const [t, key] of [[Terrain.grass, "grass"], [Terrain.dirt, "dirt"], [Terrain.sand, "sand"], [Terrain.water, "water"]] as const) {
     const list = (named[key] ?? []).filter((f) => ASSETS.image(f));
     if (list.length) tileFiles[t] = list;
   }
-  for (let py = 0; py < H; py++) {
-    for (let px = 0; px < W; px++) {
+  for (let py = y0; py < y0 + ch; py++) {
+    for (let px = x0; px < x0 + cw; px++) {
       const w = fromIso(left + (px + 0.5) * PX, (py + 0.5) * PX);
       const tx = Math.floor(w.x), ty = Math.floor(w.y);
       const t = terrainAt(tx, ty);
@@ -173,7 +188,7 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
         const r = hash(px, py, 3);
         if (r < 0.06) c = mix(c, GRASS_FLECK, 0.55);                                  // yellow flecks
         else if (r < 0.1) c = darken(c, 0.78);                                       // dark flecks
-        else if (r < 0.104 && (px & 1) === 0) { c = rgb(0x3e6a24); p.set(px, py - 1, rgb(0x3e6a24)); } // a tuft
+        else if (r < 0.104 && (px & 1) === 0) { c = rgb(0x3e6a24); p.set(px - x0, py - y0 - 1, rgb(0x3e6a24)); } // a tuft
         // Worn patches of bare earth, ragged at the edge.
         const worn = vnoise(w.x, w.y, 2.2, 23) * 0.7 + vnoise(w.x, w.y, 0.9, 24) * 0.3;
         if (worn > 0.78 || (worn > 0.73 && bayer(px, py) < (worn - 0.73) / 0.05)) c = WORN[Math.floor(hash(px >> 1, py, 25) * 3)];
@@ -188,6 +203,16 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
         // White foam along the shore, in short broken dashes, as the original's beaches have.
         if (water >= 0 && water < 0.58 && hash(px >> 2, py >> 1, 12) < 0.7) c = rgb(0xeef2f6);
         else if (water >= 0 && water < 0.7 && bayer(px, py) < 0.5) c = rgb(0x5a86c4);
+      } else if (use === Terrain.shallows) {
+        // Sand showing through clear water, with ripples.
+        c = mix(c, GROUND[Terrain.sand][0], 0.25 + vnoise(w.x, w.y, 1.5, 33) * 0.25);
+        if (hash(px >> 2, py, 13) < 0.12 && (py & 1) === 0) c = rgb(0x8cc4d8);
+      } else if (use === Terrain.cliff) {
+        // A rock face: vertical cracks, ledges, and the side away from the light in shadow.
+        const crack = hash(px >> 1, 0, 71) < 0.18 || hash(px, py >> 2, 72) < 0.04;
+        c = crack ? rgb(0x4a3c2e) : mix(c, rgb(0xa8947a), Math.max(0, vnoise(px, py * 3, 3, 73) - 0.4));
+        if ((py + (px >> 2)) % 7 === 0) c = darken(c, 0.82); // ledges
+        if (fx + fy > 1.1) c = darken(c, 0.7);
       } else if (use === Terrain.sand || use === Terrain.dirt) {
         c = mix(c, darken(c, 0.82), vnoise(w.x, w.y, 2.5, 41) * 0.6);
         if (hash(px, py, 5) < 0.05) c = darken(c, 0.8);
@@ -209,30 +234,30 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
           }
         }
       }
-      p.set(px, py, c);
+      if (hilly && use !== Terrain.water) {
+        const h = elev(w.x, w.y);
+        if (h > 0.01) {
+          const slope = (elev(w.x - 0.4, w.y) - elev(w.x + 0.4, w.y)) + (elev(w.x, w.y - 0.4) - elev(w.x, w.y + 0.4)) * 0.6;
+          const k = 1 + h * 0.035 + slope * 0.22;
+          c = k >= 1 ? lighten(c, Math.min(0.35, k - 1)) : darken(c, Math.max(0.6, k));
+        }
+      }
+      p.set(px - x0, py - y0, c);
     }
   }
-  const texture = p.toTexture();
-  return { texture, x: left, y: 0, w: W * PX, h: H * PX, canvas: p } as ReturnType<typeof terrainTexture> & { canvas: PixelCanvas };
+  return { texture: p.toTexture(), x: left + x0 * PX, y: y0 * PX, w: cw * PX, h: ch * PX };
 }
 
 /** The map ground cut into pieces no bigger than 2048 pixels, which every GPU accepts. Large maps need it. */
 export function terrainChunks(map: GridMap, forest?: Uint8Array): { texture: Texture; x: number; y: number; w: number; h: number }[] {
-  const whole = terrainTexture(map, forest) as ReturnType<typeof terrainTexture> & { canvas: PixelCanvas };
-  const src = whole.canvas;
-  if (src.w <= 2048 && src.h <= 2048) return [whole];
-  whole.texture.destroy(true);
+  // Each piece is drawn on its own, so even a Gigantic map never needs the whole picture in memory at once.
+  const { W, H } = terrainFrame(map);
   const out: { texture: Texture; x: number; y: number; w: number; h: number }[] = [];
   const size = 2048;
-  for (let cy = 0; cy < src.h; cy += size) {
-    for (let cx = 0; cx < src.w; cx += size) {
-      const cw = Math.min(size, src.w - cx), ch = Math.min(size, src.h - cy);
-      const piece = new PixelCanvas(cw, ch);
-      for (let y = 0; y < ch; y++) {
-        const from = ((cy + y) * src.w + cx) * 4;
-        piece.data.set(src.data.subarray(from, from + cw * 4), y * cw * 4);
-      }
-      out.push({ texture: piece.toTexture(), x: whole.x + cx * PX, y: whole.y + cy * PX, w: cw * PX, h: ch * PX });
+  for (let cy = 0; cy < H; cy += size) {
+    for (let cx = 0; cx < W; cx += size) {
+      const w = Math.min(size, W - cx), h = Math.min(size, H - cy);
+      out.push(terrainTexture(map, forest, { x0: cx, y0: cy, w, h }));
     }
   }
   return out;
@@ -340,6 +365,8 @@ export function unitPic(look: UnitLook): Pic {
   if (type === "helepolis") return pic(key, 38, 54, 19 / 38, 50 / 54, (p) => drawHelepolis(p, look));
   if (SIEGE.has(type)) return pic(key, 40, 34, 20 / 40, 30 / 34, (p) => drawSiege(p, look));
   if (BOATS.has(type)) return pic(key, 56, 38, 28 / 56, 31 / 38, (p) => drawBoat(p, look));
+  if (type === "ruins") return pic(`ruins-${owner}`, 44, 40, 22 / 44, 33 / 40, (p) => drawRuins(p, owner));
+  if (type === "artifact") return pic(`artifact-${owner}-${pose === "walk" ? frame % 2 : 0}`, 20, 26, 10 / 20, 23 / 26, (p) => drawArtifact(p, owner, pose === "walk" ? frame % 2 : 0));
   if (type === "gazelle") return pic(key, 24, 22, 12 / 24, 19 / 22, (p) => drawGazelle(p, look, false));
   if (type === "lion") return pic(key, 30, 24, 14 / 30, 21 / 24, (p) => drawLion(p, look, false));
   if (type === "alligator") return pic(key, 36, 18, 17 / 36, 14 / 18, (p) => drawAlligator(p, look, false));
@@ -351,6 +378,58 @@ export function unitPic(look: UnitLook): Pic {
     p.outline(C.outline, 0.25);
     if (kit.robe && pose === "work") drawGlow(p, cx, fy - 17, frame % 3);
   });
+}
+
+/** Ruins: a broken colonnade on a cracked platform; whoever holds them flies a pennant from the tallest column. */
+function drawRuins(p: PixelCanvas, owner: number) {
+  const s = C.stone, sD = C.stoneDark, sL = lighten(C.stone, 0.22);
+  p.shadow(22, 34, 19, 4);
+  // The platform, an isometric slab with a broken corner.
+  p.poly([[3, 31], [22, 22], [41, 31], [22, 39]], (x, y) => (y < 30 ? sL : hash(x, y, 31) < 0.08 ? sD : s));
+  p.poly([[3, 31], [22, 39], [22, 41], [3, 33]], sD);
+  p.poly([[22, 39], [41, 31], [41, 33], [22, 41]], darken(sD, 0.85));
+  p.erase([[33, 35], [41, 31], [41, 34], [36, 37]]);
+  p.line(10, 30, 16, 33, sD); p.line(26, 27, 30, 31, sD);
+  // Columns: whole, half, a stump, and one fallen across the slab.
+  const column = (x: number, base: number, h: number, capital: boolean) => {
+    p.rect(x - 2, base - h, 5, h, s);
+    for (let yy = base - h; yy < base; yy++) { p.set(x - 2, yy, sL); p.set(x + 2, yy, sD); }
+    for (let yy = base - h + 2; yy < base; yy += 3) p.set(x, yy, sD);
+    if (capital) p.rect(x - 3, base - h - 2, 7, 2, sL);
+    else p.poly([[x - 2, base - h], [x + 2, base - h - 2], [x + 2, base - h]], sL); // broken top
+    p.rect(x - 3, base - 1, 7, 2, sD);
+  };
+  column(12, 31, 22, true);
+  column(22, 26, 12, false);
+  column(31, 30, 5, false);
+  p.thick(15, 35, 27, 32, s, 4); p.line(15, 33, 27, 30, sL);
+  for (const [x, y] of [[9, 33], [35, 30], [19, 36]]) p.rect(x, y, 2, 1, sD); // rubble
+  if (owner >= 0) {
+    const pc = playerRGB(owner);
+    p.line(12, 2, 12, 9, C.woodDark);
+    p.poly([[13, 2], [19, 4], [13, 6]], pc);
+    p.line(13, 6, 19, 4, darken(pc, 0.7));
+  }
+  p.outline(C.outline, 0.3);
+}
+
+/** An Artifact: a little gold idol on a carrying plinth, wrapped in its holder's colour. Walking, it bobs. */
+function drawArtifact(p: PixelCanvas, owner: number, bob: number) {
+  const g = C.gold, gD = C.goldDark, gL = rgb(0xfff0a0);
+  p.shadow(10, 23, 7, 2);
+  const y0 = bob ? -1 : 0;
+  p.rect(4, 18 + y0, 12, 4, C.woodDark);
+  p.rect(4, 18 + y0, 12, 1, C.wood);
+  p.thick(1, 20 + y0, 19, 20 + y0, C.wood, 1); // carrying poles
+  if (owner >= 0) { const pc = playerRGB(owner); p.rect(5, 16 + y0, 10, 2, pc); p.line(5, 17 + y0, 14, 17 + y0, darken(pc, 0.7)); }
+  else p.rect(5, 16 + y0, 10, 2, C.cloth);
+  // The idol: a seated figure with a tall headdress.
+  p.ellipse(10, 13 + y0, 3.5, 3, (x, y) => (x < 9 ? gL : y > 14 + y0 ? gD : g));
+  p.rect(8, 6 + y0, 5, 5, g); p.set(8, 7 + y0, gL); p.set(12, 9 + y0, gD);
+  p.poly([[8, 6 + y0], [10, 1 + y0], [12, 6 + y0]], (x) => (x < 10 ? gL : g));
+  p.set(9, 8 + y0, C.dark); p.set(11, 8 + y0, C.dark);
+  p.set(4, 4 + y0, gL); p.set(16, 7 + y0, gL); p.set(15, 3 + y0, rgb(0xfffbe0)); // a glint
+  p.outline(C.outline, 0.25);
 }
 
 /** A standing or seated figure. ty is the top of the torso; the head sits above it, the legs below. */
@@ -1140,6 +1219,30 @@ export function rubblePic(size: number, salt: number): Pic {
       const dx = hash(k, salt, 93) > 0.5 ? 1 : -1;
       p.line(x0, y0, x0 + dx * (4 + size * 2), y0 + 2 + size, beam);
     }
+  });
+}
+
+/** A piece of cliff standing on one tile: a jagged block of rock, lit from the top left. Neighbouring
+ *  pieces overlap, so a line of them reads as one wall. */
+export function cliffPic(variant: number): Pic {
+  const v = variant % 4;
+  return pic(`cliff${v}`, 40, 38, 0.5, 30 / 38, (p) => {
+    const base = rgb(0x8a745a), lit = rgb(0xb09a7a), dark = rgb(0x5a4834), deep = rgb(0x3e3024);
+    p.shadow(20, 31, 17, 4);
+    const top = 5 + (v & 1) * 2;
+    // A ragged skyline: a point every few pixels at its own height.
+    const face: [number, number][] = [[2, 30], [2, 20]];
+    for (let x = 4; x <= 36; x += 4) face.push([x, top + Math.floor(hash(x, v, 81) * 9) + (x < 8 || x > 32 ? 5 : 0)]);
+    face.push([38, 20], [38, 30], [20, 36]);
+    p.poly(face, (x, y) => {
+      const n = hash(x >> 1, y >> 2, 80 + v);
+      const c = x < 14 + (y - top) * 0.3 ? lit : x > 28 ? dark : base;
+      return n < 0.12 ? darken(c, 0.8) : n > 0.93 ? lighten(c, 0.15) : c;
+    });
+    for (let i = 0; i < 5; i++) { const x = 8 + ((i * 7 + v * 3) % 26); p.line(x, top + 8 + (i % 3) * 3, x + 1, 30, deep); } // cracks
+    for (const y of [top + 9, top + 17]) p.line(5, y, 34, y + 3, darken(base, 0.75)); // strata
+    p.poly([[2, 30], [20, 36], [38, 30], [38, 32], [20, 38], [2, 32]], deep);
+    p.outline(C.outline, 0.3);
   });
 }
 

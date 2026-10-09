@@ -2,7 +2,7 @@ import { AIController } from "./ai";
 import { Building, Entity, GAIA, GameEvent, IDLE, Order, Player, QueueItem, ResourceNode, Unit } from "./entities";
 import { Fog } from "./fog";
 import { Footprint, RNG, Tile, Vec2 } from "./geom";
-import { GridMap, Terrain, walkable } from "./grid";
+import { buildable, GridMap, Terrain, walkable } from "./grid";
 import { generateMap, MapType } from "./mapgen";
 import { Pathfinder } from "./path";
 import { hasTag, NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
@@ -13,7 +13,8 @@ import { BuildingStats, Mods, UnitStats } from "./stats";
 export type SmartResult = "moved" | "attacked" | "gathered" | "built" | "repaired" | "boarded" | "unloaded" | "traded" | "returned" | "converted" | "healed" | "nothing";
 
 /** Who fired, with what. Damage is worked out against each target at impact (splash hits several). */
-interface Shot { attackerId: number; owner: number; attack: number; pierce: boolean; bonus?: Record<string, number> }
+/** `from`: the ground height the attacker stood on, for the high-ground bonus. */
+interface Shot { attackerId: number; owner: number; attack: number; pierce: boolean; bonus?: Record<string, number>; from?: number }
 interface Missile { shot: Shot; targetId: number | null; at: Vec2 | null; area: number; remaining: number; clearsTrees?: boolean }
 
 type Approach = "arrived" | "moving" | "blocked";
@@ -34,13 +35,15 @@ const FORMATION: Vec2[] = (() => {
 export interface WorldOptions {
   civs?: (string | null)[]; teams?: number[]; farmsBlock?: boolean; mapType?: MapType;
   startAge?: number; resources?: string; popLimit?: number; revealMap?: boolean; victory?: Victory;
+  /** Ruins and Artifacts on the map (5 of each), as in the original; on unless turned off. */
+  relics?: boolean;
 }
 
 /** How a game is won. Standard: conquest, or a Wonder that stands its time. Conquest: only conquest.
  *  Score: the first to reach `target` points. Time: the highest score after `target` seconds. A team
  *  is scored as the average of its players, as in the original. */
 export type Victory = { kind: "standard" } | { kind: "conquest" } | { kind: "score"; target: number } | { kind: "time"; target: number };
-export type WinHow = "conquest" | "wonder" | "score" | "time";
+export type WinHow = "conquest" | "wonder" | "score" | "time" | "ruins" | "artifacts";
 
 /**
  * The whole simulation. No rendering in here: it runs the same in the browser,
@@ -73,9 +76,13 @@ export class World {
   rng: RNG;
   private byId = new Map<number, Entity>();
   private nextId = 1;
+  private nextRelicId = 1 << 24;
   private missiles: Missile[] = [];
   private alertTimer: number[] = [];
   private animalDefs = new Map<string, UnitDef>();
+  private relicDefs = new Map<string, UnitDef>();
+  /** Who holds every Ruin, or every Artifact, and when that wins (standard victory). */
+  relicHold: Record<"ruins" | "artifact", { player: number; at: number } | null> = { ruins: null, artifact: null };
   private carcassDefs = new Map<string, NodeDef>();
 
   constructor(readonly rules: Rules, readonly seed: number, playerNames = ["You", "Enemy"], size = 72, generate = true,
@@ -100,7 +107,7 @@ export class World {
       this.fog.push(new Fog(size, size));
       this.alertTimer.push(0);
     });
-    if (generate) generateMap(this, options.mapType ?? "inland");
+    if (generate) generateMap(this, options.mapType ?? "inland", options.relics !== false);
     // A later start: buildings and units are made at their full hit points for the age.
     if (startAge > 0) for (const p of this.players) this.refreshHp(p.id);
     this.refreshPopulation();
@@ -134,7 +141,7 @@ export class World {
 
   /** May something owned by `owner` attack `t`? Players hunt animals; animals fight players. */
   hostile(owner: number, t: Entity) {
-    if (t instanceof Unit && t.aboard !== null) return false; // out of reach inside its transport
+    if (t instanceof Unit && (t.aboard !== null || t.isRelic)) return false; // inside its transport, or a Ruin or Artifact
     if (t instanceof Unit && t.isAnimal) return owner !== GAIA;
     if (owner === GAIA) return t.owner !== GAIA && !(t instanceof ResourceNode);
     return this.isEnemy(owner, t.owner);
@@ -143,7 +150,7 @@ export class World {
   // ---- stats after techs and civ bonuses
 
   stats(u: Unit): UnitStats {
-    if (u.owner < 0) {
+    if (u.owner < 0 || u.isRelic) {
       const d = u.def;
       return { hp: d.hp, attack: d.attack, armor: d.armor, pierce_armor: d.pierce_armor, range: d.range, attack_cooldown: d.attack_cooldown,
         speed: d.speed, los: d.los, train_time: 0, pop: 0, cost: new ResBag() };
@@ -161,6 +168,22 @@ export class World {
   spawnUnit(type: string, owner: number, at: Vec2): Unit {
     const u = new Unit(this.nextId++, owner, this.rules.units.get(type)!, at);
     if (owner >= 0) u.hp = u.maxHp = this.stats(u).hp;
+    this.units.push(u);
+    this.byId.set(u.id, u);
+    return u;
+  }
+
+  /** A Ruin (it never moves) or an Artifact (its owner can walk it about), nobody's at first. */
+  spawnRelic(kind: "ruins" | "artifact", at: Vec2): Unit {
+    let def = this.relicDefs.get(kind);
+    if (!def) {
+      const speed = kind === "artifact" ? this.rules.economy.relics?.artifact_speed ?? 0.8 : 0;
+      def = { id: kind, name: kind === "ruins" ? "Ruins" : "Artifact", class: "relic", age: "stone", trained_at: "", cost: {}, train_time: 0,
+        hp: 1, attack: 0, armor: 0, pierce_armor: 0, range: 0, attack_cooldown: 1, speed, los: 3, pop: 0, tags: ["relic"] };
+      this.relicDefs.set(kind, def);
+    }
+    // Numbered apart from everything else, so a map with them plays out like the same map without.
+    const u = new Unit(this.nextRelicId++, GAIA, def, at);
     this.units.push(u);
     this.byId.set(u.id, u);
     return u;
@@ -258,7 +281,8 @@ export class World {
     const fp = new Footprint(origin, def.size);
     for (const t of fp.tiles()) {
       // A Dock stands in the water; everything else on land.
-      if (!this.map.inside(t) || walkable(this.map.terrainAt(t)) === (def.on_water === true) || this.map.occupantAt(t) !== 0) return false;
+      const ground = this.map.terrainAt(t);
+      if (!this.map.inside(t) || (def.on_water ? ground !== Terrain.water : !buildable(ground)) || this.map.occupantAt(t) !== 0) return false;
       if (player !== null && !this.fog[player].isExplored(t)) return false;
     }
     if (def.on_water) {
@@ -429,12 +453,15 @@ export class World {
 
   // ---- commands. The player and the AI both go through these.
 
-  private own(ids: number[], player: number): Unit[] {
-    return ids.map((i) => this.unit(i)).filter((u): u is Unit => u !== null && u.owner === player);
+  /** The player's units among `ids`. Ruins and Artifacts take no orders, except that an Artifact
+   *  can be walked somewhere (or aboard) when `relics` says so. */
+  private own(ids: number[], player: number, relics = false): Unit[] {
+    return ids.map((i) => this.unit(i)).filter((u): u is Unit => u !== null && u.owner === player
+      && (!u.isRelic || (relics && u.def.speed > 0)));
   }
 
   move(player: number, ids: number[], target: Vec2, attackMove = false) {
-    this.own(ids, player).forEach((u, i) => {
+    this.own(ids, player, true).forEach((u, i) => {
       u.waypoints = [];
       u.unloadAt = null;
       this.moveOne(u, target.add(FORMATION[Math.min(i, FORMATION.length - 1)]), attackMove);
@@ -443,7 +470,7 @@ export class World {
 
   /** Shift + right-click: units already walking add the point to their way; the others go now. */
   waypoint(player: number, ids: number[], target: Vec2) {
-    this.own(ids, player).forEach((u, i) => {
+    this.own(ids, player, true).forEach((u, i) => {
       const dest = target.add(FORMATION[Math.min(i, FORMATION.length - 1)]);
       if (u.order.kind === "move" && u.waypoints.length < 20) u.waypoints.push(dest);
       else { u.waypoints = []; this.moveOne(u, dest, false); }
@@ -546,7 +573,7 @@ export class World {
   board(player: number, ids: number[], transportId: number) {
     const t = this.unit(transportId);
     if (!t || t.owner !== player || !t.isTransport) return;
-    for (const u of this.own(ids, player)) {
+    for (const u of this.own(ids, player, true)) {
       if (u.isBoat || u.aboard !== null) continue;
       u.order = { kind: "board", id: t.id };
       u.path = []; u.repathTimer = 0; u.waypoints = []; u.buildQueue = [];
@@ -736,7 +763,7 @@ export class World {
 
   /** The right click: attack, hunt, convert, heal, gather, build, repair or farm your own building, or move. */
   smart(player: number, ids: number[], target: number | null, at: Vec2): SmartResult {
-    const group = this.own(ids, player);
+    const group = this.own(ids, player, true);
     if (!group.length) return "nothing";
     const e = target !== null ? this.entity(target) : null;
     // Transports with passengers, sent to land, put them ashore there; land units sent to one of
@@ -906,7 +933,7 @@ export class World {
   /** The Delete key. An unfinished foundation gives back half of the part not yet built, as in the original. */
   destroy(player: number, id: number) {
     const e = this.entity(id);
-    if (!e || e.owner !== player) return;
+    if (!e || e.owner !== player || (e instanceof Unit && e.isRelic)) return;
     if (e instanceof Building && !e.complete) {
       const back = this.buildingCost(player, e.def.id);
       const out = new ResBag();
@@ -969,6 +996,7 @@ export class World {
     this.compact();
     this.refreshPopulation();
     if (this.tick % 5 === 0) for (const p of this.players) this.fog[p.id].update(this, p.id);
+    if (this.tick % 10 === 0) this.updateRelics();
     if (this.tick % 20 === 0) this.checkDefeat();
     // The Timeline: a point every 30 seconds while the game is on, and one last when it ends.
     if (!this.historyClosed && (this.tick % 600 === 0 || this.winner !== null)) {
@@ -996,7 +1024,7 @@ export class World {
     for (const p of this.players) {
       if (p.defeated) continue;
       // As in the original, fishing (and later trade and transport) boats do not keep a player in the game.
-      const hasUnits = this.units.some((u) => u.alive && u.owner === p.id && !(u.isBoat && !u.isSoldier));
+      const hasUnits = this.units.some((u) => u.alive && u.owner === p.id && !(u.isBoat && !u.isSoldier) && !u.isRelic);
       const hasBuildings = this.buildings.some((b) => b.alive && b.owner === p.id && !b.isWall);
       if (!hasUnits && !hasBuildings) {
         p.defeated = true;
@@ -1006,6 +1034,12 @@ export class World {
       if (this.victory.kind === "standard" && p.wonderAt !== null && this.time >= p.wonderAt && !p.defeated) {
         this.win(p.id, "wonder");
         return;
+      }
+    }
+    if (this.victory.kind === "standard") {
+      for (const kind of ["ruins", "artifact"] as const) {
+        const h = this.relicHold[kind];
+        if (h && this.time >= h.at && !this.players[h.player].defeated) { this.win(h.player, kind === "ruins" ? "ruins" : "artifacts"); return; }
       }
     }
     // The last player, or the last team, standing. A team's win goes to its first player still in.
@@ -1019,6 +1053,47 @@ export class World {
       const lead = this.scoreLeader();
       if (v.kind === "score" && lead && lead.score >= v.target) this.win(lead.player, "score");
       else if (v.kind === "time" && this.time >= v.target) this.win(lead?.player ?? -1, "time");
+    }
+  }
+
+  /** Ruins and Artifacts change hands: one goes to the side that alone has a unit near it, unless its
+   *  owner's side has one there too. A Ruin needs a unit within `ruins_radius`, an Artifact one beside
+   *  it. Then the standard victory's clock: one side holding every Ruin, or every Artifact. */
+  private updateRelics() {
+    const cfg = this.rules.economy.relics;
+    const relics = this.units.filter((u) => u.alive && u.isRelic);
+    if (!relics.length) return;
+    for (const r of relics) {
+      if (r.aboard !== null) continue;
+      const radius = r.def.speed > 0 ? cfg?.artifact_radius ?? 1.5 : cfg?.ruins_radius ?? 3;
+      let near: Unit | null = null, nearD = Infinity, keep = false, rival = false;
+      for (const u of this.units) {
+        if (!u.alive || u.owner < 0 || u.isRelic || u.isBoat || u.aboard !== null) continue;
+        const d = u.pos.distance(r.pos);
+        if (d > radius) continue;
+        if (r.owner >= 0 && this.allied(u.owner, r.owner)) { keep = true; break; }
+        if (near && !this.allied(near.owner, u.owner)) rival = true;
+        if (d < nearD) { nearD = d; near = u; }
+      }
+      if (keep || rival || !near) continue;
+      r.owner = near.owner;
+      r.order = IDLE; r.path = []; r.waypoints = [];
+      this.events.push({ kind: "message", player: -1, text: `${this.players[near.owner].name} has taken ${r.def.speed > 0 ? "an Artifact" : "a Ruin"}` });
+    }
+    for (const kind of ["ruins", "artifact"] as const) {
+      const all = relics.filter((r) => r.def.id === kind);
+      const first = all[0]?.owner ?? GAIA;
+      const held = all.length > 0 && first >= 0 && all.every((r) => r.owner >= 0 && this.allied(r.owner, first));
+      const h = this.relicHold[kind];
+      if (!held) {
+        if (h) this.events.push({ kind: "message", player: -1, text: `Nobody holds all the ${kind === "ruins" ? "Ruins" : "Artifacts"} any more` });
+        this.relicHold[kind] = null;
+      } else if (!h || !this.allied(h.player, first)) {
+        this.relicHold[kind] = { player: first, at: this.time + (this.rules.economy.wonder_seconds ?? 900) };
+        if (this.victory.kind === "standard") {
+          this.events.push({ kind: "message", player: -1, text: `${this.players[first].name} holds all the ${kind === "ruins" ? "Ruins" : "Artifacts"}. Take one or lose.` });
+        }
+      }
     }
   }
 
@@ -1106,7 +1181,7 @@ export class World {
         const st = this.bstats(b);
         const t = this.nearestEnemyUnit(b.owner, b.center, st.range + b.def.size / 2);
         if (t) {
-          this.fire(b.center, { attackerId: b.id, owner: b.owner, attack: st.attack, pierce: true }, t, 0, b.def.projectile ?? "arrow");
+          this.fire(b.center, { attackerId: b.id, owner: b.owner, attack: st.attack, pierce: true, from: this.map.elevationAt(b.center.tile) }, t, 0, b.def.projectile ?? "arrow");
           b.cooldown = b.def.attack_cooldown ?? 2;
         }
       }
@@ -1279,7 +1354,7 @@ export class World {
     u.busy = true;
     if (u.cooldown > 0) return;
     u.cooldown = st.attack_cooldown;
-    const shot: Shot = { attackerId: u.id, owner: u.owner, attack: st.attack, pierce: u.def.damage ? u.def.damage === "pierce" : true, bonus: u.def.bonus };
+    const shot: Shot = { attackerId: u.id, owner: u.owner, attack: st.attack, pierce: u.def.damage ? u.def.damage === "pierce" : true, bonus: u.def.bonus, from: this.map.elevationAt(u.pos.tile) };
     const flight = Math.max(0.15, u.pos.distance(at) / 8);
     this.missiles.push({ shot, targetId: null, at, area: u.def.area ?? 0, remaining: flight, clearsTrees: u.def.clears_trees === true });
     this.events.push({ kind: "projectile", from: u.pos, to: at, flight, projectile: u.def.projectile ?? "stone" });
@@ -1315,7 +1390,7 @@ export class World {
         u.cooldown = st.attack_cooldown;
         const ranged = hunting || st.range > 0;
         const pierce = u.def.damage ? u.def.damage === "pierce" : ranged;
-        const shot: Shot = { attackerId: u.id, owner: u.owner, attack: hunting ? 4 : st.attack, pierce, bonus: u.def.bonus };
+        const shot: Shot = { attackerId: u.id, owner: u.owner, attack: hunting ? 4 : st.attack, pierce, bonus: u.def.bonus, from: this.map.elevationAt(u.pos.tile) };
         if (ranged) this.fire(u.pos, shot, t, u.def.area ?? 0, hunting ? "spear" : u.def.projectile ?? "arrow");
         else {
           this.hit(t, shot, true);
@@ -1341,7 +1416,7 @@ export class World {
     const t = this.entity(id);
     const mods = this.players[u.owner].mods;
     const ok = (e: Entity | null): e is Entity => {
-      if (!e || !this.isEnemy(u.owner, e.owner) || e instanceof ResourceNode) return false;
+      if (!e || !this.isEnemy(u.owner, e.owner) || e instanceof ResourceNode || (e instanceof Unit && e.isRelic)) return false;
       if (e instanceof Building) return mods.flags.has("monotheism") && !["town_center", "wonder"].includes(e.def.id) && !e.isWall;
       if (e instanceof Unit && e.isPriest) return mods.flags.has("monotheism");
       return true;
@@ -1752,7 +1827,16 @@ export class World {
     this.missiles = keep;
   }
 
-  private hit(t: Entity, s: Shot, melee = false) { this.applyDamage(t, this.shotDamage(s, t), s.attackerId, melee); }
+  private hit(t: Entity, s: Shot, melee = false) { this.applyDamage(t, this.shotDamage(s, t) * this.highGround(s, t), s.attackerId, melee); }
+
+  /** The original's elevation rule: striking a target on lower ground, each hit has a chance to do
+   *  three times the damage. Level ground draws no random number, so flat maps play as they did. */
+  private highGround(s: Shot, t: Entity) {
+    if (s.from === undefined) return 1;
+    const below = this.map.elevationAt(t.center.tile);
+    if (s.from <= below) return 1;
+    return this.rng.chance(this.rules.elevationChance) ? this.rules.elevationFactor : 1;
+  }
 
   applyDamage(t: Entity, amount: number, attackerId: number, melee = false) {
     if (!t.alive || t instanceof ResourceNode) return;
@@ -1783,7 +1867,14 @@ export class World {
     t.hp = 0;
     if (t instanceof Unit && t.cargo.length) {
       const cargo = t.cargo; t.cargo = [];
-      for (const id of cargo) { const c = this.unit(id); if (c) { c.aboard = null; c.pos = t.pos; this.kill(c, attackerId); } }
+      for (const id of cargo) {
+        const c = this.unit(id);
+        if (!c) continue;
+        c.aboard = null; c.pos = t.pos;
+        // An Artifact cannot be lost: it washes up on the nearest shore, as in the original.
+        if (c.isRelic) { const land = this.as(false, () => this.map.nearestPassable(t.pos.tile, 20)); if (land) { c.pos = c.prevPos = land.center; c.order = IDLE; continue; } }
+        this.kill(c, attackerId);
+      }
     }
     if (t instanceof Building) {
       this.map.setOccupant(t.footprint, 0);
@@ -1841,7 +1932,7 @@ export class World {
   nearestEnemyUnit(player: number, p: Vec2, r: number): Unit | null {
     let best: Unit | null = null, bestD = r;
     for (const u of this.units) {
-      if (!u.alive || !this.isEnemy(player, u.owner)) continue;
+      if (!u.alive || u.isRelic || !this.isEnemy(player, u.owner)) continue;
       const d = u.pos.distance(p);
       if (d <= bestD) { bestD = d; best = u; }
     }
@@ -1910,7 +2001,7 @@ export class World {
           for (const j of list) {
             if (j <= i) continue;
             const b = this.units[j];
-            if (a.isBoat !== b.isBoat || a.aboard !== null || b.aboard !== null) continue; // a boat by the shore and a villager on it are not in each other's way
+            if (a.isBoat !== b.isBoat || a.aboard !== null || b.aboard !== null || a.isRelic || b.isRelic) continue; // a boat by the shore and a villager on it are not in each other's way
             const d = b.pos.sub(a.pos);
             const len = d.length;
             if (len >= minD) continue;

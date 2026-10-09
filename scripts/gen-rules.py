@@ -446,7 +446,8 @@ rules = {
         {"id": "iron", "name": "Iron Age", "cost": cost(f=1000, g=800), "research_time": 160, "requires_buildings": 2,
          "requires_from": ["temple", "government_center", "siege_workshop", "academy"]},
     ],
-    "combat": {"min_damage": 1, "building_factor": 0.2, "building_min": 0.1},
+    # From higher ground each hit has a 25% chance of triple damage (the original's manual).
+    "combat": {"min_damage": 1, "building_factor": 0.2, "building_min": 0.1, "elevation_chance": 0.25, "elevation_factor": 3},
     "economy": {
         "carry": 10,
         "gather_rates": {F: 0.45, W: 0.45, G: 0.45, S: 0.45},
@@ -465,6 +466,10 @@ rules = {
         # Fishing boats (and ships) a player may have, alive or in training, for each finished Dock.
         "fishing_boats_per_dock": 5,
         "wonder_seconds": 900,
+        # Ruins and Artifacts: 5 of each on a random map, as in the original. A Ruin goes to the last side
+        # with a unit this close (our number); an Artifact needs one beside it, and walks this fast when
+        # its owner moves it (our numbers). Holding all of either for wonder_seconds wins.
+        "relics": {"ruins": 5, "artifacts": 5, "ruins_radius": 3, "artifact_radius": 1.5, "artifact_speed": 0.8},
         # Trade: gold per trip for each tile between the two Docks (our number: about 7 to 75 a trip, as reported).
         "trade_gold_per_tile": 1.1,
         # Repair: hit points come back at this share of the building speed, and the full bar would cost

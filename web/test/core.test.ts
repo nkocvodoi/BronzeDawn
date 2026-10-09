@@ -5,7 +5,7 @@ import { Terrain } from "../src/core/grid";
 import { Res } from "../src/core/rules";
 import { scores } from "../src/core/score";
 import { runMatch } from "../src/core/sim";
-import { startTiles } from "../src/core/mapgen";
+import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
 import { Victory, World } from "../src/core/world";
 
@@ -543,8 +543,8 @@ describe("the original's rules", () => {
     expect(new Set(eight).size).toBe(8);
   });
 
-  it("map types: every one but Inland has a sea, deep fish for boats, and every base on land", () => {
-    for (const mapType of ["coastal", "continental", "mediterranean"] as const) {
+  it("map types: every one but the land maps has a sea, deep fish for boats, and every base on land", () => {
+    for (const mapType of ["coastal", "continental", "mediterranean", "highland", "narrows"] as const) {
       for (const seed of [1, 2]) {
         const w = new World(RULES, seed, ["A", "B"], 72, true, { mapType });
         const water = w.map.terrain.filter((t) => t === Terrain.water).length;
@@ -555,6 +555,29 @@ describe("the original's rules", () => {
     }
     const inland = new World(RULES, 1, ["A", "B"], 72, true);
     expect(inland.nodes.some((n) => n.def.id === "deep_fish")).toBe(false);
+  });
+
+  it("Highland and Hill Country are hillier than Inland, Hill Country has the most cliffs, and every map links its bases by land", () => {
+    const share = (mapType: MapType, f: (w: World) => number) => [1, 2, 3].reduce((a, seed) => a + f(new World(RULES, seed, ["A", "B", "C", "D"], 96, true, { mapType })), 0);
+    const high = (w: World) => w.map.elevation.filter((e) => e >= 2).length;
+    const cliffs = (w: World) => w.map.terrain.filter((t) => t === Terrain.cliff).length;
+    expect(share("highland", high)).toBeGreaterThan(share("inland", high) * 1.5);
+    expect(share("hill_country", high)).toBeGreaterThan(share("inland", high) * 1.5);
+    expect(share("hill_country", cliffs)).toBeGreaterThan(share("inland", cliffs));
+    for (const mapType of ["highland", "hill_country", "narrows"] as const) {
+      for (const seed of [1, 2, 3]) {
+        const w = new World(RULES, seed, ["A", "B", "C", "D"], 96, true, { mapType });
+        const s0 = w.startTiles[0];
+        const seen = w.map.reachable(new Tile(s0.x + 2, s0.y + 2), (id) => w.building(id) !== null);
+        for (const s of w.startTiles) expect(seen[w.map.index(new Tile(s.x + 2, s.y + 2))], `${mapType} ${seed}`).toBe(1);
+      }
+    }
+  });
+
+  it("a Gigantic map holds eight players", () => {
+    const w = new World(RULES, 5, ["A", "B", "C", "D", "E", "F", "G", "H"], 200, true);
+    expect(w.buildings.filter((b) => b.def.id === "town_center").length).toBe(8);
+    expect(w.nodes.length).toBeGreaterThan(3000);
   });
 
   it("a Dock stands at the shore; its fishing boats sail, fish out at sea and bring the food back", () => {
@@ -867,6 +890,143 @@ describe("game settings and other victories", () => {
     expect(w.players[0].wonderAt).toBeNull();
     run(w, (RULES.economy.wonder_seconds ?? 900) + 2);
     expect(w.winner).toBeNull();
+  });
+});
+
+describe("ruins and artifacts", () => {
+  /** A blank map with a Town Center each, so nobody is out. */
+  const field = (victory: Victory = { kind: "standard" }) => {
+    const w = new World(RULES, 1, ["A", "B"], 40, false, { victory });
+    w.addBuilding("town_center", 0, new Tile(2, 2), true);
+    w.addBuilding("town_center", 1, new Tile(34, 34), true);
+    return w;
+  };
+
+  it("a map gets five of each, away from the bases, and the rest of the map is as it was", () => {
+    const w = new World(RULES, 9, ["A", "B"], 72, true);
+    const relics = w.units.filter((u) => u.isRelic);
+    expect(relics.filter((r) => r.def.id === "ruins").length).toBe(5);
+    expect(relics.filter((r) => r.def.id === "artifact").length).toBe(5);
+    for (const r of relics) for (const s of w.startTiles) expect(r.pos.distance(s.center)).toBeGreaterThanOrEqual(16);
+    const plain = new World(RULES, 9, ["A", "B"], 72, true, { relics: false });
+    expect(plain.units.some((u) => u.isRelic)).toBe(false);
+    expect(plain.nodes.map((n) => n.tile.x * 1000 + n.tile.y)).toEqual(w.nodes.map((n) => n.tile.x * 1000 + n.tile.y));
+  });
+
+  it("a Ruin goes to whoever comes near, and stays while the holder has someone there", () => {
+    const w = field();
+    const ruin = w.spawnRelic("ruins", new Tile(20, 20).center);
+    const a = w.spawnUnit("clubman", 0, new Tile(20, 22).center);
+    run(w, 1);
+    expect(ruin.owner).toBe(0);
+    const b = w.spawnUnit("clubman", 1, new Tile(21, 18).center);
+    w.stop(1, [b.id]);
+    run(w, 1);
+    expect(ruin.owner).toBe(0); // A is still beside it
+    w.move(0, [a.id], new Tile(10, 10).center);
+    run(w, 8);
+    expect(ruin.owner).toBe(1);
+    // Nobody can attack, convert or delete it.
+    expect(w.hostile(0, ruin)).toBe(false);
+    w.destroy(1, ruin.id);
+    expect(ruin.alive).toBe(true);
+  });
+
+  it("an Artifact walks where its holder sends it, and an enemy beside it takes it", () => {
+    const w = field();
+    const art = w.spawnRelic("artifact", new Tile(20, 20).center);
+    w.spawnUnit("villager", 0, new Tile(20, 21).center);
+    run(w, 1);
+    expect(art.owner).toBe(0);
+    w.move(0, [art.id], new Tile(10, 20).center);
+    run(w, 20);
+    expect(art.pos.distance(new Tile(10, 20).center)).toBeLessThan(1);
+    w.spawnUnit("clubman", 1, new Tile(11, 20).center);
+    run(w, 1);
+    expect(art.owner).toBe(1);
+  });
+
+  it("holding every Ruin for the Wonder's time wins, but not when only conquest counts", () => {
+    for (const victory of [{ kind: "standard" }, { kind: "conquest" }] as Victory[]) {
+      const w = field(victory);
+      for (let i = 0; i < 3; i++) w.spawnRelic("ruins", new Tile(15 + i * 4, 20).center);
+      for (let i = 0; i < 3; i++) w.spawnUnit("scout", 1, new Tile(15 + i * 4, 21).center);
+      run(w, 2);
+      expect(w.relicHold.ruins?.player).toBe(1);
+      // The score: 10 a Ruin, and 50 for all of them.
+      expect(scores(w)[1].religion).toBe(30 + 50);
+      run(w, (RULES.economy.wonder_seconds ?? 900) + 2);
+      expect(w.winner).toBe(victory.kind === "standard" ? 1 : null);
+    }
+  });
+
+  it("an Artifact in a transport that sinks washes up on the shore", () => {
+    const w = field();
+    for (let y = 0; y < 40; y++) for (let x = 12; x < 28; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    const boat = w.spawnUnit("light_transport", 0, new Tile(20, 20).center);
+    const art = w.spawnRelic("artifact", new Tile(11, 20).center);
+    art.owner = 0;
+    art.aboard = boat.id; boat.cargo.push(art.id);
+    w.spawnUnit("war_galley", 1, new Tile(22, 20).center);
+    run(w, 60);
+    expect(boat.alive).toBe(false);
+    expect(art.alive).toBe(true);
+    expect(art.aboard).toBeNull();
+    expect(w.map.terrainAt(art.pos.tile)).not.toBe(Terrain.water);
+  });
+});
+
+describe("hills, cliffs and shallows", () => {
+  it("from higher ground, about a quarter of the hits do three times the damage", () => {
+    const hits = (attackerHigh: boolean) => {
+      const w = blank(30);
+      if (attackerHigh) for (let y = 0; y < 30; y++) for (let x = 0; x < 8; x++) w.map.elevation[w.map.index(new Tile(x, y))] = 2;
+      const archer = w.spawnUnit("bowman", 0, new Tile(6, 10).center);
+      const target = w.spawnUnit("hoplite", 1, new Tile(9, 10).center);
+      target.hp = target.maxHp = 100000;
+      w.setStandGround(0, [archer.id], true);
+      w.setStandGround(1, [target.id], true);
+      w.attack(0, [archer.id], target.id);
+      run(w, 300);
+      return 100000 - target.hp;
+    };
+    const flat = hits(false), high = hits(true);
+    // Triple damage a quarter of the time is 1.5 times as much in all.
+    expect(high / flat).toBeGreaterThan(1.3);
+    expect(high / flat).toBeLessThan(1.7);
+  });
+
+  it("land units wade through shallows and boats sail over them; nobody crosses a cliff", () => {
+    const w = blank(30);
+    for (let y = 0; y < 30; y++) {
+      w.map.terrain[w.map.index(new Tile(10, y))] = Terrain.cliff;
+      for (let x = 18; x < 30; x++) w.map.terrain[w.map.index(new Tile(x, y))] = x < 22 ? Terrain.shallows : Terrain.water;
+    }
+    const c = w.spawnUnit("clubman", 0, new Tile(15, 5).center);
+    w.move(0, [c.id], new Tile(20, 5).center);
+    run(w, 10);
+    expect(c.pos.distance(new Tile(20, 5).center)).toBeLessThan(1); // into the shallows
+    w.move(0, [c.id], new Tile(5, 5).center);
+    run(w, 15);
+    expect(c.pos.x).toBeGreaterThan(11); // the cliff is in the way all along
+    const boat = w.spawnUnit("fishing_boat", 0, new Tile(25, 5).center);
+    w.move(0, [boat.id], new Tile(19, 8).center);
+    run(w, 15);
+    expect(boat.pos.distance(new Tile(19, 8).center)).toBeLessThan(1);
+    // No building on the shallows.
+    expect(w.canPlace("house", new Tile(18, 12), 0)).toBe(false);
+  });
+
+  it("maps have hills that rise a step at a time, flat bases, and cliffs that cut no base off", () => {
+    for (const seed of [2, 9, 13]) {
+      const w = new World(RULES, seed, ["A", "B", "C", "D"], 96, true);
+      const m = w.map, n = m.width;
+      expect(m.elevation.some((e) => e >= 2)).toBe(true);
+      for (let y = 0; y < n; y++) for (let x = 0; x + 1 < n; x++) expect(Math.abs(m.elevation[y * n + x] - m.elevation[y * n + x + 1])).toBeLessThanOrEqual(1);
+      for (const s of w.startTiles) expect(m.elevationAt(s)).toBe(0);
+      const seen = m.reachable(new Tile(w.startTiles[0].x + 2, w.startTiles[0].y + 2), (id) => w.building(id) !== null);
+      for (const s of w.startTiles) expect(seen[m.index(new Tile(s.x + 2, s.y + 2))]).toBe(1);
+    }
   });
 });
 

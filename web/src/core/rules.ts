@@ -75,8 +75,10 @@ export interface EconomyDef {
   pop_limits?: number[];
   /** Fishing boats a player may have, alive or in training, for each finished Dock. */
   fishing_boats_per_dock?: number;
-  /** How long a finished Wonder must stand to win. */
+  /** How long a finished Wonder must stand to win, and all Ruins or all Artifacts be held. */
   wonder_seconds?: number;
+  /** How many Ruins and Artifacts a map gets, how near a unit must be to take one, how fast an Artifact moves. */
+  relics?: { ruins: number; artifacts: number; ruins_radius: number; artifact_radius: number; artifact_speed: number };
   /** Gold a trade trip brings for each tile between the two Docks. */
   trade_gold_per_tile?: number;
   /** Repair speed, as a share of the building speed. */
@@ -152,7 +154,7 @@ export interface CivDef { id: string; name: string; arch: string; effects: Effec
 export interface RulesFile {
   resources: string[];
   ages: AgeDef[];
-  combat?: { min_damage?: number; building_factor?: number; building_min?: number };
+  combat?: { min_damage?: number; building_factor?: number; building_min?: number; elevation_chance?: number; elevation_factor?: number };
   economy: EconomyDef;
   nodes: NodeDef[];
   animals?: AnimalDef[];
@@ -170,6 +172,9 @@ export class Rules {
   readonly ages: AgeDef[];
   readonly economy: EconomyDef;
   readonly minDamage: number;
+  /** From higher ground: the chance of a hit doing `elevationFactor` times the damage. */
+  readonly elevationChance: number;
+  readonly elevationFactor: number;
   readonly nodes = new Map<string, NodeDef>();
   readonly units = new Map<string, UnitDef>();
   readonly unitOrder: string[];
@@ -189,6 +194,8 @@ export class Rules {
     this.ages = file.ages;
     this.economy = file.economy;
     this.minDamage = file.combat?.min_damage ?? 1;
+    this.elevationChance = file.combat?.elevation_chance ?? 0.25;
+    this.elevationFactor = file.combat?.elevation_factor ?? 3;
     this.buildingFactor = file.combat?.building_factor ?? 1;
     this.buildingMin = file.combat?.building_min ?? this.minDamage;
     for (const a of file.animals ?? []) this.animals.set(a.id, a);
