@@ -6,7 +6,7 @@ import { Terrain } from "../core/grid";
 import { Res, ResBag, Rules } from "../core/rules";
 import { clock } from "../core/sim";
 import { World } from "../core/world";
-import { Arch, buildingPic, Facing, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
+import { Arch, buildingPic, CIV_RELIEFS, Facing, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
 import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
@@ -246,7 +246,9 @@ export class Game {
     this.hud.playing(true);
     this.hud.hideOverlay();
     this.hud.clearMessages();
-    this.hud.theme(this.arch(this.me)); // the interface is carved in your civilization's style
+    // The interface is carved in your civilization's style: its own, or its architecture's.
+    const myCiv = this.civId(this.me);
+    this.hud.theme(myCiv && CIV_RELIEFS.includes(myCiv) ? myCiv : this.arch(this.me));
     this.sound.unlock();
     this.sound.startMusic();
     const civ = this.world.players[this.me].civ;
@@ -610,7 +612,7 @@ export class Game {
       }
     }
     const carry = u.isVillager && u.carry >= 1 && u.carryRes !== null && pose !== "work" ? u.carryRes : null;
-    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry, dir: screenDirection(u.facing.x, u.facing.y), t: time + u.id * 0.37 };
+    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry, dir: screenDirection(u.facing.x, u.facing.y), t: time + u.id * 0.37, civ: this.civId(u.owner) };
   }
 
   private puff(at: Vec2, big: boolean) {
@@ -691,6 +693,10 @@ export class Game {
     v.sprite.anchor.set(pic.ax, pic.ay);
   }
 
+  private civId(owner: number): string | undefined {
+    return owner >= 0 ? this.world.players[owner]?.civ?.id : undefined;
+  }
+
   private arch(owner: number): Arch {
     const a = owner >= 0 ? this.world.players[owner].civ?.arch : undefined;
     return (["egyptian", "greek", "babylonian", "asian", "roman"].includes(a ?? "") ? a : "greek") as Arch;
@@ -710,7 +716,7 @@ export class Game {
       return wallPic(tier, b.owner, mask, stage);
     }
     const farmLeft = b.isFarm ? b.food / Math.max(1, this.world.players[b.owner]?.mods.farmFood(b.def.resource?.food ?? 1) ?? 1) : 1;
-    return buildingPic(b.def, b.owner, b.owner >= 0 ? this.world.players[b.owner].age : 0, stage, farmLeft, this.arch(b.owner));
+    return buildingPic(b.def, b.owner, b.owner >= 0 ? this.world.players[b.owner].age : 0, stage, farmLeft, this.arch(b.owner), this.civId(b.owner));
   }
 
   private place(v: View, e: Entity, alpha: number) {
@@ -965,7 +971,7 @@ export class Game {
     this.placing = type;
     const tier = WALL_TIER[type];
     const pic = tier !== undefined ? wallPic(tier, this.me, 0, 3)
-      : buildingPic(this.rules.buildings.get(type)!, this.me, this.world.players[this.me].age, 3, 1, this.arch(this.me));
+      : buildingPic(this.rules.buildings.get(type)!, this.me, this.world.players[this.me].age, 3, 1, this.arch(this.me), this.civId(this.me));
     const g = new Sprite(pic.texture);
     g.width = pic.w; g.height = pic.h;
     g.anchor.set(pic.ax, pic.ay);

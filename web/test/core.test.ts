@@ -17,7 +17,7 @@ describe("rules", () => {
     expect(RULES.units.get("villager")).toBeDefined();
     expect(RULES.buildings.get("town_center")?.pop_provided).toBe(4);
     expect(RULES.techs.size).toBeGreaterThan(50);
-    expect(RULES.civs.length).toBe(16);
+    expect(RULES.civs.length).toBe(17);
     expect(RULES.units.get("cavalry")?.bonus?.infantry).toBe(5);
   });
 });
@@ -383,6 +383,23 @@ describe("the original's rules", () => {
     expect(w.unitCost(1, "villager").food).toBe(50);
     const persian = new World(RULES, 1, ["A"], 24, false, { civs: ["persian"] });
     expect(persian.blockerBuilding("academy", 0)).toContain("Not available");
+  });
+
+  it("Lac Viet: faster foraging and military, armored archers, and the techs it lacks", () => {
+    const w = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["lac_viet", "greek"] });
+    const [lv, gr] = [w.players[0].mods, w.players[1].mods];
+    expect(lv.gather(Res.food, "forage")).toBeCloseTo(1.15);
+    expect(lv.gather(Res.food, "hunt")).toBe(1);
+    expect(w.unitStats(0, "bowman").train_time).toBeCloseTo(w.unitStats(1, "bowman").train_time * 0.8);
+    expect(w.unitStats(0, "villager").train_time).toBe(w.unitStats(1, "villager").train_time);
+    expect(w.unitStats(0, "chariot_archer").armor).toBe(w.unitStats(1, "chariot_archer").armor + 2);
+    expect(w.unitStats(0, "ballista").armor).toBe(w.unitStats(1, "ballista").armor + 2);
+    const house = RULES.buildings.get("house")!;
+    expect(lv.building(house).build_time).toBeCloseTo(gr.building(house).build_time / 1.5);
+    for (const id of ["phalanx_tech", "legion_tech", "siegecraft", "engineering", "monotheism"])
+      expect(w.blockerTech(id, 0)).toContain("Not available");
+    expect(w.blockerUnit("camel_rider", 0)).toContain("Not available");
+    expect(w.blockerUnit("camel_rider", 1)).not.toContain("Not available");
   });
 
   it("a Wonder that stands long enough wins", () => {

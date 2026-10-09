@@ -416,6 +416,7 @@ These are listed with each unit in section 4.
 - Babylonian (Mesopotamian): Babylonians, Hittites, Persians.
 - Asian: Choson, Shang, Yamato.
 - Roman (R): Romans, Carthaginians, Macedonians, Palmyrans.
+- Return of Rome (DE, 2023) adds the Lac Viet, with East Asian buildings and the standard East Asian Wonder (S25).
 
 DE swaps the Hittites and Sumerians between the Egyptian and Mesopotamian sets (F-Wonder).
 
@@ -439,6 +440,15 @@ Each civilization also has its own missing techs and units. F-Civilizations list
 | Macedonian (R) | Academy units +2 pierce armor. Melee units +2 LOS. Siege Workshop units −50% cost. Units ×4 harder to convert. No Temple | S8, S16 |
 | Palmyran (R) | Free tribute. Double gold per trade trip. Villagers cost +50% (75F) but have armor and work +20% faster. Camel Riders +25% speed | S8, S16 |
 | Roman (R) | Buildings −15% cost (S16) or −25% (S8), except towers, walls and Wonders. Towers −50%. Swordsmen attack 33% faster | S8, S16 |
+| Lac Viet (DE RoR) | Foragers work 20% faster at release, 15% after a later patch. Military units created 25% faster. Archery Range units +2 armor; a later patch gives Ballistae +2 armor too. Team bonus: Houses and Farms built 50% faster | S25, S26, F-Lac Viet |
+
+**Lac Viet tech tree (F-Lac Viet/Tree, S26; not checked in game).** No Aristocracy, Mysticism, Polytheism,
+Afterlife, Fanaticism, Monotheism, Chain Mail Infantry, Tower Shield, Siegecraft, Engineering or Urbanization.
+No Phalangite, Centurion, Legionary, Camel Rider, Cataphract, Helepolis, Ballista Tower, Fire Galley or
+Juggernaut. They keep the whole Archery Range, the Ballista, all Market techs, and Astrology, Zealotry,
+Theocracy and Medicine at the Temple. Our rules have no Urbanization and no ships yet, so those are left out;
+the team bonus applies to the player itself until there are teams. Siegecraft is the way to Heavy Catapult
+here, so the Lac Viet stop at Catapult.
 
 ---
 
@@ -608,6 +618,10 @@ All web sources were accessed 2026-10-08. Fandom ("F-") pages were read through 
 | S22 | Villager page (AoE Heaven) | https://aoe.heavengames.com/theacademy/unitsboatsandbuildings/villagers/ |
 | S23 | "Do the computer cheat in hardest difficulty?" (AoE Heaven forum) | https://aoe.heavengames.com/cgi-bin/aoecgi/display.cgi?action=st&fn=1&tn=1096 |
 | S24 | "Villager Resource Gather Rates" (official AoE forums) | https://forums.ageofempires.com/t/villager-resource-gather-rates/33158 |
+| S25 | "Return of Rome: everything you need to know" (official site, accessed 2026-10-09) | https://www.ageofempires.com/news/return-of-rome-everything-you-need-to-know/ |
+| S26 | Lac Viet civilisation page (AoE Heaven, accessed 2026-10-09) | https://aoe.heavengames.com/theacademy/civilisations/lac-viet/ |
+| F-Lac Viet, F-Lac Viet/Tree | Fandom (through search results; the live site blocks fetches) | https://ageofempires.fandom.com/wiki/Lac_Viet · https://ageofempires.fandom.com/wiki/Lac_Viet/Tree |
+| LQ-Lac Viet | Liquipedia | https://liquipedia.net/ageofempires/Lac_Viet |
 | F-Villager | Fandom | https://ageofempires.fandom.com/wiki/Villager_(Age_of_Empires) |
 | F-Farm | Fandom | https://ageofempires.fandom.com/wiki/Farm_(Age_of_Empires) |
 | F-House | Fandom | https://ageofempires.fandom.com/wiki/House_(Age_of_Empires) |

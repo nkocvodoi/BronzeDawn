@@ -247,13 +247,17 @@ export type Pose = "idle" | "walk" | "work";
 export type Tool = "none" | "axe" | "pick" | "basket" | "hoe" | "hammer" | "spear" | "net";
 
 /** `dir` (0-7, clockwise from facing the viewer) and `t` (seconds) are for sprite sheets from files. */
-export interface UnitLook { type: string; owner: number; facing: Facing; pose: Pose; frame: number; tool: Tool; carry: number | null; dir?: number; t?: number }
+/** `civ` is the owner's civilization id, for sprite sheets drawn for one civilization ("lac_viet/bowman"). */
+export interface UnitLook { type: string; owner: number; facing: Facing; pose: Pose; frame: number; tool: Tool; carry: number | null; dir?: number; t?: number; civ?: string }
 
-/** A unit's frame from its sprite sheet, if the assets have one: by its tool first ("villager:axe"). */
+/** A unit's frame from its sprite sheet, if the assets have one: the civilization's own first
+ *  ("lac_viet/villager:axe", "lac_viet/villager"), then by its tool ("villager:axe"), then the unit. */
 function assetUnitPic(look: UnitLook): Pic | null {
   const units = ASSETS.manifest.units;
   if (!units) return null;
-  const spec = (look.tool !== "none" ? units[`${look.type}:${look.tool}`] : undefined) ?? units[look.type];
+  const names = [look.tool !== "none" ? `${look.type}:${look.tool}` : null, look.type].filter((n): n is string => n !== null);
+  const keys = [...(look.civ ? names.map((n) => `${look.civ}/${n}`) : []), ...names];
+  const spec = keys.map((k) => units[k]).find((u) => u !== undefined);
   if (!spec) return null;
   const a = spec.anims;
   const anim = look.pose === "work" ? a.work ?? a.attack ?? a.idle : look.pose === "walk" ? a.walk ?? a.idle : a.idle ?? a.walk;
@@ -2375,13 +2379,14 @@ function drawFarm(p: PixelCanvas, s: number, stage: number, farmStage: number, p
   p.rect(fx + 1, fy - 9, 4, 3, pc);
 }
 
-/** A finished building's picture from the assets: for its architecture and age, falling back to an earlier
- *  age, then the Greek style, then a picture shared by all. Foundations keep the drawn stages. */
-function assetBuildingSpec(id: string, age: number, arch: Arch): ImageSpec | null {
+/** A finished building's picture from the assets: for the civilization's own style if it has one ("lac_viet"),
+ *  then its architecture, by age, falling back to an earlier age, then the Greek style, then a picture shared
+ *  by all. Foundations keep the drawn stages. */
+function assetBuildingSpec(id: string, age: number, arch: Arch, civ?: string): ImageSpec | null {
   const b = ASSETS.manifest.buildings?.[id];
   if (!b) return null;
   if (typeof (b as ImageSpec).file === "string") return b as ImageSpec;
-  for (const style of [arch, "greek", "default"]) {
+  for (const style of [...(civ ? [civ] : []), arch, "greek", "default"]) {
     const byStyle = (b as Record<string, ImageSpec | Record<string, ImageSpec>>)[style];
     if (!byStyle) continue;
     if (typeof (byStyle as ImageSpec).file === "string") return byStyle as ImageSpec;
@@ -2393,9 +2398,9 @@ function assetBuildingSpec(id: string, age: number, arch: Arch): ImageSpec | nul
   return null;
 }
 
-export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3, farmLeft = 1, arch: Arch = "greek"): Pic {
+export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3, farmLeft = 1, arch: Arch = "greek", civ?: string): Pic {
   if (stage >= 3) {
-    const spec = assetBuildingSpec(def.id, Math.round(age), arch);
+    const spec = assetBuildingSpec(def.id, Math.round(age), arch, civ);
     const fromFile = spec && assetPic(`ba-${spec.file}-${owner}`, spec, owner);
     if (fromFile) return fromFile;
   }
@@ -2704,16 +2709,20 @@ export function statIcons(): Record<string, string> {
 /** The size of one tile of the carved interface stone, in art pixels. It is drawn at 2 screen units a pixel. */
 export const RELIEF_W = 200, RELIEF_H = 63;
 
+/** Civilizations with interface carving of their own, by civ id, instead of their architecture's. */
+export const CIV_RELIEFS = ["lac_viet"];
+
 /** Carved stone for the top bar and bottom panel, in the colour and motifs of each architecture:
  *  invented glyph columns for the Egyptians, a key band and fluting for the Greeks, glazed brick and
  *  rosettes for Babylon, lacquered panels with cloud scrolls for the Asian peoples, framed marble for
- *  Rome. Every motif is drawn here; it tiles left to right. */
+ *  Rome, and cast bronze with the star, rings and birds of a Dong Son drum for the Lac Viet. Every motif
+ *  is drawn here; it tiles left to right. */
 export function reliefTexture(arch: string, plain = false): string {
   const W = RELIEF_W, H = RELIEF_H;
   const p = new PixelCanvas(W, H);
   const tones: Record<string, [number, number]> = {
     egyptian: [0xe2cca4, 0xb4966a], greek: [0xe8e4da, 0xb2ac9e], babylonian: [0xcfa874, 0x94693e],
-    asian: [0x9a4632, 0x5a2216], roman: [0xd2cec6, 0x8c8880],
+    asian: [0x9a4632, 0x5a2216], roman: [0xd2cec6, 0x8c8880], lac_viet: [0x9a8a52, 0x434630],
   };
   const [lightHex, darkHex] = tones[arch] ?? tones.egyptian;
   const light = rgb(lightHex), dark = rgb(darkHex);
@@ -2762,6 +2771,32 @@ export function reliefTexture(arch: string, plain = false): string {
         p.set(Math.round(x + 25 + Math.cos(t) * r), Math.round(30 + Math.sin(t) * r * 0.7), shade);
       }
     }
+  } else if (arch === "lac_viet") {
+    // The face of a bronze drum, cut in two by the bar: a star of rays in the middle, rings of
+    // tangent circles and ladder bands around it, and long-billed birds flying between the drums.
+    for (const cx of [50, 150]) {
+      const cy = 31;
+      for (let k = 0; k < 12; k++) {
+        const t = (k / 12) * Math.PI * 2;
+        groove(cx, cy, Math.round(cx + Math.cos(t) * 7), Math.round(cy + Math.sin(t) * 7));
+      }
+      ring(cx, cy, 9); ring(cx, cy, 16); ring(cx, cy, 22);
+      for (let k = 0; k < 14; k++) { // tangent circles, each with its dot, between the inner rings
+        const t = (k / 14) * Math.PI * 2, x = Math.round(cx + Math.cos(t) * 12.5), y = Math.round(cy + Math.sin(t) * 12.5);
+        ring(x, y, 2); p.set(x, y, shade);
+      }
+      for (let k = 0; k < 36; k++) { // short ticks across the outer band, like the ladder pattern
+        const t = (k / 36) * Math.PI * 2, c = Math.cos(t), sn = Math.sin(t);
+        groove(Math.round(cx + c * 17), Math.round(cy + sn * 17), Math.round(cx + c * 21), Math.round(cy + sn * 21));
+      }
+    }
+    for (const [bx, by, dir] of [[88, 18, 1], [108, 44, -1], [190, 16, 1], [10, 46, -1]]) {
+      // A bird with spread wings, a long neck and a long bill, flying left or right.
+      groove(bx - 4 * dir, by, bx + 3 * dir, by); groove(bx + 3 * dir, by, bx + 8 * dir, by - 1);
+      groove(bx, by, bx - 2 * dir, by - 5); groove(bx, by, bx - 2 * dir, by + 5);
+      groove(bx - 4 * dir, by, bx - 7 * dir, by - 2); groove(bx - 4 * dir, by, bx - 7 * dir, by + 2);
+    }
+    for (let x = 0; x < W; x += 4) { groove(x, 4, x + 2, 7); groove(x, H - 9, x + 2, H - 6); } // hatched bands
   } else if (arch === "roman") {
     // Marble in recessed frames, with a chain of leaves between them.
     for (let x = 0; x < W; x += 100) {

@@ -98,6 +98,10 @@ units = [
     unit("priest", "Priest", "priest", "bronze", "temple", cost(g=125), 50, 25, 0, 0, 0, 10, 1.5, 0.8, 12, ["priest"],
          converts=True, heal=3),
 ]
+# "Military" is everything trained to fight: not villagers, not priests.
+for u in units:
+    if u["id"] not in ("villager", "priest"):
+        u["tags"] = u["tags"] + ["military"]
 
 # ---------------------------------------------------------------- buildings
 
@@ -274,6 +278,14 @@ civs = [
                                           stat("pierce_armor", 1, units=["villager"]), gather("all", 1.2), stat("speed", 1.25, op="mul", units=["camel_rider"])]),
     civ("roman", "Roman", "roman", [stat("cost", 0.85, op="mul", buildings_tags=["!tower", "!wall", "!wonder"]), stat("cost", 0.5, op="mul", buildings_tags=["tower"]),
                                     stat("attack_cooldown", 1 / 1.33, op="mul", tags=["swordsman"])]),
+    # Return of Rome's Lac Viet. Foragers were +20% at release, +15% since a later patch. The team bonus
+    # (houses and farms build 50% faster) applies to the player itself, as there are no teams yet.
+    civ("lac_viet", "Lac Viet", "asian", [gather(F, 1.15, kind="forage"), stat("train_time", 1 / 1.25, op="mul", tags=["military"]),
+                                          stat("armor", 2, tags=["archery"]), stat("armor", 2, units=["ballista"]),
+                                          stat("build_time", 1 / 1.5, op="mul", buildings=["house", "farm"])],
+        ["aristocracy", "mysticism", "polytheism", "afterlife", "fanaticism", "monotheism", "chain_armor_infantry", "tower_shield",
+         "siegecraft", "engineering", "phalanx", "phalanx_tech", "centurion", "centurion_tech", "legion", "legion_tech", "camel_rider",
+         "cataphract", "cataphract_tech", "helepolis", "helepolis_tech", "ballista_tower", "ballista_tower_tech"]),
 ]
 
 rules = {
