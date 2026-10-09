@@ -24,6 +24,9 @@ interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics;
 /** The original's limit on how many units one selection holds. */
 const MAX_SELECTION = 25;
 
+/** How long something takes, in game seconds: "25s", or "2:40" from a minute on. */
+const duration = (s: number) => (s < 60 ? `${Math.round(s)}s` : clock(s));
+
 const store = {
   get(k: string) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k: string, v: string) { try { localStorage.setItem(k, v); } catch { /* private window */ } },
@@ -983,7 +986,7 @@ export class Game {
         if (!def || !w.buildingShown(id, me)) continue;
         // As in the original, a building appears in the menu once your age allows it.
         if (this.rules.ages.findIndex((a) => a.id === def.age) > w.players[me].age) continue;
-        out.push({ key: BUILD_KEYS[base], title: def.name, detail: w.buildingCost(me, id).text + (WALL_TIER[id] !== undefined ? " a tile, drag a line" : ""),
+        out.push({ key: BUILD_KEYS[base], title: def.name, detail: w.buildingCost(me, id).text + (WALL_TIER[id] !== undefined ? " a tile, drag a line" : ` · ${duration(w.buildingStats(me, id).build_time)} for one villager`),
           blocker: w.blockerBuilding(id, me), icon: id, action: () => { this.beginPlacing(id); this.menu = "main"; } });
       }
       out.push({ key: "Escape", title: "Back", detail: "", blocker: null, icon: "back", pin: true, action: () => { this.menu = "main"; } });
@@ -1020,7 +1023,7 @@ export class Game {
       let key = TRAIN_KEYS[t] ?? "";
       if (!key || used.has(key)) key = spare();
       used.add(key);
-      out.push({ key, title: def.name, detail: w.unitCost(me, t).text, blocker: w.blockerUnit(t, me), icon: t, action: () => {
+      out.push({ key, title: def.name, detail: `${w.unitCost(me, t).text} · ${duration(w.unitStats(me, t).train_time)}`, blocker: w.blockerUnit(t, me), icon: t, action: () => {
         const why = w.train(me, b.id, t);
         if (why) this.hud.message(why, "warn");
       } });
@@ -1029,13 +1032,13 @@ export class Game {
     if (b.def.id === "town_center" && p.age + 1 < this.rules.ages.length) {
       const next = this.rules.ages[p.age + 1];
       used.add("A");
-      out.push({ key: "A", title: `Advance to the ${next.name}`, detail: ResBag.of(next.cost).text, blocker: w.blockerForNextAge(me), icon: "age", row: 1, action: () => {
+      out.push({ key: "A", title: `Advance to the ${next.name}`, detail: `${ResBag.of(next.cost).text} · ${duration(next.research_time ?? 60)}`, blocker: w.blockerForNextAge(me), icon: "age", row: 1, action: () => {
         const why = w.advanceAge(me, b.id);
         if (why) this.hud.message(why, "warn");
       } });
     }
     for (const t of w.techsAt(b, me)) {
-      out.push({ key: spare(), title: t.name, detail: ResBag.of(t.cost).text, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), row: 1, action: () => {
+      out.push({ key: spare(), title: t.name, detail: `${ResBag.of(t.cost).text} · ${duration(t.time ?? 30)}`, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), row: 1, action: () => {
         const why = w.research(me, b.id, t.id);
         if (why) this.hud.message(why, "warn");
       } });

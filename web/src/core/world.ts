@@ -316,11 +316,27 @@ export class World {
     return null;
   }
 
-  private itemTime(b: Building, q: QueueItem) {
+  /** How long one queue item takes, in game seconds. */
+  itemTime(b: Building, q: QueueItem) {
     const owner = Math.max(0, b.owner);
     if (q.kind === "age") return this.rules.ages[Number(q.id)].research_time ?? 60;
     if (q.kind === "tech") return this.rules.techs.get(q.id)?.time ?? 30;
     return this.unitStats(owner, q.id).train_time;
+  }
+
+  /** Game seconds until the item in progress is done, and until the whole queue is. */
+  queueTimeLeft(b: Building): { current: number; total: number } {
+    const [q, ...rest] = b.queue;
+    if (!q) return { current: 0, total: 0 };
+    const current = Math.max(0, this.itemTime(b, q) - b.queueTimer);
+    return { current, total: rest.reduce((t, x) => t + this.itemTime(b, x), current) };
+  }
+
+  /** Game seconds until a foundation stands at the pace of the villagers on it now, or null if nobody is. */
+  buildTimeLeft(b: Building): number | null {
+    if (b.complete) return 0;
+    const builders = this.units.filter((u) => u.alive && u.order.kind === "build" && u.order.id === b.id && u.busy).length;
+    return builders ? ((1 - b.progress) * this.bstats(b).build_time) / builders : null;
   }
 
   trainProgress(b: Building) {

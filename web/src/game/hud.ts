@@ -60,6 +60,7 @@ export class HUD {
   private portraitBox = $("#portrait-box");
   private progress = $("#progress");
   private progressBar = $("#progress-bar");
+  private progressText = $("#progress-text");
   private grid = $("#commands");
   private tip = $("#tooltip");
   private messages = $("#messages");
@@ -163,7 +164,10 @@ export class HUD {
     RES_ALL.forEach((r, i) => { this.res[i].textContent = String(Math.floor(p.res.get(r))); });
     this.pop.textContent = `${Math.ceil(p.pop - 1e-9)}/${p.popCap}`;
     this.pop.classList.toggle("warn", p.pop >= p.popCap);
-    this.age.textContent = w.rules.ages[p.age].name;
+    // While a Town Center advances, the top bar counts it down, as the age is what everyone waits for.
+    const up = w.buildingsOf(me).find((b) => b.complete && b.queue[0]?.kind === "age");
+    this.age.textContent = up ? `${w.rules.ages[p.age].name} → ${w.rules.ages[Number(up.queue[0].id)].name} ${clock(w.queueTimeLeft(up).current)}`
+      : w.rules.ages[p.age].name;
     // The original shows no clock, only the countdown while a Wonder stands.
     const wonder = w.players.find((x) => x.wonderAt !== null);
     this.time.hidden = !wonder;
@@ -249,15 +253,19 @@ export class HUD {
         this.stats.innerHTML = this.stat("attack", first.def.attack, st.attack, "Attack") + this.stat("range", first.def.range ?? 0, st.range, "Range");
       }
       if (!first.complete) {
-        this.lines[0].textContent = `Building ${Math.floor(first.progress * 100)}%`;
-        this.showProgress(first.progress);
+        const left = w.buildTimeLeft(first);
+        this.showProgress(first.progress, `${Math.floor(first.progress * 100)}% · ${left === null ? "no builder" : `${clock(left)} left`}`);
       } else if (first.queue.length) {
         // What it is working on, as icons: the first is in progress.
         const q = first.queue[0];
         const what = q.kind === "age" ? w.rules.ages[Number(q.id)].name : q.kind === "tech" ? w.rules.techs.get(q.id)?.name : w.rules.units.get(q.id)?.name;
-        this.lines[0].textContent = `${q.kind === "unit" ? "Training" : q.kind === "age" ? "Advancing to" : "Researching"} ${what}`;
+        // The bar says what and how long, in game seconds; a unit waiting for room says so instead.
+        const t = w.queueTimeLeft(first);
+        const housing = q.kind === "unit" && first.housingWarned;
+        this.title.textContent = `${q.kind === "unit" ? "Training" : q.kind === "age" ? "Advancing to" : "Researching"} ${what}`;
         this.queue.innerHTML = first.queue.map((x) => `<img src="${this.iconUrl(x.kind === "age" ? "age" : x.id)}" alt="">`).join("");
-        this.showProgress(w.trainProgress(first));
+        this.showProgress(w.trainProgress(first), housing ? "need more houses"
+          : `${clock(t.current)} left${first.queue.length > 1 ? ` · all ${clock(t.total)}` : ""}`);
       } else if (first.isFarm) this.lines[0].textContent = `${Math.floor(first.food)} food left`;
     }
   }
@@ -274,9 +282,10 @@ export class HUD {
     g.drawImage(src, (c.width - src.width * k) / 2, (c.height - src.height * k) / 2, src.width * k, src.height * k);
   }
 
-  private showProgress(f: number) {
+  private showProgress(f: number, text: string) {
     this.progress.hidden = false;
     this.progressBar.style.width = `${f * 100}%`;
+    if (this.progressText.textContent !== text) this.progressText.textContent = text;
   }
 
   // ---- command icons
