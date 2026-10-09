@@ -6,7 +6,7 @@ const TAGS: Record<string, string> = {
   archery: "Archery Range units", stable: "Stable units", academy: "Academy units", barracks: "Barracks units",
   infantry: "infantry", melee: "melee units", missile: "missile units", siege: "siege", catapult: "Stone Throwers",
   chariot: "chariots", elephant: "elephants", mounted: "mounted units", priest: "priests", swordsman: "swordsmen",
-  cavalry: "cavalry", tower: "towers", wall: "walls", "*": "buildings",
+  cavalry: "cavalry", military: "military units", tower: "towers", wall: "walls", "*": "buildings",
 };
 const pct = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
 
@@ -17,6 +17,7 @@ export function describeEffects(effects: Effect[], rules: Rules): string[] {
     const t2 = e.target;
     if (t2.units) return t2.units.map(name).join(", ");
     if (t2.tags) return t2.tags.map((x) => TAGS[x] ?? x).join(", ");
+    if (t2.buildings) return t2.buildings.map(name).join(", ");
     if (t2.buildings_tags) {
       const pos = t2.buildings_tags.filter((x) => !x.startsWith("!")), neg = t2.buildings_tags.filter((x) => x.startsWith("!"));
       const base = pos.length ? pos.map((x) => TAGS[x] ?? x).join(" and ") : "buildings";
@@ -29,13 +30,14 @@ export function describeEffects(effects: Effect[], rules: Rules): string[] {
       case "stat": {
         if (e.stat === "attack_cooldown" && e.op === "mul") return `${who(e)} attack ${pct(1 / e.value - 1)} faster`;
         if (e.stat === "cost" && e.op === "mul") return `${who(e)} cost ${pct(1 - e.value)} ${e.value < 1 ? "less" : "more"}`;
+        if (e.stat === "train_time" && e.op === "mul" && e.value < 1) return `${who(e)} trained ${pct(1 / e.value - 1)} faster`;
         if (e.stat === "pop" && e.op === "mul") return `${who(e)} take ${e.value === 0.5 ? "half" : pct(e.value)} the population room`;
         const v = e.op === "add" ? `${e.value > 0 ? "+" : ""}${e.value}` : e.value < 1 ? `-${pct(1 - e.value)}` : `+${pct(e.value - 1)}`;
         const stat = { hp: "hit points", pierce_armor: "pierce armor", los: "line of sight", build_time: "build time" }[e.stat] ?? e.stat;
         return `${v} ${stat} for ${who(e)}`;
       }
       case "gather": {
-        const what = e.resource === "all" ? "all gathering" : e.kind === "hunt" ? "hunting" : `${e.resource} gathering`;
+        const what = e.resource === "all" ? "all gathering" : e.kind === "hunt" ? "hunting" : e.kind === "forage" ? "foraging" : `${e.resource} gathering`;
         return `${what} ${e.rate >= 1 ? "+" : "-"}${pct(e.rate - 1)}${e.carry ? `, carry +${e.carry}` : ""}`;
       }
       case "upgrade": return `${name(e.from)} becomes ${name(e.to)}`;
@@ -62,6 +64,7 @@ export function describe(t: TechDef, rules: Rules): string {
 export function describeCiv(c: CivDef, rules: Rules): string[] {
   const name = (id: string) => rules.units.get(id)?.name ?? rules.buildings.get(id)?.name ?? rules.techs.get(id)?.name ?? id;
   const out = describeEffects(c.effects, rules);
-  if (c.disabled.length) out.push(`no ${c.disabled.map(name).join(", ")}`);
+  // A unit and the technology that upgrades to it share a name: list it once.
+  if (c.disabled.length) out.push(`no ${[...new Set(c.disabled.map(name))].join(", ")}`);
   return out;
 }

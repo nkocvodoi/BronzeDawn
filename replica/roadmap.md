@@ -21,7 +21,7 @@ rồi chấm lại.
 | Bản đồ | Isometric, sinh ngẫu nhiên theo seed, 4 cỡ (72 / 96 / 120 / 144), hồ, rừng, sương mù |
 | Kinh tế | 4 tài nguyên, hái dâu, săn thú (thịt thối dần, chỉ villager giết mới có thịt), đánh cá ven bờ, farm sau Market, kho thịt và kho lúa riêng |
 | Thời đại | Stone, Tool, Bronze, Iron, mỗi lần lên cần 2 loại công trình của thời đó |
-| Nội dung | 33 unit với các dòng nâng cấp, 21 công trình, 65 công nghệ, 16 dân tộc (5 kiểu kiến trúc) |
+| Nội dung | 33 unit với các dòng nâng cấp, 21 công trình, 65 công nghệ, 17 dân tộc (5 kiểu kiến trúc; Lạc Việt của Return of Rome có khung giao diện trống đồng riêng) |
 | Chiến đấu | Công thức sát thương gốc, giáp xuyên, công trình nhận 1/5 sát thương, đá văng và né được, voi giẫm, tháp canh 4 cấp, tường kéo dài |
 | Tôn giáo | Thầy tu cải đạo và chữa thương, faith hồi dần, Monotheism |
 | Thắng | Chinh phục, Wonder (đứng 15 phút) |
@@ -62,7 +62,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [ ] Đồi, vách đá, độ cao (đánh từ trên cao xuống có cơ hội gây gấp 3 sát thương), vùng nước nông lội qua được
 - [ ] Các kiểu bản đồ: inland, highland, continental, hill country, narrows; cỡ Gigantic
 - [ ] Ruins và artifact, thắng bằng giữ ruins và artifact
-- [ ] Mỗi dân tộc thiếu đúng các unit và công nghệ như bản gốc (hiện mới làm cho Persian và Macedonian)
+- [ ] Mỗi dân tộc thiếu đúng các unit và công nghệ như bản gốc (hiện mới làm cho Persian, Macedonian và Lạc Việt)
 - [ ] Martyrdom
 - [ ] Điểm số, thắng theo điểm hoặc hết giờ
 - [ ] Tùy chọn khi bắt đầu: mở toàn bản đồ, thời đại khởi đầu, tài nguyên khởi đầu, giới hạn dân số

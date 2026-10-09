@@ -178,6 +178,41 @@ Mỗi loại 3 đến 5 câu ngắn. Có thể dùng một ngôn ngữ cổ tự
 
 **Nhạc:** 4 đến 8 bản nền dài 2 đến 4 phút, lặp được; 1 bản cho màn hình bắt đầu; nhạc thắng và nhạc thua.
 
+## 7b. Dân tộc Lạc Việt (`lac_viet`)
+
+Lạc Việt dùng **kiến trúc Á Đông** (`asian`), giống bản Return of Rome (Wonder cũng là Wonder Á Đông chung).
+Vì vậy mọi asset `asian` ở mục 3 đã đủ cho Lạc Việt. Phần dưới là tùy chọn, để Lạc Việt có nét riêng.
+Thiếu file nào thì game lùi về `asian` rồi về hình vẽ bằng code.
+
+**Đã có, vẽ bằng code:** khung giao diện (thanh trên, bảng dưới) khắc hoa văn **mặt trống đồng Đông Sơn**:
+ngôi sao nhiều cánh ở giữa, vòng tròn tiếp tuyến có chấm, dải răng lược và chim mỏ dài bay. Màu đồng xanh.
+Muốn thay bằng file thì cần một ảnh nền lặp ngang 200 × 63 px (vẽ ở tỉ lệ 2), cùng bố cục với các kiểu khác.
+
+**Công trình riêng (tùy chọn).** Trong manifest dùng khóa `lac_viet` cạnh các khóa kiến trúc; game tìm
+`lac_viet` trước, rồi `asian`. Gợi ý theo thứ tự ưu tiên, mỗi cái cho Tool, Bronze, Iron:
+1. `house`: nhà sàn mái cong hình thuyền (như hình nhà khắc trên trống đồng).
+2. `town_center`: nhà sàn lớn, mái võng, đầu hồi cong.
+3. `temple`: nhà sàn cao có trống đồng đặt trước.
+4. `granary`, `storage_pit`: kho lúa sàn cao.
+5. `wonder`: tùy chọn. Bản gốc dùng Wonder Á Đông chung; có thể làm một đền đá/thành Cổ Loa xoắn ốc.
+
+```json
+"buildings": { "house": { "lac_viet": { "tool": { "file": "buildings/lac_viet/house-tool.png" } },
+                          "asian":    { "tool": { "file": "buildings/asian/house-tool.png" } } } }
+```
+
+**Unit riêng (tùy chọn).** Khóa `lac_viet/<unit id>` (và `lac_viet/villager:axe`...) được tìm trước khóa chung.
+Lạc Việt mạnh nhất ở Archery Range, nên nên vẽ trước: `lac_viet/villager` (khố, tóc búi, mũ lông chim khi đi lính),
+`lac_viet/bowman`, `lac_viet/improved_bowman`, `lac_viet/composite_bowman` (nỏ), `lac_viet/chariot_archer`,
+`lac_viet/elephant_archer`, rồi lính Barracks (giáo, rìu đồng xòe). **Không cần** vẽ các unit Lạc Việt không
+có: `phalanx`, `centurion`, `legion`, `camel_rider`, `cataphract`, `helepolis`.
+
+**Âm thanh và nhạc (tùy chọn).** Hiện game chưa đổi tiếng theo dân tộc; nếu thêm, cần: tiếng đáp lời
+(villager, lính, thầy tu) bằng tiếng tự chế, 3 đến 5 câu mỗi loại; một bản nhạc nền có trống đồng, sáo, đàn đá.
+Lưu ý: đừng dùng bản thu của game gốc.
+
+**Icon (tùy chọn):** biểu tượng dân tộc 48 × 48 px (mặt trống đồng thu nhỏ), dùng cho màn hình chọn dân tộc sau này.
+
 ## 8. Sau này (khi làm tàu, giai đoạn 3)
 
 - **Công trình:** Dock, đủ 5 nhóm kiến trúc × các thời đại.
@@ -220,10 +255,11 @@ tiếng vẽ bằng code, nên có thể thay từng phần.
 }
 ```
 
+- **Unit theo dân tộc:** khóa `lac_viet/bowman` được dùng trước khóa `bowman` cho người chơi Lạc Việt.
 - **Sprite sheet unit:** mỗi hàng một hướng, theo chiều kim đồng hồ bắt đầu từ hướng nhìn ra người chơi: S, SW, W,
   NW, N, NE, E, SE. `directions: 5` thì game lật ngang 3 hướng còn lại. `row` của mỗi hoạt ảnh là hàng của hướng S;
   các hướng tiếp theo nằm ở các hàng ngay dưới. `anchor` là điểm chân unit trong một khung.
-- **Công trình:** tìm theo kiểu kiến trúc rồi thời đại (`stone`, `tool`, `bronze`, `iron`); thiếu thì lùi về thời
+- **Công trình:** tìm theo dân tộc nếu có (`lac_viet`), rồi kiểu kiến trúc, rồi thời đại (`stone`, `tool`, `bronze`, `iron`); thiếu thì lùi về thời
   đại trước, rồi kiểu `greek`, rồi `default`. `anchor` mặc định là giữa cạnh dưới (đỉnh dưới của hình thoi).
   Giai đoạn đang xây vẫn dùng hình vẽ bằng code.
 - **Màu người chơi:** vùng tô bằng các sắc tím `#FF00FF` được đổi sang màu phe, giữ sáng tối.
