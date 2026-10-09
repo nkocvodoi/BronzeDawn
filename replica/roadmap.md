@@ -7,8 +7,8 @@ Cách đo: `replica/features.csv` liệt kê từng tính năng của bản gố
 `python3 ../replica-skill/replica-diff/parity.py replica/features.csv`. Số liệu của bản gốc lấy từ
 `replica/game/aoe1-research.md` (có nguồn cho từng con số).
 
-**Hiện tại: 87.1 / 100** (đủ 21/21 tính năng bắt buộc).
-Cập nhật lần cuối: 2026-10-09, sau khi có thuyền chở quân và bản đồ đảo (Giai đoạn 3, phần 3).
+**Hiện tại: 87.8 / 100** (đủ 21/21 tính năng bắt buộc).
+Cập nhật lần cuối: 2026-10-09, sau khi có thuyền chở quân, bản đồ đảo, thuyền buôn và AI dùng tàu (Giai đoạn 3 xong, còn phần AI trên đảo).
 
 Đây là bảng chấm chi tiết. Bảng thô trước đó cho 95.5 vì gộp nhiều thứ vào một dòng (cả phần tàu thuyền,
 địa hình, âm thanh đều chưa có dòng nào). Mỗi khi xong một hạng mục, sửa cột `clone` trong `features.csv`
