@@ -170,6 +170,8 @@ await page.click("#reseed-btn");
 check(!(await reseedOn()) && (await page.getAttribute("#reseed-btn", "class")).includes("off"), "the menu turns reseeding off");
 await page.click("#reseed-btn");
 check(await reseedOn(), "and on again");
+await page.click("#timeline-btn");
+check(await page.isVisible("#timeline") && (await page.textContent("#timeline-read")).includes("You"), "the menu shows the Timeline so far");
 await page.keyboard.press("Escape");
 await page.keyboard.press("-");
 check((await g(() => game.speed)) === 2, "- lowers it again");
