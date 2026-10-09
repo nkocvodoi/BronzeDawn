@@ -22,6 +22,11 @@ interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics;
 /** The original's limit on how many units one selection holds. */
 const MAX_SELECTION = 25;
 
+const store = {
+  get(k: string) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k: string, v: string) { try { localStorage.setItem(k, v); } catch { /* private window */ } },
+};
+
 /** The sound of each tool striking, while a villager works. */
 const TOOL_SOUND: Partial<Record<Tool, Sfx>> = { axe: "chop", pick: "mine", hammer: "hammer", basket: "forage", hoe: "farm", net: "fish", spear: "spear" };
 
@@ -73,6 +78,8 @@ export class Game {
   revealMap = false;
   /** How many simulation seconds pass per real second. The simulation still steps at a fixed 20 Hz. */
   speed = 1;
+  /** Whether spent farms are sown again (AoE2), remembered between games. On unless turned off. */
+  reseed = store.get("bd-reseed") !== "off";
   private seed: number;
   private mapSize = 72;
   private wallStart: Tile | null = null;
@@ -238,6 +245,7 @@ export class Game {
     if (SPEEDS.includes(chosen)) { this.speed = chosen; this.hud.speed(chosen); }
     this.world.ais = [new AIController(1, d)];
     this.world.ais[0].attach(this.world);
+    this.applyReseed();
     // Start zoomed so the map fills the screen as it did at 800 x 600, with the interface scaled to match.
     const u = Math.min(window.innerWidth / 800, window.innerHeight / 600);
     this.cam.zoom = ZOOMS.reduce((a, b) => (Math.abs(b - 1 / u) < Math.abs(a - 1 / u) ? b : a));
@@ -268,12 +276,17 @@ export class Game {
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
       "Up to 25 units in one selection · The pointer shows what a right-click will do · F4 or S: scores · F10: menu",
-      "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), full screen (hold Esc to leave)",
+      "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · F3 pause",
       ...this.civLines(),
       "Press ? or Esc to close",
     ], "help");
+  }
+
+  /** The reseeding setting holds for everyone in the game, the computer too, so it stays fair. */
+  private applyReseed() {
+    for (const p of this.world.players) this.world.setAutoReseed(p.id, this.reseed);
   }
 
   /** The game menu: options that the top bar used to hold, help, and leaving the game. */
@@ -287,6 +300,7 @@ export class Game {
         ${t("sfx-btn", "Sound effects", this.sound.sfxOn)}
         ${t("music-btn", "Music", this.sound.musicOn)}
         ${t("lock-btn", "Keep the mouse in the game", this.lock.wanted)}
+        ${t("reseed-btn", "Farms sow themselves again", this.reseed)}
         <button id="fs-btn">${document.fullscreenElement ? "Leave full screen" : "Full screen"}</button>
         <button id="credits-btn">Credits</button>
         <button data-restart>Quit to a new map</button>
@@ -1106,6 +1120,14 @@ export class Game {
         const on = this.lock.toggle();
         this.screenButtons();
         this.hud.message(on ? "Mouse lock on: click the map to keep the mouse in the game. Alt+Tab or Esc lets go." : "Mouse lock off");
+        return;
+      }
+      if (t.closest("#reseed-btn")) {
+        this.reseed = !this.reseed;
+        store.set("bd-reseed", this.reseed ? "on" : "off");
+        this.applyReseed();
+        document.querySelector("#reseed-btn")?.classList.toggle("off", !this.reseed);
+        this.hud.message(this.reseed ? "Spent farms are sown again for a farm's price in wood, while there is the wood" : "Spent farms are gone, as in the original: build new ones");
         return;
       }
       if (t.closest("#fs-btn")) { this.toggleFullscreen(); return; }

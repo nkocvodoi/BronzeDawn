@@ -357,6 +357,9 @@ export class World {
     });
   }
 
+  /** The reseeding setting: spent farms are sown again for their price, while there is the wood. */
+  setAutoReseed(player: number, on: boolean) { this.players[player].autoReseed = on; }
+
   stop(player: number, ids: number[]) {
     for (const u of this.own(ids, player)) { u.order = IDLE; u.path = []; u.resumeMove = null; u.buildQueue = []; }
   }
@@ -1053,11 +1056,16 @@ export class World {
         const take = Math.min(rate * dt, src.food, capacity - u.carry);
         src.food -= take;
         u.carry += take;
-        if (src.food <= 0.0001) {
+        const p = this.players[src.owner];
+        if (src.food <= 0.0001 && p.autoReseed && p.res.covers(this.buildingCost(src.owner, "farm"))) {
+          // Sown again where it stands, at a farm's price: the farmer keeps working it.
+          p.res.spend(this.buildingCost(src.owner, "farm"));
+          src.food = p.mods.farmFood(src.def.resource!.food);
+        } else if (src.food <= 0.0001) {
           src.alive = false;
           this.map.setOccupant(src.footprint, 0);
           this.events.push({ kind: "died", id: src.id, owner: src.owner, at: src.center, wasBuilding: true });
-          this.events.push({ kind: "message", player: src.owner, text: "A farm ran out" });
+          this.events.push({ kind: "message", player: src.owner, text: p.autoReseed ? "A farm ran out: not enough wood to sow it again" : "A farm ran out" });
         }
       }
       u.carryRes = res;
