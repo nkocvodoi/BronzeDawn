@@ -7,8 +7,8 @@ Cách đo: `replica/features.csv` liệt kê từng tính năng của bản gố
 `python3 ../replica-skill/replica-diff/parity.py replica/features.csv`. Số liệu của bản gốc lấy từ
 `replica/game/aoe1-research.md` (có nguồn cho từng con số).
 
-**Hiện tại: 76.9 / 100** (đủ 20/21 tính năng bắt buộc; còn thiếu: farm chặn đường đi, xem bảng "Chỗ đang khác bản gốc").
-Cập nhật lần cuối: 2026-10-09, sau khi có sửa công trình, lửa, gạch vụn, Stand ground, Attack ground và waypoint.
+**Hiện tại: 78.6 / 100** (đủ 20/21 tính năng bắt buộc; còn thiếu: farm chặn đường đi, xem bảng "Chỗ đang khác bản gốc").
+Cập nhật lần cuối: 2026-10-09, sau khi có điểm số kiểu bản gốc, Martyrdom và phím Tab (Giai đoạn 1 đã xong).
 
 Đây là bảng chấm chi tiết. Bảng thô trước đó cho 95.5 vì gộp nhiều thứ vào một dòng (cả phần tàu thuyền,
 địa hình, âm thanh đều chưa có dòng nào). Mỗi khi xong một hạng mục, sửa cột `clone` trong `features.csv`
@@ -39,7 +39,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [x] Sửa công trình (villager, tốn tài nguyên; nút Repair phím R hoặc chuột phải), công trình hư thì bốc cháy, phá xong để lại gạch vụn; AI cũng biết sửa
 - [x] Tư thế Stand ground (phím D), lệnh Attack ground cho máy bắn đá (phím T; Heavy Catapult phá được cây)
 - [x] Shift + chuột phải để đặt điểm đi qua (tối đa 20 điểm)
-- [ ] Tab để chuyển giữa các unit đang chọn
+- [x] Tab để chuyển giữa các unit đang chọn
 - [x] Space để về chỗ đang chọn; Shift + số để gộp nhóm; giới hạn chọn 25 unit
 - [x] Thứ tự tài nguyên trên thanh trên cùng như bản gốc (gỗ, thức ăn, vàng, đá)
 
@@ -64,8 +64,9 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [ ] Các kiểu bản đồ: inland, highland, continental, hill country, narrows; cỡ Gigantic
 - [ ] Ruins và artifact, thắng bằng giữ ruins và artifact
 - [x] Mỗi dân tộc thiếu đúng các unit và công nghệ như bản gốc (theo cây công nghệ bản DE, cả 17 dân tộc)
-- [ ] Martyrdom
-- [ ] Điểm số, thắng theo điểm hoặc hết giờ
+- [x] Martyrdom (nút Sacrifice, phím Q)
+- [x] Điểm số kiểu bản gốc: quân sự, kinh tế, tôn giáo, công nghệ, khác (trên bản đồ nhỏ và cuối trận)
+- [ ] Thắng theo điểm hoặc hết giờ
 - [ ] Tùy chọn khi bắt đầu: mở toàn bản đồ, thời đại khởi đầu, tài nguyên khởi đầu, giới hạn dân số
 
 ### Giai đoạn 5: nhiều người chơi (lớn)

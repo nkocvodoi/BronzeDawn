@@ -43,7 +43,8 @@ export function describeEffects(effects: Effect[], rules: Rules): string[] {
       case "upgrade": return `${name(e.from)} becomes ${name(e.to)}`;
       case "farm_food": return `farms ${e.op === "add" ? `+${e.value}` : `x${e.value}`} food`;
       case "mine_yield": return `gold mines yield +${Math.round((e.value - 1) * 100)}%`;
-      case "flag": return e.flag === "ballistics" ? "siege leads moving targets" : "priests convert buildings and priests";
+      case "flag": return e.flag === "ballistics" ? "siege leads moving targets" : e.flag === "martyrdom" ? "a priest can give its life to convert at once"
+        : "priests convert buildings and priests";
       case "conversion":
         return e.stat === "resist" ? `units ${e.value}x harder to convert` : e.stat === "regen" ? `priests regain faith ${pct(e.value - 1)} faster` : `conversion ${pct(e.value - 1)} faster`;
       case "carry": return `villagers carry ${e.value}`;

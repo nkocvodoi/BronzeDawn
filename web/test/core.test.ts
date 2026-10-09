@@ -3,6 +3,7 @@ import { RULES } from "../src/core/data";
 import { Tile, Vec2 } from "../src/core/geom";
 import { Terrain } from "../src/core/grid";
 import { Res } from "../src/core/rules";
+import { scores } from "../src/core/score";
 import { runMatch } from "../src/core/sim";
 import { AIController } from "../src/core/ai";
 import { World } from "../src/core/world";
@@ -502,6 +503,36 @@ describe("the original's rules", () => {
     for (const e of [...ffa.unitsOf(0), ...ffa.buildingsOf(0)]) ffa.applyDamage(e, 1e6, -1);
     run(ffa, 2);
     expect(ffa.winner).toBeNull(); // B and C still fight each other
+  });
+
+  it("the original's score: kills, razing, generalship, villagers, techs, firsts and elimination", () => {
+    const w = new World(RULES, 4, ["A", "B"], 72, true);
+    const [a, b] = w.players;
+    a.stats.kills = 10; a.stats.casualties = 4; a.stats.razed = 3; a.stats.researched = 5;
+    a.stats.gathered.set(Res.gold, 1000);
+    w.firstTo[2] = 0;
+    b.defeated = true;
+    const [sa, sb] = scores(w);
+    // 10/2 + 3 + (10 - 4), and the most army: neither has soldiers or towers, so nobody gets it.
+    expect(sa.military).toBe(5 + 3 + 6);
+    expect(sa.technology).toBe(5 * 2 + 50 + 25); // most techs, first to Bronze
+    expect(sa.economy).toBe(10 + 3 + Math.floor((w.fog[0].exploredShare * 100) / 3)); // gold/100, 3 villagers, no single leader in villagers
+    expect(sb.other).toBe(-100);
+    expect(sa.total).toBe(sa.military + sa.economy + sa.religion + sa.technology + sa.other);
+  });
+
+  it("martyrdom: a priest gives its life to convert at once, but not another priest", () => {
+    const w = blank();
+    const pr = w.spawnUnit("priest", 0, new Tile(5, 5).center);
+    const foe = w.spawnUnit("clubman", 1, new Tile(7, 5).center);
+    const foePriest = w.spawnUnit("priest", 1, new Tile(5, 8).center);
+    expect(w.sacrifice(0, pr.id, foe.id)).toBe(false); // not researched
+    w.players[0].mods.research(RULES.techs.get("martyrdom")!);
+    expect(w.sacrifice(0, pr.id, foePriest.id)).toBe(false);
+    expect(w.sacrifice(0, pr.id, foe.id)).toBe(true);
+    run(w, 3);
+    expect(foe.owner).toBe(0);
+    expect(pr.alive).toBe(false);
   });
 
   it("civilization bonuses apply: Shang villagers cost 30% less", () => {

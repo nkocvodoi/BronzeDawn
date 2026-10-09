@@ -49,6 +49,8 @@ export class World {
   ais: AIController[] = [];
   /** Start tile of each player's town center. */
   startTiles: Tile[] = [];
+  /** The first player to reach each age, by age index. */
+  firstTo: Record<number, number> = {};
 
   rng: RNG;
   private byId = new Map<number, Entity>();
@@ -446,6 +448,16 @@ export class World {
     }
   }
 
+  /** Martyrdom: one priest walks up to the target and gives its life to convert it at once. */
+  sacrifice(player: number, priestId: number, target: number) {
+    const u = this.unit(priestId), t = this.entity(target);
+    if (!u || u.owner !== player || !u.isPriest || !t || !this.isEnemy(player, t.owner)) return false;
+    if (!this.players[player].mods.flags.has("martyrdom") || (t instanceof Unit && t.isPriest)) return false;
+    u.order = { kind: "convert", id: t.id, sacrifice: true };
+    u.chants = 0; u.path = []; u.repathTimer = 0;
+    return true;
+  }
+
   heal(player: number, ids: number[], target: number) {
     const t = this.unit(target);
     if (!t || t.owner !== player) return;
@@ -775,6 +787,7 @@ export class World {
             p.age = Math.max(p.age, age);
             this.refreshHp(p.id);
             this.events.push({ kind: "ageReached", player: p.id, age });
+            if (this.firstTo[age] === undefined) this.firstTo[age] = p.id;
             this.events.push({ kind: "message", player: p.id, text: `${p.name} reached the ${this.rules.ages[age].name}` });
           } else {
             const t = this.rules.techs.get(q.id);
@@ -930,7 +943,7 @@ export class World {
       case "repair": this.updateRepair(u, o.id, dt); break;
       case "attack": this.updateAttack(u, o.id, dt, o.auto === true); break;
       case "attackGround": this.updateAttackGround(u, o.at, dt); break;
-      case "convert": this.updateConvert(u, o.id, dt); break;
+      case "convert": this.updateConvert(u, o.id, dt, o.sacrifice === true); break;
       case "heal": this.updateHeal(u, o.id, dt); break;
     }
   }
@@ -1006,7 +1019,7 @@ export class World {
   }
 
   /** Priests chant; after a few chants each one may convert. Faith must be full to start and drops to 0 after. */
-  private updateConvert(u: Unit, id: number, dt: number) {
+  private updateConvert(u: Unit, id: number, dt: number, sacrifice = false) {
     const t = this.entity(id);
     const mods = this.players[u.owner].mods;
     const ok = (e: Entity | null): e is Entity => {
@@ -1015,12 +1028,14 @@ export class World {
       if (e instanceof Unit && e.isPriest) return mods.flags.has("monotheism");
       return true;
     };
-    if (!ok(t)) { u.order = IDLE; return; }
+    if (!ok(t) || (sacrifice && t instanceof Unit && t.isPriest)) { u.order = IDLE; return; }
     const reach = t instanceof Building ? 1 : this.stats(u).range;
     const a = this.approach(u, t, reach, dt);
     if (a === "blocked") { u.order = IDLE; return; }
     if (a !== "arrived") return;
     this.face(u, t.center);
+    // Martyrdom: no chanting, no chance, no faith needed. The priest dies and the target is ours.
+    if (sacrifice) { this.convertEntity(t, u); this.kill(u, -1); return; }
     if (u.faith < 100) return; // waiting for faith to come back
     u.busy = true;
     if (u.cooldown > 0) return;
@@ -1411,9 +1426,14 @@ export class World {
       this.map.setOccupant(t.footprint, 0);
       if (t.def.id === "wonder" && t.owner >= 0) this.players[t.owner].wonderAt = null;
     }
-    if (t.owner >= 0) this.players[t.owner].stats.lost++;
+    if (t.owner >= 0) {
+      this.players[t.owner].stats.lost++;
+      if (t instanceof Unit) this.players[t.owner].stats.casualties++;
+    }
     const a = this.entity(attackerId);
-    if (a && a.owner >= 0 && !(t instanceof Unit && t.isAnimal)) this.players[a.owner].stats.kills++;
+    if (a && a.owner >= 0 && a.owner !== t.owner && !(t instanceof Unit && t.isAnimal)) {
+      if (t instanceof Building) this.players[a.owner].stats.razed++; else this.players[a.owner].stats.kills++;
+    }
     this.events.push({ kind: "died", id: t.id, owner: t.owner, at: t.center, wasBuilding: t instanceof Building });
     // Only a villager's kill leaves meat; soldiers' kills are wasted, as in the original.
     if (t instanceof Unit && t.isAnimal && a instanceof Unit && a.isVillager) {

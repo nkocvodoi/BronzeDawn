@@ -2767,6 +2767,23 @@
    ]
   },
   {
+   "id": "martyrdom",
+   "name": "Martyrdom",
+   "age": "iron",
+   "building": "temple",
+   "cost": {
+    "gold": 600
+   },
+   "time": 60,
+   "requires": [],
+   "effects": [
+    {
+     "type": "flag",
+     "flag": "martyrdom"
+    }
+   ]
+  },
+  {
    "id": "battle_axe",
    "name": "Battle Axe",
    "age": "tool",

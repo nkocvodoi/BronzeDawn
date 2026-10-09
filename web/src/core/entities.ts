@@ -13,7 +13,7 @@ export type Order =
   | { kind: "repair"; id: number }
   | { kind: "attack"; id: number; auto?: boolean }
   | { kind: "attackGround"; at: Vec2 }
-  | { kind: "convert"; id: number }
+  | { kind: "convert"; id: number; sacrifice?: boolean }
   | { kind: "heal"; id: number };
 
 export const IDLE: Order = { kind: "idle" };
@@ -168,8 +168,14 @@ export class ResourceNode extends Entity {
 export class PlayerStats {
   gathered = new ResBag();
   trained = 0;
+  /** Enemy units killed. */
   kills = 0;
+  /** Enemy buildings destroyed. */
+  razed = 0;
+  /** Units and buildings lost. */
   lost = 0;
+  /** Own units killed (not buildings): "generalship" is kills minus these. */
+  casualties = 0;
   built = 0;
   researched = 0;
   converted = 0;
