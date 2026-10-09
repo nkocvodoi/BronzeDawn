@@ -715,7 +715,7 @@ export class Game {
     w.events.length = 0;
   }
 
-  /** The fallen unit lies on the ground for a while, then fades. */
+  /** The fallen unit lies on the ground and fades away over three seconds. */
   private corpse(v: View) {
     const c = new Sprite(v.sprite.texture);
     c.anchor.set(0.5, 0.75);
@@ -730,8 +730,8 @@ export class Game {
     let t = 0;
     const tick = (dt: { deltaMS: number }) => {
       t += dt.deltaMS / 1000;
-      if (t > 8) c.alpha = Math.max(0, 1 - (t - 8) / 4);
-      if (t >= 12) { this.app.ticker.remove(tick); c.destroy(); }
+      c.alpha = Math.max(0, 1 - t / 3);
+      if (t >= 3) { this.app.ticker.remove(tick); c.destroy(); }
     };
     this.app.ticker.add(tick);
   }

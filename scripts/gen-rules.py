@@ -441,6 +441,8 @@ rules = {
         "start": {F: 200, W: 200, G: 0, S: 150},
         "start_villagers": 3,
         "pop_max": 50,
+        # Fishing boats (and ships) a player may have, alive or in training, for each finished Dock.
+        "fishing_boats_per_dock": 5,
         "wonder_seconds": 900,
         # Repair: hit points come back at this share of the building speed, and the full bar would cost
         # this share of the building's price, paid as the work goes.

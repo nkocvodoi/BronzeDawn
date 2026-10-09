@@ -5,7 +5,7 @@ import { Footprint, RNG, Tile, Vec2 } from "./geom";
 import { GridMap, Terrain, walkable } from "./grid";
 import { generateMap, MapType } from "./mapgen";
 import { Pathfinder } from "./path";
-import { NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
+import { hasTag, NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
 import { scores } from "./score";
 import { BuildingStats, Mods, UnitStats } from "./stats";
 
@@ -275,8 +275,27 @@ export class World {
     if (p.mods.upgraded.has(type)) return "Replaced by an upgrade";
     if (this.ageOf(def.age) > p.age) return `Needs ${this.rules.ages[this.ageOf(def.age)].name}`;
     if (def.requires_tech && !p.mods.has(def.requires_tech)) return `Research ${this.rules.techs.get(def.requires_tech)?.name ?? def.requires_tech}`;
+    if (hasTag(def, "fishing")) {
+      const cap = this.fishingBoatCap(player);
+      if (cap !== null && this.fishingBoats(player) >= cap) return `At most ${this.rules.economy.fishing_boats_per_dock} fishing boats a Dock`;
+    }
     if (!p.res.covers(this.unitCost(player, type))) return "Not enough resources";
     return null;
+  }
+
+  /** How many fishing boats a player may have: so many for each finished Dock (null: no limit). */
+  fishingBoatCap(player: number): number | null {
+    const per = this.rules.economy.fishing_boats_per_dock;
+    if (per === undefined) return null;
+    return per * this.buildingsOf(player).filter((b) => b.def.on_water && b.complete).length;
+  }
+
+  /** A player's fishing boats, alive or in a training queue. */
+  fishingBoats(player: number) {
+    const fishing = (id: string) => { const d = this.rules.units.get(id); return !!d && hasTag(d, "fishing"); };
+    let n = this.unitsOf(player).filter((u) => hasTag(u.def, "fishing")).length;
+    for (const b of this.buildingsOf(player)) n += b.queue.filter((q) => q.kind === "unit" && fishing(q.id)).length;
+    return n;
   }
 
   /** Whether a unit type shows up at all for this player right now (not replaced, not disabled). */
@@ -1344,7 +1363,7 @@ export class World {
 
   private updateBuild(u: Unit, id: number, dt: number) {
     const b = this.building(id);
-    if (!b || b.owner !== u.owner) { this.nextFoundation(u) || (u.order = IDLE); return; }
+    if (!b || b.owner !== u.owner) { this.nextFoundation(u) || this.nearbyFoundation(u, u.pos) || (u.order = IDLE); return; }
     if (b.complete) { this.afterBuild(u, b); return; }
     const a = this.approach(u, b, 0.9, dt);
     if (a === "arrived") {
@@ -1396,12 +1415,26 @@ export class World {
     return false;
   }
 
-  /** After finishing a building: the next wall piece, farm it, or gather next to a new drop-off. */
+  /** A builder with nothing queued helps with the nearest unfinished building of its owner close by. */
+  private nearbyFoundation(u: Unit, at: Vec2): boolean {
+    let next: Building | null = null;
+    for (const b of this.buildingsOf(u.owner)) {
+      if (b.complete || b.center.distance(at) > 10) continue;
+      if (!next || b.center.distance(u.pos) < next.center.distance(u.pos)) next = b;
+    }
+    if (!next) return false;
+    u.order = { kind: "build", id: next.id }; u.path = []; u.repathTimer = 0;
+    return true;
+  }
+
+  /** After finishing a building: the next wall piece, farm it, help with an unfinished building
+   *  nearby, or gather next to a new drop-off. */
   private afterBuild(u: Unit, b: Building) {
     u.path = [];
     u.repathTimer = 0;
     if (this.nextFoundation(u)) return;
     if (b.isFarm) { u.order = { kind: "gather", id: b.id }; u.lastGather = Res.food; u.lastNodeType = "farm"; return; }
+    if (this.nearbyFoundation(u, b.center)) return;
     if (b.def.drop_off && b.def.id !== "town_center") {
       const prefs = b.def.drop_off.map((k) => RES_KEY.indexOf(k as (typeof RES_KEY)[number])).filter((r) => r >= 0) as Res[];
       const ordered = (u.lastGather !== null && prefs.includes(u.lastGather) ? [u.lastGather] : []).concat(prefs);

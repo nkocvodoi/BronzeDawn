@@ -131,6 +131,28 @@ describe("production", () => {
     expect(b.complete).toBe(true);
   });
 
+  it("a builder goes on to an unfinished building nearby, also when its own is deleted; not one far away", () => {
+    const w = blank(40);
+    w.fog[0].revealAll();
+    w.addBuilding("town_center", 0, new Tile(2, 2), true);
+    w.players[0].res.set(Res.wood, 500);
+    const v = w.spawnUnit("villager", 0, new Tile(8, 8).center);
+    const first = w.building((w.place(0, "house", new Tile(10, 10), [v.id]) as { id: number }).id)!;
+    const near = w.building((w.place(0, "house", new Tile(14, 10), []) as { id: number }).id)!;
+    const far = w.building((w.place(0, "house", new Tile(34, 34), []) as { id: number }).id)!;
+    run(w, 60);
+    expect(first.complete).toBe(true);
+    expect(near.complete).toBe(true);
+    expect(far.progress).toBe(0);
+    // Its foundation deleted under it: on to the next one close by.
+    const a = w.building((w.place(0, "house", new Tile(10, 14), [v.id]) as { id: number }).id)!;
+    const b = w.building((w.place(0, "house", new Tile(14, 14), []) as { id: number }).id)!;
+    run(w, 3);
+    w.destroy(0, a.id);
+    run(w, 40);
+    expect(b.complete).toBe(true);
+  });
+
   it("checks placement and builds a house", () => {
     const w = blank();
     w.addBuilding("town_center", 0, new Tile(5, 5), true);
@@ -594,6 +616,23 @@ describe("the original's rules", () => {
     expect(c.unitStats(2, "trireme").hp).toBe(Math.round(200 * 1.3));
     expect(c.blockerTech("trireme_tech", 3)).toContain("Not available"); // no Trireme for Babylon
     expect(RULES.units.get("trireme")!.convert_resist).toBe(2);
+  });
+
+  it("fishing boats: five for each finished Dock, counting those in training", () => {
+    const w = blank(30);
+    for (let y = 0; y < 30; y++) for (let x = 14; x < 30; x++) w.map.terrain[y * 30 + x] = Terrain.water;
+    w.addBuilding("town_center", 0, new Tile(3, 3), true);
+    const dock = w.addBuilding("dock", 0, new Tile(14, 5), true);
+    w.players[0].res.set(Res.wood, 2000);
+    for (let i = 0; i < 3; i++) w.spawnUnit("fishing_boat", 0, new Tile(18, 6).center);
+    expect(w.train(0, dock.id, "fishing_boat")).toBeNull();
+    expect(w.train(0, dock.id, "fishing_boat")).toBeNull();
+    expect(w.train(0, dock.id, "fishing_boat")).toContain("fishing boats a Dock"); // 3 afloat + 2 queued
+    // A second Dock, once finished, makes room for five more; one still building does not.
+    const second = w.addBuilding("dock", 0, new Tile(14, 15), false);
+    expect(w.blockerUnit("fishing_boat", 0)).not.toBeNull();
+    second.complete = true;
+    expect(w.blockerUnit("fishing_boat", 0)).toBeNull();
   });
 
   it("the last team standing wins", () => {
