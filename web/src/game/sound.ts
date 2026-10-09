@@ -378,7 +378,8 @@ export class Sound {
       src.connect(hum).connect(hg).connect(out);
     }
     g.connect(out);
-    src.start(t - 0.05); vib.start(t - 0.05);
+    const at = Math.max(0, t - 0.05); // never before the context began: a voice right at the start would throw
+    src.start(at); vib.start(at);
     src.stop(t + dur + 0.05); vib.stop(t + dur + 0.05);
   }
 

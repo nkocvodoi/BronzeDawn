@@ -840,5 +840,6 @@ describe("maps and matches", () => {
       expect(r.problems).toEqual([]);
     }
     expect(losses.length, losses.join("\n\n")).toBeLessThanOrEqual(1);
-  }, 180_000);
+    // Six full matches: three minutes is not enough once games run past forty minutes, or on a slower CI machine.
+  }, 600_000);
 });
