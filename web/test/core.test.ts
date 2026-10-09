@@ -870,6 +870,89 @@ describe("game settings and other victories", () => {
   });
 });
 
+describe("ruins and artifacts", () => {
+  /** A blank map with a Town Center each, so nobody is out. */
+  const field = (victory: Victory = { kind: "standard" }) => {
+    const w = new World(RULES, 1, ["A", "B"], 40, false, { victory });
+    w.addBuilding("town_center", 0, new Tile(2, 2), true);
+    w.addBuilding("town_center", 1, new Tile(34, 34), true);
+    return w;
+  };
+
+  it("a map gets five of each, away from the bases, and the rest of the map is as it was", () => {
+    const w = new World(RULES, 9, ["A", "B"], 72, true);
+    const relics = w.units.filter((u) => u.isRelic);
+    expect(relics.filter((r) => r.def.id === "ruins").length).toBe(5);
+    expect(relics.filter((r) => r.def.id === "artifact").length).toBe(5);
+    for (const r of relics) for (const s of w.startTiles) expect(r.pos.distance(s.center)).toBeGreaterThanOrEqual(16);
+    const plain = new World(RULES, 9, ["A", "B"], 72, true, { relics: false });
+    expect(plain.units.some((u) => u.isRelic)).toBe(false);
+    expect(plain.nodes.map((n) => n.tile.x * 1000 + n.tile.y)).toEqual(w.nodes.map((n) => n.tile.x * 1000 + n.tile.y));
+  });
+
+  it("a Ruin goes to whoever comes near, and stays while the holder has someone there", () => {
+    const w = field();
+    const ruin = w.spawnRelic("ruins", new Tile(20, 20).center);
+    const a = w.spawnUnit("clubman", 0, new Tile(20, 22).center);
+    run(w, 1);
+    expect(ruin.owner).toBe(0);
+    const b = w.spawnUnit("clubman", 1, new Tile(21, 18).center);
+    w.stop(1, [b.id]);
+    run(w, 1);
+    expect(ruin.owner).toBe(0); // A is still beside it
+    w.move(0, [a.id], new Tile(10, 10).center);
+    run(w, 8);
+    expect(ruin.owner).toBe(1);
+    // Nobody can attack, convert or delete it.
+    expect(w.hostile(0, ruin)).toBe(false);
+    w.destroy(1, ruin.id);
+    expect(ruin.alive).toBe(true);
+  });
+
+  it("an Artifact walks where its holder sends it, and an enemy beside it takes it", () => {
+    const w = field();
+    const art = w.spawnRelic("artifact", new Tile(20, 20).center);
+    w.spawnUnit("villager", 0, new Tile(20, 21).center);
+    run(w, 1);
+    expect(art.owner).toBe(0);
+    w.move(0, [art.id], new Tile(10, 20).center);
+    run(w, 20);
+    expect(art.pos.distance(new Tile(10, 20).center)).toBeLessThan(1);
+    w.spawnUnit("clubman", 1, new Tile(11, 20).center);
+    run(w, 1);
+    expect(art.owner).toBe(1);
+  });
+
+  it("holding every Ruin for the Wonder's time wins, but not when only conquest counts", () => {
+    for (const victory of [{ kind: "standard" }, { kind: "conquest" }] as Victory[]) {
+      const w = field(victory);
+      for (let i = 0; i < 3; i++) w.spawnRelic("ruins", new Tile(15 + i * 4, 20).center);
+      for (let i = 0; i < 3; i++) w.spawnUnit("scout", 1, new Tile(15 + i * 4, 21).center);
+      run(w, 2);
+      expect(w.relicHold.ruins?.player).toBe(1);
+      // The score: 10 a Ruin, and 50 for all of them.
+      expect(scores(w)[1].religion).toBe(30 + 50);
+      run(w, (RULES.economy.wonder_seconds ?? 900) + 2);
+      expect(w.winner).toBe(victory.kind === "standard" ? 1 : null);
+    }
+  });
+
+  it("an Artifact in a transport that sinks washes up on the shore", () => {
+    const w = field();
+    for (let y = 0; y < 40; y++) for (let x = 12; x < 28; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    const boat = w.spawnUnit("light_transport", 0, new Tile(20, 20).center);
+    const art = w.spawnRelic("artifact", new Tile(11, 20).center);
+    art.owner = 0;
+    art.aboard = boat.id; boat.cargo.push(art.id);
+    w.spawnUnit("war_galley", 1, new Tile(22, 20).center);
+    run(w, 60);
+    expect(boat.alive).toBe(false);
+    expect(art.alive).toBe(true);
+    expect(art.aboard).toBeNull();
+    expect(w.map.terrainAt(art.pos.tile)).not.toBe(Terrain.water);
+  });
+});
+
 describe("maps and matches", () => {
   it("makes a fair, connected map", () => {
     const w = new World(RULES, 7);

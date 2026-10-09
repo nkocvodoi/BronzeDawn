@@ -75,8 +75,10 @@ export interface EconomyDef {
   pop_limits?: number[];
   /** Fishing boats a player may have, alive or in training, for each finished Dock. */
   fishing_boats_per_dock?: number;
-  /** How long a finished Wonder must stand to win. */
+  /** How long a finished Wonder must stand to win, and all Ruins or all Artifacts be held. */
   wonder_seconds?: number;
+  /** How many Ruins and Artifacts a map gets, how near a unit must be to take one, how fast an Artifact moves. */
+  relics?: { ruins: number; artifacts: number; ruins_radius: number; artifact_radius: number; artifact_speed: number };
   /** Gold a trade trip brings for each tile between the two Docks. */
   trade_gold_per_tile?: number;
   /** Repair speed, as a share of the building speed. */

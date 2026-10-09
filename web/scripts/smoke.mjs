@@ -51,6 +51,7 @@ check(diplomacy.includes("Greek") && diplomacy.includes("Academy units") && dipl
 await page.keyboard.press("Escape");
 check((await g(() => game.speed)) === 1.5, "the start screen sets the game speed");
 check(await g(() => game.started && game.world.ais.length === 1), "clicking Normal starts the game against one AI");
+check(await g(() => game.world.units.filter((u) => u.isRelic).length === 10), "the map has five Ruins and five Artifacts");
 
 check(await page.evaluate(() => document.body.classList.contains("playing")), "the panels slide in when the game starts");
 check((await page.textContent("#scores")).includes("Population") && /You \(Greek\): 3\/4/.test(await page.textContent("#scores")), "the list above the minimap shows each player's population");

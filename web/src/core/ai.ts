@@ -63,6 +63,8 @@ export class AIController {
   /** Units sent in an attack wave, who press on once they are in the enemy's land. */
   private sent = new Set<number>();
   private thinks = 0;
+  /** The soldier sent to take a Ruin or an Artifact, while it is on its way. */
+  private relicRunner: number | null = null;
   private level: (typeof LEVEL)[Difficulty];
 
   constructor(readonly player: number, readonly difficulty: Difficulty = "normal") {
@@ -105,6 +107,38 @@ export class AIController {
     this.military(w, army, bs, villagers.length);
     this.navy(w, home, navy, bs);
     this.attack(w, home, army, priests);
+    this.relics(w, home, army);
+  }
+
+  // ---- Ruins and Artifacts
+
+  /** One soldier at a time goes to take a Ruin or an Artifact it knows of, near enough and on its own
+   *  land. When an enemy holds all of either kind, the army at home goes to take one back. */
+  private relics(w: World, home: Vec2, army: Unit[]) {
+    const relics = w.units.filter((u) => u.alive && u.isRelic && u.aboard === null && !w.allied(this.player, u.owner));
+    if (!relics.length) return;
+    const known = relics.filter((r) => w.fog[this.player].isExplored(r.pos.tile) && this.byLand(w, home, r.pos));
+    const threat = (["ruins", "artifact"] as const).map((k) => w.relicHold[k]).find((h) => h && w.isEnemy(this.player, h.player));
+    if (threat && w.victory.kind === "standard") {
+      const t = minBy(known.filter((r) => r.owner >= 0), (r) => r.pos.distance(home));
+      const ready = army.filter((u) => u.order.kind === "idle" && dist(u, home) <= 18);
+      if (t && ready.length >= 3) {
+        w.move(this.player, ready.map((u) => u.id), t.pos, true);
+        for (const u of ready) this.sent.add(u.id);
+        return;
+      }
+    }
+    const runner = this.relicRunner !== null ? w.unit(this.relicRunner) : null;
+    if (runner && runner.order.kind === "move") return;
+    this.relicRunner = null;
+    if (this.thinks % 10 !== 0) return;
+    const free = army.filter((u) => u.order.kind === "idle" && dist(u, home) <= 18 && !u.standGround);
+    if (free.length < 3) return; // the town keeps its guard
+    const t = minBy(known.filter((r) => r.pos.distance(home) < 45), (r) => r.pos.distance(home));
+    if (!t) return;
+    const go = minBy(free, (u) => -w.stats(u).speed)!;
+    w.move(this.player, [go.id], t.pos, true);
+    this.relicRunner = go.id;
   }
 
   // ---- at sea
@@ -115,7 +149,7 @@ export class AIController {
     const p = w.players[this.player];
     const dock = bs.find((b) => b.def.on_water && b.complete);
     if (!dock || p.age < 1 || !w.nodes.some((n) => n.def.boats_only)) return;
-    const enemyShips = w.units.filter((u) => u.alive && u.isBoat && u.isSoldier && w.isEnemy(this.player, u.owner)).length;
+    const enemyShips = w.units.filter((u) => u.alive && u.isBoat && u.isSoldier && !u.isRelic && w.isEnemy(this.player, u.owner)).length;
     // A small fleet: one more than the enemy shows, within a cap by age, and never more than a fifth of
     // the population, so a race of ships does not starve the army that has to finish the game.
     const want = Math.min([0, 2, 3, 4][Math.min(p.age, 3)], enemyShips + 1, Math.floor(p.popCap / 5));
@@ -128,7 +162,7 @@ export class AIController {
     }
     const idle = navy.filter((u) => u.order.kind === "idle");
     if (!idle.length) return;
-    const enemy = (u: Unit) => u.alive && u.isBoat && w.isEnemy(this.player, u.owner);
+    const enemy = (u: Unit) => u.alive && u.isBoat && !u.isRelic && w.isEnemy(this.player, u.owner);
     const near = minBy(w.units.filter((u) => enemy(u) && u.pos.distance(dock.center) < 22), (u) => u.pos.distance(dock.center));
     if (near) { w.attack(this.player, idle.map((u) => u.id), near.id); return; }
     if (navy.length < 4) return;
@@ -152,6 +186,16 @@ export class AIController {
     return p.pop + queued + 3 <= p.popCap || p.popCap < w.popMax - 2;
   }
   private seaCheck: { key: number; across: boolean; at: number } | null = null;
+  private land: { seen: Uint8Array; at: number } | null = null;
+
+  /** Whether a point can be walked to from home (the walkable land is worked out now and then). */
+  private byLand(w: World, home: Vec2, p: Vec2) {
+    if (!this.land || this.thinks - this.land.at >= 60) {
+      this.land = { seen: w.map.reachable(w.map.nearestPassable(home.tile, 4) ?? home.tile, (id) => w.building(id) !== null), at: this.thinks };
+    }
+    const to = w.map.nearestPassable(p.tile, 2) ?? p.tile;
+    return this.land.seen[w.map.index(to)] === 1;
+  }
 
   /** Whether the way to a target is over the water: no path by land from home (rechecked now and then). */
   private overSea(w: World, home: Vec2, target: Vec2) {
@@ -444,7 +488,7 @@ export class AIController {
       if (!b.complete || b.isFarm || b.hp > b.maxHp * 0.6) continue;
       if (villagers.some((v) => v.order.kind === "repair" && v.order.id === b.id)) continue;
       if (!p.res.covers(w.bstats(b).cost)) continue; // keep the margin: a full bar costs half of this
-      const danger = w.units.some((u) => u.alive && !u.isAnimal && w.isEnemy(this.player, u.owner) && dist(u, b.center) < 8);
+      const danger = w.units.some((u) => u.alive && !u.isAnimal && !u.isRelic && w.isEnemy(this.player, u.owner) && dist(u, b.center) < 8);
       if (danger) continue;
       const v = this.pickBuilder(villagers, b.center);
       if (v) { w.repair(this.player, [v.id], b.id); busy++; }
@@ -502,7 +546,7 @@ export class AIController {
     if (villagers < 10 && !army.length && w.time <= 400) return;
     // Waiting for a transport to cross the sea: leave room in the population for it.
     if (!this.ferryRoom(w, bs)) return;
-    const enemyArmy = w.units.filter((u) => u.alive && w.isEnemy(this.player, u.owner) && !u.isVillager);
+    const enemyArmy = w.units.filter((u) => u.alive && !u.isRelic && w.isEnemy(this.player, u.owner) && !u.isVillager);
     const producing = bs.filter((b) => b.complete && b.def.id !== "town_center" && b.queue.some((q) => q.kind === "unit")).length;
     let slots = this.level.producers + (p.age >= 2 ? 1 : 0) - producing;
     const siege = army.filter((u) => u.def.class === "siege").length;
@@ -546,7 +590,7 @@ export class AIController {
   }
 
   private defend(w: World, army: Unit[], villagers: Unit[], bs: Building[]) {
-    const threats = w.units.filter((e) => e.alive && (w.isEnemy(this.player, e.owner) || (e.isAnimal && e.animal!.behavior === "aggressive"))
+    const threats = w.units.filter((e) => e.alive && (!e.isRelic && w.isEnemy(this.player, e.owner) || (e.isAnimal && e.animal!.behavior === "aggressive"))
       && bs.some((b) => b.distance(e.pos) < 10));
     if (!threats.length) return;
     for (const u of army) {
@@ -576,7 +620,7 @@ export class AIController {
     // Priests near a fight convert the strongest enemy in reach.
     for (const pr of priests) {
       if (pr.order.kind !== "idle" || pr.faith < 100) continue;
-      const t = minBy(w.units.filter((e) => e.alive && w.isEnemy(this.player, e.owner) && !e.isVillager && !e.isPriest && e.pos.distance(pr.pos) < 12),
+      const t = minBy(w.units.filter((e) => e.alive && !e.isRelic && w.isEnemy(this.player, e.owner) && !e.isVillager && !e.isPriest && e.pos.distance(pr.pos) < 12),
         (e) => -w.stats(e).hp);
       if (t) w.convert(this.player, [pr.id], t.id);
     }
@@ -602,7 +646,7 @@ export class AIController {
     const ready = idle.filter((u) => dist(u, home) <= 18);
     const p = w.players[this.player];
     const maxed = p.pop >= p.popCap - 2 && ready.length >= 6;
-    const theirArmy = w.units.filter((u) => u.alive && w.isEnemy(this.player, u.owner) && !u.isVillager).length;
+    const theirArmy = w.units.filter((u) => u.alive && !u.isRelic && w.isEnemy(this.player, u.owner) && !u.isVillager).length;
     const weak = ready.length >= 6 && theirArmy * 2 <= ready.length;
     const target = this.enemyHome(w);
     if (!(ready.length >= this.waveSize || maxed || weak) || !target) return;
@@ -630,7 +674,7 @@ export class AIController {
     if (!c) return;
     const t = minBy(w.buildings.filter((b) => b.alive && w.isEnemy(this.player, b.owner) && !b.isWall), (b) => b.distance(c));
     if (t) { w.move(this.player, group.map((u) => u.id), t.center, true); return; }
-    const u = w.units.find((u) => u.alive && w.isEnemy(this.player, u.owner));
+    const u = w.units.find((u) => u.alive && !u.isRelic && w.isEnemy(this.player, u.owner));
     if (u) w.move(this.player, group.map((g) => g.id), u.pos, true);
   }
 

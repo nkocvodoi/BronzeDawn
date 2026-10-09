@@ -15,7 +15,7 @@ export const MAP_TYPES: [MapType, string][] = [
 ];
 const islands = (t: MapType) => t === "large_islands" || t === "small_islands";
 
-export function generateMap(w: World, type: MapType = "inland") {
+export function generateMap(w: World, type: MapType = "inland", withRelics = true) {
   const map = w.map;
   const n = map.width;
   // Everything spread over the map grows with its area; a Small map (72 x 72) is the baseline.
@@ -138,6 +138,30 @@ export function generateMap(w: World, type: MapType = "inland") {
   if (!islands(type)) connect(w, starts);
   if (type !== "inland") deepFish(w, starts);
   w.nodes = w.nodes.filter((x) => x.alive);
+  if (withRelics) relics(w, starts);
+}
+
+/** Ruins and Artifacts out on the open land, away from every base and from each other. They have their
+ *  own random numbers, so turning them off leaves the rest of a seed's map as it was. */
+function relics(w: World, starts: Tile[]) {
+  const cfg = w.rules.economy.relics;
+  if (!cfg) return;
+  const map = w.map, n = map.width;
+  const rng = new RNG((w.seed * 104729 + 31) >>> 0);
+  const placed: Tile[] = [];
+  const kinds = [...Array<"ruins">(cfg.ruins).fill("ruins"), ...Array<"artifact">(cfg.artifacts).fill("artifact")];
+  for (const kind of kinds) {
+    for (let tries = 0; tries < 300; tries++) {
+      const t = new Tile(rng.int(4, n - 5), rng.int(4, n - 5));
+      const room = tries < 200 ? 6 : 3; // a crowded map takes them closer together rather than not at all
+      if (!map.passable(t) || map.occupantAt(t) !== 0) continue;
+      if (!starts.every((s) => s.center.distance(t.center) >= Math.max(16, n * 0.25))) continue;
+      if (!placed.every((o) => o.center.distance(t.center) >= room)) continue;
+      placed.push(t);
+      w.spawnRelic(kind, t.center);
+      break;
+    }
+  }
 }
 
 /** A depth from the edge for each tile along it: a slow random walk between lo and hi. */

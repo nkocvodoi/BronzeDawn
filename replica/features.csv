@@ -54,7 +54,7 @@ Martyrdom,religion,could,yes,yes,Sacrifice (Q) after the Iron Age tech; the AI n
 Priests convert and heal,religion,should,yes,yes,
 Win by conquest,win,must,yes,yes,
 Wonder victory,win,should,yes,yes,
-Ruins and artifacts victory,win,should,yes,no,
+Ruins and artifacts victory,win,should,yes,yes,5 Ruins and 5 Artifacts a map; taken by coming near; Artifacts can be moved and carried in transports; holding all of either for 15 minutes wins; 10 points each and 50 for all; the AI goes for them
 Score and score or time-limit victory,win,could,yes,yes,the original's five-part score; Score victory (300/500/800) and Time Limit (15 to 90 minutes); a team scores its average
 Game setup options (reveal map starting age resources population limit),setup,should,yes,yes,civ; map size; speed; difficulty; number of computers and teams; farms blocking; victory; starting age; resources Low to Death Match; population limit 25 to 200; reveal map
 Save and load a game,setup,should,yes,no,
