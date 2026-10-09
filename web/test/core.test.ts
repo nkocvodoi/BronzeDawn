@@ -340,6 +340,18 @@ describe("fixes from the logic review", () => {
     expect(u.waypoints.length).toBe(0);
   });
 
+  it("with the original's rule, farms block the way and are worked from their edge", () => {
+    const w = new World(RULES, 1, ["A", "B"], 24, false, { farmsBlock: true });
+    w.addBuilding("granary", 0, new Tile(2, 8), true);
+    const farm = w.addBuilding("farm", 0, new Tile(8, 8), true);
+    expect(w.map.passable(new Tile(9, 9))).toBe(false);
+    const v = w.spawnUnit("villager", 0, new Tile(7, 9).center);
+    w.gather(0, [v.id], farm.id);
+    run(w, 40);
+    expect(w.players[0].stats.gathered.food).toBeGreaterThan(0);
+    expect(w.map.passable(v.pos.tile)).toBe(true); // never stood on the farm
+  });
+
   it("deleting a foundation refunds what was not built", () => {
     const w = blank();
     w.fog[0].revealAll();

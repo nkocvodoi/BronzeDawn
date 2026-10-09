@@ -7,8 +7,8 @@ Cách đo: `replica/features.csv` liệt kê từng tính năng của bản gố
 `python3 ../replica-skill/replica-diff/parity.py replica/features.csv`. Số liệu của bản gốc lấy từ
 `replica/game/aoe1-research.md` (có nguồn cho từng con số).
 
-**Hiện tại: 78.6 / 100** (đủ 20/21 tính năng bắt buộc; còn thiếu: farm chặn đường đi, xem bảng "Chỗ đang khác bản gốc").
-Cập nhật lần cuối: 2026-10-09, sau khi có điểm số kiểu bản gốc, Martyrdom và phím Tab (Giai đoạn 1 đã xong).
+**Hiện tại: 81.0 / 100** (đủ 21/21 tính năng bắt buộc).
+Cập nhật lần cuối: 2026-10-09, sau khi bảng chấm điểm được cập nhật theo 8 người chơi, cây công nghệ 17 dân tộc và tùy chọn ruộng chặn đường.
 
 Đây là bảng chấm chi tiết. Bảng thô trước đó cho 95.5 vì gộp nhiều thứ vào một dòng (cả phần tàu thuyền,
 địa hình, âm thanh đều chưa có dòng nào). Mỗi khi xong một hạng mục, sửa cột `clone` trong `features.csv`
@@ -80,7 +80,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 
 | Khác biệt | Bản gốc | Hiện tại | Ghi chú |
 | --- | --- | --- | --- |
-| Farm | Chặn đường đi | Đi xuyên qua được | Theo bản Definitive Edition; đổi lại được, khoảng một dòng code |
+| Farm | Chặn đường đi | Mặc định đi xuyên qua được, như bản Definitive Edition | Tùy chọn "Farms block the way" ở màn hình bắt đầu để chơi đúng luật gốc |
 | Rally point, attack-move | Không có | Có | Tiện lợi kiểu hiện đại; có thể làm thành tùy chọn |
 | Tốc độ 3x | Tối đa 2x | Có thêm 3x | |
 | AI mức Khó | Hardest được thêm tài nguyên | Thu nhanh hơn 20% | Cùng ý tưởng là AI được lợi thế, cách thực hiện khác |

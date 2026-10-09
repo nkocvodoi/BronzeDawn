@@ -99,6 +99,8 @@ export class Game {
   /** How many computer players, and whether they fight as one team against you. Remembered between games. */
   opponents = Math.min(7, Math.max(1, Number(store.get("bd-opponents")) || 1));
   computersTeamUp = store.get("bd-teams") === "team";
+  /** Farms block the way, as in the original; off, they are walked over as in the remaster. Remembered. */
+  farmsBlock = store.get("bd-farms-block") === "on";
   /** The game is over for you: won, or defeated while the others play on. */
   private ended = false;
   private seed: number;
@@ -175,7 +177,7 @@ export class Game {
     const n = Math.max(2, civs.length);
     const names = this.watching ? Array.from({ length: n }, (_, i) => `Computer ${i + 1}`)
       : ["You", ...Array.from({ length: n - 1 }, (_, i) => (n === 2 ? "Enemy" : `Enemy ${i + 1}`))];
-    this.world = new World(this.rules, seed, names, size, true, { civs, teams });
+    this.world = new World(this.rules, seed, names, size, true, { civs, teams, farmsBlock: this.farmsBlock });
     for (const v of this.views.values()) v.root.destroy({ children: true });
     this.views.clear();
     for (const g of this.ghosts.values()) g.view.root.destroy({ children: true });
@@ -261,6 +263,7 @@ export class Game {
         + `<option value="team"${this.computersTeamUp ? " selected" : ""}>allied against you</option></select>`,
       `<span id="players-info">${this.playersNote(this.opponents)}</span>`,
       `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
+      `<label><input type="checkbox" id="farms-block"${this.farmsBlock ? " checked" : ""}> Farms block the way, as in the original (off: walk over them, as in the remaster)</label>`,
       `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
       `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
       "Hard: the computer gathers 20% faster.",
@@ -270,6 +273,8 @@ export class Game {
 
   start(d: Difficulty) {
     this.watching = (document.querySelector("#watch") as HTMLInputElement | null)?.checked === true;
+    const fb = document.querySelector("#farms-block") as HTMLInputElement | null;
+    if (fb) { this.farmsBlock = fb.checked; store.set("bd-farms-block", fb.checked ? "on" : "off"); }
     this.me = 0;
     this.watchAll = true;
     // The same map, now with civilizations: yours, and one for the computer.
