@@ -12,7 +12,7 @@ Click box shift and double-click selection,selection,must,yes,yes,
 Selection limit of 25,selection,could,yes,yes,
 Control groups,selection,should,yes,yes,Ctrl or Alt+digit save; digit recall
 Alt+digit centers and Shift+digit adds a group,selection,could,yes,partial,Shift+digit adds; pressing the digit twice centers (Alt saves on the web)
-Tab cycles and Space centers the selection,selection,could,yes,partial,Space centers; no Tab
+Tab cycles and Space centers the selection,selection,could,yes,yes,
 Right-click context command,commands,must,yes,yes,
 Context cursors (sword over enemies hand over resources hammer over foundations),commands,should,yes,yes,our own pixel-art pointers: sword axe pick basket hammer staff
 Stand ground and attack ground,commands,should,yes,yes,D and T as in the original; Heavy Catapult stones clear trees
@@ -50,18 +50,18 @@ Four ages,ages,must,yes,yes,
 Technologies and upgrades,ages,must,yes,yes,65
 Civilizations with bonuses,ages,should,yes,yes,17 with the Lac Viet of Return of Rome
 Each civilization's own missing units and techs,ages,should,yes,partial,only the Persian Academy; the Macedonian Temple; the Lac Viet tree
-Martyrdom,religion,could,yes,no,
+Martyrdom,religion,could,yes,yes,Sacrifice (Q) after the Iron Age tech; the AI never uses it as in the original
 Priests convert and heal,religion,should,yes,yes,
 Win by conquest,win,must,yes,yes,
 Wonder victory,win,should,yes,yes,
 Ruins and artifacts victory,win,should,yes,no,
-Score and score or time-limit victory,win,could,yes,no,
+Score and score or time-limit victory,win,could,yes,partial,the original's five-part score; no score or time-limit victory yet
 Game setup options (reveal map starting age resources population limit),setup,should,yes,partial,civ map size speed difficulty only
 Save and load a game,setup,should,yes,no,
 Status box command icons and diamond minimap,hud,must,yes,yes,
 Build menu with the original's keys,hud,must,yes,yes,B then a letter
 Train keys of the original,hud,should,yes,yes,
-Score display and timers on screen,hud,could,yes,partial,Wonder timer; S or F4 shows a score of our own making
+Score display and timers on screen,hud,could,yes,yes,population or the original's score above the minimap; age and Wonder countdowns
 Interface laid out and scaled as the original at 800x600,hud,should,yes,yes,carved stone in the style of each architecture
 Villagers named by their work,hud,could,yes,yes,Builder Woodcutter Forager Hunter Fisherman Farmer Gold Miner Stone Miner
 Sound effects,audio,should,yes,yes,synthesized at run time with Web Audio: tools combat buildings alerts

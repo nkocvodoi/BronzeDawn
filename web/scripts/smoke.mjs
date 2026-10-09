@@ -193,6 +193,10 @@ await page.mouse.click(sp.x + 120, sp.y + 90, { button: "right" });
 await page.keyboard.up("Shift");
 check(await g((id) => { const u = game.world.unit(id); return u.order.kind === "move" && u.waypoints.length === 1; }, soldier), "Shift + right-click lays a waypoint after the first point");
 
+const pair = await g(() => { const vs = game.world.unitsOf(0).filter((u) => u.isVillager).slice(0, 2).map((u) => u.id); game.selection = vs; return vs; });
+await page.keyboard.press("Tab");
+check(await g((p) => game.selection[0] === p[1] && game.selection[1] === p[0], pair), "Tab brings the next unit of the selection forward");
+
 await page.screenshot({ path: process.env.SHOT ?? "smoke.png" });
 check(errors.length === 0, `no errors in the console${errors.length ? ": " + errors.join(" | ") : ""}`);
 await browser.close();

@@ -5,6 +5,8 @@ import type { World } from "./world";
 export class Fog {
   readonly visible: Uint8Array;
   readonly explored: Uint8Array;
+  /** How many tiles have ever been seen. */
+  exploredCount = 0;
 
   constructor(readonly width: number, readonly height: number) {
     this.visible = new Uint8Array(width * height);
@@ -19,7 +21,10 @@ export class Fog {
     return t.x >= 0 && t.y >= 0 && t.x < this.width && t.y < this.height && this.explored[t.y * this.width + t.x] === 1;
   }
 
-  revealAll() { this.visible.fill(1); this.explored.fill(1); }
+  revealAll() { this.visible.fill(1); this.explored.fill(1); this.exploredCount = this.explored.length; }
+
+  /** The share of the map ever seen, 0 to 1. */
+  get exploredShare() { return this.exploredCount / this.explored.length; }
 
   update(w: World, player: number) {
     this.visible.fill(0);
@@ -40,7 +45,7 @@ export class Fog {
         if (dx * dx + dy * dy <= r2) {
           const i = y * this.width + x;
           this.visible[i] = 1;
-          this.explored[i] = 1;
+          if (!this.explored[i]) { this.explored[i] = 1; this.exploredCount++; }
         }
       }
     }

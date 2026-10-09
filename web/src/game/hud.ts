@@ -3,6 +3,7 @@
 // top, and at the bottom a status box, two rows of command icons and the minimap.
 import { Building, Entity, ResourceNode, Unit } from "../core/entities";
 import { Res, RES_ALL, RES_KEY } from "../core/rules";
+import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import type { World } from "../core/world";
 import { iconPic, playerColor, reliefTexture, resourceIcons, statIcons, stoneTexture } from "./art";
@@ -190,6 +191,8 @@ export class HUD {
   /** What the list shows: every player's population, their scores, or nothing. S or F4 steps through. */
   scoreMode: ScoreMode = SCORE_MODES.includes(prefs.get("bd-scores") as ScoreMode) ? (prefs.get("bd-scores") as ScoreMode) : "pop";
   private scoresHtml = "";
+  private scoreCache: number[] = [];
+  private scoreTick = -1;
 
   toggleScores(w: World, me = 0) {
     this.scoreMode = SCORE_MODES[(SCORE_MODES.indexOf(this.scoreMode) + 1) % SCORE_MODES.length];
@@ -203,10 +206,10 @@ export class HUD {
    *  A simple score: what was gathered, built up and won. Players who are out are dimmed. */
   private updateScores(w: World, me: number) {
     const pop = this.scoreMode === "pop";
+    // The original's score, in five parts; worked out twice a second, not every frame.
+    if (!pop && (this.scoreTick < 0 || w.tick - this.scoreTick >= 10 || w.tick < this.scoreTick)) { this.scoreCache = scores(w).map((s) => s.total); this.scoreTick = w.tick; }
     const rows = w.players.map((p) => {
-      const s = p.stats;
-      const score = Math.floor(s.gathered.total / 10) + s.kills * 5 + p.age * 100 + w.buildingsOf(p.id).length * 5;
-      const value = p.defeated ? "out" : pop ? `${Math.ceil(p.pop - 1e-9)}/${p.popCap}` : String(score);
+      const value = p.defeated ? "out" : pop ? `${Math.ceil(p.pop - 1e-9)}/${p.popCap}` : String(this.scoreCache[p.id] ?? 0);
       const ally = p.id !== me && w.allied(me, p.id) ? " · ally" : "";
       return `<div class="${p.defeated ? "out" : ""}" style="color:${playerColor(p.id)}">${p.name}${p.civ ? ` (${p.civ.name})` : ""}${ally}: <b>${value}</b></div>`;
     });

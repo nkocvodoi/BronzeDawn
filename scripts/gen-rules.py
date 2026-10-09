@@ -228,6 +228,8 @@ techs = [
          [stat("hp", 40, units=["villager"]), stat("attack", 7, units=["villager"]), stat("speed", 0.32, units=["villager"]),
           {"type": "carry", "value": -8}]),
     tech("medicine", "Medicine", "iron", "temple", cost(g=150), 60, [{"type": "heal", "value": 3}]),
+    # Rise of Rome: a priest gives its life for a conversion that cannot fail (not of priests).
+    tech("martyrdom", "Martyrdom", "iron", "temple", cost(g=600), 60, [{"type": "flag", "flag": "martyrdom"}]),
     # Unit lines
     tech("battle_axe", "Battle Axe", "tool", "barracks", cost(f=100), 40, []),
     tech("short_sword", "Short Sword", "bronze", "barracks", cost(f=120, g=50), 50, [], ["battle_axe"]),

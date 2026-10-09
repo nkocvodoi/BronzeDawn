@@ -4,6 +4,7 @@ import { Building, Entity, ResourceNode, Unit } from "../core/entities";
 import { Tile, Vec2 } from "../core/geom";
 import { Terrain } from "../core/grid";
 import { Res, ResBag, Rules } from "../core/rules";
+import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import { World } from "../core/world";
 import { Arch, buildingPic, CIV_RELIEFS, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
@@ -122,6 +123,8 @@ export class Game {
   private repairPending = false;
   /** Attack Ground was chosen: the next click is the spot the stone throwers hit. */
   private groundPending = false;
+  /** Sacrifice was chosen: the next click on an enemy is where a priest gives its life (Martyrdom). */
+  private sacrificePending = false;
   private dragStart: { x: number; y: number } | null = null;
   private mouse = { x: -1, y: -1, inside: false };
   private keys = new Set<string>();
@@ -306,7 +309,7 @@ export class Game {
       "Train: C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
-      "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · F4 or S: population, scores or nothing above the minimap · F10: menu",
+      "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · Tab: the next unit of the selection · F4 or S: population, scores or nothing above the minimap · F10: menu",
       "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · F3 pause",
@@ -391,11 +394,17 @@ export class Game {
     const won = winner >= 0 && this.world.allied(this.me, winner) && !this.world.players[this.me].defeated;
     this.sound.stopMusic();
     this.sound.play(won ? "victory" : "defeat");
-    const line = (p: (typeof this.world.players)[number]) =>
-      `<span style="color:${playerColor(p.id)}">${p.name}</span>: gathered ${Math.floor(p.stats.gathered.total)}, trained ${p.stats.trained}, killed ${p.stats.kills}, lost ${p.stats.lost}`;
+    // The original's end screen: each player's score in its five parts.
+    const sc = scores(this.world);
+    const head = `<tr><th></th><th>Military</th><th>Economy</th><th>Religion</th><th>Technology</th><th>Other</th><th>Total</th></tr>`;
+    const rows = this.world.players.map((p) => {
+      const s = sc[p.id];
+      return `<tr><td style="color:${playerColor(p.id)}"><b>${p.name}</b>${p.civ ? ` (${p.civ.name})` : ""}</td>`
+        + [s.military, s.economy, s.religion, s.technology, s.other].map((v) => `<td>${v}</td>`).join("") + `<td><b>${s.total}</b></td></tr>`;
+    }).join("");
     this.hud.showOverlay(won ? "Victory" : "Defeat", [
       `${how === "wonder" ? "A Wonder stood its time. " : ""}Time ${clock(this.world.time)}`,
-      ...this.world.players.map(line),
+      `<table class="score">${head}${rows}</table>`,
       `<span class="choices"><button data-restart>New map (Enter)</button></span>`,
     ], won ? "win" : "lose");
   }
@@ -442,6 +451,7 @@ export class Game {
     if (this.attackMovePending) return "sword";
     if (this.repairPending) return "hammer";
     if (this.groundPending) return "sword";
+    if (this.sacrificePending) return "staff";
     const units = this.selectedEntities().filter((x): x is Unit => x instanceof Unit && x.owner === this.me);
     if (!units.length) return "arrow";
     const t = this.pick(sx, sy);
@@ -474,6 +484,7 @@ export class Game {
     if (this.attackMovePending) return "Click where to attack-move.";
     if (this.repairPending) return "Click a damaged building of yours to repair it.";
     if (this.groundPending) return "Click the ground to bombard.";
+    if (this.sacrificePending) return "Click an enemy for a priest to convert by giving its life.";
     const t = this.pick(this.mouse.x, this.mouse.y);
     const verb: Partial<Record<CursorKind, string>> = {
       sword: "Right-click to attack", axe: "Right-click to cut wood", pick: "Right-click to mine", basket: "Right-click to gather food",
@@ -1048,6 +1059,10 @@ export class Game {
         out.push({ key: "T", title: "Attack ground", detail: "click a spot to bombard", blocker: null, icon: "attack_ground",
           action: () => { this.groundPending = true; this.hud.message("Click the ground to bombard"); } });
       }
+      if (units.some((u) => u.isPriest) && w.players[me].mods.flags.has("martyrdom")) {
+        out.push({ key: "Q", title: "Sacrifice", detail: "Martyrdom: a priest dies to convert an enemy at once (not priests)", blocker: null, icon: "temple",
+          action: () => { this.sacrificePending = true; this.hud.message("Click an enemy to convert at the cost of a priest"); } });
+      }
       if (units.some((u) => u.isPriest)) out.push({ key: "V", title: "Convert", detail: "right-click an enemy", blocker: null, icon: "temple", action: () => this.hud.message("Right-click an enemy to convert it, or a hurt unit of yours to heal it") });
       out.push(del);
       return out;
@@ -1367,6 +1382,14 @@ export class Game {
       else if (!e.shiftKey) this.cancelPlacing();
       return;
     }
+    if (this.sacrificePending) {
+      this.sacrificePending = false;
+      const t = this.pick(e.clientX, e.clientY);
+      const priest = this.selectedEntities().find((x): x is Unit => x instanceof Unit && x.isPriest && x.owner === this.me);
+      if (t && priest && this.world.sacrifice(this.me, priest.id, t.id)) { this.sound.play("convert", 0.9, 0, 1.5); this.flash(t, 0xffd659); }
+      else this.hud.message("Choose an enemy that is not a priest", "warn");
+      return;
+    }
     if (this.groundPending) {
       this.groundPending = false;
       this.world.attackGround(this.me, this.selection, this.toWorld(e.clientX, e.clientY));
@@ -1442,6 +1465,7 @@ export class Game {
     this.attackMovePending = false;
     this.repairPending = false;
     this.groundPending = false;
+    this.sacrificePending = false;
     const at = this.toWorld(e.clientX, e.clientY);
     const sel = this.selectedEntities().filter((x) => x.owner === this.me);
     if (sel.length === 1 && sel[0] instanceof Building) {
@@ -1549,13 +1573,19 @@ export class Game {
       return;
     }
     if (key === "F4") { e.preventDefault(); this.scoresToggled(); return; }
+    // Tab: the next unit of the selection comes first, so its status and orders show.
+    if (key === "Tab") {
+      e.preventDefault();
+      if (this.started && this.selection.length > 1) this.selection = [...this.selection.slice(1), this.selection[0]];
+      return;
+    }
     if (key === "Escape") {
       if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; return; }
       const cancel = this.hud.commands.find((c) => c.key === "Escape");
-      const pending = this.attackMovePending || this.repairPending || this.groundPending;
+      const pending = this.attackMovePending || this.repairPending || this.groundPending || this.sacrificePending;
       if (!this.placing && !pending && cancel) { cancel.action(); return; }
       if (this.placing) this.cancelPlacing();
-      else if (pending) this.attackMovePending = this.repairPending = this.groundPending = false;
+      else if (pending) this.attackMovePending = this.repairPending = this.groundPending = this.sacrificePending = false;
       else this.selection = [];
       return;
     }
