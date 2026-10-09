@@ -36,7 +36,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 
 ### Giai đoạn 1: cảm giác điều khiển (nhỏ, thấy ngay)
 - [x] Con trỏ đổi theo ngữ cảnh: kiếm khi trỏ vào địch, rìu / cuốc / giỏ khi trỏ vào tài nguyên, búa khi trỏ vào nền móng, gậy cho thầy tu (`web/src/game/cursors.ts`, pixel art tự vẽ)
-- [ ] Sửa công trình (villager, tốn tài nguyên), công trình hư thì bốc cháy, phá xong để lại gạch vụn
+- [x] Sửa công trình (villager, tốn tài nguyên; nút Repair phím R hoặc chuột phải), công trình hư thì bốc cháy, phá xong để lại gạch vụn; AI cũng biết sửa
 - [ ] Tư thế Stand ground, lệnh Attack ground cho máy bắn đá
 - [ ] Shift + chuột phải để đặt điểm đi qua; Tab để chuyển giữa các unit đang chọn
 - [x] Space để về chỗ đang chọn; Shift + số để gộp nhóm; giới hạn chọn 25 unit

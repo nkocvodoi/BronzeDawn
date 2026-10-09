@@ -10,6 +10,7 @@ export type Order =
   | { kind: "gather"; id: number }
   | { kind: "return"; resume: number | null; drop?: number }
   | { kind: "build"; id: number }
+  | { kind: "repair"; id: number }
   | { kind: "attack"; id: number }
   | { kind: "convert"; id: number }
   | { kind: "heal"; id: number };

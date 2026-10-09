@@ -69,6 +69,10 @@ export interface EconomyDef {
   pop_max: number;
   /** How long a finished Wonder must stand to win. */
   wonder_seconds?: number;
+  /** Repair speed, as a share of the building speed. */
+  repair_rate?: number;
+  /** What a full bar of repair costs, as a share of the building's price. */
+  repair_cost?: number;
 }
 export interface UnitDef {
   id: string; name: string; class: string; age: string; trained_at: string;

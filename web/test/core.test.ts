@@ -252,6 +252,35 @@ describe("fixes from the logic review", () => {
     }
   });
 
+  it("villagers repair a damaged building, paying as they go, and stop when it is whole or money runs out", () => {
+    const w = blank();
+    const house = w.addBuilding("house", 0, new Tile(6, 6), true);
+    house.hp = house.maxHp / 2;
+    w.players[0].res.set(Res.wood, 100);
+    const v = w.spawnUnit("villager", 0, new Tile(5, 6).center);
+    expect(w.smart(0, [v.id], house.id, house.center)).toBe("repaired");
+    run(w, 60);
+    expect(house.hp).toBe(house.maxHp);
+    expect(v.order.kind).toBe("idle");
+    // Half the bar back costs a quarter of the price: 30 wood x 0.5 x 0.5.
+    expect(w.players[0].res.wood).toBeCloseTo(100 - 7.5, 1);
+
+    house.hp = house.maxHp / 2;
+    w.players[0].res.set(Res.wood, 2);
+    w.repair(0, [v.id], house.id);
+    run(w, 60);
+    expect(house.hp).toBeLessThan(house.maxHp);
+    expect(w.players[0].res.wood).toBeGreaterThanOrEqual(0);
+    expect(v.order.kind).toBe("idle");
+  });
+
+  it("a whole building is not repaired: villagers sent to it just walk there", () => {
+    const w = blank();
+    const house = w.addBuilding("house", 0, new Tile(6, 6), true);
+    const v = w.spawnUnit("villager", 0, new Tile(2, 2).center);
+    expect(w.smart(0, [v.id], house.id, house.center)).toBe("moved");
+  });
+
   it("deleting a foundation refunds what was not built", () => {
     const w = blank();
     w.fog[0].revealAll();

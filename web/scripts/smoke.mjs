@@ -77,7 +77,7 @@ await page.mouse.click(p.x, p.y - 8); // reselect nothing in particular
 await page.mouse.click(1, 1);         // top bar: no-op
 p = await at(v);
 await page.mouse.click(p.x, p.y - 14);
-check((await page.$$("#commands button:not(.empty)")).length === 3, "a villager's panel shows Build, Stop and Delete");
+check((await page.$$("#commands button:not(.empty)")).length === 4, "a villager's panel shows Build, Repair, Stop and Delete");
 check((await page.$$("#commands button")).length === 12, "the command grid has the original's two rows of six");
 await page.keyboard.press("b");
 // The menu is redrawn on the next frame, which a software-rendered browser can take a while to reach.

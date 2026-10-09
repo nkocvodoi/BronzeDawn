@@ -1097,6 +1097,51 @@ function drawAlligator(p: PixelCanvas, look: UnitLook, dead: boolean) {
 // =====================================================================================
 // ---- resources and other map objects
 
+/** One frame (0-3) of a flame on a damaged building: a flickering tongue of fire with a wisp of smoke. */
+export function firePic(frame: number): Pic {
+  const f = ((frame % 4) + 4) % 4;
+  return pic(`fire-${f}`, 9, 16, 0.5, 1, (p) => {
+    const sway = [0, 1, 0, -1][f], tall = [11, 12, 10, 12][f];
+    const red = rgb(0xc8381c), orange = rgb(0xf08a1c), yellow = rgb(0xffd24a), white = rgb(0xfff4c0);
+    for (let y = 0; y < tall; y++) {
+      const t = y / tall, half = Math.max(0, Math.round((1 - t) * 3.4 - (y < 2 ? 1 : 0)));
+      const cx = 4 + Math.round(sway * t * 1.5);
+      for (let x = -half; x <= half; x++) {
+        const edge = Math.abs(x) === half;
+        const c = edge ? red : t > 0.6 ? orange : Math.abs(x) <= half - 2 ? (t < 0.3 ? white : yellow) : orange;
+        p.set(cx + x, 15 - y, c);
+      }
+    }
+    // Smoke above the flame, drifting with it.
+    const smoke = rgb(0x5a5450);
+    for (let k = 0; k < 3; k++) if (hash(f, k, 81) > 0.35) p.set(4 + sway + k - 1, 15 - tall - 1 - k, smoke, 150);
+  });
+}
+
+/** What a destroyed building leaves: broken stone and charred beams over its footprint. */
+export function rubblePic(size: number, salt: number): Pic {
+  const W = size * 32, D = size * 16;
+  return pic(`rubble-${size}-${salt % 4}`, W, D + 6, 0.5, 1, (p) => {
+    const cx = W / 2, cy = 6 + D / 2;
+    const inside = (x: number, y: number) => Math.abs(x - cx) / (W / 2) + Math.abs(y - cy) / (D / 2) <= 0.92;
+    const stone = rgb(0x8a8276), dark = rgb(0x4a443c), ash = rgb(0x4e4032), beam = rgb(0x2e2420);
+    for (let y = 0; y < D + 6; y++) for (let x = 0; x < W; x++) {
+      if (!inside(x, y)) continue;
+      const n = hash(x >> 1, y >> 1, 90 + (salt % 4));
+      if (n > 0.86) p.set(x, y, lighten(stone, 0.15));
+      else if (n > 0.66) p.set(x, y, stone);
+      else if (n > 0.52) p.set(x, y, dark);
+      else if (n > 0.3) p.set(x, y, ash, 170);
+    }
+    // A few charred beams lying across the stones.
+    for (let k = 0; k < size + 1; k++) {
+      const x0 = Math.round(cx + (hash(k, salt, 91) - 0.5) * W * 0.6), y0 = Math.round(cy + (hash(k, salt, 92) - 0.5) * D * 0.5);
+      const dx = hash(k, salt, 93) > 0.5 ? 1 : -1;
+      p.line(x0, y0, x0 + dx * (4 + size * 2), y0 + 2 + size, beam);
+    }
+  });
+}
+
 export function nodePic(type: string, variant: number): Pic {
   const files = ASSETS.manifest.resources?.[type];
   if (files) {
@@ -2602,7 +2647,7 @@ function techGlyph(p: PixelCanvas, g: string) {
 
 const TECH_WORDS: [RegExp, string][] = [
   [/^delete$/, "delete"], [/^stop$/, "stop"], [/^next$/, "next"], [/^back$/, "back"],
-  [/^build$/, "hammer"], [/^attack_move$/, "sword"],
+  [/^(build|repair)$/, "hammer"], [/^attack_move$/, "sword"],
   [/^(stone|tool|bronze|iron)_age$|^age_|advance|ascend/, "age"],
   [/coin|gold|bank|market|trade|currency|tax|mint/, "coin"],
   [/shield/, "shield"],

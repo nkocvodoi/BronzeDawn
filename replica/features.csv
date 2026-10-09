@@ -30,8 +30,8 @@ Trade boats and trade between docks,naval,could,yes,no,
 War ships: scout ship war galley trireme catapult trireme juggernaught fire galley,naval,should,yes,no,
 Transports,naval,should,yes,no,
 Construction with several builders,construction,must,yes,yes,
-Repair buildings for a resource cost,construction,should,yes,no,
-Damaged buildings show fire and leave rubble,construction,could,yes,no,
+Repair buildings for a resource cost,construction,should,yes,yes,half the build speed; a full bar costs half the price
+Damaged buildings show fire and leave rubble,construction,could,yes,yes,1 to 3 flames by hit points; rubble fades after a minute
 Walls dragged as a line,construction,should,yes,yes,
 Production queues,production,must,yes,yes,
 Population and houses,production,must,yes,yes,

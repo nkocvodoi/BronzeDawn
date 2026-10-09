@@ -5,11 +5,11 @@ import { Footprint, RNG, Tile, Vec2 } from "./geom";
 import { GridMap, Terrain, walkable } from "./grid";
 import { generateMap } from "./mapgen";
 import { Pathfinder } from "./path";
-import { NodeDef, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
+import { NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
 import { BuildingStats, Mods, UnitStats } from "./stats";
 
 /** What a context (right) click turned into, so the UI can give feedback. */
-export type SmartResult = "moved" | "attacked" | "gathered" | "built" | "returned" | "converted" | "healed" | "nothing";
+export type SmartResult = "moved" | "attacked" | "gathered" | "built" | "repaired" | "returned" | "converted" | "healed" | "nothing";
 
 /** Who fired, with what. Damage is worked out against each target at impact (splash hits several). */
 interface Shot { attackerId: number; owner: number; attack: number; pierce: boolean; bonus?: Record<string, number> }
@@ -416,7 +416,19 @@ export class World {
     }
   }
 
-  /** The right click: attack, hunt, convert, heal, gather, build or farm your own building, or move. */
+  /** Villagers repair a finished building of their own that is damaged; the others are left alone. */
+  repair(player: number, ids: number[], target: number) {
+    const b = this.building(target);
+    if (!b || b.owner !== player || !b.complete) return;
+    for (const u of this.own(ids, player)) {
+      if (!u.isVillager) continue;
+      u.order = { kind: "repair", id: b.id };
+      u.buildQueue = [];
+      u.path = []; u.repathTimer = 0;
+    }
+  }
+
+  /** The right click: attack, hunt, convert, heal, gather, build, repair or farm your own building, or move. */
   smart(player: number, ids: number[], target: number | null, at: Vec2): SmartResult {
     const group = this.own(ids, player);
     if (!group.length) return "nothing";
@@ -440,12 +452,15 @@ export class World {
         if (!e.complete) { this.build(player, villagers, e.id); result = "built"; }
         else if (e.isFarm) { this.gather(player, villagers, e.id); result = "gathered"; }
         else {
+          // Villagers with a load for this building drop it off; the rest repair it if it is damaged.
           const carriers = villagers.filter((id) => {
             const u = this.unit(id);
             return !!u && u.carry > 0 && u.carryRes !== null && e.dropsOff(u.carryRes, u.carryKind);
           });
           for (const id of carriers) { const u = this.unit(id)!; u.order = { kind: "return", resume: null, drop: e.id }; u.path = []; }
-          movers.push(...villagers.filter((id) => !carriers.includes(id)));
+          const rest = villagers.filter((id) => !carriers.includes(id));
+          if (rest.length && e.hp < e.maxHp) { this.repair(player, rest, e.id); result = "repaired"; }
+          else movers.push(...rest);
           if (carriers.length) result = "returned";
         }
       } else movers.push(...villagers);
@@ -849,6 +864,7 @@ export class World {
       case "gather": this.updateGather(u, o.id, dt); break;
       case "return": this.updateReturn(u, o.resume, dt, o.drop); break;
       case "build": this.updateBuild(u, o.id, dt); break;
+      case "repair": this.updateRepair(u, o.id, dt); break;
       case "attack": this.updateAttack(u, o.id, dt); break;
       case "convert": this.updateConvert(u, o.id, dt); break;
       case "heal": this.updateHeal(u, o.id, dt); break;
@@ -1151,6 +1167,31 @@ export class World {
         this.afterBuild(u, b);
       }
     } else if (a === "blocked") { if (!this.nextFoundation(u)) u.order = IDLE; }
+  }
+
+  /** Hit points back at a share of the building speed, paid for as they come. Stops when the
+   *  building is whole, gone, or the owner cannot pay. */
+  private updateRepair(u: Unit, id: number, dt: number) {
+    const b = this.building(id);
+    if (!b || b.owner !== u.owner || !b.complete || b.hp >= b.maxHp) { u.order = IDLE; return; }
+    const a = this.approach(u, b, 0.9, dt);
+    if (a === "arrived") {
+      this.face(u, b.center);
+      const eco = this.rules.economy;
+      const gain = Math.min(b.maxHp - b.hp, (b.maxHp / this.bstats(b).build_time) * (eco.repair_rate ?? 0.5) * dt);
+      const cost = this.bstats(b).cost, k = (gain / b.maxHp) * (eco.repair_cost ?? 0.5), price = new ResBag();
+      for (const r of RES_ALL) price.values[r] = cost.values[r] * k;
+      const p = this.players[u.owner];
+      if (!p.res.covers(price)) {
+        u.order = IDLE;
+        this.events.push({ kind: "message", player: u.owner, text: "Not enough resources to repair" });
+        return;
+      }
+      u.busy = true;
+      p.res.spend(price);
+      b.hp = Math.min(b.maxHp, b.hp + gain);
+      if (b.hp >= b.maxHp) u.order = IDLE;
+    } else if (a === "blocked") u.order = IDLE;
   }
 
   private nextFoundation(u: Unit): boolean {

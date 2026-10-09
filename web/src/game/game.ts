@@ -6,7 +6,7 @@ import { Terrain } from "../core/grid";
 import { Res, ResBag, Rules } from "../core/rules";
 import { clock } from "../core/sim";
 import { World } from "../core/world";
-import { Arch, buildingPic, CIV_RELIEFS, Facing, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
+import { Arch, buildingPic, CIV_RELIEFS, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
 import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
@@ -17,7 +17,9 @@ import { MouseLock } from "./mouselock";
 import { Sfx, Sound, VoiceKind } from "./sound";
 
 /** The drawable side of one entity. `workFrame` is the last work-animation frame, so a swing makes one sound. */
-interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean; key: string; barW: number; tiles: Tile[]; workFrame: number }
+interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean; key: string; barW: number; tiles: Tile[]; workFrame: number;
+  /** Flames on a damaged building, one more at each quarter of its hit points lost. */
+  fire?: Container; farm?: boolean }
 
 /** The original's limit on how many units one selection holds. */
 const MAX_SELECTION = 25;
@@ -106,6 +108,8 @@ export class Game {
   private placing: string | null = null;
   private ghost: Sprite | null = null;
   private attackMovePending = false;
+  /** Repair was chosen: the next click on a damaged building of yours repairs it. */
+  private repairPending = false;
   private dragStart: { x: number; y: number } | null = null;
   private mouse = { x: -1, y: -1, inside: false };
   private keys = new Set<string>();
@@ -391,6 +395,7 @@ export class Game {
   private cursorFor(sx: number, sy: number): CursorKind {
     if (!this.started || this.hud.overlayShown || this.placing || !this.mouse.inside) return "arrow";
     if (this.attackMovePending) return "sword";
+    if (this.repairPending) return "hammer";
     const units = this.selectedEntities().filter((x): x is Unit => x instanceof Unit && x.owner === this.me);
     if (!units.length) return "arrow";
     const t = this.pick(sx, sy);
@@ -407,6 +412,7 @@ export class Game {
     }
     if (t.owner === this.me) {
       if (villagers && t instanceof Building && t.isFarm && t.complete) return "basket";
+      if (villagers && t instanceof Building && t.complete && t.hp < t.maxHp) return "hammer";
       if (priests && t instanceof Unit && t.hp < t.maxHp) return "staff";
       return "arrow";
     }
@@ -420,6 +426,7 @@ export class Game {
     if (!this.started || this.hud.overlayShown) return null;
     if (this.placing) return "Click to place the building. Right-click to cancel.";
     if (this.attackMovePending) return "Click where to attack-move.";
+    if (this.repairPending) return "Click a damaged building of yours to repair it.";
     const t = this.pick(this.mouse.x, this.mouse.y);
     const verb: Partial<Record<CursorKind, string>> = {
       sword: "Right-click to attack", axe: "Right-click to cut wood", pick: "Right-click to mine", basket: "Right-click to gather food",
@@ -427,6 +434,7 @@ export class Game {
     };
     if (!t) return null;
     const what = t instanceof ResourceNode ? t.name : t.owner === this.me ? "" : `${t.owner >= 0 ? `${this.world.players[t.owner].name}'s ` : ""}${t.name}`;
+    if (k === "hammer" && t instanceof Building && t.complete) return "Right-click to repair. It costs resources.";
     if (verb[k]) return `${verb[k]}${what ? ` ${what}` : ""}.`;
     if (t.owner === this.me) return t instanceof Building ? "Click to select this building." : "Click to select this unit.";
     return `${what}.`;
@@ -535,6 +543,7 @@ export class Game {
           else if (v?.isUnit && v.root.visible) this.sfx(e.owner >= 0 ? "die" : "thud", e.at, 0.8, 0.15);
           if (v) {
             if (v.isUnit && v.root.visible) this.corpse(v);
+            if (e.wasBuilding && this.explored(e.at.tile)) this.rubble(v);
             v.root.destroy({ children: true });
             this.views.delete(e.id);
           }
@@ -616,7 +625,7 @@ export class Game {
     if (u.isVillager) {
       const o = u.order;
       const node = u.lastNodeType ?? "";
-      if (o.kind === "build") tool = "hammer";
+      if (o.kind === "build" || o.kind === "repair") tool = "hammer";
       else if (o.kind === "attack") tool = "spear"; // hunting
       else if (o.kind === "gather" || o.kind === "return") {
         if (node === "farm") tool = "hoe";
@@ -691,7 +700,8 @@ export class Game {
     bar.visible = false;
     root.addChild(ring, sprite, bar);
     this.entities.addChild(root);
-    const v: View = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit, key: "", barW, tiles: e instanceof Building ? e.footprint.tiles() : [], workFrame: -1 };
+    const v: View = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit, key: "", barW, tiles: e instanceof Building ? e.footprint.tiles() : [], workFrame: -1,
+      farm: e instanceof Building && e.isFarm };
     this.views.set(e.id, v);
     return v;
   }
@@ -758,11 +768,58 @@ export class Game {
       v.root.position.set(s.x, s.y);
       v.root.zIndex = depth(fp.center);
       this.setPic(v, this.buildingLook(e));
+      this.burn(v, e, alpha);
     } else if (e instanceof ResourceNode) {
       const s = iso(e.center);
       v.root.position.set(s.x, s.y);
       v.root.zIndex = depth(e.center);
     }
+  }
+
+  /** Where the flames of a damaged building sit, as shares of its picture: across, and up from the ground. */
+  private static readonly FLAMES: [number, number][] = [[0.05, 0.62], [-0.22, 0.45], [0.26, 0.4]];
+
+  /** A damaged building burns, as in the original: one flame below 3/4 of its hit points, two below
+   *  half, three below a quarter. Repairs put them out. */
+  private burn(v: View, b: Building, alpha: number) {
+    const f = b.hp / b.maxHp;
+    const n = !b.complete || v.farm ? 0 : f < 0.25 ? 3 : f < 0.5 ? 2 : f < 0.75 ? 1 : 0;
+    if (!n && !v.fire) return;
+    if (!v.fire) { v.fire = new Container(); v.root.addChild(v.fire); }
+    while (v.fire.children.length > n) v.fire.children[v.fire.children.length - 1].destroy();
+    while (v.fire.children.length < n) {
+      const [fx, fy] = Game.FLAMES[v.fire.children.length];
+      const s = new Sprite(firePic(0).texture);
+      s.anchor.set(0.5, 1);
+      s.position.set(Math.round(fx * v.pic.w), -Math.round(fy * v.pic.h * v.pic.ay));
+      v.fire.addChild(s);
+    }
+    const time = this.world.time + alpha * World.dt;
+    v.fire.children.forEach((c, i) => {
+      const p = firePic(Math.floor(time * 7 + i * 1.7 + b.id));
+      const s = c as Sprite;
+      s.texture = p.texture; s.width = p.w; s.height = p.h;
+    });
+  }
+
+  /** Stones and charred beams where a building fell, fading after a minute. */
+  private rubble(v: View) {
+    if (v.farm || !v.tiles.length) return;
+    const size = Math.round(Math.sqrt(v.tiles.length));
+    const p = rubblePic(size, v.tiles[0].x * 7 + v.tiles[0].y);
+    const r = new Sprite(p.texture);
+    r.anchor.set(p.ax, p.ay);
+    r.width = p.w; r.height = p.h;
+    r.position.set(v.root.x, v.root.y);
+    r.zIndex = v.root.zIndex - 1000; // under everything that walks over it
+    this.entities.addChild(r);
+    let t = 0;
+    const tick = (dt: { deltaMS: number }) => {
+      t += dt.deltaMS / 1000;
+      if (t > 50) r.alpha = Math.max(0, 1 - (t - 50) / 10);
+      if (t >= 60) { this.app.ticker.remove(tick); r.destroy(); }
+    };
+    this.app.ticker.add(tick);
   }
 
   private sync(alpha: number) {
@@ -910,6 +967,8 @@ export class Game {
       if (this.menu === "main") {
         return [
           { key: "B", title: "Build", detail: "open the build menu", blocker: null, icon: "build", action: () => { this.menu = "build"; } },
+          { key: "R", title: "Repair", detail: "click a damaged building; costs resources", blocker: null, icon: "repair",
+            action: () => { this.repairPending = true; this.hud.message("Click a damaged building to repair"); } },
           { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
           del,
         ];
@@ -1245,6 +1304,16 @@ export class Game {
       else if (!e.shiftKey) this.cancelPlacing();
       return;
     }
+    if (this.repairPending) {
+      this.repairPending = false;
+      const t = this.pick(e.clientX, e.clientY);
+      if (t instanceof Building && t.owner === this.me && t.complete && t.hp < t.maxHp) {
+        this.world.repair(this.me, this.selection, t.id);
+        this.selectSound(true);
+        this.flash(t, 0x33ff66);
+      } else this.hud.message("Choose a damaged building of yours", "warn");
+      return;
+    }
     if (this.attackMovePending) {
       this.attackMovePending = false;
       this.world.move(this.me, this.selection, this.toWorld(e.clientX, e.clientY), true);
@@ -1301,6 +1370,7 @@ export class Game {
     if (this.world.winner !== null) return;
     if (this.placing) { this.cancelPlacing(); return; }
     this.attackMovePending = false;
+    this.repairPending = false;
     const at = this.toWorld(e.clientX, e.clientY);
     const sel = this.selectedEntities().filter((x) => x.owner === this.me);
     if (sel.length === 1 && sel[0] instanceof Building) {
@@ -1404,8 +1474,10 @@ export class Game {
     if (key === "Escape") {
       if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; return; }
       const cancel = this.hud.commands.find((c) => c.key === "Escape");
-      if (!this.placing && !this.attackMovePending && cancel) { cancel.action(); return; }
-      if (this.placing) this.cancelPlacing(); else if (this.attackMovePending) this.attackMovePending = false; else this.selection = [];
+      if (!this.placing && !this.attackMovePending && !this.repairPending && cancel) { cancel.action(); return; }
+      if (this.placing) this.cancelPlacing();
+      else if (this.attackMovePending || this.repairPending) this.attackMovePending = this.repairPending = false;
+      else this.selection = [];
       return;
     }
     if (this.hud.overlayShown) return;
