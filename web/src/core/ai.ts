@@ -25,7 +25,7 @@ const PLAN: string[][] = [
 
 /** Technologies worth having, in order of how much they help. */
 const TECHS = [
-  "woodworking", "gold_mining", "domestication", "toolworking", "leather_armor_infantry", "battle_axe", "wheel",
+  "woodworking", "gold_mining", "domestication", "toolworking", "leather_armor_infantry", "battle_axe", "wheel", "fishing_ship_tech",
   "artisanship", "plow", "stone_mining", "metalworking", "bronze_shield", "short_sword", "broad_sword", "improved_bow",
   "composite_bow", "scale_armor_infantry", "leather_armor_archers", "leather_armor_cavalry", "architecture", "nobility",
   "astrology", "mysticism", "craftsmanship", "irrigation", "coinage", "metallurgy", "long_sword", "iron_shield",
@@ -84,7 +84,7 @@ export class AIController {
 
     const mine = w.unitsOf(this.player);
     const villagers = mine.filter((u) => u.isVillager);
-    const army = mine.filter((u) => !u.isVillager && !u.isPriest);
+    const army = mine.filter((u) => u.isSoldier);
     const priests = mine.filter((u) => u.isPriest);
     const bs = w.buildingsOf(this.player);
     const tc = bs.find((b) => b.def.id === "town_center");
@@ -96,6 +96,7 @@ export class AIController {
     const home = tc.center;
     this.defend(w, army, villagers, bs);
     this.economy(w, tc, villagers, bs);
+    this.fishing(w, tc, villagers, bs);
     this.repair(w, villagers, bs);
     this.research(w, bs, army);
     this.military(w, army, bs, villagers.length);
@@ -252,6 +253,69 @@ export class AIController {
     }
   }
 
+  /** Where this AI's Dock goes: the shore nearest home with fish out at sea, or null if there is none. */
+  private dockAt: Tile | null | undefined = undefined;
+  /** The villager sent to look at the shore before the Dock goes up. */
+  private dockScout: number | null = null;
+
+  /** A Dock at the shore when there is fish at sea near home, and a few fishing boats kept busy. */
+  private fishing(w: World, tc: Building, villagers: Unit[], bs: Building[]) {
+    const p = w.players[this.player], home = tc.center;
+    const docks = bs.filter((b) => b.def.on_water);
+    if (!docks.length) {
+      if (villagers.length < 8 || w.blockerBuilding("dock", this.player) !== null) return;
+      if (!this.affordable(w, w.buildingCost(this.player, "dock"))) return;
+      if (this.dockAt === undefined || (this.dockAt === null && this.thinks % 20 === 0)) this.dockAt = this.findDockSpot(w, home);
+      if (!this.dockAt) return;
+      if (!w.canPlace("dock", this.dockAt, this.player)) {
+        if (!w.canPlace("dock", this.dockAt)) { this.dockAt = null; return; } // someone built there
+        // Not seen yet: a villager walks to the shore to look, as a player would before building there.
+        const scout = this.dockScout !== null ? w.unit(this.dockScout) : null;
+        if (!scout || scout.order.kind !== "move") {
+          const v = this.pickBuilder(villagers, this.dockAt.center);
+          if (v) { w.move(this.player, [v.id], this.dockAt.center); this.dockScout = v.id; }
+        }
+        return;
+      }
+      this.dockScout = null;
+      const v = this.pickBuilder(villagers, this.dockAt.center);
+      if (v && "error" in w.place(this.player, "dock", this.dockAt, [v.id])) this.dockAt = null;
+      return;
+    }
+    const dock = docks.find((d) => d.complete);
+    if (!dock) return;
+    const boats = w.unitsOf(this.player).filter((u) => u.isBoat && u.isGatherer);
+    const want = [3, 4, 5, 5][Math.min(p.age, 3)];
+    const type = w.current(this.player, "fishing_boat");
+    if (boats.length + dock.queue.length < want && dock.queue.length === 0 && w.blockerUnit(type, this.player) === null
+      && this.affordable(w, w.unitCost(this.player, type))) w.train(this.player, dock.id, type);
+    for (const b of boats) {
+      if (b.order.kind !== "idle") continue;
+      const fish = minBy(w.nodes.filter((n) => n.alive && n.def.on_water && n.amount > 0 && n.center.distance(dock.center) < 35),
+        (n) => n.center.distance(b.pos));
+      if (fish) w.gather(this.player, [b.id], fish.id);
+    }
+  }
+
+  /** The nearest place for a Dock to home, within reach, with deep-sea fish not far from it. */
+  private findDockSpot(w: World, home: Vec2): Tile | null {
+    // Deep-sea fish only: by a lake's shore fish, villagers fishing from the bank do better than boats.
+    const fish = w.nodes.filter((n) => n.alive && n.def.boats_only);
+    if (!fish.length) return null;
+    const c = home.tile;
+    let best: Tile | null = null, bestD = Infinity;
+    for (let y = c.y - 22; y <= c.y + 22; y++) {
+      for (let x = c.x - 22; x <= c.x + 22; x++) {
+        const t = new Tile(x, y);
+        const d = t.center.distance(home);
+        if (d >= bestD || d > 22 || !w.canPlace("dock", t)) continue;
+        if (!fish.some((f) => f.center.distance(t.center) < 20)) continue;
+        best = t; bestD = d;
+      }
+    }
+    return best;
+  }
+
   /** A badly damaged building gets one villager to repair it, once the fighting there is over and
    *  there is a margin of resources for it. */
   private repair(w: World, villagers: Unit[], bs: Building[]) {
@@ -325,7 +389,7 @@ export class AIController {
     const siege = army.filter((u) => u.def.class === "siege").length;
     const priests = w.unitsOf(this.player).filter((u) => u.isPriest).length;
     for (const b of bs) {
-      if (!b.complete || !(b.def.trains ?? []).length || b.def.id === "town_center" || b.queue.length >= 2) continue;
+      if (!b.complete || !(b.def.trains ?? []).length || b.def.id === "town_center" || b.def.on_water || b.queue.length >= 2) continue;
       if (!b.queue.length) { if (slots <= 0) continue; slots--; }
       let options = (b.def.trains ?? []).filter((t) => w.unitShown(t, this.player) && w.blockerUnit(t, this.player) === null);
       if (b.def.id === "siege_workshop" && siege >= 3) options = [];

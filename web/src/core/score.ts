@@ -18,9 +18,11 @@ export function scores(w: World): Score[] {
   const ps = w.players;
   const units = (id: number) => w.units.filter((u) => u.alive && u.owner === id);
   const buildings = (id: number) => w.buildings.filter((b) => b.alive && b.owner === id && b.complete);
-  const army = ps.map((p) => units(p.id).filter((u) => !u.isVillager && !u.isPriest).length
+  const army = ps.map((p) => units(p.id).filter((u) => u.isSoldier).length
     + buildings(p.id).filter((b) => b.def.tags?.includes("tower")).length);
   const villagers = ps.map((p) => units(p.id).filter((u) => u.isVillager).length);
+  // Fishing boats count for the economy as villagers do (the original also counts trade boats and transports).
+  const workers = ps.map((p) => units(p.id).filter((u) => u.isVillager || (u.isBoat && u.isGatherer)).length);
   const explored = ps.map((p) => Math.floor((w.fog[p.id].exploredShare * 100) / 3));
   const conversions = ps.map((p) => p.stats.converted);
   const techs = ps.map((p) => p.stats.researched);
@@ -29,7 +31,7 @@ export function scores(w: World): Score[] {
   return ps.map((p, i) => {
     const s = p.stats;
     const military = Math.floor(s.kills / 2) + s.razed + Math.max(0, s.kills - s.casualties) + (most.army === i ? 25 : 0);
-    const economy = Math.floor(s.gathered.gold / 100) + villagers[i] + (most.villagers === i ? 25 : 0)
+    const economy = Math.floor(s.gathered.gold / 100) + workers[i] + (most.villagers === i ? 25 : 0)
       + explored[i] + (most.explored === i ? 25 : 0);
     const religion = conversions[i] * 2 + (most.conversions === i ? 25 : 0)
       + buildings(p.id).filter((b) => b.def.id === "temple").length * 3;

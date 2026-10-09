@@ -92,6 +92,12 @@ export class Unit extends Entity {
   get isVillager() { return isWorker(this.def); }
   get isAnimal() { return this.animal !== null; }
   get isPriest() { return this.def.converts === true; }
+  /** Boats move on water only. */
+  get isBoat() { return this.def.naval === true; }
+  /** Gathers resources: villagers, and fishing boats. */
+  get isGatherer() { return this.isVillager || (this.def.gathers?.length ?? 0) > 0; }
+  /** Fights: not villagers, priests, animals or boats that only fish. */
+  get isSoldier() { return !this.isVillager && !this.isPriest && !this.isAnimal && this.def.attack > 0; }
 }
 
 /** One thing a building is working on: a unit, a technology, or the next age. */

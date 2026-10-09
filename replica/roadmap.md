@@ -7,8 +7,8 @@ Cách đo: `replica/features.csv` liệt kê từng tính năng của bản gố
 `python3 ../replica-skill/replica-diff/parity.py replica/features.csv`. Số liệu của bản gốc lấy từ
 `replica/game/aoe1-research.md` (có nguồn cho từng con số).
 
-**Hiện tại: 81.0 / 100** (đủ 21/21 tính năng bắt buộc).
-Cập nhật lần cuối: 2026-10-09, sau khi bảng chấm điểm được cập nhật theo 8 người chơi, cây công nghệ 17 dân tộc và tùy chọn ruộng chặn đường.
+**Hiện tại: 84.4 / 100** (đủ 21/21 tính năng bắt buộc).
+Cập nhật lần cuối: 2026-10-09, sau khi có Dock, thuyền đánh cá và 3 kiểu bản đồ có biển (Giai đoạn 3, phần 1).
 
 Đây là bảng chấm chi tiết. Bảng thô trước đó cho 95.5 vì gộp nhiều thứ vào một dòng (cả phần tàu thuyền,
 địa hình, âm thanh đều chưa có dòng nào). Mỗi khi xong một hạng mục, sửa cột `clone` trong `features.csv`
@@ -51,11 +51,13 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [ ] Tinh chỉnh: nghe thử thật và cân lại âm lượng từng tiếng; thêm tiếng thú (voi, sư tử), tiếng ngựa
 
 ### Giai đoạn 3: nước và tàu (lớn)
-- [ ] Dock (cũng là công trình tính để lên Tool Age)
-- [ ] Thuyền đánh cá và cá ngoài khơi; thuyền buôn và buôn bán giữa các dock
+- [x] Dock (cũng là công trình tính để lên Tool Age), đặt dưới nước sát bờ
+- [x] Thuyền đánh cá (nâng cấp Fishing Ship) và cá ngoài khơi; AI tự xây Dock và đánh cá
+- [ ] Thuyền buôn và buôn bán giữa các dock
 - [ ] Tàu chiến: scout ship, war galley, trireme, catapult trireme, juggernaught, fire galley
 - [ ] Thuyền chở quân
-- [ ] Bản đồ có biển: islands, coastal, mediterranean
+- [x] Bản đồ có biển: coastal, continental, mediterranean
+- [ ] Bản đồ đảo (small islands, large islands), cần thuyền chở quân
 - [ ] AI biết dùng thuyền
 - Khi có tàu, các bonus dân tộc liên quan tới tàu (Phoenician, Minoan, Greek, Persian, Yamato, Hittite) mới có tác dụng.
 

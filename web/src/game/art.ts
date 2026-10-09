@@ -339,6 +339,7 @@ export function unitPic(look: UnitLook): Pic {
   }
   if (type === "helepolis") return pic(key, 38, 54, 19 / 38, 50 / 54, (p) => drawHelepolis(p, look));
   if (SIEGE.has(type)) return pic(key, 40, 34, 20 / 40, 30 / 34, (p) => drawSiege(p, look));
+  if (BOATS.has(type)) return pic(key, 44, 36, 22 / 44, 30 / 36, (p) => drawBoat(p, look));
   if (type === "gazelle") return pic(key, 24, 22, 12 / 24, 19 / 22, (p) => drawGazelle(p, look, false));
   if (type === "lion") return pic(key, 30, 24, 14 / 30, 21 / 24, (p) => drawLion(p, look, false));
   if (type === "alligator") return pic(key, 36, 18, 17 / 36, 14 / 18, (p) => drawAlligator(p, look, false));
@@ -1166,6 +1167,7 @@ export function nodePic(type: string, variant: number): Pic {
     });
   }
   if (type === "fish") return pic(`fish${variant % 2}`, 26, 14, 0.5, 0.6, (p) => drawFish(p, variant % 2));
+  if (type === "deep_fish") return pic(`deepfish${variant % 2}`, 30, 16, 0.5, 0.6, (p) => drawFish(p, variant % 2, true));
   if (type.startsWith("carcass_")) {
     const animal = type.slice(8);
     const dead: UnitLook = { type: animal, owner: -1, facing: "front", pose: "idle", frame: 0, tool: "none", carry: null };
@@ -1253,8 +1255,10 @@ function drawTree(p: PixelCanvas, v: number, cx: number, base: number, k: number
   p.outline(C.outline, 0.3);
 }
 
-function drawFish(p: PixelCanvas, v: number) {
-  const ring = rgb(0x8ab8e0), deep = rgb(0x1e4a7e), fish = rgb(0x3a6a8a);
+function drawFish(p: PixelCanvas, v: number, sea = false) {
+  // Out at sea: a darker shoal under a wider ripple, for boats only.
+  const ring = rgb(sea ? 0x6a9cc8 : 0x8ab8e0), deep = rgb(sea ? 0x123458 : 0x1e4a7e), fish = rgb(sea ? 0x2a5070 : 0x3a6a8a);
+  if (sea) { p.ellipse(22, 9, 2.6, 1, deep); p.ellipse(6, 10, 2.2, 0.9, deep); }
   for (let a = 0; a < 48; a++) {
     const t = (a / 48) * Math.PI * 2;
     if (md(a, 8) > 4) continue; // dashed ripple
@@ -1267,6 +1271,44 @@ function drawFish(p: PixelCanvas, v: number) {
   p.set(13 + 3 * dir, 6, rgb(0xd0e8f8));
   p.line(13, 5, 13 - 2 * dir, 4, deep);
   p.set(5, 4, rgb(0xffffff)); p.set(20, 10, rgb(0xffffff));
+}
+
+// ---- boats
+
+const BOATS = new Set(["fishing_boat", "fishing_ship"]);
+
+/** A fishing boat, or the bigger fishing ship: a wooden hull, a sail in the owner's colour, and a net
+ *  over the side while it fishes. Drawn facing right; the view mirrors it. */
+function drawBoat(p: PixelCanvas, look: UnitLook) {
+  const ship = look.type === "fishing_ship", pc = playerRGB(look.owner);
+  const L = ship ? 18 : 14, cx = 22, wy = 30; // half length, middle, waterline
+  const hull = ship ? rgb(0x7a4e26) : C.wood, dark = C.woodDark;
+  // Wake on the water.
+  if (look.pose === "walk") for (let k = 0; k < 4; k++) p.set(cx - L - 2 - k * 2, wy + 1 + (k % 2), rgb(0xd8ecf8), 200 - k * 40);
+  // Hull: a long low bowl, raised at the bow (right).
+  for (let x = -L; x <= L; x++) {
+    const t = x / L, depth = Math.round((1 - t * t) * (ship ? 6 : 5));
+    const top = wy - depth - (x > L - 4 ? (x - (L - 4)) : 0);
+    for (let y = top; y <= wy; y++) p.set(cx + x, y, y === top ? lighten(hull, 0.2) : y > wy - 2 ? dark : hull);
+  }
+  p.line(cx - L + 2, wy - 2, cx + L - 2, wy - 2, dark);
+  // Mast and sail.
+  const mx = cx - 2, mh = ship ? 24 : 19;
+  p.rect(mx, wy - 5 - mh, 1, mh, C.woodDark);
+  for (let y = 0; y < mh - 6; y++) {
+    const w = Math.round(3 + y * (ship ? 0.55 : 0.45));
+    for (let x = 1; x <= w; x++) p.set(mx + x, wy - 5 - mh + 3 + y, x === w || y === mh - 7 ? darken(pc, 0.7) : pc);
+  }
+  if (ship) p.rect(mx - 6, wy - 9, 12, 1, C.woodDark);
+  // At work: the net over the side, with fish in it now and then; carrying: the catch on deck.
+  if (look.pose === "work") {
+    const f = look.frame % 3;
+    for (let k = 0; k < 6; k++) p.set(cx + L - 6 + k, wy + 1 + ((k + f) % 2), rgb(0xc8b890));
+    p.line(cx + 4, wy - 6, cx + L - 4, wy + 1, rgb(0xc8b890));
+    if (f === 1) p.set(cx + L - 3, wy + 1, rgb(0x9ab8c8));
+  }
+  if (look.carry !== null) { p.ellipse(cx + 5, wy - 6, 3, 1.2, rgb(0x5a7a8a)); p.set(cx + 4, wy - 7, rgb(0xb8d0e0)); }
+  p.outline(C.outline, 0.25);
 }
 
 // ---- projectiles
@@ -1880,6 +1922,27 @@ const NOMINAL: Record<string, number> = {
 const HEADROOM: Record<string, number> = { wonder: 120, town_center: 70, temple: 80, guard_tower: 80, ballista_tower: 90, sentry_tower: 70, watch_tower: 64, government_center: 64 };
 
 const PLANS: Record<string, (b: Bld) => void> = {
+  dock(b) {
+    // A plank deck on piles over the water; from the Tool Age a boat shed and a crane for the catch.
+    const k = b.kit, deck = M(C.wood, PAT.planks);
+    for (const [u, v] of [[0.2, 0.2], [1.5, 0.2], [2.8, 0.2], [0.2, 2.8], [1.5, 2.8], [2.8, 2.8], [2.8, 1.5], [0.2, 1.5]]) {
+      const [x, y] = b.pt(u, v); b.p.rect(x, y - 1, 1, 5, C.woodDark);
+    }
+    b.box(0.15, 0.15, 2.85, 2.85, 3, deck);
+    if (!b.done) return;
+    if (b.age === 0) {
+      hut(b, 0.9, 0.9, 0.42, 8, 13);
+      propCrate(b, 2.1, 2.2);
+    } else {
+      hall(b, 0.3, 0.3, 1.5, 1.6, 12, { axis: "u" });
+      const [x0, y0] = b.pt(2.3, 2.3, 3), [x1, y1] = b.pt(2.6, 1.4, 26);
+      b.p.line(x0, y0, x1, y1, C.woodDark); b.p.line(x1, y1, x1 + 6, y1 + 10, rgb(0xc8b890));
+      propCrate(b, 2.2, 1.0);
+      if (b.age >= 2) propCrate(b, 1.9, 2.4);
+      void k;
+    }
+    b.flag(2.7, 0.3, 3, 12);
+  },
   house(b) {
     if (b.age === 0) {
       hut(b, 1, 1, 0.5, 9, 15);
@@ -2462,7 +2525,7 @@ export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3,
   const kitAge = def.id === "wonder" ? Math.max(a, 2) : a;
   return tallPic(`b-${def.id}-${s}-${owner}-${ar}-${a}-${st}`, W, D + head, 0.5, (p) => {
     const b = new Bld(p, n, s, kitFor(ar, kitAge), playerRGB(owner), st, kitAge, ar);
-    apron(p, W, p.h - D, D);
+    if (!def.on_water) apron(p, W, p.h - D, D); // a Dock stands in the water
     if (st === 0) { drawFoundation(b, def.id); p.outline(C.outline, 0.3); return; }
     (PLANS[def.id] ?? PLANS.house)(b);
     if (st < 3) b.scaffold();

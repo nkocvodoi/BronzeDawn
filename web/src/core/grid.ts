@@ -12,6 +12,9 @@ export class GridMap {
   readonly solid: Uint8Array;
   /** Per-tile number for drawing variety. No effect on rules. */
   readonly shade: Uint8Array;
+  /** Who is moving: boats go on water and land units on land. The world sets it around each boat's
+   *  turn and puts it back; every passability question below answers for it. */
+  naval = false;
 
   constructor(readonly width: number, readonly height: number) {
     this.terrain = new Uint8Array(width * height);
@@ -28,7 +31,21 @@ export class GridMap {
   passableXY(x: number, y: number) {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) return false;
     const i = y * this.width + x;
-    return this.terrain[i] !== Terrain.water && this.solid[i] === 0;
+    return (this.terrain[i] === Terrain.water) === this.naval && this.solid[i] === 0;
+  }
+
+  /** Water no boat can leave: every neighbour is water too (for deep-sea fish). */
+  openWater(t: Tile, r = 1) {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (this.terrainAt(new Tile(t.x + dx, t.y + dy)) !== Terrain.water) return false;
+    return true;
+  }
+
+  /** Land that touches water on a side: where a dock may stand. */
+  coastal(t: Tile) {
+    return this.terrainAt(t) !== Terrain.water && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+      const o = new Tile(t.x + dx, t.y + dy);
+      return this.inside(o) && this.terrainAt(o) === Terrain.water;
+    });
   }
 
   passable(t: Tile) { return this.passableXY(t.x, t.y); }

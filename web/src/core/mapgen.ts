@@ -6,7 +6,14 @@ import type { World } from "./world";
  * Builds a skirmish map from the world's seed: lakes, forests, and a start for each
  * player with a town center, villagers, berries, a forest, gold and stone close by.
  */
-export function generateMap(w: World) {
+/** The kinds of map, as the start screen offers them. Inland is the land with lakes it always was. */
+export type MapType = "inland" | "coastal" | "continental" | "mediterranean";
+export const MAP_TYPES: [MapType, string][] = [
+  ["inland", "Inland (lakes)"], ["coastal", "Coastal (sea on two sides)"],
+  ["continental", "Continental (sea all around)"], ["mediterranean", "Mediterranean (a sea in the middle)"],
+];
+
+export function generateMap(w: World, type: MapType = "inland") {
   const map = w.map;
   const n = map.width;
   // Everything spread over the map grows with its area; a Small map (72 x 72) is the baseline.
@@ -17,8 +24,11 @@ export function generateMap(w: World) {
   w.startTiles = starts;
   const farFromStarts = (t: Tile, d: number) => starts.every((s) => t.center.distance(s.center) >= d);
 
+  // The sea, for every map but Inland. Inland draws no random numbers here, so its maps stay as they were.
+  if (type !== "inland") sea(w, type);
+
   // Lakes, away from the bases.
-  for (let k = 0; k < Math.round(3 * scale); k++) {
+  for (let k = 0; k < Math.round((type === "inland" ? 3 : 1) * scale); k++) {
     let c = new Tile(0, 0);
     for (let tries = 0; tries < 30; tries++) {
       c = new Tile(w.rng.int(8, n - 9), w.rng.int(8, n - 9));
@@ -123,7 +133,63 @@ export function generateMap(w: World) {
   }
 
   connect(w, starts);
+  if (type !== "inland") deepFish(w, starts);
   w.nodes = w.nodes.filter((x) => x.alive);
+}
+
+/** A depth from the edge for each tile along it: a slow random walk between lo and hi. */
+function coastline(w: World, len: number, lo: number, hi: number): number[] {
+  const out: number[] = [];
+  let d = w.rng.int(lo, hi);
+  for (let i = 0; i < len; i++) {
+    if (w.rng.chance(0.35)) d = Math.min(hi, Math.max(lo, d + w.rng.int(-1, 1)));
+    out.push(d);
+  }
+  return out;
+}
+
+/** Floods the sea of a map type. Bases are cleared to land afterwards, so none starts in the water. */
+function sea(w: World, type: MapType) {
+  const map = w.map, n = map.width;
+  const wet = (x: number, y: number) => { map.terrain[y * n + x] = Terrain.water; };
+  if (type === "coastal") {
+    // Two opposite sides, so that whichever corners the players get, each has a coast.
+    const alongX = w.rng.chance(0.5);
+    const a = coastline(w, n, 5, 10), b = coastline(w, n, 5, 10);
+    for (let i = 0; i < n; i++) for (let d = 0; d < n; d++) {
+      if (d < a[i]) alongX ? wet(d, i) : wet(i, d);
+      if (d < b[i]) alongX ? wet(n - 1 - d, i) : wet(i, n - 1 - d);
+    }
+  } else if (type === "continental") {
+    const sides = [coastline(w, n, 4, 8), coastline(w, n, 4, 8), coastline(w, n, 4, 8), coastline(w, n, 4, 8)];
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      if (x < sides[0][y] || n - 1 - x < sides[1][y] || y < sides[2][x] || n - 1 - y < sides[3][x]) wet(x, y);
+    }
+  } else {
+    // A sea in the middle, made of a few overlapping rounds so its shore is not a circle.
+    const mid = Math.floor(n / 2), r = n * 0.24;
+    blob(w, new Tile(mid, mid), r, (t) => wet(t.x, t.y));
+    for (let k = 0; k < 5; k++) {
+      const c = new Tile(mid + w.rng.int(-Math.round(r * 0.6), Math.round(r * 0.6)), mid + w.rng.int(-Math.round(r * 0.6), Math.round(r * 0.6)));
+      blob(w, c, r * (0.45 + w.rng.int(0, 20) / 100), (t) => wet(t.x, t.y));
+    }
+  }
+}
+
+/** Fish out at sea for boats: a few within reach of every base's coast, and more across the water. */
+function deepFish(w: World, starts: Tile[]) {
+  const map = w.map, n = map.width;
+  const open: Tile[] = [];
+  for (let y = 2; y < n - 2; y++) for (let x = 2; x < n - 2; x++) {
+    const t = new Tile(x, y);
+    if (map.openWater(t, 1) && map.occupantAt(t) === 0) open.push(t);
+  }
+  if (!open.length) return;
+  for (const s of starts) {
+    const near = open.filter((t) => t.center.distance(s.center) < 22);
+    for (let k = 0; k < 4 && near.length; k++) w.addNode("deep_fish", near.splice(w.rng.int(0, near.length - 1), 1)[0]);
+  }
+  for (let k = 0; k < Math.round(open.length / 90); k++) w.addNode("deep_fish", open[w.rng.int(0, open.length - 1)]);
 }
 
 /** Where each player starts: the corners first, then the middle of each edge, up to eight. Who gets
