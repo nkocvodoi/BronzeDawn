@@ -5,7 +5,7 @@ import { Footprint, RNG, Tile, Vec2 } from "./geom";
 import { GridMap, Terrain, walkable } from "./grid";
 import { generateMap, MapType } from "./mapgen";
 import { Pathfinder } from "./path";
-import { NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
+import { hasTag, NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
 import { scores } from "./score";
 import { BuildingStats, Mods, UnitStats } from "./stats";
 
@@ -275,8 +275,27 @@ export class World {
     if (p.mods.upgraded.has(type)) return "Replaced by an upgrade";
     if (this.ageOf(def.age) > p.age) return `Needs ${this.rules.ages[this.ageOf(def.age)].name}`;
     if (def.requires_tech && !p.mods.has(def.requires_tech)) return `Research ${this.rules.techs.get(def.requires_tech)?.name ?? def.requires_tech}`;
+    if (hasTag(def, "fishing")) {
+      const cap = this.fishingBoatCap(player);
+      if (cap !== null && this.fishingBoats(player) >= cap) return `At most ${this.rules.economy.fishing_boats_per_dock} fishing boats a Dock`;
+    }
     if (!p.res.covers(this.unitCost(player, type))) return "Not enough resources";
     return null;
+  }
+
+  /** How many fishing boats a player may have: so many for each finished Dock (null: no limit). */
+  fishingBoatCap(player: number): number | null {
+    const per = this.rules.economy.fishing_boats_per_dock;
+    if (per === undefined) return null;
+    return per * this.buildingsOf(player).filter((b) => b.def.on_water && b.complete).length;
+  }
+
+  /** A player's fishing boats, alive or in a training queue. */
+  fishingBoats(player: number) {
+    const fishing = (id: string) => { const d = this.rules.units.get(id); return !!d && hasTag(d, "fishing"); };
+    let n = this.unitsOf(player).filter((u) => hasTag(u.def, "fishing")).length;
+    for (const b of this.buildingsOf(player)) n += b.queue.filter((q) => q.kind === "unit" && fishing(q.id)).length;
+    return n;
   }
 
   /** Whether a unit type shows up at all for this player right now (not replaced, not disabled). */

@@ -69,6 +69,8 @@ export interface EconomyDef {
   start: Record<string, number>;
   start_villagers: number;
   pop_max: number;
+  /** Fishing boats a player may have, alive or in training, for each finished Dock. */
+  fishing_boats_per_dock?: number;
   /** How long a finished Wonder must stand to win. */
   wonder_seconds?: number;
   /** Repair speed, as a share of the building speed. */

@@ -564,6 +564,23 @@ describe("the original's rules", () => {
     expect(w.blockerForNextAge(0)).toBeNull();
   });
 
+  it("fishing boats: five for each finished Dock, counting those in training", () => {
+    const w = blank(30);
+    for (let y = 0; y < 30; y++) for (let x = 14; x < 30; x++) w.map.terrain[y * 30 + x] = Terrain.water;
+    w.addBuilding("town_center", 0, new Tile(3, 3), true);
+    const dock = w.addBuilding("dock", 0, new Tile(14, 5), true);
+    w.players[0].res.set(Res.wood, 2000);
+    for (let i = 0; i < 3; i++) w.spawnUnit("fishing_boat", 0, new Tile(18, 6).center);
+    expect(w.train(0, dock.id, "fishing_boat")).toBeNull();
+    expect(w.train(0, dock.id, "fishing_boat")).toBeNull();
+    expect(w.train(0, dock.id, "fishing_boat")).toContain("fishing boats a Dock"); // 3 afloat + 2 queued
+    // A second Dock, once finished, makes room for five more; one still building does not.
+    const second = w.addBuilding("dock", 0, new Tile(14, 15), false);
+    expect(w.blockerUnit("fishing_boat", 0)).not.toBeNull();
+    second.complete = true;
+    expect(w.blockerUnit("fishing_boat", 0)).toBeNull();
+  });
+
   it("the last team standing wins", () => {
     const w = new World(RULES, 4, ["A", "B", "C"], 72, true, { teams: [0, 1, 1] });
     for (const e of [...w.unitsOf(0), ...w.buildingsOf(0)]) w.applyDamage(e, 1e6, -1);
