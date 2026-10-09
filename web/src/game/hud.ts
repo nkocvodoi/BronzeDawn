@@ -43,6 +43,14 @@ export function jobName(u: Unit): string | null {
   }
 }
 
+type ScoreMode = "pop" | "score" | "off";
+const SCORE_MODES: ScoreMode[] = ["pop", "score", "off"];
+/** Remembered settings; a private window may refuse them. */
+const prefs = {
+  get(k: string) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k: string, v: string) { try { localStorage.setItem(k, v); } catch { /* private window */ } },
+};
+
 export class HUD {
   private res = RES_ALL.map((r) => $(`#res-${RES_KEY[r]}`));
   private pop = $("#pop");
@@ -174,23 +182,37 @@ export class HUD {
     if (wonder) this.time.textContent = `Wonder (${wonder.name}) ${clock(Math.max(0, wonder.wonderAt! - w.time))}`;
     this.time.classList.toggle("warn", !!wonder && wonder.id !== me);
     this.statusBox(w, me, sel);
-    if (!this.scores.hidden) this.updateScores(w);
+    if (this.scoreMode !== "off") this.updateScores(w, me);
   }
 
-  // ---- scores
+  // ---- the player list above the minimap
 
-  toggleScores(w: World) {
-    this.scores.hidden = !this.scores.hidden;
-    if (!this.scores.hidden) this.updateScores(w);
+  /** What the list shows: every player's population, their scores, or nothing. S or F4 steps through. */
+  scoreMode: ScoreMode = SCORE_MODES.includes(prefs.get("bd-scores") as ScoreMode) ? (prefs.get("bd-scores") as ScoreMode) : "pop";
+  private scoresHtml = "";
+
+  toggleScores(w: World, me = 0) {
+    this.scoreMode = SCORE_MODES[(SCORE_MODES.indexOf(this.scoreMode) + 1) % SCORE_MODES.length];
+    prefs.set("bd-scores", this.scoreMode);
+    this.scores.hidden = this.scoreMode === "off";
+    if (this.scoreMode !== "off") this.updateScores(w, me);
+    return this.scoreMode;
   }
 
-  /** A simple score: what was gathered, built up and won. */
-  private updateScores(w: World) {
-    this.scores.innerHTML = w.players.map((p) => {
+  /** One line a player, in their colour: name, civilization, and population (now / room) or score.
+   *  A simple score: what was gathered, built up and won. Players who are out are dimmed. */
+  private updateScores(w: World, me: number) {
+    const pop = this.scoreMode === "pop";
+    const rows = w.players.map((p) => {
       const s = p.stats;
       const score = Math.floor(s.gathered.total / 10) + s.kills * 5 + p.age * 100 + w.buildingsOf(p.id).length * 5;
-      return `<div style="color:${playerColor(p.id)}">${p.name}${p.civ ? ` (${p.civ.name})` : ""}: ${score}</div>`;
-    }).join("");
+      const value = p.defeated ? "out" : pop ? `${Math.ceil(p.pop - 1e-9)}/${p.popCap}` : String(score);
+      const ally = p.id !== me && w.allied(me, p.id) ? " · ally" : "";
+      return `<div class="${p.defeated ? "out" : ""}" style="color:${playerColor(p.id)}">${p.name}${p.civ ? ` (${p.civ.name})` : ""}${ally}: <b>${value}</b></div>`;
+    });
+    const html = `<div class="head">${pop ? "Population" : "Score"}</div>${rows.join("")}`;
+    if (html !== this.scoresHtml) { this.scoresHtml = html; this.scores.innerHTML = html; }
+    this.scores.hidden = false;
   }
 
   // ---- the status box

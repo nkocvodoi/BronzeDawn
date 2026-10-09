@@ -306,13 +306,19 @@ export class Game {
       "Train: C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
-      "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · F4 or S: scores · F10: menu",
+      "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · F4 or S: population, scores or nothing above the minimap · F10: menu",
       "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · F3 pause",
       ...this.civLines(),
       "Press ? or Esc to close",
     ], "help");
+  }
+
+  /** S or F4: the list above the minimap shows population, then scores, then nothing. */
+  private scoresToggled() {
+    const m = this.hud.toggleScores(this.world, this.me);
+    this.hud.message(m === "pop" ? "Showing each player's population" : m === "score" ? "Showing scores" : "Player list hidden");
   }
 
   /** The reseeding setting holds for everyone in the game, the computer too, so it stays fair. */
@@ -1256,7 +1262,7 @@ export class Game {
         if (t.closest("#menu-btn")) { open(() => this.showMenu()); return; }
         if (t.closest("#help-btn")) { open(() => this.showHelp()); return; }
         if (t.closest("#diplomacy-btn")) { open(() => this.showDiplomacy()); return; }
-        if (t.closest("#score-btn")) { this.hud.toggleScores(this.world); return; }
+        if (t.closest("#score-btn")) { this.scoresToggled(); return; }
         if (t.closest("#resume-btn")) { this.hud.hideOverlay(); this.paused = false; return; }
         if (t.closest("#help-open")) { this.showHelp(); return; }
         if (t.closest("#credits-btn")) { this.showCredits(); return; }
@@ -1542,7 +1548,7 @@ export class Game {
       else { if (key === "F10") this.showMenu(); else this.showHelp(); this.paused = true; }
       return;
     }
-    if (key === "F4") { e.preventDefault(); this.hud.toggleScores(this.world); return; }
+    if (key === "F4") { e.preventDefault(); this.scoresToggled(); return; }
     if (key === "Escape") {
       if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; return; }
       const cancel = this.hud.commands.find((c) => c.key === "Escape");

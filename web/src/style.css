@@ -149,7 +149,10 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #scores {
   position: fixed; right: calc(var(--u) * 6); bottom: calc(var(--panel-h) + var(--u) * 6); z-index: 4; pointer-events: none; text-align: right;
   font-size: calc(var(--u) * 12); font-weight: 700; text-shadow: 1px 1px 0 #000, 0 0 3px #000;
+  font-variant-numeric: tabular-nums;
 }
+#scores .head { color: #e8dcc0; font-size: calc(var(--u) * 10); font-weight: 400; }
+#scores .out { opacity: .5; text-decoration: line-through; }
 
 #dragbox { position: fixed; border: 1px solid #fff; pointer-events: none; z-index: 3; }
 

@@ -52,6 +52,12 @@ check((await g(() => game.speed)) === 1.5, "the start screen sets the game speed
 check(await g(() => game.started && game.world.ais.length === 1), "clicking Normal starts the game against one AI");
 
 check(await page.evaluate(() => document.body.classList.contains("playing")), "the panels slide in when the game starts");
+check((await page.textContent("#scores")).includes("Population") && /You \(Greek\): 3\/4/.test(await page.textContent("#scores")), "the list above the minimap shows each player's population");
+await page.keyboard.press("F4");
+check((await page.textContent("#scores")).includes("Score"), "F4 switches it to scores");
+await page.keyboard.press("F4");
+check(await page.isHidden("#scores"), "and F4 again hides it");
+await page.keyboard.press("F4");
 // The town center starts selected: C trains a villager, as in the original.
 const food = await g(() => game.world.players[0].res.food);
 await page.keyboard.press("c");
