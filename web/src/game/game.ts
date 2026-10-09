@@ -110,6 +110,8 @@ export class Game {
   private attackMovePending = false;
   /** Repair was chosen: the next click on a damaged building of yours repairs it. */
   private repairPending = false;
+  /** Attack Ground was chosen: the next click is the spot the stone throwers hit. */
+  private groundPending = false;
   private dragStart: { x: number; y: number } | null = null;
   private mouse = { x: -1, y: -1, inside: false };
   private keys = new Set<string>();
@@ -273,13 +275,13 @@ export class Game {
   private showHelp() {
     this.hud.showOverlay("Controls", [
       "Left click / drag: select · Shift: add · Double click: all of that kind on screen",
-      "Right click: move, gather, hunt, build, attack, convert or heal (priests), or set a rally point",
+      "Right click: move, gather, hunt, build, repair, attack, convert or heal (priests), or set a rally point · Shift + right click: a waypoint",
       "Villagers: B opens the build menu, then E House · G Granary · S Storage Pit · B Barracks · M Market · F Farm",
       "A Archery Range · L Stable · W Wall · T Tower · C Government Center · P Temple · Y Academy · K Siege Workshop · N Town Center · O Wonder",
       "Train: C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
-      "Up to 25 units in one selection · The pointer shows what a right-click will do · F4 or S: scores · F10: menu",
+      "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · F4 or S: scores · F10: menu",
       "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · F3 pause",
@@ -396,6 +398,7 @@ export class Game {
     if (!this.started || this.hud.overlayShown || this.placing || !this.mouse.inside) return "arrow";
     if (this.attackMovePending) return "sword";
     if (this.repairPending) return "hammer";
+    if (this.groundPending) return "sword";
     const units = this.selectedEntities().filter((x): x is Unit => x instanceof Unit && x.owner === this.me);
     if (!units.length) return "arrow";
     const t = this.pick(sx, sy);
@@ -427,6 +430,7 @@ export class Game {
     if (this.placing) return "Click to place the building. Right-click to cancel.";
     if (this.attackMovePending) return "Click where to attack-move.";
     if (this.repairPending) return "Click a damaged building of yours to repair it.";
+    if (this.groundPending) return "Click the ground to bombard.";
     const t = this.pick(this.mouse.x, this.mouse.y);
     const verb: Partial<Record<CursorKind, string>> = {
       sword: "Right-click to attack", axe: "Right-click to cut wood", pick: "Right-click to mine", basket: "Right-click to gather food",
@@ -990,6 +994,16 @@ export class Game {
         { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
         { key: "A", title: "Attack-move", detail: "click a point", blocker: null, icon: "attack_move", action: () => { this.attackMovePending = true; this.hud.message("Click where to attack-move"); } },
       ];
+      const soldiers = units.filter((u) => !u.isPriest);
+      if (soldiers.length) {
+        const on = soldiers.every((u) => u.standGround);
+        out.push({ key: "D", title: on ? "Stand ground: on" : "Stand ground", detail: on ? "press again to let them chase" : "hold this spot, strike only what comes in reach",
+          blocker: null, icon: "stand_ground", action: () => { w.setStandGround(me, this.selection, !on); this.hud.message(on ? "Units will chase enemies again" : "Standing ground"); } });
+      }
+      if (units.some((u) => w.canAttackGround(u))) {
+        out.push({ key: "T", title: "Attack ground", detail: "click a spot to bombard", blocker: null, icon: "attack_ground",
+          action: () => { this.groundPending = true; this.hud.message("Click the ground to bombard"); } });
+      }
       if (units.some((u) => u.isPriest)) out.push({ key: "V", title: "Convert", detail: "right-click an enemy", blocker: null, icon: "temple", action: () => this.hud.message("Right-click an enemy to convert it, or a hurt unit of yours to heal it") });
       out.push(del);
       return out;
@@ -1304,6 +1318,13 @@ export class Game {
       else if (!e.shiftKey) this.cancelPlacing();
       return;
     }
+    if (this.groundPending) {
+      this.groundPending = false;
+      this.world.attackGround(this.me, this.selection, this.toWorld(e.clientX, e.clientY));
+      this.selectSound(true);
+      this.marker(e.clientX, e.clientY, 0xff3333);
+      return;
+    }
     if (this.repairPending) {
       this.repairPending = false;
       const t = this.pick(e.clientX, e.clientY);
@@ -1371,11 +1392,19 @@ export class Game {
     if (this.placing) { this.cancelPlacing(); return; }
     this.attackMovePending = false;
     this.repairPending = false;
+    this.groundPending = false;
     const at = this.toWorld(e.clientX, e.clientY);
     const sel = this.selectedEntities().filter((x) => x.owner === this.me);
     if (sel.length === 1 && sel[0] instanceof Building) {
       this.world.setRally(this.me, sel[0].id, at);
       this.marker(e.clientX, e.clientY, playerColor(this.me));
+      return;
+    }
+    // Shift + right-click on the ground: a waypoint, walked to after the ones before it.
+    if (e.shiftKey && sel.some((x) => x instanceof Unit)) {
+      this.world.waypoint(this.me, this.selection, at);
+      this.selectSound(true);
+      this.marker(e.clientX, e.clientY, 0x33ff66);
       return;
     }
     let target = this.pick(e.clientX, e.clientY);
@@ -1474,9 +1503,10 @@ export class Game {
     if (key === "Escape") {
       if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; return; }
       const cancel = this.hud.commands.find((c) => c.key === "Escape");
-      if (!this.placing && !this.attackMovePending && !this.repairPending && cancel) { cancel.action(); return; }
+      const pending = this.attackMovePending || this.repairPending || this.groundPending;
+      if (!this.placing && !pending && cancel) { cancel.action(); return; }
       if (this.placing) this.cancelPlacing();
-      else if (this.attackMovePending || this.repairPending) this.attackMovePending = this.repairPending = false;
+      else if (pending) this.attackMovePending = this.repairPending = this.groundPending = false;
       else this.selection = [];
       return;
     }

@@ -13,7 +13,7 @@ export type SmartResult = "moved" | "attacked" | "gathered" | "built" | "repaire
 
 /** Who fired, with what. Damage is worked out against each target at impact (splash hits several). */
 interface Shot { attackerId: number; owner: number; attack: number; pierce: boolean; bonus?: Record<string, number> }
-interface Missile { shot: Shot; targetId: number | null; at: Vec2 | null; area: number; remaining: number }
+interface Missile { shot: Shot; targetId: number | null; at: Vec2 | null; area: number; remaining: number; clearsTrees?: boolean }
 
 type Approach = "arrived" | "moving" | "blocked";
 
@@ -336,32 +336,73 @@ export class World {
 
   move(player: number, ids: number[], target: Vec2, attackMove = false) {
     this.own(ids, player).forEach((u, i) => {
-      let dest = target.add(FORMATION[Math.min(i, FORMATION.length - 1)]);
-      if (!this.map.passable(dest.tile)) {
-        const t = this.map.nearestPassable(dest.tile, 4);
-        if (t) dest = t.center;
-      }
-      u.resumeMove = null;
-      u.buildQueue = [];
-      const goal = dest.tile;
-      u.path = this.pathfinder.find(u.pos, dest, (t) => t.equals(goal));
-      if (u.path.length) {
-        // Finish on the exact point only when it was reached and the last leg is clear;
-        // otherwise stop at the closest tile (the shore of a lake, the edge of a wall).
-        const before = u.path.length > 1 ? u.path[u.path.length - 2] : u.pos;
-        if (this.pathfinder.reached && this.map.clearLine(before, dest)) u.path[u.path.length - 1] = dest;
-        else dest = u.path[u.path.length - 1];
-      } else if (!this.pathfinder.reached) dest = u.pos;
-      u.order = { kind: "move", to: dest, attackMove: attackMove && !u.isVillager };
-      u.pathTarget = dest;
+      u.waypoints = [];
+      this.moveOne(u, target.add(FORMATION[Math.min(i, FORMATION.length - 1)]), attackMove);
     });
+  }
+
+  /** Shift + right-click: units already walking add the point to their way; the others go now. */
+  waypoint(player: number, ids: number[], target: Vec2) {
+    this.own(ids, player).forEach((u, i) => {
+      const dest = target.add(FORMATION[Math.min(i, FORMATION.length - 1)]);
+      if (u.order.kind === "move" && u.waypoints.length < 20) u.waypoints.push(dest);
+      else { u.waypoints = []; this.moveOne(u, dest, false); }
+    });
+  }
+
+  private moveOne(u: Unit, to: Vec2, attackMove: boolean) {
+    let dest = to;
+    if (!this.map.passable(dest.tile)) {
+      const t = this.map.nearestPassable(dest.tile, 4);
+      if (t) dest = t.center;
+    }
+    u.resumeMove = null;
+    u.buildQueue = [];
+    const goal = dest.tile;
+    u.path = this.pathfinder.find(u.pos, dest, (t) => t.equals(goal));
+    if (u.path.length) {
+      // Finish on the exact point only when it was reached and the last leg is clear;
+      // otherwise stop at the closest tile (the shore of a lake, the edge of a wall).
+      const before = u.path.length > 1 ? u.path[u.path.length - 2] : u.pos;
+      if (this.pathfinder.reached && this.map.clearLine(before, dest)) u.path[u.path.length - 1] = dest;
+      else dest = u.path[u.path.length - 1];
+    } else if (!this.pathfinder.reached) dest = u.pos;
+    u.order = { kind: "move", to: dest, attackMove: attackMove && !u.isVillager };
+    u.pathTarget = dest;
+  }
+
+  /** A walk is over: on to the next waypoint, or stop. */
+  private arrive(u: Unit, attackMove: boolean) {
+    const next = u.waypoints.shift();
+    if (next) this.moveOne(u, next, attackMove);
+    else u.order = IDLE;
   }
 
   /** The reseeding setting: spent farms are sown again for their price, while there is the wood. */
   setAutoReseed(player: number, on: boolean) { this.players[player].autoReseed = on; }
 
+  /** Stand Ground on or off for soldiers. Villagers and priests have no stance. */
+  setStandGround(player: number, ids: number[], on: boolean) {
+    for (const u of this.own(ids, player)) {
+      if (u.isVillager || u.isPriest) continue;
+      u.standGround = on;
+      if (on && (u.order.kind === "attack" || u.order.kind === "move")) { u.order = IDLE; u.path = []; u.resumeMove = null; }
+    }
+  }
+
+  /** Attack Ground: units that throw stones keep hitting a spot, whatever is there. */
+  attackGround(player: number, ids: number[], at: Vec2) {
+    for (const u of this.own(ids, player)) {
+      if (!this.canAttackGround(u)) continue;
+      u.order = { kind: "attackGround", at };
+      u.path = []; u.repathTimer = 0; u.resumeMove = null;
+    }
+  }
+
+  canAttackGround(u: Unit) { return u.def.projectile === "stone" && (u.def.area ?? 0) > 0; }
+
   stop(player: number, ids: number[]) {
-    for (const u of this.own(ids, player)) { u.order = IDLE; u.path = []; u.resumeMove = null; u.buildQueue = []; }
+    for (const u of this.own(ids, player)) { u.order = IDLE; u.path = []; u.resumeMove = null; u.buildQueue = []; u.waypoints = []; }
   }
 
   attack(player: number, ids: number[], target: number) {
@@ -751,7 +792,7 @@ export class World {
   // ---- units
 
   /** Walks u toward entity e until within reach of its edge. */
-  private approach(u: Unit, e: Entity, reach: number, dt: number): Approach {
+  private approach(u: Unit, e: { center: Vec2; distance(p: Vec2): number }, reach: number, dt: number): Approach {
     if (e.distance(u.pos) <= reach + 0.05) { u.path = []; return "arrived"; }
     u.repathTimer -= dt;
     const goal = e.center;
@@ -827,8 +868,8 @@ export class World {
             const hurt = this.units.find((w) => w.alive && w.owner === u.owner && w !== u && !w.isAnimal && w.hp < w.maxHp && w.pos.distance(u.pos) < 6);
             if (hurt) u.order = { kind: "heal", id: hurt.id };
           } else if (!u.isVillager) {
-            const t = this.scanFor(u, this.stats(u).los);
-            if (t) u.order = { kind: "attack", id: t.id };
+            const t = this.scanFor(u, u.standGround ? this.reachOf(u) + 0.3 : this.stats(u).los);
+            if (t) u.order = { kind: "attack", id: t.id, auto: true };
           }
         }
         break;
@@ -839,13 +880,13 @@ export class World {
           const t = this.scanFor(u, this.stats(u).los);
           if (t) {
             u.resumeMove = o.to;
-            u.order = { kind: "attack", id: t.id };
+            u.order = { kind: "attack", id: t.id, auto: true };
             u.path = [];
             return;
           }
         }
         if (!u.path.length) {
-          if (u.pos.distance(o.to) <= 0.15) { u.order = IDLE; return; }
+          if (u.pos.distance(o.to) <= 0.15) { this.arrive(u, o.attackMove); return; }
           if (this.map.clearLine(u.pos, o.to)) u.path = [o.to];
           else {
             // Something was built across the way: find a new path, no more than twice a second.
@@ -854,10 +895,10 @@ export class World {
             u.repathTimer = 0.5;
             const goal = o.to.tile;
             u.path = this.pathfinder.find(u.pos, o.to, (t) => t.equals(goal));
-            if (!u.path.length) { u.order = IDLE; return; }
+            if (!u.path.length) { this.arrive(u, o.attackMove); return; }
           }
         }
-        if (this.followPath(u, dt)) u.order = IDLE;
+        if (this.followPath(u, dt)) this.arrive(u, o.attackMove);
         break;
       }
 
@@ -865,32 +906,54 @@ export class World {
       case "return": this.updateReturn(u, o.resume, dt, o.drop); break;
       case "build": this.updateBuild(u, o.id, dt); break;
       case "repair": this.updateRepair(u, o.id, dt); break;
-      case "attack": this.updateAttack(u, o.id, dt); break;
+      case "attack": this.updateAttack(u, o.id, dt, o.auto === true); break;
+      case "attackGround": this.updateAttackGround(u, o.at, dt); break;
       case "convert": this.updateConvert(u, o.id, dt); break;
       case "heal": this.updateHeal(u, o.id, dt); break;
     }
   }
 
-  private updateAttack(u: Unit, id: number, dt: number) {
+  /** How close a soldier must be to strike: its range, or arm's length. */
+  private reachOf(u: Unit) { const r = this.stats(u).range; return r > 0 ? r : 0.9; }
+
+  private updateAttackGround(u: Unit, at: Vec2, dt: number) {
+    const st = this.stats(u);
+    const spot = { center: at, distance: (p: Vec2) => p.distance(at) };
+    const a = u.standGround && spot.distance(u.pos) > st.range + 0.05 ? "blocked" : this.approach(u, spot, st.range, dt);
+    if (a === "blocked") { u.order = IDLE; return; }
+    if (a !== "arrived") return;
+    this.face(u, at);
+    u.busy = true;
+    if (u.cooldown > 0) return;
+    u.cooldown = st.attack_cooldown;
+    const shot: Shot = { attackerId: u.id, owner: u.owner, attack: st.attack, pierce: u.def.damage ? u.def.damage === "pierce" : true, bonus: u.def.bonus };
+    const flight = Math.max(0.15, u.pos.distance(at) / 8);
+    this.missiles.push({ shot, targetId: null, at, area: u.def.area ?? 0, remaining: flight, clearsTrees: u.def.clears_trees === true });
+    this.events.push({ kind: "projectile", from: u.pos, to: at, flight, projectile: u.def.projectile ?? "stone" });
+  }
+
+  private updateAttack(u: Unit, id: number, dt: number, auto = false) {
     const t = this.entity(id);
     if (!t || !this.hostile(u.owner, t)) {
       if (u.resumeMove) {
         const m = u.resumeMove;
         u.resumeMove = null;
-        this.move(u.owner, [u.id], m, true);
+        this.moveOne(u, m, true); // keeps the waypoints after it
       } else { u.order = IDLE; u.scanTimer = 0; }
       return;
     }
     // Hitting a building while soldiers attack you is how armies die: turn to face them.
     if (t instanceof Building && u.scanTimer <= 0 && !u.isVillager) {
       u.scanTimer = 0.5;
-      const threat = this.nearestEnemyUnit(u.owner, u.pos, this.stats(u).los);
-      if (threat) { u.order = { kind: "attack", id: threat.id }; u.path = []; u.repathTimer = 0; return; }
+      const threat = this.nearestEnemyUnit(u.owner, u.pos, u.standGround ? this.reachOf(u) + 0.3 : this.stats(u).los);
+      if (threat) { u.order = { kind: "attack", id: threat.id, auto: true }; u.path = []; u.repathTimer = 0; return; }
     }
     const st = this.stats(u);
     // Villagers hunt with thrown spears; everyone else uses their own weapon.
     const hunting = u.isVillager && t instanceof Unit && t.isAnimal;
     const reach = hunting ? 3 : st.range > 0 ? st.range : 0.9;
+    // Standing ground, a soldier does not go after what it picked up itself: out of reach, it lets it go.
+    if (u.standGround && auto && t.distance(u.pos) > reach + 0.05) { u.order = IDLE; u.path = []; u.scanTimer = 0; return; }
     const a = this.approach(u, t, reach, dt);
     if (a === "arrived") {
       this.face(u, t.center);
@@ -1286,6 +1349,9 @@ export class World {
       if (m.area > 0) this.events.push({ kind: "splash", at, radius: m.area });
       for (const u of this.units) if (u.alive && this.hostile(m.shot.owner, u) && u.pos.distance(at) <= r) this.hit(u, m.shot);
       for (const b of this.buildings) if (b.alive && this.hostile(m.shot.owner, b) && b.footprint.distance(at) <= m.area + 0.05) this.hit(b, m.shot);
+      if (m.clearsTrees) {
+        for (const n of this.nodes) if (n.alive && n.def.id === "tree" && n.center.distance(at) <= m.area) this.removeNode(n);
+      }
     }
     this.missiles = keep;
   }
@@ -1307,8 +1373,8 @@ export class World {
         if (t.animal!.behavior === "flee") this.flee(t, a.center);
         else t.order = { kind: "attack", id: a.id };
       } else if (!t.isPriest && (!t.isVillager || (a instanceof Unit && a.isAnimal)) && t.order.kind === "idle" && this.hostile(t.owner, a)) {
-        // Idle soldiers hit back; villagers only fight off animals.
-        t.order = { kind: "attack", id: a.id };
+        // Idle soldiers hit back; villagers only fight off animals. Standing ground, only what is in reach.
+        t.order = { kind: "attack", id: a.id, auto: true };
       } else if (t.isVillager && a instanceof Unit && a.isAnimal && t.order.kind !== "move") {
         t.order = { kind: "attack", id: a.id };
       }

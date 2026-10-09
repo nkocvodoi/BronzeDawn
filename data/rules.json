@@ -1075,7 +1075,8 @@
    "area": 1.5,
    "damage": "melee",
    "projectile": "stone",
-   "requires_tech": "heavy_catapult_tech"
+   "requires_tech": "heavy_catapult_tech",
+   "clears_trees": true
   },
   {
    "id": "ballista",

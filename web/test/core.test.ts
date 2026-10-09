@@ -281,6 +281,63 @@ describe("fixes from the logic review", () => {
     expect(w.smart(0, [v.id], house.id, house.center)).toBe("moved");
   });
 
+  it("standing ground, a soldier holds its spot: it strikes what comes in reach and does not chase", () => {
+    const w = blank();
+    const archer = w.spawnUnit("bowman", 0, new Tile(5, 5).center);
+    w.setStandGround(0, [archer.id], true);
+    const far = w.spawnUnit("clubman", 1, new Tile(5, 11).center); // in sight, out of range
+    w.setStandGround(1, [far.id], true);
+    run(w, 5);
+    expect(archer.pos.distance(new Tile(5, 5).center)).toBeLessThan(0.01);
+    expect(far.hp).toBe(far.maxHp);
+    const near = w.spawnUnit("clubman", 1, new Tile(5, 8).center); // in range
+    w.setStandGround(1, [near.id], true);
+    run(w, 5);
+    expect(near.hp).toBeLessThan(near.maxHp);
+    expect(archer.pos.distance(new Tile(5, 5).center)).toBeLessThan(0.01);
+    // Without the stance the same archer goes after the far one.
+    w.applyDamage(near, 999, archer.id);
+    w.setStandGround(0, [archer.id], false);
+    run(w, 6);
+    expect(archer.pos.distance(new Tile(5, 5).center)).toBeGreaterThan(0.5);
+  });
+
+  it("attack ground: stone throwers keep hitting a spot; a heavy catapult's stones knock down trees", () => {
+    const w = blank();
+    w.players[0].age = 3;
+    const bow = w.spawnUnit("bowman", 0, new Tile(3, 3).center);
+    w.attackGround(0, [bow.id], new Tile(9, 9).center);
+    expect(bow.order.kind).toBe("idle"); // only stone throwers have it
+    const cat = w.spawnUnit("heavy_catapult", 0, new Tile(3, 12).center);
+    const tree = w.addNode("tree", new Tile(12, 12))!;
+    const wood = w.players[0].res.wood;
+    w.attackGround(0, [cat.id], tree.center);
+    expect(cat.order.kind).toBe("attackGround");
+    run(w, 40);
+    expect(cat.order.kind).toBe("attackGround"); // it keeps going until told otherwise
+    expect(tree.alive).toBe(false);
+    expect(w.players[0].res.wood).toBe(wood); // cleared, not cut: no wood
+  });
+
+  it("waypoints: Shift + right-click points are walked in order", () => {
+    const w = blank();
+    const u = w.spawnUnit("clubman", 0, new Tile(2, 2).center);
+    w.waypoint(0, [u.id], new Tile(10, 2).center);   // not walking yet: goes now
+    w.waypoint(0, [u.id], new Tile(10, 10).center);  // walking: queued
+    w.waypoint(0, [u.id], new Tile(2, 10).center);
+    expect(u.waypoints.length).toBe(2);
+    let reachedCorner = false;
+    for (let i = 0; i < 60 / World.dt; i++) { w.step(); if (u.pos.distance(new Tile(10, 10).center) < 0.5) reachedCorner = true; }
+    expect(reachedCorner).toBe(true);
+    expect(u.pos.distance(new Tile(2, 10).center)).toBeLessThan(0.5);
+    expect(u.order.kind).toBe("idle");
+    // A plain move forgets the rest of the way.
+    w.waypoint(0, [u.id], new Tile(10, 10).center);
+    w.waypoint(0, [u.id], new Tile(2, 2).center);
+    w.move(0, [u.id], new Tile(5, 10).center);
+    expect(u.waypoints.length).toBe(0);
+  });
+
   it("deleting a foundation refunds what was not built", () => {
     const w = blank();
     w.fog[0].revealAll();

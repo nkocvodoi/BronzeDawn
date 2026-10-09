@@ -11,7 +11,8 @@ export type Order =
   | { kind: "return"; resume: number | null; drop?: number }
   | { kind: "build"; id: number }
   | { kind: "repair"; id: number }
-  | { kind: "attack"; id: number }
+  | { kind: "attack"; id: number; auto?: boolean }
+  | { kind: "attackGround"; at: Vec2 }
   | { kind: "convert"; id: number }
   | { kind: "heal"; id: number };
 
@@ -46,6 +47,10 @@ export class Unit extends Entity {
   order: Order = IDLE;
   /** Where an attack-move was heading before it stopped to fight. */
   resumeMove: Vec2 | null = null;
+  /** Points to walk to next, in order, set with Shift + right-click. */
+  waypoints: Vec2[] = [];
+  /** Stand Ground: hold this spot and strike only what comes in reach, until told otherwise. */
+  standGround = false;
   path: Vec2[] = [];
   pathTarget: Vec2 | null = null;
   repathTimer = 0;

@@ -4,3 +4,4 @@ build/
 *.xcodeproj
 .swiftpm/
 smoke.png
+node_modules/
