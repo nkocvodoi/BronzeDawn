@@ -945,11 +945,19 @@ export class World {
     if (d.length > 0.01) u.facing = d.mul(1 / d.length);
   }
 
+  /** Whether u can fight t at all: a land unit striking by hand cannot reach a boat, nor a ship that
+   *  fights at arm's length a unit on land. Arrows and stones cross the shore. */
+  canEngage(u: Unit, t: Entity) {
+    if (!(t instanceof Unit)) return true;
+    if (u.isBoat === t.isBoat) return true;
+    return this.stats(u).range > 1;
+  }
+
   /** Auto-targets for a soldier: enemies, and wild animals that attack, but not gazelles or elephants. */
   private scanFor(u: Unit, radius: number): Entity | null {
     const skip = this.skipFor(u);
     return this.nearestEnemy(u.owner, u.pos, radius, (e) =>
-      (skip?.(e) ?? false) ||
+      (skip?.(e) ?? false) || !this.canEngage(u, e) ||
       (e instanceof Unit && e.isAnimal && e.animal!.behavior !== "aggressive") ||
       (u.def.ignores_villagers === true && e instanceof Unit && e.isVillager));
   }
@@ -1052,7 +1060,7 @@ export class World {
     if (t instanceof Building && u.scanTimer <= 0 && !u.isVillager) {
       u.scanTimer = 0.5;
       const threat = this.nearestEnemyUnit(u.owner, u.pos, u.standGround ? this.reachOf(u) + 0.3 : this.stats(u).los);
-      if (threat) { u.order = { kind: "attack", id: threat.id, auto: true }; u.path = []; u.repathTimer = 0; return; }
+      if (threat && this.canEngage(u, threat)) { u.order = { kind: "attack", id: threat.id, auto: true }; u.path = []; u.repathTimer = 0; return; }
     }
     const st = this.stats(u);
     // Villagers hunt with thrown spears; everyone else uses their own weapon.
@@ -1501,7 +1509,7 @@ export class World {
         // Elephants and the hunters' prey: fight back or run.
         if (t.animal!.behavior === "flee") this.flee(t, a.center);
         else t.order = { kind: "attack", id: a.id };
-      } else if ((t.isSoldier || (t.isVillager && a instanceof Unit && a.isAnimal)) && t.order.kind === "idle" && this.hostile(t.owner, a)) {
+      } else if ((t.isSoldier || (t.isVillager && a instanceof Unit && a.isAnimal)) && t.order.kind === "idle" && this.hostile(t.owner, a) && this.canEngage(t, a)) {
         // Idle soldiers hit back; villagers only fight off animals. Standing ground, only what is in reach.
         t.order = { kind: "attack", id: a.id, auto: true };
       } else if (t.isVillager && a instanceof Unit && a.isAnimal && t.order.kind !== "move") {

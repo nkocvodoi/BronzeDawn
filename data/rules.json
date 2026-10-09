@@ -1198,7 +1198,8 @@
    "gathers": [
     "fish"
    ],
-   "gather_rate": 0.4
+   "gather_rate": 0.4,
+   "convert_resist": 2
   },
   {
    "id": "fishing_ship",
@@ -1228,7 +1229,193 @@
     "fish"
    ],
    "gather_rate": 0.4,
-   "requires_tech": "fishing_ship_tech"
+   "requires_tech": "fishing_ship_tech",
+   "convert_resist": 2
+  },
+  {
+   "id": "scout_ship",
+   "name": "Scout Ship",
+   "class": "warship",
+   "age": "tool",
+   "trained_at": "dock",
+   "cost": {
+    "wood": 135
+   },
+   "train_time": 30,
+   "hp": 120,
+   "attack": 5,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 5,
+   "attack_cooldown": 1.4,
+   "speed": 1.8,
+   "los": 7,
+   "pop": 1,
+   "tags": [
+    "boat",
+    "warship",
+    "missile",
+    "military"
+   ],
+   "naval": true,
+   "convert_resist": 2
+  },
+  {
+   "id": "war_galley",
+   "name": "War Galley",
+   "class": "warship",
+   "age": "bronze",
+   "trained_at": "dock",
+   "cost": {
+    "wood": 135
+   },
+   "train_time": 30,
+   "hp": 160,
+   "attack": 8,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 6,
+   "attack_cooldown": 1.5,
+   "speed": 1.8,
+   "los": 9,
+   "pop": 1,
+   "tags": [
+    "boat",
+    "warship",
+    "missile",
+    "military"
+   ],
+   "naval": true,
+   "convert_resist": 2,
+   "requires_tech": "war_galley_tech"
+  },
+  {
+   "id": "trireme",
+   "name": "Trireme",
+   "class": "warship",
+   "age": "iron",
+   "trained_at": "dock",
+   "cost": {
+    "wood": 135
+   },
+   "train_time": 30,
+   "hp": 200,
+   "attack": 12,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 7,
+   "attack_cooldown": 2.0,
+   "speed": 1.8,
+   "los": 10,
+   "pop": 1,
+   "tags": [
+    "boat",
+    "warship",
+    "missile",
+    "military"
+   ],
+   "naval": true,
+   "convert_resist": 2,
+   "requires_tech": "trireme_tech"
+  },
+  {
+   "id": "catapult_trireme",
+   "name": "Catapult Trireme",
+   "class": "warship",
+   "age": "iron",
+   "trained_at": "dock",
+   "cost": {
+    "wood": 135,
+    "gold": 75
+   },
+   "train_time": 45,
+   "hp": 120,
+   "attack": 35,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 9,
+   "attack_cooldown": 5.0,
+   "speed": 1.4,
+   "los": 12,
+   "pop": 1,
+   "tags": [
+    "boat",
+    "warship",
+    "catapult_ship",
+    "military"
+   ],
+   "naval": true,
+   "convert_resist": 2,
+   "area": 0.5,
+   "damage": "melee",
+   "projectile": "stone",
+   "requires_tech": "catapult_trireme_tech"
+  },
+  {
+   "id": "juggernaught",
+   "name": "Juggernaught",
+   "class": "warship",
+   "age": "iron",
+   "trained_at": "dock",
+   "cost": {
+    "wood": 135,
+    "gold": 75
+   },
+   "train_time": 45,
+   "hp": 200,
+   "attack": 35,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 10,
+   "attack_cooldown": 5.0,
+   "speed": 1.4,
+   "los": 13,
+   "pop": 1,
+   "tags": [
+    "boat",
+    "warship",
+    "catapult_ship",
+    "military"
+   ],
+   "naval": true,
+   "convert_resist": 2,
+   "area": 1.5,
+   "damage": "melee",
+   "projectile": "stone",
+   "clears_trees": true,
+   "requires_tech": "juggernaught_tech"
+  },
+  {
+   "id": "fire_galley",
+   "name": "Fire Galley",
+   "class": "warship",
+   "age": "iron",
+   "trained_at": "dock",
+   "cost": {
+    "wood": 115,
+    "gold": 40
+   },
+   "train_time": 45,
+   "hp": 200,
+   "attack": 24,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 1,
+   "attack_cooldown": 1.0,
+   "speed": 2.0,
+   "los": 8,
+   "pop": 1,
+   "tags": [
+    "boat",
+    "warship",
+    "fire",
+    "military"
+   ],
+   "naval": true,
+   "convert_resist": 2,
+   "damage": "melee",
+   "projectile": "fire",
+   "requires_tech": "war_galley_tech"
   }
  ],
  "buildings": [
@@ -1351,7 +1538,13 @@
    "on_water": true,
    "trains": [
     "fishing_boat",
-    "fishing_ship"
+    "fishing_ship",
+    "scout_ship",
+    "war_galley",
+    "trireme",
+    "catapult_trireme",
+    "juggernaught",
+    "fire_galley"
    ],
    "tags": [
     "dock"
@@ -2624,6 +2817,17 @@
        "siege"
       ]
      }
+    },
+    {
+     "type": "stat",
+     "stat": "attack",
+     "op": "add",
+     "value": 6,
+     "target": {
+      "units": [
+       "fire_galley"
+      ]
+     }
     }
    ]
   },
@@ -2895,6 +3099,81 @@
      "type": "upgrade",
      "from": "fishing_boat",
      "to": "fishing_ship"
+    }
+   ]
+  },
+  {
+   "id": "war_galley_tech",
+   "name": "War Galley",
+   "age": "bronze",
+   "building": "dock",
+   "cost": {
+    "food": 150,
+    "wood": 75
+   },
+   "time": 38,
+   "requires": [],
+   "effects": [
+    {
+     "type": "upgrade",
+     "from": "scout_ship",
+     "to": "war_galley"
+    }
+   ]
+  },
+  {
+   "id": "trireme_tech",
+   "name": "Trireme",
+   "age": "iron",
+   "building": "dock",
+   "cost": {
+    "food": 250,
+    "wood": 100
+   },
+   "time": 40,
+   "requires": [
+    "war_galley_tech"
+   ],
+   "effects": [
+    {
+     "type": "upgrade",
+     "from": "war_galley",
+     "to": "trireme"
+    }
+   ]
+  },
+  {
+   "id": "catapult_trireme_tech",
+   "name": "Catapult Trireme",
+   "age": "iron",
+   "building": "dock",
+   "cost": {
+    "food": 300,
+    "wood": 100
+   },
+   "time": 60,
+   "requires": [],
+   "effects": []
+  },
+  {
+   "id": "juggernaught_tech",
+   "name": "Juggernaught",
+   "age": "iron",
+   "building": "dock",
+   "cost": {
+    "food": 2000,
+    "wood": 900
+   },
+   "time": 150,
+   "requires": [
+    "catapult_trireme_tech",
+    "engineering"
+   ],
+   "effects": [
+    {
+     "type": "upgrade",
+     "from": "catapult_trireme",
+     "to": "juggernaught"
     }
    ]
   },
@@ -3283,7 +3562,11 @@
     "tower_shield",
     "nobility",
     "aristocracy",
-    "architecture"
+    "architecture",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech"
    ]
   },
   {
@@ -3334,7 +3617,13 @@
     "centurion",
     "centurion_tech",
     "iron_shield",
-    "tower_shield"
+    "tower_shield",
+    "trireme",
+    "trireme_tech",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech"
    ]
   },
   {
@@ -3406,7 +3695,12 @@
     "tower_shield",
     "aristocracy",
     "alchemy",
-    "engineering"
+    "engineering",
+    "fire_galley",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech"
    ]
   },
   {
@@ -3474,7 +3768,8 @@
     "bronze_shield",
     "iron_shield",
     "tower_shield",
-    "siegecraft"
+    "siegecraft",
+    "fire_galley"
    ]
   },
   {
@@ -3490,6 +3785,17 @@
      "target": {
       "tags": [
        "academy"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "speed",
+     "op": "mul",
+     "value": 1.3,
+     "target": {
+      "tags": [
+       "warship"
       ]
      }
     }
@@ -3550,6 +3856,17 @@
        "archery"
       ]
      }
+    },
+    {
+     "type": "stat",
+     "stat": "range",
+     "op": "add",
+     "value": 4,
+     "target": {
+      "tags": [
+       "warship"
+      ]
+     }
     }
    ],
    "disabled": [
@@ -3579,7 +3896,15 @@
     "polytheism",
     "fanaticism",
     "architecture",
-    "irrigation"
+    "irrigation",
+    "fishing_ship",
+    "fishing_ship_tech",
+    "trireme",
+    "trireme_tech",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech"
    ]
   },
   {
@@ -3587,6 +3912,17 @@
    "name": "Minoan",
    "arch": "greek",
    "effects": [
+    {
+     "type": "stat",
+     "stat": "cost",
+     "op": "mul",
+     "value": 0.7,
+     "target": {
+      "tags": [
+       "boat"
+      ]
+     }
+    },
     {
      "type": "stat",
      "stat": "range",
@@ -3633,7 +3969,8 @@
     "guard_tower",
     "guard_tower_tech",
     "ballista_tower",
-    "ballista_tower_tech"
+    "ballista_tower_tech",
+    "fire_galley"
    ]
   },
   {
@@ -3656,6 +3993,17 @@
      "target": {
       "tags": [
        "elephant"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "attack_cooldown",
+     "op": "mul",
+     "value": 0.6666666666666666,
+     "target": {
+      "units": [
+       "trireme"
       ]
      }
     }
@@ -3681,7 +4029,8 @@
     "aristocracy",
     "craftsmanship",
     "siegecraft",
-    "irrigation"
+    "irrigation",
+    "fire_galley"
    ]
   },
   {
@@ -3705,6 +4054,17 @@
      "resource": "wood",
      "rate": 1.3,
      "carry": 0
+    },
+    {
+     "type": "stat",
+     "stat": "attack_cooldown",
+     "op": "mul",
+     "value": 0.6060606060606061,
+     "target": {
+      "tags": [
+       "catapult_ship"
+      ]
+     }
     }
    ],
    "disabled": [
@@ -3727,7 +4087,8 @@
     "chain_armor_archers",
     "chain_armor_cavalry",
     "architecture",
-    "siegecraft"
+    "siegecraft",
+    "fire_galley"
    ]
   },
   {
@@ -3778,7 +4139,13 @@
     "aristocracy",
     "alchemy",
     "engineering",
-    "siegecraft"
+    "siegecraft",
+    "trireme",
+    "trireme_tech",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech"
    ]
   },
   {
@@ -3840,7 +4207,11 @@
     "metallurgy",
     "iron_shield",
     "tower_shield",
-    "craftsmanship"
+    "craftsmanship",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech"
    ]
   },
   {
@@ -3881,6 +4252,17 @@
        "villager"
       ]
      }
+    },
+    {
+     "type": "stat",
+     "stat": "hp",
+     "op": "mul",
+     "value": 1.3,
+     "target": {
+      "tags": [
+       "boat"
+      ]
+     }
     }
    ],
    "disabled": [
@@ -3918,7 +4300,8 @@
     "guard_tower_tech",
     "ballista_tower",
     "ballista_tower_tech",
-    "tower_shield"
+    "tower_shield",
+    "fire_galley"
    ]
   },
   {
@@ -3945,6 +4328,17 @@
      "target": {
       "tags": [
        "elephant"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "attack",
+     "op": "mul",
+     "value": 1.25,
+     "target": {
+      "units": [
+       "fire_galley"
       ]
      }
     }
@@ -3975,7 +4369,11 @@
     "siegecraft",
     "astrology",
     "monotheism",
-    "fanaticism"
+    "fanaticism",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech"
    ]
   },
   {
@@ -4052,7 +4450,10 @@
     "nobility",
     "engineering",
     "craftsmanship",
-    "siegecraft"
+    "siegecraft",
+    "juggernaught",
+    "juggernaught_tech",
+    "fire_galley"
    ]
   },
   {
@@ -4133,7 +4534,11 @@
     "logistics",
     "engineering",
     "craftsmanship",
-    "irrigation"
+    "irrigation",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech"
    ]
   },
   {
@@ -4200,7 +4605,8 @@
     "ballista_tower",
     "ballista_tower_tech",
     "alchemy",
-    "irrigation"
+    "irrigation",
+    "fire_galley"
    ]
   },
   {
@@ -4284,7 +4690,10 @@
     "helepolis",
     "helepolis_tech",
     "ballista_tower",
-    "ballista_tower_tech"
+    "ballista_tower_tech",
+    "juggernaught",
+    "juggernaught_tech",
+    "fire_galley"
    ]
   }
  ],

@@ -6,7 +6,7 @@ const TAGS: Record<string, string> = {
   archery: "Archery Range units", stable: "Stable units", academy: "Academy units", barracks: "Barracks units",
   infantry: "infantry", melee: "melee units", missile: "missile units", siege: "siege", catapult: "Stone Throwers",
   chariot: "chariots", elephant: "elephants", mounted: "mounted units", priest: "priests", swordsman: "swordsmen",
-  cavalry: "cavalry", military: "military units", tower: "towers", wall: "walls", "*": "buildings",
+  cavalry: "cavalry", military: "military units", boat: "ships", warship: "war ships", catapult_ship: "catapult ships", tower: "towers", wall: "walls", "*": "buildings",
 };
 const pct = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
 

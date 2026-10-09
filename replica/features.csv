@@ -27,7 +27,7 @@ Farms behind a Market,gathering,must,yes,yes,walked over by default as in the re
 Docks,naval,should,yes,yes,in the water at the shore; counts for the Tool Age
 Fishing boats and deep fish,naval,should,yes,yes,Fishing Boat and the Fishing Ship upgrade; deep fish for boats only
 Trade boats and trade between docks,naval,could,yes,no,
-War ships: scout ship war galley trireme catapult trireme juggernaught fire galley,naval,should,yes,no,
+War ships: scout ship war galley trireme catapult trireme juggernaught fire galley,naval,should,yes,yes,with the civilizations' ship bonuses and tech trees; the AI does not build them yet
 Transports,naval,should,yes,no,
 Construction with several builders,construction,must,yes,yes,
 Repair buildings for a resource cost,construction,should,yes,yes,half the build speed; a full bar costs half the price
