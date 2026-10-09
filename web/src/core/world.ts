@@ -6,6 +6,7 @@ import { GridMap, Terrain, walkable } from "./grid";
 import { generateMap } from "./mapgen";
 import { Pathfinder } from "./path";
 import { NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
+import { scores } from "./score";
 import { BuildingStats, Mods, UnitStats } from "./stats";
 
 /** What a context (right) click turned into, so the UI can give feedback. */
@@ -49,6 +50,10 @@ export class World {
   ais: AIController[] = [];
   /** Start tile of each player's town center. */
   startTiles: Tile[] = [];
+  /** The game's history for the Timeline: every player's score every 30 game seconds, and what happened when. */
+  history: { t: number; totals: number[] }[] = [];
+  milestones: { t: number; player: number; kind: "age" | "wonder" | "defeated"; age?: number }[] = [];
+  private historyClosed = false;
   /** The first player to reach each age, by age index. */
   firstTo: Record<number, number> = {};
 
@@ -704,6 +709,11 @@ export class World {
     this.refreshPopulation();
     if (this.tick % 5 === 0) for (const p of this.players) this.fog[p.id].update(this, p.id);
     if (this.tick % 20 === 0) this.checkDefeat();
+    // The Timeline: a point every 30 seconds while the game is on, and one last when it ends.
+    if (!this.historyClosed && (this.tick % 600 === 0 || this.winner !== null)) {
+      this.recordHistory();
+      if (this.winner !== null) this.historyClosed = true;
+    }
   }
 
   refreshPopulation() {
@@ -729,6 +739,7 @@ export class World {
       if (!hasUnits && !hasBuildings) {
         p.defeated = true;
         this.events.push({ kind: "message", player: -1, text: `${p.name} has been defeated` });
+        this.milestones.push({ t: this.time, player: p.id, kind: "defeated" });
       }
       if (p.wonderAt !== null && this.time >= p.wonderAt && !p.defeated) {
         this.winner = p.id;
@@ -788,6 +799,7 @@ export class World {
             this.refreshHp(p.id);
             this.events.push({ kind: "ageReached", player: p.id, age });
             if (this.firstTo[age] === undefined) this.firstTo[age] = p.id;
+            this.milestones.push({ t: this.time, player: p.id, kind: "age", age });
             this.events.push({ kind: "message", player: p.id, text: `${p.name} reached the ${this.rules.ages[age].name}` });
           } else {
             const t = this.rules.techs.get(q.id);
@@ -1319,8 +1331,14 @@ export class World {
     u.order = IDLE;
   }
 
+  /** One point of the Timeline: everyone's score now. */
+  recordHistory() {
+    this.history.push({ t: this.time, totals: scores(this).map((s) => s.total) });
+  }
+
   private wonderBuilt(b: Building) {
     const p = this.players[b.owner];
+    this.milestones.push({ t: this.time, player: p.id, kind: "wonder" });
     p.wonderAt = this.time + (this.rules.economy.wonder_seconds ?? 900);
     this.events.push({ kind: "message", player: -1, text: `${p.name} has built a Wonder. Destroy it or lose.` });
   }

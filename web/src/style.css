@@ -187,5 +187,9 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #civ-info { display: inline-block; max-width: 560px; font-size: 14px; color: var(--gold); min-height: 2.4em; }
 #overlay table { margin: 6px auto; border-collapse: collapse; text-align: left; font-size: 15px; }
 #overlay td { padding: 4px 12px; border-bottom: 1px solid rgba(200, 164, 98, .35); vertical-align: top; }
+#timeline { display: block; width: min(640px, 80vw); height: 260px; margin: 8px auto 4px; image-rendering: auto; cursor: crosshair; }
+#timeline-read { min-height: 34px; font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
+.timeline-key { font-size: 11px; color: #c8b896; text-align: center; }
+#overlay .tabs button.on { outline: 2px solid var(--gold); }
 #overlay table.score th { padding: 4px 10px; font-weight: 400; font-size: 13px; color: #e8dcc0; }
 #overlay table.score td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }

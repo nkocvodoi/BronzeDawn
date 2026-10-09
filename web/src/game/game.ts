@@ -9,6 +9,7 @@ import { clock } from "../core/sim";
 import { World } from "../core/world";
 import { Arch, buildingPic, CIV_RELIEFS, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
+import { drawTimeline } from "./timeline";
 import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
 import { ASSETS, screenDirection } from "./assets";
@@ -24,6 +25,9 @@ interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics;
 
 /** The original's limit on how many units one selection holds. */
 const MAX_SELECTION = 25;
+
+/** Where the Timeline is drawn, with the line that reads it under the pointer. */
+const TIMELINE_HTML = `<canvas id="timeline"></canvas><div id="timeline-read"></div><div class="timeline-key">T Tool · B Bronze · I Iron · W Wonder · ✕ out</div>`;
 
 /** How long something takes, in game seconds: "25s", or "2:40" from a minute on. */
 const duration = (s: number) => (s < 60 ? `${Math.round(s)}s` : clock(s));
@@ -372,10 +376,22 @@ export class Game {
         ${t("lock-btn", "Keep the mouse in the game", this.lock.wanted)}
         ${t("reseed-btn", "Farms sow themselves again", this.reseed)}
         <button id="fs-btn">${document.fullscreenElement ? "Leave full screen" : "Full screen"}</button>
+        <button id="timeline-btn">Timeline</button>
         <button id="credits-btn">Credits</button>
         <button data-restart>Quit to a new map</button>
       </span>`,
     ], "menu");
+  }
+
+  /** The Timeline so far, from the menu. */
+  private showTimeline() {
+    this.hud.showOverlay("Timeline", [TIMELINE_HTML, `<span class="choices"><button id="resume-btn">Return to game (Esc)</button></span>`], "menu");
+    this.paintTimeline();
+  }
+
+  private paintTimeline() {
+    const c = document.querySelector("#timeline") as HTMLCanvasElement | null, r = document.querySelector("#timeline-read") as HTMLElement | null;
+    if (c && r) drawTimeline(c, r, this.world);
   }
 
   /** Who made the art and sound from files, and under which licence; required by CC-BY. */
@@ -435,9 +451,12 @@ export class Game {
     const title = this.watching ? `${winner >= 0 ? this.world.players[winner].name : "Nobody"} wins` : won ? "Victory" : "Defeat";
     this.hud.showOverlay(title, [
       `${how === "wonder" ? "A Wonder stood its time. " : ""}Time ${clock(this.world.time)}`,
-      `<table class="score">${head}${rows}</table>`,
+      `<span class="choices tabs"><button data-tab="timeline" class="on">Timeline</button><button data-tab="score">Score</button></span>`,
+      `<div data-pane="timeline">${TIMELINE_HTML}</div>`,
+      `<div data-pane="score" hidden><table class="score">${head}${rows}</table></div>`,
       `<span class="choices"><button data-restart>New map (Enter)</button></span>`,
     ], won || this.watching ? "win" : "lose");
+    this.paintTimeline();
   }
 
   // ---- the loop
@@ -1299,6 +1318,14 @@ export class Game {
         return;
       }
       if (t.closest("#fs-btn")) { this.toggleFullscreen(); return; }
+      if (t.closest("#timeline-btn")) { this.showTimeline(); return; }
+      const tab = t.closest("[data-tab]") as HTMLElement | null;
+      if (tab) {
+        document.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("on", b === tab));
+        document.querySelectorAll<HTMLElement>("[data-pane]").forEach((p) => { p.hidden = p.dataset.pane !== tab.dataset.tab; });
+        if (tab.dataset.tab === "timeline") this.paintTimeline();
+        return;
+      }
       if (t.closest("#speed")) { this.setSpeed(0, (this.speeds.indexOf(this.speed) + 1) % this.speeds.length); return; }
       // Menu, Diplomacy and ? open their screens and pause, as the original's did.
       if (this.started) {

@@ -536,6 +536,19 @@ describe("the original's rules", () => {
     expect(sa.total).toBe(sa.military + sa.economy + sa.religion + sa.technology + sa.other);
   });
 
+  it("the Timeline: a score point every 30 seconds, ages and defeats marked, one last point at the end", () => {
+    const w = new World(RULES, 4, ["A", "B"], 72, true);
+    run(w, 95);
+    expect(w.history.map((h) => h.t)).toEqual([30, 60, 90].map((t) => expect.closeTo(t, 5)));
+    expect(w.history[0].totals.length).toBe(2);
+    for (const e of [...w.unitsOf(1), ...w.buildingsOf(1)]) w.applyDamage(e, 1e6, -1);
+    run(w, 2);
+    expect(w.milestones.some((m) => m.kind === "defeated" && m.player === 1)).toBe(true);
+    const n = w.history.length;
+    run(w, 60);
+    expect(w.history.length).toBe(n); // closed when the game ended
+  });
+
   it("martyrdom: a priest gives its life to convert at once, but not another priest", () => {
     const w = blank();
     const pr = w.spawnUnit("priest", 0, new Tile(5, 5).center);
