@@ -275,13 +275,13 @@ export class Game {
   private showHelp() {
     this.hud.showOverlay("Controls", [
       "Left click / drag: select · Shift: add · Double click: all of that kind on screen",
-      "Right click: move, gather, hunt, build, attack, convert or heal (priests), or set a rally point",
+      "Right click: move, gather, hunt, build, repair, attack, convert or heal (priests), or set a rally point · Shift + right click: a waypoint",
       "Villagers: B opens the build menu, then E House · G Granary · S Storage Pit · B Barracks · M Market · F Farm",
       "A Archery Range · L Stable · W Wall · T Tower · C Government Center · P Temple · Y Academy · K Siege Workshop · N Town Center · O Wonder",
       "Train: C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
-      "Up to 25 units in one selection · The pointer shows what a right-click will do · F4 or S: scores · F10: menu",
+      "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · F4 or S: scores · F10: menu",
       "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar) · F3 pause",
@@ -1398,6 +1398,13 @@ export class Game {
     if (sel.length === 1 && sel[0] instanceof Building) {
       this.world.setRally(this.me, sel[0].id, at);
       this.marker(e.clientX, e.clientY, playerColor(this.me));
+      return;
+    }
+    // Shift + right-click on the ground: a waypoint, walked to after the ones before it.
+    if (e.shiftKey && sel.some((x) => x instanceof Unit)) {
+      this.world.waypoint(this.me, this.selection, at);
+      this.selectSound(true);
+      this.marker(e.clientX, e.clientY, 0x33ff66);
       return;
     }
     let target = this.pick(e.clientX, e.clientY);

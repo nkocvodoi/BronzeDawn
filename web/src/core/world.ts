@@ -336,25 +336,46 @@ export class World {
 
   move(player: number, ids: number[], target: Vec2, attackMove = false) {
     this.own(ids, player).forEach((u, i) => {
-      let dest = target.add(FORMATION[Math.min(i, FORMATION.length - 1)]);
-      if (!this.map.passable(dest.tile)) {
-        const t = this.map.nearestPassable(dest.tile, 4);
-        if (t) dest = t.center;
-      }
-      u.resumeMove = null;
-      u.buildQueue = [];
-      const goal = dest.tile;
-      u.path = this.pathfinder.find(u.pos, dest, (t) => t.equals(goal));
-      if (u.path.length) {
-        // Finish on the exact point only when it was reached and the last leg is clear;
-        // otherwise stop at the closest tile (the shore of a lake, the edge of a wall).
-        const before = u.path.length > 1 ? u.path[u.path.length - 2] : u.pos;
-        if (this.pathfinder.reached && this.map.clearLine(before, dest)) u.path[u.path.length - 1] = dest;
-        else dest = u.path[u.path.length - 1];
-      } else if (!this.pathfinder.reached) dest = u.pos;
-      u.order = { kind: "move", to: dest, attackMove: attackMove && !u.isVillager };
-      u.pathTarget = dest;
+      u.waypoints = [];
+      this.moveOne(u, target.add(FORMATION[Math.min(i, FORMATION.length - 1)]), attackMove);
     });
+  }
+
+  /** Shift + right-click: units already walking add the point to their way; the others go now. */
+  waypoint(player: number, ids: number[], target: Vec2) {
+    this.own(ids, player).forEach((u, i) => {
+      const dest = target.add(FORMATION[Math.min(i, FORMATION.length - 1)]);
+      if (u.order.kind === "move" && u.waypoints.length < 20) u.waypoints.push(dest);
+      else { u.waypoints = []; this.moveOne(u, dest, false); }
+    });
+  }
+
+  private moveOne(u: Unit, to: Vec2, attackMove: boolean) {
+    let dest = to;
+    if (!this.map.passable(dest.tile)) {
+      const t = this.map.nearestPassable(dest.tile, 4);
+      if (t) dest = t.center;
+    }
+    u.resumeMove = null;
+    u.buildQueue = [];
+    const goal = dest.tile;
+    u.path = this.pathfinder.find(u.pos, dest, (t) => t.equals(goal));
+    if (u.path.length) {
+      // Finish on the exact point only when it was reached and the last leg is clear;
+      // otherwise stop at the closest tile (the shore of a lake, the edge of a wall).
+      const before = u.path.length > 1 ? u.path[u.path.length - 2] : u.pos;
+      if (this.pathfinder.reached && this.map.clearLine(before, dest)) u.path[u.path.length - 1] = dest;
+      else dest = u.path[u.path.length - 1];
+    } else if (!this.pathfinder.reached) dest = u.pos;
+    u.order = { kind: "move", to: dest, attackMove: attackMove && !u.isVillager };
+    u.pathTarget = dest;
+  }
+
+  /** A walk is over: on to the next waypoint, or stop. */
+  private arrive(u: Unit, attackMove: boolean) {
+    const next = u.waypoints.shift();
+    if (next) this.moveOne(u, next, attackMove);
+    else u.order = IDLE;
   }
 
   /** The reseeding setting: spent farms are sown again for their price, while there is the wood. */
@@ -381,7 +402,7 @@ export class World {
   canAttackGround(u: Unit) { return u.def.projectile === "stone" && (u.def.area ?? 0) > 0; }
 
   stop(player: number, ids: number[]) {
-    for (const u of this.own(ids, player)) { u.order = IDLE; u.path = []; u.resumeMove = null; u.buildQueue = []; }
+    for (const u of this.own(ids, player)) { u.order = IDLE; u.path = []; u.resumeMove = null; u.buildQueue = []; u.waypoints = []; }
   }
 
   attack(player: number, ids: number[], target: number) {
@@ -865,7 +886,7 @@ export class World {
           }
         }
         if (!u.path.length) {
-          if (u.pos.distance(o.to) <= 0.15) { u.order = IDLE; return; }
+          if (u.pos.distance(o.to) <= 0.15) { this.arrive(u, o.attackMove); return; }
           if (this.map.clearLine(u.pos, o.to)) u.path = [o.to];
           else {
             // Something was built across the way: find a new path, no more than twice a second.
@@ -874,10 +895,10 @@ export class World {
             u.repathTimer = 0.5;
             const goal = o.to.tile;
             u.path = this.pathfinder.find(u.pos, o.to, (t) => t.equals(goal));
-            if (!u.path.length) { u.order = IDLE; return; }
+            if (!u.path.length) { this.arrive(u, o.attackMove); return; }
           }
         }
-        if (this.followPath(u, dt)) u.order = IDLE;
+        if (this.followPath(u, dt)) this.arrive(u, o.attackMove);
         break;
       }
 
@@ -917,7 +938,7 @@ export class World {
       if (u.resumeMove) {
         const m = u.resumeMove;
         u.resumeMove = null;
-        this.move(u.owner, [u.id], m, true);
+        this.moveOne(u, m, true); // keeps the waypoints after it
       } else { u.order = IDLE; u.scanTimer = 0; }
       return;
     }

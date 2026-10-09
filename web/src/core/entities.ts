@@ -47,6 +47,8 @@ export class Unit extends Entity {
   order: Order = IDLE;
   /** Where an attack-move was heading before it stopped to fight. */
   resumeMove: Vec2 | null = null;
+  /** Points to walk to next, in order, set with Shift + right-click. */
+  waypoints: Vec2[] = [];
   /** Stand Ground: hold this spot and strike only what comes in reach, until told otherwise. */
   standGround = false;
   path: Vec2[] = [];

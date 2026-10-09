@@ -175,6 +175,12 @@ await page.keyboard.press("d");
 check(await g((id) => game.world.unit(id).standGround, soldier), "D sets a soldier to stand ground");
 await page.keyboard.press("d");
 check(await g((id) => !game.world.unit(id).standGround, soldier), "D again lets it chase");
+const sp = await at(soldier);
+await page.keyboard.down("Shift");
+await page.mouse.click(sp.x + 120, sp.y + 10, { button: "right" });
+await page.mouse.click(sp.x + 120, sp.y + 90, { button: "right" });
+await page.keyboard.up("Shift");
+check(await g((id) => { const u = game.world.unit(id); return u.order.kind === "move" && u.waypoints.length === 1; }, soldier), "Shift + right-click lays a waypoint after the first point");
 
 await page.screenshot({ path: process.env.SHOT ?? "smoke.png" });
 check(errors.length === 0, `no errors in the console${errors.length ? ": " + errors.join(" | ") : ""}`);

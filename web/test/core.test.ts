@@ -319,6 +319,25 @@ describe("fixes from the logic review", () => {
     expect(w.players[0].res.wood).toBe(wood); // cleared, not cut: no wood
   });
 
+  it("waypoints: Shift + right-click points are walked in order", () => {
+    const w = blank();
+    const u = w.spawnUnit("clubman", 0, new Tile(2, 2).center);
+    w.waypoint(0, [u.id], new Tile(10, 2).center);   // not walking yet: goes now
+    w.waypoint(0, [u.id], new Tile(10, 10).center);  // walking: queued
+    w.waypoint(0, [u.id], new Tile(2, 10).center);
+    expect(u.waypoints.length).toBe(2);
+    let reachedCorner = false;
+    for (let i = 0; i < 60 / World.dt; i++) { w.step(); if (u.pos.distance(new Tile(10, 10).center) < 0.5) reachedCorner = true; }
+    expect(reachedCorner).toBe(true);
+    expect(u.pos.distance(new Tile(2, 10).center)).toBeLessThan(0.5);
+    expect(u.order.kind).toBe("idle");
+    // A plain move forgets the rest of the way.
+    w.waypoint(0, [u.id], new Tile(10, 10).center);
+    w.waypoint(0, [u.id], new Tile(2, 2).center);
+    w.move(0, [u.id], new Tile(5, 10).center);
+    expect(u.waypoints.length).toBe(0);
+  });
+
   it("deleting a foundation refunds what was not built", () => {
     const w = blank();
     w.fog[0].revealAll();
