@@ -37,6 +37,9 @@ await page.goto(`http://localhost:${port}/?seed=5`);
 await page.waitForFunction(() => window.game);
 check(await page.isVisible("#overlay [data-start]"), "start screen offers the difficulty choice");
 
+await page.selectOption("#opponents", "3");
+check((await page.textContent("#players-info")).includes("4 players"), "the start screen counts the players chosen");
+await page.selectOption("#opponents", "1");
 await page.selectOption("#civ", "greek");   // a fixed civilization: some change costs
 await page.selectOption("#start-speed", "1.5");
 check((await page.textContent("#civ-info")).includes("Academy units"), "choosing a civilization shows its bonuses");

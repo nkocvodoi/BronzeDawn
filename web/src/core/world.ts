@@ -25,7 +25,8 @@ const FORMATION: Vec2[] = (() => {
   return pts;
 })();
 
-export interface WorldOptions { civs?: (string | null)[] }
+/** `teams`: a team number per player; players who share a number above 0 are allies, 0 is on its own. */
+export interface WorldOptions { civs?: (string | null)[]; teams?: number[] }
 
 /**
  * The whole simulation. No rendering in here: it runs the same in the browser,
@@ -63,6 +64,7 @@ export class World {
     this.map = new GridMap(size, size);
     this.pathfinder = new Pathfinder(this.map);
     this.pathfinder.maxExpanded = Math.max(9000, size * size); // a long walk across a Huge map still finds its way
+    this.teams = playerNames.map((_, i) => options.teams?.[i] ?? 0);
     playerNames.forEach((n, i) => {
       const mods = new Mods(rules);
       const civId = options.civs?.[i];
@@ -88,7 +90,10 @@ export class World {
 
   unitsOf(p: number) { return this.units.filter((u) => u.alive && u.owner === p); }
   buildingsOf(p: number) { return this.buildings.filter((b) => b.alive && b.owner === p); }
-  isEnemy(a: number, b: number) { return a !== b && a !== GAIA && b !== GAIA; }
+  /** Each player's team; 0 means on its own. */
+  teams: number[] = [];
+  allied(a: number, b: number) { return a === b || (a >= 0 && b >= 0 && this.teams[a] > 0 && this.teams[a] === this.teams[b]); }
+  isEnemy(a: number, b: number) { return a !== GAIA && b !== GAIA && !this.allied(a, b); }
 
   /** May something owned by `owner` attack `t`? Players hunt animals; animals fight players. */
   hostile(owner: number, t: Entity) {
@@ -662,8 +667,9 @@ export class World {
         return;
       }
     }
+    // The last player, or the last team, standing. A team's win goes to its first player still in.
     const left = this.players.filter((p) => !p.defeated);
-    if (left.length <= 1) {
+    if (left.length <= 1 || left.every((p) => this.allied(p.id, left[0].id))) {
       this.winner = left.length ? left[0].id : -1;
       this.events.push({ kind: "gameOver", winner: this.winner, how: "conquest" });
     }

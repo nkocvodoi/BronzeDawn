@@ -126,9 +126,12 @@ export function generateMap(w: World) {
   w.nodes = w.nodes.filter((x) => x.alive);
 }
 
+/** Where each player starts: the corners first, then the middle of each edge, up to eight. */
 export function startTiles(count: number, n: number): Tile[] {
-  const corners = [new Tile(14, n - 15), new Tile(n - 15, 14), new Tile(14, 14), new Tile(n - 15, n - 15)];
-  return corners.slice(0, Math.max(1, Math.min(count, corners.length)));
+  const mid = Math.floor(n / 2);
+  const spots = [new Tile(14, n - 15), new Tile(n - 15, 14), new Tile(14, 14), new Tile(n - 15, n - 15),
+    new Tile(14, mid), new Tile(n - 15, mid), new Tile(mid, 14), new Tile(mid, n - 15)];
+  return spots.slice(0, Math.max(1, Math.min(count, spots.length)));
 }
 
 /** A few animals of one kind standing near a point. */
