@@ -635,6 +635,58 @@ describe("the original's rules", () => {
     expect(w.blockerUnit("fishing_boat", 0)).toBeNull();
   });
 
+  it("transports: units go aboard, cross the water and are put ashore; a sunk transport takes them down", () => {
+    const w = blank(40);
+    for (let y = 0; y < 40; y++) for (let x = 12; x < 26; x++) w.map.terrain[y * 40 + x] = Terrain.water; // a strait
+    const t = w.spawnUnit("light_transport", 0, new Tile(12, 10).center);
+    const men = [0, 1, 2, 3, 4, 5].map((i) => w.spawnUnit("clubman", 0, new Tile(9, 8 + i).center));
+    expect(w.smart(0, men.map((u) => u.id), t.id, t.center)).toBe("boarded");
+    run(w, 15);
+    expect(t.cargo.length).toBe(5); // room for five
+    expect(men.filter((u) => u.aboard === t.id).length).toBe(5);
+    expect(w.smart(0, [t.id], null, new Tile(30, 12).center)).toBe("unloaded");
+    run(w, 30);
+    expect(t.cargo.length).toBe(0);
+    const landed = men.filter((u) => u.aboard === null && u.pos.x > 25);
+    expect(landed.length).toBe(5);
+    for (const u of landed) expect(w.map.terrainAt(u.pos.tile)).not.toBe(Terrain.water);
+    // Back aboard, then sunk.
+    t.pos = new Tile(25, 12).center;
+    w.board(0, landed.map((u) => u.id), t.id);
+    run(w, 10);
+    const riders = landed.filter((u) => u.aboard === t.id);
+    expect(riders.length).toBeGreaterThan(0);
+    w.applyDamage(t, 1e6, -1);
+    expect(riders.every((u) => !u.alive)).toBe(true);
+  });
+
+  it("island maps: every base on its own island, no way across but by sea", () => {
+    for (const mapType of ["large_islands", "small_islands"] as const) {
+      const w = new World(RULES, 3, ["A", "B"], 72, true, { mapType });
+      const [a, b] = w.players.map((p) => w.buildingsOf(p.id).find((x) => x.def.id === "town_center")!);
+      const seen = w.map.reachable(new Tile(a.footprint.origin.x - 1, a.footprint.origin.y - 1), () => true);
+      const to = new Tile(b.footprint.origin.x - 1, b.footprint.origin.y - 1);
+      expect(seen[w.map.index(to)], mapType).toBeFalsy();
+      expect(w.nodes.some((n) => n.def.id === "deep_fish"), mapType).toBe(true);
+    }
+  });
+
+  it("trade: a trade boat sails to another player's Dock and brings gold home, more the further it goes", () => {
+    const w = blank(60);
+    for (let y = 0; y < 60; y++) for (let x = 6; x < 60; x++) w.map.terrain[y * 60 + x] = Terrain.water;
+    const mine = w.addBuilding("dock", 0, new Tile(6, 4), true);
+    const theirs = w.addBuilding("dock", 1, new Tile(6, 44), true);
+    const boat = w.spawnUnit("trade_boat", 0, new Tile(10, 8).center);
+    expect(w.smart(0, [boat.id], theirs.id, theirs.center)).toBe("traded");
+    const trip = w.tradeGold(theirs, mine);
+    expect(trip).toBeGreaterThan(30);
+    run(w, 70);
+    expect(w.players[0].res.gold).toBeGreaterThanOrEqual(trip);
+    expect(w.players[0].res.gold % trip).toBe(0);
+    expect(boat.order.kind).toBe("trade"); // and off again
+    expect(w.tradeGold(mine, w.addBuilding("dock", 1, new Tile(6, 12), true))).toBeLessThan(trip);
+  });
+
   it("the last team standing wins", () => {
     const w = new World(RULES, 4, ["A", "B", "C"], 72, true, { teams: [0, 1, 1] });
     for (const e of [...w.unitsOf(0), ...w.buildingsOf(0)]) w.applyDamage(e, 1e6, -1);
@@ -788,5 +840,6 @@ describe("maps and matches", () => {
       expect(r.problems).toEqual([]);
     }
     expect(losses.length, losses.join("\n\n")).toBeLessThanOrEqual(1);
-  }, 180_000);
+    // Six full matches: three minutes is not enough once games run past forty minutes, or on a slower CI machine.
+  }, 600_000);
 });

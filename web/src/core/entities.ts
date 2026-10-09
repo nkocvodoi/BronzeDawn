@@ -11,6 +11,8 @@ export type Order =
   | { kind: "return"; resume: number | null; drop?: number }
   | { kind: "build"; id: number }
   | { kind: "repair"; id: number }
+  | { kind: "board"; id: number }
+  | { kind: "trade"; with: number; home: number | null; loaded: boolean }
   | { kind: "attack"; id: number; auto?: boolean }
   | { kind: "attackGround"; at: Vec2 }
   | { kind: "convert"; id: number; sacrifice?: boolean }
@@ -49,6 +51,12 @@ export class Unit extends Entity {
   resumeMove: Vec2 | null = null;
   /** Points to walk to next, in order, set with Shift + right-click. */
   waypoints: Vec2[] = [];
+  /** The transport this unit rides in, off the map until it lands; null on land. */
+  aboard: number | null = null;
+  /** A transport's passengers, by id. */
+  cargo: number[] = [];
+  /** Where a transport is sailing to put its passengers ashore. */
+  unloadAt: Tile | null = null;
   /** Stand Ground: hold this spot and strike only what comes in reach, until told otherwise. */
   standGround = false;
   path: Vec2[] = [];
@@ -94,6 +102,10 @@ export class Unit extends Entity {
   get isPriest() { return this.def.converts === true; }
   /** Boats move on water only. */
   get isBoat() { return this.def.naval === true; }
+  /** Trades between Docks. */
+  get isTrader() { return this.def.trades === true; }
+  /** Carries land units over the water. */
+  get isTransport() { return (this.def.capacity ?? 0) > 0; }
   /** Gathers resources: villagers, and fishing boats. */
   get isGatherer() { return this.isVillager || (this.def.gathers?.length ?? 0) > 0; }
   /** Fights: not villagers, priests, animals or boats that only fish. */

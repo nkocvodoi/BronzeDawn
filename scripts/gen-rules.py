@@ -117,6 +117,16 @@ units = [
     unit("juggernaught", "Juggernaught", "warship", "iron", "dock", cost(w=135, g=75), 45, 200, 35, 0, 0, 10, 5.0, 1.4, 13,
          ["boat", "warship", "catapult_ship"], naval=True, convert_resist=2, area=1.5, damage="melee", projectile="stone",
          clears_trees=True, requires_tech="juggernaught_tech"),
+    # Trade: to another player's Dock and back to your own, for gold that grows with the distance.
+    unit("trade_boat", "Trade Boat", "boat", "stone", "dock", cost(w=100), 25, 200, 0, 0, 0, 0, 1.5, 2.1, 4,
+         ["boat", "trade"], naval=True, convert_resist=2, trades=True),
+    unit("merchant_ship", "Merchant Ship", "boat", "bronze", "dock", cost(w=100), 25, 250, 0, 0, 0, 0, 1.5, 2.5, 4,
+         ["boat", "trade"], naval=True, convert_resist=2, trades=True, requires_tech="merchant_ship_tech"),
+    # Transports carry land units across the water: five, then ten.
+    unit("light_transport", "Light Transport", "boat", "tool", "dock", cost(w=150), 38, 150, 0, 0, 0, 0, 1.5, 1.45, 4,
+         ["boat", "transport"], naval=True, convert_resist=2, capacity=5),
+    unit("heavy_transport", "Heavy Transport", "boat", "iron", "dock", cost(w=150), 38, 200, 0, 0, 0, 0, 1.5, 1.8, 5,
+         ["boat", "transport"], naval=True, convert_resist=2, capacity=10, requires_tech="heavy_transport_tech"),
     unit("fire_galley", "Fire Galley", "warship", "iron", "dock", cost(w=115, g=40), 45, 200, 24, 0, 0, 1, 1.0, 2.0, 8,
          ["boat", "warship", "fire"], naval=True, convert_resist=2, damage="melee", projectile="fire", requires_tech="war_galley_tech"),
 ]
@@ -124,7 +134,7 @@ for u in units:
     if u["id"] in ("fishing_boat", "fishing_ship"): u["convert_resist"] = 2
 # "Military" is everything trained to fight: not villagers, not priests.
 for u in units:
-    if u["id"] not in ("villager", "priest") and "fishing" not in u["tags"]:
+    if u["id"] not in ("villager", "priest") and not {"fishing", "transport", "trade"} & set(u["tags"]):
         u["tags"] = u["tags"] + ["military"]
 
 # ---------------------------------------------------------------- buildings
@@ -259,6 +269,8 @@ techs = [
     tech("martyrdom", "Martyrdom", "iron", "temple", cost(g=600), 60, [{"type": "flag", "flag": "martyrdom"}]),
     # Dock
     tech("fishing_ship_tech", "Fishing Ship", "bronze", "dock", cost(f=50, w=100), 15, [upgrade("fishing_boat", "fishing_ship")]),
+    tech("merchant_ship_tech", "Merchant Ship", "bronze", "dock", cost(f=200, w=75), 40, [upgrade("trade_boat", "merchant_ship")]),
+    tech("heavy_transport_tech", "Heavy Transport", "iron", "dock", cost(f=150, w=125), 60, [upgrade("light_transport", "heavy_transport")]),
     tech("war_galley_tech", "War Galley", "bronze", "dock", cost(f=150, w=75), 38, [upgrade("scout_ship", "war_galley")]),
     tech("trireme_tech", "Trireme", "iron", "dock", cost(f=250, w=100), 40, [upgrade("war_galley", "trireme")], ["war_galley_tech"]),
     tech("catapult_trireme_tech", "Catapult Trireme", "iron", "dock", cost(f=300, w=100), 60, []),
@@ -312,7 +324,7 @@ civs = [
     civ("yamato", "Yamato", "asian", [stat("cost", 0.75, op="mul", tags=["cavalry"]), stat("cost", 0.75, op="mul", units=["horse_archer", "heavy_horse_archer"]),
                                       stat("speed", 1.3, op="mul", units=["villager"]), stat("hp", 1.3, op="mul", tags=["boat"])]),
     civ("carthaginian", "Carthaginian", "roman", [stat("hp", 1.25, op="mul", tags=["academy"]), stat("hp", 1.25, op="mul", tags=["elephant"]),
-                                                  stat("attack", 1.25, op="mul", units=["fire_galley"])]),
+                                                  stat("attack", 1.25, op="mul", units=["fire_galley"]), stat("speed", 1.3, op="mul", tags=["transport"])]),
     civ("macedonian", "Macedonian", "roman", [stat("pierce_armor", 2, tags=["academy"]), stat("los", 2, tags=["melee"]),
                                               stat("cost", 0.5, op="mul", tags=["siege"]), {"type": "conversion", "stat": "resist", "value": 4}], ["temple"]),
     civ("palmyran", "Palmyran", "roman", [stat("cost", 1.5, op="mul", units=["villager"]), stat("armor", 1, units=["villager"]),
@@ -444,6 +456,8 @@ rules = {
         # Fishing boats (and ships) a player may have, alive or in training, for each finished Dock.
         "fishing_boats_per_dock": 5,
         "wonder_seconds": 900,
+        # Trade: gold per trip for each tile between the two Docks (our number: about 7 to 75 a trip, as reported).
+        "trade_gold_per_tile": 1.1,
         # Repair: hit points come back at this share of the building speed, and the full bar would cost
         # this share of the building's price, paid as the work goes.
         "repair_rate": 0.5,

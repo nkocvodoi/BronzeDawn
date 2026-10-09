@@ -1,5 +1,5 @@
 import { AIController } from "./ai";
-import { Building, Entity, GAIA, GameEvent, IDLE, Player, QueueItem, ResourceNode, Unit } from "./entities";
+import { Building, Entity, GAIA, GameEvent, IDLE, Order, Player, QueueItem, ResourceNode, Unit } from "./entities";
 import { Fog } from "./fog";
 import { Footprint, RNG, Tile, Vec2 } from "./geom";
 import { GridMap, Terrain, walkable } from "./grid";
@@ -10,7 +10,7 @@ import { scores } from "./score";
 import { BuildingStats, Mods, UnitStats } from "./stats";
 
 /** What a context (right) click turned into, so the UI can give feedback. */
-export type SmartResult = "moved" | "attacked" | "gathered" | "built" | "repaired" | "returned" | "converted" | "healed" | "nothing";
+export type SmartResult = "moved" | "attacked" | "gathered" | "built" | "repaired" | "boarded" | "unloaded" | "traded" | "returned" | "converted" | "healed" | "nothing";
 
 /** Who fired, with what. Damage is worked out against each target at impact (splash hits several). */
 interface Shot { attackerId: number; owner: number; attack: number; pierce: boolean; bonus?: Record<string, number> }
@@ -108,6 +108,7 @@ export class World {
 
   /** May something owned by `owner` attack `t`? Players hunt animals; animals fight players. */
   hostile(owner: number, t: Entity) {
+    if (t instanceof Unit && t.aboard !== null) return false; // out of reach inside its transport
     if (t instanceof Unit && t.isAnimal) return owner !== GAIA;
     if (owner === GAIA) return t.owner !== GAIA && !(t instanceof ResourceNode);
     return this.isEnemy(owner, t.owner);
@@ -409,6 +410,7 @@ export class World {
   move(player: number, ids: number[], target: Vec2, attackMove = false) {
     this.own(ids, player).forEach((u, i) => {
       u.waypoints = [];
+      u.unloadAt = null;
       this.moveOne(u, target.add(FORMATION[Math.min(i, FORMATION.length - 1)]), attackMove);
     });
   }
@@ -449,9 +451,147 @@ export class World {
 
   /** A walk is over: on to the next waypoint, or stop. */
   private arrive(u: Unit, attackMove: boolean) {
+    if (u.unloadAt) { this.disembark(u); return; }
     const next = u.waypoints.shift();
     if (next) this.moveOne(u, next, attackMove);
     else u.order = IDLE;
+  }
+
+  // ---- trade
+
+  /** Trade boats sail to another player's Dock for goods, and bring them back to one of yours for gold. */
+  trade(player: number, ids: number[], dockId: number) {
+    const d = this.building(dockId);
+    if (!d || !d.def.on_water || !d.complete || d.owner < 0 || d.owner === player) return;
+    for (const u of this.own(ids, player)) {
+      if (!u.isTrader) continue;
+      u.order = { kind: "trade", with: d.id, home: null, loaded: false };
+      u.path = []; u.repathTimer = 0; u.waypoints = [];
+    }
+  }
+
+  /** Gold for a trip between two Docks, growing with the distance between them. */
+  tradeGold(a: Building, b: Building) {
+    return Math.max(5, Math.round(a.center.distance(b.center) * (this.rules.economy.trade_gold_per_tile ?? 1.1)));
+  }
+
+  private nearestOwnDock(owner: number, p: Vec2): Building | null {
+    let best: Building | null = null, bestD = Infinity;
+    for (const b of this.buildings) {
+      if (!b.alive || !b.complete || b.owner !== owner || !b.def.on_water) continue;
+      const d = b.distance(p);
+      if (d < bestD) { bestD = d; best = b; }
+    }
+    return best;
+  }
+
+  private updateTrade(u: Unit, o: Extract<Order, { kind: "trade" }>, dt: number) {
+    const there = this.building(o.with);
+    if (!o.loaded) {
+      if (!there || !there.def.on_water || there.owner === u.owner) { u.order = IDLE; return; }
+      const a = this.approach(u, there, 0.9, dt);
+      if (a === "blocked") { u.order = IDLE; return; }
+      if (a !== "arrived") return;
+      const home = this.nearestOwnDock(u.owner, u.pos);
+      if (!home) { u.order = IDLE; return; }
+      u.order = { kind: "trade", with: o.with, home: home.id, loaded: true };
+      u.carryRes = Res.gold; u.carry = this.tradeGold(there, home);
+      u.path = []; u.repathTimer = 0;
+      return;
+    }
+    let home = o.home !== null ? this.building(o.home) : null;
+    if (!home || home.owner !== u.owner) { home = this.nearestOwnDock(u.owner, u.pos); if (home) o.home = home.id; }
+    if (!home) { u.order = IDLE; return; }
+    const a = this.approach(u, home, 0.9, dt);
+    if (a === "blocked") { u.order = IDLE; return; }
+    if (a !== "arrived") return;
+    const p = this.players[u.owner];
+    p.res.values[Res.gold] += u.carry;
+    p.stats.gathered.values[Res.gold] += u.carry;
+    u.carry = 0; u.carryRes = null;
+    // Off again, while the other Dock stands.
+    u.order = there && there.owner !== u.owner ? { kind: "trade", with: o.with, home: home.id, loaded: false } : IDLE;
+    u.path = []; u.repathTimer = 0;
+  }
+
+  // ---- transports
+
+  /** Land units walk to the shore by one of their transports and go aboard while there is room. */
+  board(player: number, ids: number[], transportId: number) {
+    const t = this.unit(transportId);
+    if (!t || t.owner !== player || !t.isTransport) return;
+    for (const u of this.own(ids, player)) {
+      if (u.isBoat || u.aboard !== null) continue;
+      u.order = { kind: "board", id: t.id };
+      u.path = []; u.repathTimer = 0; u.waypoints = []; u.buildQueue = [];
+    }
+  }
+
+  /** A transport sails to the shore nearest `at` and puts everyone ashore there. */
+  unload(player: number, ids: number[], at: Vec2) {
+    for (const u of this.own(ids, player)) {
+      if (!u.isTransport || !u.cargo.length) continue;
+      const landing = this.landingNear(at);
+      if (!landing) continue;
+      u.waypoints = [];
+      this.moveOne(u, landing.center, false);
+      u.unloadAt = landing;
+    }
+  }
+
+  /** The water tile beside land nearest to a point, where a transport can put in. */
+  landingNear(at: Vec2): Tile | null {
+    const c = at.tile;
+    for (let r = 0; r <= 16; r++) {
+      let best: Tile | null = null, bestD = Infinity;
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const t = new Tile(c.x + dx, c.y + dy);
+        if (!this.as(true, () => this.map.passable(t))) continue;
+        const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([ox, oy]) => this.as(false, () => this.map.passableXY(t.x + ox, t.y + oy)));
+        if (!shore) continue;
+        const d = t.center.distance(at);
+        if (d < bestD) { bestD = d; best = t; }
+      }
+      if (best) return best;
+    }
+    return null;
+  }
+
+  private updateBoard(u: Unit, id: number, dt: number) {
+    const t = this.unit(id);
+    if (!t || t.owner !== u.owner || !t.isTransport || t.cargo.length >= (t.def.capacity ?? 0)) { u.order = IDLE; return; }
+    if (u.pos.distance(t.pos) <= 1.8) {
+      u.aboard = t.id; t.cargo.push(u.id);
+      u.order = IDLE; u.path = []; u.carry = 0;
+      return;
+    }
+    const a = this.approach(u, t, 1.4, dt);
+    if (a === "blocked") u.order = IDLE;
+  }
+
+  /** Everyone off, onto the land around the landing, a tile each where there is room. */
+  private disembark(t: Unit) {
+    const at = t.unloadAt!;
+    t.unloadAt = null;
+    t.order = IDLE;
+    const land: Tile[] = [];
+    for (let r = 1; r <= 4 && land.length < t.cargo.length; r++) {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x = new Tile(at.x + dx, at.y + dy);
+        if (this.as(false, () => this.map.passable(x))) land.push(x);
+      }
+    }
+    if (!land.length) return; // no shore here after all: they stay aboard
+    t.cargo.forEach((id, i) => {
+      const u = this.unit(id);
+      if (!u) return;
+      u.aboard = null;
+      u.pos = land[i % land.length].center; u.prevPos = u.pos;
+      u.order = IDLE; u.path = [];
+    });
+    t.cargo = [];
   }
 
   /** The reseeding setting: spent farms are sown again for their price, while there is the wood. */
@@ -573,6 +713,29 @@ export class World {
     const group = this.own(ids, player);
     if (!group.length) return "nothing";
     const e = target !== null ? this.entity(target) : null;
+    // Transports with passengers, sent to land, put them ashore there; land units sent to one of
+    // your transports go aboard. The rest of the group carries on as usual.
+    const loaded = group.filter((u) => u.isTransport && u.cargo.length);
+    if (loaded.length && walkable(this.map.terrainAt(at.tile)) && !(e && this.hostile(player, e))) {
+      this.unload(player, loaded.map((u) => u.id), at);
+      const rest = group.filter((u) => !loaded.includes(u)).map((u) => u.id);
+      return rest.length ? this.smart(player, rest, target, at) : "unloaded";
+    }
+    const traders = group.filter((u) => u.isTrader);
+    if (traders.length && e instanceof Building && e.def.on_water && e.complete && e.owner >= 0 && e.owner !== player) {
+      this.trade(player, traders.map((u) => u.id), e.id);
+      const rest = group.filter((u) => !u.isTrader).map((u) => u.id);
+      return rest.length ? this.smart(player, rest, target, at) : "traded";
+    }
+    if (e instanceof Unit && e.owner === player && e.isTransport) {
+      const riders = group.filter((u) => !u.isBoat).map((u) => u.id);
+      if (riders.length) {
+        this.board(player, riders, e.id);
+        const rest = group.filter((u) => u.isBoat && u !== e).map((u) => u.id);
+        if (rest.length) this.move(player, rest, at);
+        return "boarded";
+      }
+    }
     if (!e) { this.move(player, ids, at); return "moved"; }
     const priests = group.filter((u) => u.isPriest).map((u) => u.id);
     const rest = group.filter((u) => !u.isPriest);
@@ -771,7 +934,7 @@ export class World {
       for (const ai of this.ais) if (this.tick % 20 === (ai.player * 7) % 20) ai.think(this);
     }
     for (const b of this.buildings) if (b.alive) this.updateBuilding(b, dt);
-    for (const u of this.units) if (u.alive) this.updateUnit(u, dt);
+    for (const u of this.units) if (u.alive && u.aboard === null) this.updateUnit(u, dt);
     for (const n of this.nodes) {
       if (n.alive && n.decay > 0) { n.amount -= n.decay * dt; if (n.amount <= 0) this.removeNode(n); }
     }
@@ -1039,6 +1202,8 @@ export class World {
       case "return": this.updateReturn(u, o.resume, dt, o.drop); break;
       case "build": this.updateBuild(u, o.id, dt); break;
       case "repair": this.updateRepair(u, o.id, dt); break;
+      case "board": this.updateBoard(u, o.id, dt); break;
+      case "trade": this.updateTrade(u, o, dt); break;
       case "attack": this.updateAttack(u, o.id, dt, o.auto === true); break;
       case "attackGround": this.updateAttackGround(u, o.at, dt); break;
       case "convert": this.updateConvert(u, o.id, dt, o.sacrifice === true); break;
@@ -1152,6 +1317,7 @@ export class World {
     priest.chants = 0;
     priest.order = IDLE;
     if (t instanceof Unit) { t.order = IDLE; t.path = []; t.buildQueue = []; }
+    if (t instanceof Unit) for (const id of t.cargo) { const c = this.unit(id); if (c) c.owner = t.owner; } // the passengers with it
     if (t instanceof Building) { t.queue = []; t.queueTimer = 0; }
     this.refreshHp(t.owner);
     this.players[priest.owner].stats.converted++;
@@ -1555,6 +1721,10 @@ export class World {
   private kill(t: Entity, attackerId: number) {
     t.alive = false;
     t.hp = 0;
+    if (t instanceof Unit && t.cargo.length) {
+      const cargo = t.cargo; t.cargo = [];
+      for (const id of cargo) { const c = this.unit(id); if (c) { c.aboard = null; c.pos = t.pos; this.kill(c, attackerId); } }
+    }
     if (t instanceof Building) {
       this.map.setOccupant(t.footprint, 0);
       if (t.def.id === "wonder" && t.owner >= 0) this.players[t.owner].wonderAt = null;
@@ -1680,7 +1850,7 @@ export class World {
           for (const j of list) {
             if (j <= i) continue;
             const b = this.units[j];
-            if (a.isBoat !== b.isBoat) continue; // a boat by the shore and a villager on it are not in each other's way
+            if (a.isBoat !== b.isBoat || a.aboard !== null || b.aboard !== null) continue; // a boat by the shore and a villager on it are not in each other's way
             const d = b.pos.sub(a.pos);
             const len = d.length;
             if (len >= minD) continue;

@@ -263,13 +263,20 @@ export class HUD {
       const d = first.def, st = w.stats(first);
       if (first.isPriest) {
         this.stats.innerHTML = this.stat("faith", 100, Math.floor(first.faith), "Faith") + this.stat("range", d.range, st.range, "Range");
+      } else if (first.isBoat && !first.isSoldier) {
+        this.stats.innerHTML = ""; // a fishing boat or a transport has nothing to fight with
       } else {
         this.stats.innerHTML = this.stat("attack", d.attack, st.attack, "Attack")
           + (d.armor || st.armor ? this.stat("armor", d.armor, st.armor, "Armor") : "")
           + (d.pierce_armor || st.pierce_armor ? this.stat("pierce", d.pierce_armor, st.pierce_armor, "Pierce armor") : "")
           + (d.range > 0 ? this.stat("range", d.range, st.range, "Range") : "");
       }
-      if (first.carry > 0 && first.carryRes !== null) this.lines[0].textContent = `Carrying ${Math.floor(first.carry)} ${first.carryKind === "meat" ? "meat" : RES_KEY[first.carryRes]}`;
+      if (first.isTrader) {
+        const o = first.order;
+        this.lines[0].textContent = o.kind === "trade" ? (o.loaded ? `Bringing ${Math.round(first.carry)} gold home` : "Sailing for goods")
+          : "Right-click another player's Dock to trade";
+      } else if (first.isTransport) this.lines[0].textContent = `Carrying ${first.cargo.length}/${first.def.capacity}${first.unloadAt ? " · putting in" : ""}`;
+      else if (first.carry > 0 && first.carryRes !== null) this.lines[0].textContent = `Carrying ${Math.floor(first.carry)} ${first.carryKind === "meat" ? "meat" : RES_KEY[first.carryRes]}`;
       return;
     }
     if (first instanceof Building) {

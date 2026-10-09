@@ -21,8 +21,8 @@ export function scores(w: World): Score[] {
   const army = ps.map((p) => units(p.id).filter((u) => u.isSoldier).length
     + buildings(p.id).filter((b) => b.def.tags?.includes("tower")).length);
   const villagers = ps.map((p) => units(p.id).filter((u) => u.isVillager).length);
-  // Fishing boats count for the economy as villagers do (the original also counts trade boats and transports).
-  const workers = ps.map((p) => units(p.id).filter((u) => u.isVillager || (u.isBoat && u.isGatherer)).length);
+  // Villagers, and the trade, transport and fishing boats, count for the economy, as in the original.
+  const workers = ps.map((p) => units(p.id).filter((u) => u.isVillager || (u.isBoat && !u.isSoldier)).length);
   const explored = ps.map((p) => Math.floor((w.fog[p.id].exploredShare * 100) / 3));
   const conversions = ps.map((p) => p.stats.converted);
   const techs = ps.map((p) => p.stats.researched);

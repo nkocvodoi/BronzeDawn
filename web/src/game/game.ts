@@ -78,6 +78,7 @@ const TRAIN_KEYS: Record<string, string> = {
   scout: "S", chariot: "R", scythe_chariot: "R", cavalry: "C", heavy_cavalry: "C", cataphract: "C", war_elephant: "E", armored_elephant: "E", camel_rider: "L",
   stone_thrower: "C", catapult: "C", heavy_catapult: "C", ballista: "B", helepolis: "B", priest: "T",
   fishing_boat: "F", fishing_ship: "F",
+  light_transport: "T", heavy_transport: "T", trade_boat: "R", merchant_ship: "R",
   scout_ship: "E", war_galley: "E", trireme: "E", catapult_trireme: "C", juggernaught: "C", fire_galley: "G",
 };
 
@@ -338,6 +339,8 @@ export class Game {
       "Right click: move, gather, hunt, build, repair, attack, convert or heal (priests), or set a rally point · Shift + right click: a waypoint",
       "Villagers: B opens the build menu, then E House · G Granary · S Storage Pit · B Barracks · D Dock (in the water at the shore) · M Market · F Farm",
       "A Archery Range · L Stable · W Wall · T Tower · C Government Center · P Temple · Y Academy · K Siege Workshop · N Town Center · O Wonder",
+      "Trade (R at the Dock): right-click another player's Dock with a trade boat; it brings gold back, more the further it sails",
+      "Transports (T at the Dock): right-click one with land units to go aboard, then right-click the land (or U) to put them ashore",
       "Train: F Fishing Boat at the Dock · C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
@@ -962,7 +965,8 @@ export class Game {
       }
     };
     const w = this.world;
-    for (const u of w.units) show(u, u.owner === this.me || this.visible(u.pos.tile));
+    // Passengers are inside their transport, off the map.
+    for (const u of w.units) show(u, u.aboard === null && (u.owner === this.me || this.visible(u.pos.tile)));
     for (const b of w.buildings) {
       if (b.owner === this.me || this.revealMap) { show(b, true); continue; }
       const now = this.anyVisible(b.footprint.tiles());
@@ -1026,7 +1030,7 @@ export class Game {
       for (const t of b.footprint.tiles()) put(t.x, t.y, hex(playerColor(b.owner)));
     }
     for (const u of w.units) {
-      if (u.owner !== this.me && !this.visible(u.pos.tile)) continue;
+      if (u.aboard !== null || (u.owner !== this.me && !this.visible(u.pos.tile))) continue;
       const t = u.pos.tile;
       put(t.x, t.y, hex(playerColor(u.owner)));
       put(t.x + 1, t.y, hex(playerColor(u.owner)));
@@ -1069,7 +1073,10 @@ export class Game {
 
   // ---- commands
 
-  selectedEntities() { return this.selection.map((id) => this.world.entity(id)).filter((e): e is Entity => e !== null); }
+  selectedEntities() {
+    // Units that went aboard a transport drop out of the selection.
+    return this.selection.map((id) => this.world.entity(id)).filter((e): e is Entity => e !== null && !(e instanceof Unit && e.aboard !== null));
+  }
 
   /** Which menu the villager panel shows: its actions, or the build menu (opened with B). */
   private menu: "main" | "build" = "main";
@@ -1110,13 +1117,21 @@ export class Game {
     if (units.length) {
       const out: Command[] = [
         { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
-        { key: "A", title: "Attack-move", detail: "click a point", blocker: null, icon: "attack_move", action: () => { this.attackMovePending = true; this.hud.message("Click where to attack-move"); } },
       ];
       const soldiers = units.filter((u) => u.isSoldier);
+      // Attack-move is for those who fight (and priests, who go along); boats that fish or carry have no use for it.
+      if (soldiers.length || units.some((u) => u.isPriest)) {
+        out.push({ key: "A", title: "Attack-move", detail: "click a point", blocker: null, icon: "attack_move", action: () => { this.attackMovePending = true; this.hud.message("Click where to attack-move"); } });
+      }
       if (soldiers.length) {
         const on = soldiers.every((u) => u.standGround);
         out.push({ key: "D", title: on ? "Stand ground: on" : "Stand ground", detail: on ? "press again to let them chase" : "hold this spot, strike only what comes in reach",
           blocker: null, icon: "stand_ground", action: () => { w.setStandGround(me, this.selection, !on); this.hud.message(on ? "Units will chase enemies again" : "Standing ground"); } });
+      }
+      const loaded = units.filter((u) => u.isTransport && u.cargo.length);
+      if (loaded.length) {
+        out.push({ key: "U", title: "Unload", detail: "put everyone ashore at the nearest landing (or right-click the land)", blocker: null, icon: "unload",
+          action: () => { for (const t of loaded) w.unload(me, [t.id], t.pos); } });
       }
       if (units.some((u) => w.canAttackGround(u))) {
         out.push({ key: "T", title: "Attack ground", detail: "click a spot to bombard", blocker: null, icon: "attack_ground",

@@ -3,7 +3,7 @@ Isometric tile map with terrain and water,map,must,yes,yes,
 Seeded random maps,map,must,yes,yes,
 Map sizes Small to Huge,map,should,yes,yes,72 96 120 144
 Gigantic map size,map,could,yes,no,
-Map types: islands coastal inland highland and the Rise of Rome four,map,should,yes,partial,inland; coastal; continental; mediterranean (no islands highland hill country or narrows yet)
+Map types: islands coastal inland highland and the Rise of Rome four,map,should,yes,partial,inland; coastal; continental; mediterranean; large and small islands (no highland hill country or narrows yet)
 Elevation hills and cliffs,map,should,yes,no,flat ground only
 Elevation damage bonus,combat,could,yes,no,needs elevation
 Shallows land units can cross,map,could,yes,no,
@@ -26,9 +26,9 @@ Shore fishing,gathering,should,yes,yes,
 Farms behind a Market,gathering,must,yes,yes,walked over by default as in the remaster; a start option blocks them as in the original
 Docks,naval,should,yes,yes,in the water at the shore; counts for the Tool Age
 Fishing boats and deep fish,naval,should,yes,yes,Fishing Boat and the Fishing Ship upgrade; deep fish for boats only
-Trade boats and trade between docks,naval,could,yes,no,
+Trade boats and trade between docks,naval,could,yes,yes,the Return of Rome way: no cargo to pick; gold grows with the distance between the Docks
 War ships: scout ship war galley trireme catapult trireme juggernaught fire galley,naval,should,yes,yes,with the civilizations' ship bonuses and tech trees; the AI does not build them yet
-Transports,naval,should,yes,no,
+Transports,naval,should,yes,yes,Light and Heavy Transport carry 5 and 10; a sunk one takes its passengers down
 Construction with several builders,construction,must,yes,yes,
 Repair buildings for a resource cost,construction,should,yes,yes,half the build speed; a full bar costs half the price
 Damaged buildings show fire and leave rubble,construction,could,yes,yes,1 to 3 flames by hit points; rubble fades after a minute

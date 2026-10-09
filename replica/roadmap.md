@@ -7,8 +7,8 @@ Cách đo: `replica/features.csv` liệt kê từng tính năng của bản gố
 `python3 ../replica-skill/replica-diff/parity.py replica/features.csv`. Số liệu của bản gốc lấy từ
 `replica/game/aoe1-research.md` (có nguồn cho từng con số).
 
-**Hiện tại: 85.7 / 100** (đủ 21/21 tính năng bắt buộc).
-Cập nhật lần cuối: 2026-10-09, sau khi có tàu chiến (Giai đoạn 3, phần 2).
+**Hiện tại: 87.8 / 100** (đủ 21/21 tính năng bắt buộc).
+Cập nhật lần cuối: 2026-10-09, sau khi có thuyền chở quân, bản đồ đảo, thuyền buôn và AI dùng tàu (Giai đoạn 3 xong, còn phần AI trên đảo).
 
 Đây là bảng chấm chi tiết. Bảng thô trước đó cho 95.5 vì gộp nhiều thứ vào một dòng (cả phần tàu thuyền,
 địa hình, âm thanh đều chưa có dòng nào). Mỗi khi xong một hạng mục, sửa cột `clone` trong `features.csv`
@@ -53,13 +53,14 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 ### Giai đoạn 3: nước và tàu (lớn)
 - [x] Dock (cũng là công trình tính để lên Tool Age), đặt dưới nước sát bờ
 - [x] Thuyền đánh cá (nâng cấp Fishing Ship) và cá ngoài khơi; AI tự xây Dock và đánh cá
-- [ ] Thuyền buôn và buôn bán giữa các dock
+- [x] Thuyền buôn (Trade Boat, Merchant Ship) và buôn bán giữa các dock
 - [x] Tàu chiến: scout ship, war galley, trireme, catapult trireme, juggernaught, fire galley (bonus tàu của các dân tộc đã có tác dụng)
-- [ ] Thuyền chở quân
+- [x] Thuyền chở quân (Light 5 chỗ, Heavy 10 chỗ; chìm thì quân chết theo)
 - [x] Bản đồ có biển: coastal, continental, mediterranean
-- [ ] Bản đồ đảo (small islands, large islands), cần thuyền chở quân
-- [ ] AI biết dùng thuyền
-- Bonus tàu của Greek, Hittite, Minoan, Persian, Phoenician, Yamato và Carthaginian (Fire Galley) đã có tác dụng; còn bonus thuyền chở quân của Carthaginian (phần 3).
+- [x] Bản đồ đảo (small islands, large islands); AI chưa biết dùng thuyền chở quân (phần 4)
+- [x] AI biết dùng thuyền: Dock, thuyền đánh cá, hải quân nhỏ, chở quân sang đảo
+- [ ] AI trên bản đồ đảo còn yếu: mỗi chuyến chỉ chở 5 lính nên hay bị tiêu diệt dần; cần gom nhiều chuyến, có tàu chiến hộ tống
+- Mọi bonus tàu của các dân tộc đã có tác dụng, kể cả thuyền chở quân nhanh hơn 30% của Carthaginian.
 
 ### Giai đoạn 4: bản đồ và luật còn lại (vừa)
 - [ ] Đồi, vách đá, độ cao (đánh từ trên cao xuống có cơ hội gây gấp 3 sát thương), vùng nước nông lội qua được

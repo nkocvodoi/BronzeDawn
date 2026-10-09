@@ -28,7 +28,7 @@ export class Fog {
 
   update(w: World, player: number) {
     this.visible.fill(0);
-    for (const u of w.units) if (u.alive && u.owner === player) this.reveal(u.pos, u.def.los);
+    for (const u of w.units) if (u.alive && u.owner === player && u.aboard === null) this.reveal(u.pos, u.def.los);
     for (const b of w.buildings) {
       if (b.alive && b.owner === player) this.reveal(b.center, (b.def.los ?? 2) + b.def.size / 2);
     }
