@@ -8,7 +8,7 @@ import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import { MAP_TYPES, MapType } from "../core/mapgen";
 import { Victory, WinHow, World } from "../core/world";
-import { Arch, buildingPic, CIV_RELIEFS, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
+import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
 import { drawTimeline } from "./timeline";
 import { describe, describeCiv } from "./describe";
@@ -144,6 +144,7 @@ export class Game {
   private hud = new HUD();
   private worldLayer = new Container();
   private terrain = new Container();
+  private cliffs: Sprite[] = [];
   private entities = new Container();
   private effects = new Container();
   private fogSprite = new Sprite();
@@ -240,6 +241,22 @@ export class Game {
         const i = y * map.width + x;
         forest[i] = dx === 0 && dy === 0 ? 1 : forest[i] || 2;
       }
+    }
+    // Cliffs stand up from the ground: a rock sprite on each cliff tile, drawn in depth order with everything else.
+    for (const c of this.cliffs) c.destroy();
+    this.cliffs = [];
+    for (let i = 0; i < map.terrain.length; i++) {
+      if (map.terrain[i] !== Terrain.cliff) continue;
+      const at = new Vec2(i % map.width + 0.5, Math.floor(i / map.width) + 0.5);
+      const pic = cliffPic(map.shade[i]);
+      const sp = new Sprite(pic.texture);
+      sp.width = pic.w; sp.height = pic.h;
+      sp.anchor.set(pic.ax, pic.ay);
+      const s = iso(at);
+      sp.position.set(s.x, s.y);
+      sp.zIndex = depth(at);
+      this.entities.addChild(sp);
+      this.cliffs.push(sp);
     }
     for (const t of terrainChunks(this.world.map, forest)) {
       const ground = new Sprite(t.texture);
@@ -1069,8 +1086,13 @@ export class Game {
           case Terrain.grass: c = [78, 120, 52]; break;
           case Terrain.dirt: c = [130, 106, 66]; break;
           case Terrain.sand: c = [196, 176, 118]; break;
+          case Terrain.shallows: c = [84, 146, 176]; break;
+          case Terrain.cliff: c = [104, 86, 66]; break;
           default: c = [42, 88, 156];
         }
+        // Higher ground is lighter on the minimap too.
+        const up = map.elevation[i] * 10;
+        if (up) c = [Math.min(255, c[0] + up), Math.min(255, c[1] + up), Math.min(255, c[2] + up)];
         if (!this.revealMap && !f.visible[i]) c = [c[0] / 2 + 10, c[1] / 2 + 10, c[2] / 2 + 10];
         put(x, y, c);
       }

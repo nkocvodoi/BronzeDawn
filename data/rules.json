@@ -59,7 +59,9 @@
  "combat": {
   "min_damage": 1,
   "building_factor": 0.2,
-  "building_min": 0.1
+  "building_min": 0.1,
+  "elevation_chance": 0.25,
+  "elevation_factor": 3
  },
  "economy": {
   "carry": 10,

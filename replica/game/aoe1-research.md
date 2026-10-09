@@ -382,7 +382,7 @@ These are listed with each unit in section 4.
 | Pierce armor | Present since O. Only missile damage uses it: Archery Range units, towers, Scout Ship, War Galley and Trireme, plus Ballista/Helepolis for shield techs. Pierce armor does not reduce melee damage | S1, S12 |
 | Melee-type attacks | Villagers, Barracks/Academy units (except Slinger), Stable units, the Stone Thrower line and catapult ships deal "melee" damage that armor reduces | F-Armor |
 | Damage vs buildings | The same sum ×0.2, with a minimum of 0.1. Buildings in effect resist 80%; a +10 bonus does +2 | F-Armor, F-Villager |
-| Elevation and cliffs (O manual) | When the target is lower, each hit has a 25% chance of **triple damage** | S1 |
+| Elevation and cliffs (O manual) | When the target is lower, each hit has a 25% chance of **triple damage**. Ours: `highGround` in `web/src/core/world.ts`; heights 0 to 3 and how many hills and cliffs a map gets are our choices | S1 |
 | Elevation (DE) | ×1.5 when a ranged unit shoots downhill; ×0.67 when a melee unit attacks uphill | F-Armor |
 | Bonus damage (O) | Cavalry line +5 vs Barracks infantry. Chariot ×2 and Chariot Archer ×3 vs priests. R: Slinger +2 vs archers and extra vs walls/towers; Camel +8 vs cavalry/HA and +4 vs chariots | S1, S2, S6 |
 | Area damage | Stone Thrower small, Catapult medium, Heavy Catapult large, Catapult Trireme small, Juggernaught medium. War Elephant and Scythe Chariot trample adjacent enemies. Siege splash hurts your own units and buildings too (?) | S1, S2, HG-rm |

@@ -7,8 +7,8 @@ Cách đo: `replica/features.csv` liệt kê từng tính năng của bản gố
 `python3 ../replica-skill/replica-diff/parity.py replica/features.csv`. Số liệu của bản gốc lấy từ
 `replica/game/aoe1-research.md` (có nguồn cho từng con số).
 
-**Hiện tại: 90.1 / 100** (đủ 21/21 tính năng bắt buộc).
-Cập nhật lần cuối: 2026-10-09, sau khi có Ruins và artifact (Giai đoạn 4, phần 2).
+**Hiện tại: 92.9 / 100** (đủ 21/21 tính năng bắt buộc).
+Cập nhật lần cuối: 2026-10-09, sau khi có đồi, vách đá và nước nông (Giai đoạn 4, phần 3).
 
 Đây là bảng chấm chi tiết. Bảng thô trước đó cho 95.5 vì gộp nhiều thứ vào một dòng (cả phần tàu thuyền,
 địa hình, âm thanh đều chưa có dòng nào). Mỗi khi xong một hạng mục, sửa cột `clone` trong `features.csv`
@@ -63,7 +63,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - Mọi bonus tàu của các dân tộc đã có tác dụng, kể cả thuyền chở quân nhanh hơn 30% của Carthaginian.
 
 ### Giai đoạn 4: bản đồ và luật còn lại (vừa)
-- [ ] Đồi, vách đá, độ cao (đánh từ trên cao xuống có cơ hội gây gấp 3 sát thương), vùng nước nông lội qua được
+- [x] Đồi (cao 0 đến 3), vách đá, độ cao (đánh từ trên cao xuống có 25% cơ hội gây gấp 3 sát thương, như bản gốc), vùng nước nông lội qua được ở chỗ đường nối các căn cứ băng qua nước
 - [ ] Các kiểu bản đồ: inland, highland, continental, hill country, narrows; cỡ Gigantic
 - [x] Ruins và artifact (5 mỗi loại), chiếm bằng cách đến gần; artifact mang đi được, kể cả trên thuyền; giữ hết một loại 15 phút là thắng; 10 điểm mỗi cái và 50 khi giữ hết; AI biết đi chiếm và giành lại
 - [x] Mỗi dân tộc thiếu đúng các unit và công nghệ như bản gốc (theo cây công nghệ bản DE, cả 17 dân tộc)

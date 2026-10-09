@@ -2,7 +2,7 @@ import { AIController } from "./ai";
 import { Building, Entity, GAIA, GameEvent, IDLE, Order, Player, QueueItem, ResourceNode, Unit } from "./entities";
 import { Fog } from "./fog";
 import { Footprint, RNG, Tile, Vec2 } from "./geom";
-import { GridMap, Terrain, walkable } from "./grid";
+import { buildable, GridMap, Terrain, walkable } from "./grid";
 import { generateMap, MapType } from "./mapgen";
 import { Pathfinder } from "./path";
 import { hasTag, NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
@@ -13,7 +13,8 @@ import { BuildingStats, Mods, UnitStats } from "./stats";
 export type SmartResult = "moved" | "attacked" | "gathered" | "built" | "repaired" | "boarded" | "unloaded" | "traded" | "returned" | "converted" | "healed" | "nothing";
 
 /** Who fired, with what. Damage is worked out against each target at impact (splash hits several). */
-interface Shot { attackerId: number; owner: number; attack: number; pierce: boolean; bonus?: Record<string, number> }
+/** `from`: the ground height the attacker stood on, for the high-ground bonus. */
+interface Shot { attackerId: number; owner: number; attack: number; pierce: boolean; bonus?: Record<string, number>; from?: number }
 interface Missile { shot: Shot; targetId: number | null; at: Vec2 | null; area: number; remaining: number; clearsTrees?: boolean }
 
 type Approach = "arrived" | "moving" | "blocked";
@@ -280,7 +281,8 @@ export class World {
     const fp = new Footprint(origin, def.size);
     for (const t of fp.tiles()) {
       // A Dock stands in the water; everything else on land.
-      if (!this.map.inside(t) || walkable(this.map.terrainAt(t)) === (def.on_water === true) || this.map.occupantAt(t) !== 0) return false;
+      const ground = this.map.terrainAt(t);
+      if (!this.map.inside(t) || (def.on_water ? ground !== Terrain.water : !buildable(ground)) || this.map.occupantAt(t) !== 0) return false;
       if (player !== null && !this.fog[player].isExplored(t)) return false;
     }
     if (def.on_water) {
@@ -1179,7 +1181,7 @@ export class World {
         const st = this.bstats(b);
         const t = this.nearestEnemyUnit(b.owner, b.center, st.range + b.def.size / 2);
         if (t) {
-          this.fire(b.center, { attackerId: b.id, owner: b.owner, attack: st.attack, pierce: true }, t, 0, b.def.projectile ?? "arrow");
+          this.fire(b.center, { attackerId: b.id, owner: b.owner, attack: st.attack, pierce: true, from: this.map.elevationAt(b.center.tile) }, t, 0, b.def.projectile ?? "arrow");
           b.cooldown = b.def.attack_cooldown ?? 2;
         }
       }
@@ -1352,7 +1354,7 @@ export class World {
     u.busy = true;
     if (u.cooldown > 0) return;
     u.cooldown = st.attack_cooldown;
-    const shot: Shot = { attackerId: u.id, owner: u.owner, attack: st.attack, pierce: u.def.damage ? u.def.damage === "pierce" : true, bonus: u.def.bonus };
+    const shot: Shot = { attackerId: u.id, owner: u.owner, attack: st.attack, pierce: u.def.damage ? u.def.damage === "pierce" : true, bonus: u.def.bonus, from: this.map.elevationAt(u.pos.tile) };
     const flight = Math.max(0.15, u.pos.distance(at) / 8);
     this.missiles.push({ shot, targetId: null, at, area: u.def.area ?? 0, remaining: flight, clearsTrees: u.def.clears_trees === true });
     this.events.push({ kind: "projectile", from: u.pos, to: at, flight, projectile: u.def.projectile ?? "stone" });
@@ -1388,7 +1390,7 @@ export class World {
         u.cooldown = st.attack_cooldown;
         const ranged = hunting || st.range > 0;
         const pierce = u.def.damage ? u.def.damage === "pierce" : ranged;
-        const shot: Shot = { attackerId: u.id, owner: u.owner, attack: hunting ? 4 : st.attack, pierce, bonus: u.def.bonus };
+        const shot: Shot = { attackerId: u.id, owner: u.owner, attack: hunting ? 4 : st.attack, pierce, bonus: u.def.bonus, from: this.map.elevationAt(u.pos.tile) };
         if (ranged) this.fire(u.pos, shot, t, u.def.area ?? 0, hunting ? "spear" : u.def.projectile ?? "arrow");
         else {
           this.hit(t, shot, true);
@@ -1825,7 +1827,16 @@ export class World {
     this.missiles = keep;
   }
 
-  private hit(t: Entity, s: Shot, melee = false) { this.applyDamage(t, this.shotDamage(s, t), s.attackerId, melee); }
+  private hit(t: Entity, s: Shot, melee = false) { this.applyDamage(t, this.shotDamage(s, t) * this.highGround(s, t), s.attackerId, melee); }
+
+  /** The original's elevation rule: striking a target on lower ground, each hit has a chance to do
+   *  three times the damage. Level ground draws no random number, so flat maps play as they did. */
+  private highGround(s: Shot, t: Entity) {
+    if (s.from === undefined) return 1;
+    const below = this.map.elevationAt(t.center.tile);
+    if (s.from <= below) return 1;
+    return this.rng.chance(this.rules.elevationChance) ? this.rules.elevationFactor : 1;
+  }
 
   applyDamage(t: Entity, amount: number, attackerId: number, melee = false) {
     if (!t.alive || t instanceof ResourceNode) return;

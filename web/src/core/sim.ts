@@ -2,7 +2,7 @@ import { AIController, Difficulty } from "./ai";
 import { RES_ALL, Rules } from "./rules";
 import type { MapType } from "./mapgen";
 import { World, WorldOptions } from "./world";
-import { walkable } from "./grid";
+import { sailable, walkable } from "./grid";
 
 /**
  * Runs a whole match with no window: one AI per player, a fixed seed, a time limit.
@@ -35,7 +35,8 @@ export function runMatch(rules: Rules, seed: number, minutes = 75, levels: Diffi
       }
       for (const u of w.units) {
         // Land units on land, boats on the water.
-        if (walkable(w.map.terrainAt(u.pos.tile)) === u.isBoat) problems.push(`unit ${u.id} is ${u.isBoat ? "a boat on land" : "standing in water"} at ${Math.floor(w.time)}s`);
+        const ground = w.map.terrainAt(u.pos.tile);
+        if (u.aboard === null && (u.isBoat ? !sailable(ground) : !walkable(ground))) problems.push(`unit ${u.id} is ${u.isBoat ? "a boat on land" : "standing in water"} at ${Math.floor(w.time)}s`);
       }
     }
   }
