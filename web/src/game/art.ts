@@ -6,19 +6,34 @@ import type { BuildingDef } from "../core/rules";
 import { GridMap, Terrain } from "../core/grid";
 import { HALF_H, HALF_W, fromIso } from "./iso";
 import { bayer, darken, hash, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
+import { AGE_KEYS, ASSETS, ImageSpec } from "./assets";
 
 export const PLAYER_COLORS = ["#2f6be6", "#d8322c", "#f0c530", "#3daf4a", "#33b5c4", "#9a4ad8", "#888888", "#e87a28"];
 export const playerColor = (id: number) => (id >= 0 ? PLAYER_COLORS[id % PLAYER_COLORS.length] : "#ffffff");
 const playerRGB = (id: number): RGB => rgb(parseInt(playerColor(id).slice(1), 16));
 
-/** A sprite picture. w, h are world units; ax, ay the anchor (y down, Pixi style). */
-export interface Pic { texture: Texture; canvas: HTMLCanvasElement; w: number; h: number; ax: number; ay: number }
+/** A sprite picture. w, h are world units; ax, ay the anchor (y down, Pixi style). A picture from an
+ *  asset file says so, and whether it is a mirrored direction of its sheet. */
+export interface Pic { texture: Texture; canvas: HTMLCanvasElement; w: number; h: number; ax: number; ay: number; asset?: boolean; flip?: boolean }
 
 /** The five building styles. */
 export type Arch = "egyptian" | "greek" | "babylonian" | "asian" | "roman";
 export const ARCHES: Arch[] = ["egyptian", "greek", "babylonian", "asian", "roman"];
 
 const cache = new Map<string, Pic>();
+
+/** A picture from an asset file, recoloured for its owner, anchored where it stands on the ground. */
+function assetPic(key: string, spec: ImageSpec, owner: number | null, defaultAnchorY = 1): Pic | null {
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const c = ASSETS.canvasOf(spec.file, owner, owner === null ? undefined : [...playerRGB(owner)] as [number, number, number]);
+  if (!c) return null;
+  const w = c.canvas.width, h = c.canvas.height, k = spec.scale ?? 1;
+  const [ax, ay] = spec.anchor ?? [w / 2, h * defaultAnchorY];
+  const out: Pic = { texture: c.texture, canvas: c.canvas, w: w * k, h: h * k, ax: ax / w, ay: ay / h, asset: true };
+  cache.set(key, out);
+  return out;
+}
 
 function finish(p: PixelCanvas, ax: number, ay: number): Pic {
   const canvas = p.toCanvas();
@@ -114,6 +129,12 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
   const n = map.width;
   const terrainAt = (x: number, y: number): Terrain | null =>
     x < 0 || y < 0 || x >= n || y >= map.height ? null : (map.terrain[y * n + x] as Terrain);
+  const named = ASSETS.manifest.terrain ?? {};
+  const tileFiles: Partial<Record<Terrain, string[]>> = {};
+  for (const [t, key] of [[Terrain.grass, "grass"], [Terrain.dirt, "dirt"], [Terrain.sand, "sand"], [Terrain.water, "water"]] as const) {
+    const list = (named[key] ?? []).filter((f) => ASSETS.image(f));
+    if (list.length) tileFiles[t] = list;
+  }
   for (let py = 0; py < H; py++) {
     for (let px = 0; px < W; px++) {
       const w = fromIso(left + (px + 0.5) * PX, (py + 0.5) * PX);
@@ -172,6 +193,22 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array): { texture: Te
         if (hash(px, py, 5) < 0.05) c = darken(c, 0.8);
         else if (hash(px, py, 6) < 0.03) c = lighten(c, 0.15);
       }
+      // Ground tiles from files, if any: each a 64 x 32 diamond, a variant picked per tile. The coast's
+      // foam and the forest floor still go on top.
+      const tiles = tileFiles[use];
+      if (tiles) {
+        const img = ASSETS.pixels(tiles[Math.floor(hash(tx, ty, 61) * tiles.length)]);
+        if (img) {
+          const ix = Math.min(img.w - 1, Math.floor(((fx - fy + 1) / 2) * img.w)), iy = Math.min(img.h - 1, Math.floor(((fx + fy) / 2) * img.h));
+          const i = (iy * img.w + ix) * 4;
+          if (img.data[i + 3] > 0) {
+            const foam = use === Terrain.water && c[0] > 200;
+            c = foam ? c : [img.data[i], img.data[i + 1], img.data[i + 2]];
+            const f = use === Terrain.grass ? forest?.[ty * n + tx] ?? 0 : 0;
+            if (f === 1) c = mix(c, FOREST_FLOOR, 0.5);
+          }
+        }
+      }
       p.set(px, py, c);
     }
   }
@@ -209,7 +246,32 @@ export type Pose = "idle" | "walk" | "work";
 /** What a villager has in hand, from the job it is doing. */
 export type Tool = "none" | "axe" | "pick" | "basket" | "hoe" | "hammer" | "spear" | "net";
 
-export interface UnitLook { type: string; owner: number; facing: Facing; pose: Pose; frame: number; tool: Tool; carry: number | null }
+/** `dir` (0-7, clockwise from facing the viewer) and `t` (seconds) are for sprite sheets from files. */
+export interface UnitLook { type: string; owner: number; facing: Facing; pose: Pose; frame: number; tool: Tool; carry: number | null; dir?: number; t?: number }
+
+/** A unit's frame from its sprite sheet, if the assets have one: by its tool first ("villager:axe"). */
+function assetUnitPic(look: UnitLook): Pic | null {
+  const units = ASSETS.manifest.units;
+  if (!units) return null;
+  const spec = (look.tool !== "none" ? units[`${look.type}:${look.tool}`] : undefined) ?? units[look.type];
+  if (!spec) return null;
+  const a = spec.anims;
+  const anim = look.pose === "work" ? a.work ?? a.attack ?? a.idle : look.pose === "walk" ? a.walk ?? a.idle : a.idle ?? a.walk;
+  if (!anim) return null;
+  let dir = look.dir ?? 0, flip = false;
+  if (spec.directions === 5 && dir > 4) { dir = 8 - dir; flip = true; } // NE, E, SE are NW, W, SW mirrored
+  const f = Math.floor((look.t ?? 0) * (anim.fps ?? 10)) % Math.max(1, anim.frames);
+  const [fw, fh] = spec.frame, x = f * fw, y = (anim.row + dir) * fh;
+  const key = `ua-${spec.file}-${look.owner}-${x}-${y}-${flip}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const fr = ASSETS.frame(spec.file, look.owner, [...playerRGB(look.owner)] as [number, number, number], x, y, fw, fh);
+  if (!fr) return null;
+  const k = spec.scale ?? 1;
+  const out: Pic = { texture: fr.texture, canvas: fr.canvas, w: fw * k, h: fh * k, ax: spec.anchor[0] / fw, ay: spec.anchor[1] / fh, asset: true, flip };
+  cache.set(key, out);
+  return out;
+}
 
 const CARRY_COLORS: [RGB, RGB][] = [[rgb(0xc8243a), rgb(0x6aa040)], [C.wood, C.woodDark], [C.gold, C.goldDark], [C.stone, C.stoneDark]];
 
@@ -259,6 +321,8 @@ const ELEPHANTS = new Set(["war_elephant", "armored_elephant", "elephant_archer"
 const SIEGE = new Set(["stone_thrower", "catapult", "heavy_catapult", "ballista", "helepolis"]);
 
 export function unitPic(look: UnitLook): Pic {
+  const fromFile = assetUnitPic(look);
+  if (fromFile) return fromFile;
   const { type, owner, facing, pose, frame, tool, carry } = look;
   const key = `u-${type}-${owner}-${facing}-${pose}-${frame}-${tool}-${carry}`;
   if (RIDERS.has(type)) return pic(key, 34, 37, 16 / 34, 34 / 37, (p) => drawRider(p, look));
@@ -1030,6 +1094,13 @@ function drawAlligator(p: PixelCanvas, look: UnitLook, dead: boolean) {
 // ---- resources and other map objects
 
 export function nodePic(type: string, variant: number): Pic {
+  const files = ASSETS.manifest.resources?.[type];
+  if (files) {
+    const list = Array.isArray(files) ? files : [files];
+    const spec = list[Math.abs(Math.floor(variant)) % list.length];
+    const fromFile = spec && assetPic(`na-${spec.file}`, spec, null, 0.92);
+    if (fromFile) return fromFile;
+  }
   if (type === "tree" || type === "palm") {
     const v = type === "palm" ? 4 : variant % 4;
     return pic(`tree${v}`, 26, 38, 0.5, 0.92, (p) => drawTree(p, v, 13, 35, 1));
@@ -2304,7 +2375,30 @@ function drawFarm(p: PixelCanvas, s: number, stage: number, farmStage: number, p
   p.rect(fx + 1, fy - 9, 4, 3, pc);
 }
 
+/** A finished building's picture from the assets: for its architecture and age, falling back to an earlier
+ *  age, then the Greek style, then a picture shared by all. Foundations keep the drawn stages. */
+function assetBuildingSpec(id: string, age: number, arch: Arch): ImageSpec | null {
+  const b = ASSETS.manifest.buildings?.[id];
+  if (!b) return null;
+  if (typeof (b as ImageSpec).file === "string") return b as ImageSpec;
+  for (const style of [arch, "greek", "default"]) {
+    const byStyle = (b as Record<string, ImageSpec | Record<string, ImageSpec>>)[style];
+    if (!byStyle) continue;
+    if (typeof (byStyle as ImageSpec).file === "string") return byStyle as ImageSpec;
+    for (let a = age; a >= 0; a--) {
+      const s = (byStyle as Record<string, ImageSpec>)[AGE_KEYS[a]];
+      if (s) return s;
+    }
+  }
+  return null;
+}
+
 export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3, farmLeft = 1, arch: Arch = "greek"): Pic {
+  if (stage >= 3) {
+    const spec = assetBuildingSpec(def.id, Math.round(age), arch);
+    const fromFile = spec && assetPic(`ba-${spec.file}-${owner}`, spec, owner);
+    if (fromFile) return fromFile;
+  }
   const s = def.size;
   const W = s * 32, D = s * 16;
   const a = clamp(Math.round(age), 0, 3), st = clamp(Math.round(stage), 0, 3);
@@ -2522,6 +2616,9 @@ const TECH_WORDS: [RegExp, string][] = [
 export function iconPic(id: string): HTMLCanvasElement {
   const hit = iconCache.get(id);
   if (hit) return hit;
+  const file = ASSETS.manifest.icons?.[id];
+  const fromFile = file ? ASSETS.canvasOf(file, null) : null;
+  if (fromFile) { iconCache.set(id, fromFile.canvas); return fromFile.canvas; }
   const p = new PixelCanvas(24, 24);
   if (UNIT_IDS.has(id)) {
     iconFrame(p, rgb(0x3a4a5e));
@@ -2562,7 +2659,13 @@ export function resourceIcons(): string[] {
     (p) => { p.poly([[2, 13], [5, 6], [11, 5], [14, 13]], C.goldDark); p.poly([[4, 12], [6, 7], [10, 7], [12, 12]], C.gold); p.set(7, 8, rgb(0xfff4b0)); },
     (p) => { p.poly([[2, 13], [3, 6], [9, 4], [14, 7], [14, 13]], C.stoneDark); p.poly([[4, 11], [5, 7], [9, 6], [12, 8], [12, 11]], C.stone); },
   ];
-  return draws.map((d) => { const p = new PixelCanvas(16, 16); d(p); p.outline(); return p.toCanvas().toDataURL(); });
+  // In the order of the game's resources: food, wood, gold, stone. A file replaces any of them.
+  const files = ASSETS.manifest.resourceIcons ?? {};
+  return draws.map((d, i) => {
+    const file = files[(["food", "wood", "gold", "stone"] as const)[i]];
+    if (file && ASSETS.image(file)) return ASSETS.url(file);
+    const p = new PixelCanvas(16, 16); d(p); p.outline(); return p.toCanvas().toDataURL();
+  });
 }
 
 /** Planks of dark wood for the bottom panel, as in the original's interface. Tileable. */

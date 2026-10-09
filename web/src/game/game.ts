@@ -10,6 +10,7 @@ import { Arch, buildingPic, Facing, nodePic, Pic, playerColor, Pose, projectileP
 import { CursorKind, cursors } from "./cursors";
 import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
+import { ASSETS, screenDirection } from "./assets";
 import { FogFilter } from "./fog";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 import { MouseLock } from "./mouselock";
@@ -285,8 +286,21 @@ export class Game {
         ${t("music-btn", "Music", this.sound.musicOn)}
         ${t("lock-btn", "Keep the mouse in the game", this.lock.wanted)}
         <button id="fs-btn">${document.fullscreenElement ? "Leave full screen" : "Full screen"}</button>
+        <button id="credits-btn">Credits</button>
         <button data-restart>Quit to a new map</button>
       </span>`,
+    ], "menu");
+  }
+
+  /** Who made the art and sound from files, and under which licence; required by CC-BY. */
+  private showCredits() {
+    const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]!);
+    const list = ASSETS.manifest.credits ?? [];
+    const rows = list.map((c) => `<tr><td>${esc(c.what)}</td><td>${esc(c.author)}</td><td>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener" style="color:inherit">${esc(c.license)}</a>` : esc(c.license)}</td></tr>`).join("");
+    this.hud.showOverlay("Credits", [
+      "Game, code, and everything not listed here: drawn and composed in code for Bronze Dawn.",
+      rows ? `<table>${rows}</table>` : "No art or sound from files is in use.",
+      `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`,
     ], "menu");
   }
 
@@ -596,7 +610,7 @@ export class Game {
       }
     }
     const carry = u.isVillager && u.carry >= 1 && u.carryRes !== null && pose !== "work" ? u.carryRes : null;
-    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry };
+    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry, dir: screenDirection(u.facing.x, u.facing.y), t: time + u.id * 0.37 };
   }
 
   private puff(at: Vec2, big: boolean) {
@@ -714,8 +728,10 @@ export class Game {
         if (s) this.sfx(s, p, 0.55, 0.05);
       }
       v.workFrame = wf;
+      // A sprite sheet has its own directions and says which are mirrored; drawn units face left or right.
       const dx = e.facing.x - e.facing.y;
-      if (Math.abs(dx) > 0.2) v.sprite.scale.x = Math.abs(v.sprite.scale.x) * (dx < 0 ? -1 : 1);
+      if (v.pic.asset) v.sprite.scale.x = Math.abs(v.sprite.scale.x) * (v.pic.flip ? -1 : 1);
+      else if (Math.abs(dx) > 0.2) v.sprite.scale.x = Math.abs(v.sprite.scale.x) * (dx < 0 ? -1 : 1);
     } else if (e instanceof Building) {
       const fp = e.footprint;
       const s = iso(new Vec2(fp.maxX, fp.maxY));
@@ -1099,6 +1115,7 @@ export class Game {
         if (t.closest("#score-btn")) { this.hud.toggleScores(this.world); return; }
         if (t.closest("#resume-btn")) { this.hud.hideOverlay(); this.paused = false; return; }
         if (t.closest("#help-open")) { this.showHelp(); return; }
+        if (t.closest("#credits-btn")) { this.showCredits(); return; }
       }
       const s = t.closest("[data-start]") as HTMLElement | null;
       if (s) this.start(s.dataset.start as Difficulty);

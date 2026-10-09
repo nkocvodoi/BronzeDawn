@@ -189,24 +189,46 @@ Mỗi loại 3 đến 5 câu ngắn. Có thể dùng một ngôn ngữ cổ tự
   - catapult trireme, juggernaught, fire galley
 - **Âm thanh:** sóng vỗ thân tàu, tàu chìm.
 
-## 9. Gửi lại cho mình
+## 9. Bộ nạp asset (đã có: `web/src/game/assets.ts`)
 
-Bạn chỉ cần bỏ file vào `web/public/assets/` (hoặc `web/assets-local/`) theo cấu trúc dưới đây và ghi CREDITS.
-Mình sẽ viết bộ nạp asset để đọc chúng:
+Bỏ file vào `web/public/assets/` (công khai, lên GitHub Pages) hoặc `web/assets-local/` (chỉ dev server trên
+máy này, không commit), cùng một file `manifest.json` ở gốc thư mục đó. Đường dẫn trong manifest tính từ gốc
+thư mục. Có cả hai thì `assets-local` thêm vào / ghi đè lên `assets`. Thiếu mục nào thì game dùng hình hoặc
+tiếng vẽ bằng code, nên có thể thay từng phần.
 
+```json
+{
+  "units": {
+    "villager":     { "file": "units/villager.png", "frame": [64, 64], "anchor": [32, 58], "directions": 5,
+                      "anims": { "idle": { "row": 0, "frames": 1 }, "walk": { "row": 5, "frames": 8, "fps": 10 },
+                                 "work": { "row": 10, "frames": 6, "fps": 8 } } },
+    "villager:axe": { "file": "units/woodcutter.png", "...": "cùng cách ghi, dùng khi villager cầm rìu" }
+  },
+  "buildings": {
+    "house": { "egyptian": { "stone": { "file": "buildings/egyptian/house-stone.png", "anchor": [64, 95] },
+                             "tool":  { "file": "buildings/egyptian/house-tool.png" } },
+               "default": { "file": "buildings/house.png" } }
+  },
+  "resources": { "tree": [{ "file": "resources/tree-1.png", "anchor": [24, 60] }, { "file": "resources/tree-2.png" }] },
+  "terrain": { "grass": ["terrain/grass-1.png", "terrain/grass-2.png"], "water": ["terrain/water-1.png"] },
+  "icons": { "villager": "ui/icons/villager.png", "build": "ui/icons/build.png" },
+  "resourceIcons": { "wood": "ui/wood.png", "food": "ui/food.png", "gold": "ui/gold.png", "stone": "ui/stone.png" },
+  "cursors": { "sword": { "file": "ui/cursor-sword.png", "hot": [2, 2] } },
+  "sfx": { "chop": ["audio/sfx/chop-1.ogg", "audio/sfx/chop-2.ogg"], "voice-villager": ["audio/voice/v-1.ogg"] },
+  "music": ["audio/music/track-1.ogg"],
+  "credits": [{ "what": "Villager sprites", "author": "Tên tác giả", "license": "CC-BY 3.0", "url": "https://..." }]
+}
 ```
-assets/
-  manifest.json          danh sách: id -> file, kích thước khung, điểm neo, số khung từng hoạt ảnh
-  CREDITS.md             nguồn và giấy phép từng file
-  units/<id>.png         + <id>.json
-  buildings/<arch>/<id>-<age>.png
-  terrain/<loại>-<n>.png
-  resources/<id>-<trạng thái>.png
-  effects/<id>.png
-  ui/...                 nền, khung, icon, con trỏ
-  audio/sfx/<id>-<n>.ogg
-  audio/music/<tên>.ogg
-  fonts/...
-```
 
-Thiếu file nào thì game dùng tiếp hình vẽ bằng code, nên bạn có thể gửi từng phần.
+- **Sprite sheet unit:** mỗi hàng một hướng, theo chiều kim đồng hồ bắt đầu từ hướng nhìn ra người chơi: S, SW, W,
+  NW, N, NE, E, SE. `directions: 5` thì game lật ngang 3 hướng còn lại. `row` của mỗi hoạt ảnh là hàng của hướng S;
+  các hướng tiếp theo nằm ở các hàng ngay dưới. `anchor` là điểm chân unit trong một khung.
+- **Công trình:** tìm theo kiểu kiến trúc rồi thời đại (`stone`, `tool`, `bronze`, `iron`); thiếu thì lùi về thời
+  đại trước, rồi kiểu `greek`, rồi `default`. `anchor` mặc định là giữa cạnh dưới (đỉnh dưới của hình thoi).
+  Giai đoạn đang xây vẫn dùng hình vẽ bằng code.
+- **Màu người chơi:** vùng tô bằng các sắc tím `#FF00FF` được đổi sang màu phe, giữ sáng tối.
+- **Âm thanh:** tên hiệu ứng giống trong `sound.ts` (`chop`, `mine`, `sword`, `bow`, `collapse`, `complete`,
+  `alarm`, `ageUp`, `click`...). Giọng unit: `voice-villager`, `voice-soldier`, `voice-rider`, `voice-priest`,
+  `voice-siege`, thêm hậu tố `-ack` cho câu trả lời khi nhận lệnh.
+- **`scale`** (tùy chọn) ở mọi hình: số đơn vị màn hình cho mỗi điểm ảnh của hình, mặc định 1.
+- **Credits:** mọi file trong `public/assets/` phải có một dòng trong `credits`; game hiện chúng ở Menu → Credits.
