@@ -49,7 +49,7 @@ Diplomacy stances and tribute,players,could,yes,no,
 Four ages,ages,must,yes,yes,
 Technologies and upgrades,ages,must,yes,yes,65
 Civilizations with bonuses,ages,should,yes,yes,17 with the Lac Viet of Return of Rome
-Each civilization's own missing units and techs,ages,should,yes,partial,only the Persian Academy, Macedonian Temple and the Lac Viet tree
+Each civilization's own missing units and techs,ages,should,yes,partial,only the Persian Academy; the Macedonian Temple; the Lac Viet tree
 Martyrdom,religion,could,yes,no,
 Priests convert and heal,religion,should,yes,yes,
 Win by conquest,win,must,yes,yes,
