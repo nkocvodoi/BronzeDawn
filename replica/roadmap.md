@@ -69,7 +69,8 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [ ] Tùy chọn khi bắt đầu: mở toàn bản đồ, thời đại khởi đầu, tài nguyên khởi đầu, giới hạn dân số
 
 ### Giai đoạn 5: nhiều người chơi (lớn)
-- [ ] Tới 8 người chơi, chia đội, đồng minh, trạng thái ngoại giao, cống nạp
+- [x] Tới 8 người chơi (1 đến 7 máy), máy đánh riêng hoặc liên minh chống bạn
+- [ ] Chia đội tùy ý, đồng minh với máy, trạng thái ngoại giao, cống nạp
 - [ ] 5 mức AI (Easiest đến Hardest)
 - [ ] Lưu và tải trận
 - [ ] Chơi online với bạn bè: lockstep qua WebRTC. Phần mô phỏng đã tất định sẵn cho việc này.

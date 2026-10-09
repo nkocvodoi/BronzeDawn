@@ -50,6 +50,8 @@ const SPEEDS = [1, 1.5, 2, 3];
 
 /** Map sizes in tiles, after the original's Small to Huge. */
 const MAP_SIZES: [string, number][] = [["Small", 72], ["Medium", 96], ["Large", 120], ["Huge", 144]];
+/** The smallest map for a number of players, so every start has room: up to 4 fit any map. */
+const minMapSize = (players: number) => (players <= 4 ? 0 : players <= 6 ? 96 : 120);
 
 /** The original's build keys: B opens the build menu, then a letter places the building.
  *  In the original's order on the buttons: House, Barracks, Granary, Storage Pit, then the later ones. */
@@ -85,6 +87,11 @@ export class Game {
   speed = 1;
   /** Whether spent farms are sown again (AoE2), remembered between games. On unless turned off. */
   reseed = store.get("bd-reseed") !== "off";
+  /** How many computer players, and whether they fight as one team against you. Remembered between games. */
+  opponents = Math.min(7, Math.max(1, Number(store.get("bd-opponents")) || 1));
+  computersTeamUp = store.get("bd-teams") === "team";
+  /** The game is over for you: won, or defeated while the others play on. */
+  private ended = false;
   private seed: number;
   private mapSize = 72;
   private wallStart: Tile | null = null;
@@ -150,10 +157,13 @@ export class Game {
 
   // ---- setup
 
-  private newGame(seed: number, civs: (string | null)[] = [], size = this.mapSize) {
+  private newGame(seed: number, civs: (string | null)[] = [], size = this.mapSize, teams: number[] = []) {
     this.seed = seed;
     this.mapSize = size;
-    this.world = new World(this.rules, seed, ["You", "Enemy"], size, true, { civs });
+    this.ended = false;
+    const n = Math.max(2, civs.length);
+    const names = ["You", ...Array.from({ length: n - 1 }, (_, i) => (n === 2 ? "Enemy" : `Enemy ${i + 1}`))];
+    this.world = new World(this.rules, seed, names, size, true, { civs, teams });
     for (const v of this.views.values()) v.root.destroy({ children: true });
     this.views.clear();
     for (const g of this.ghosts.values()) g.view.root.destroy({ children: true });
@@ -234,6 +244,10 @@ export class Game {
       `Your civilization: <select id="civ"><option value="">Random</option>${civs}</select>`,
       `<span id="civ-info">A civilization picked at random. Its bonuses show at the top of the screen.</span>`,
       `Map size: <select id="map-size">${MAP_SIZES.map(([n, t]) => `<option value="${t}"${t === this.mapSize ? " selected" : ""}>${n} (${t} x ${t})</option>`).join("")}</select>`,
+      `Computer players: <select id="opponents">${[1, 2, 3, 4, 5, 6, 7].map((k) => `<option value="${k}"${k === this.opponents ? " selected" : ""}>${k}</option>`).join("")}</select>`
+        + ` <select id="teams"><option value="ffa"${this.computersTeamUp ? "" : " selected"}>each on its own</option>`
+        + `<option value="team"${this.computersTeamUp ? " selected" : ""}>allied against you</option></select>`,
+      `<span id="players-info">${this.playersNote(this.opponents)}</span>`,
       `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
       `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
       "Hard: the computer gathers 20% faster.",
@@ -246,14 +260,21 @@ export class Game {
     const pick = (document.querySelector("#civ") as HTMLSelectElement | null)?.value || null;
     const civs = this.rules.civs;
     const mine = pick ?? (civs.length ? civs[Math.floor(Math.random() * civs.length)].id : null);
-    const theirs = civs.length ? civs[(this.seed * 7 + 3) % civs.length].id : null;
-    const size = Number((document.querySelector("#map-size") as HTMLSelectElement | null)?.value) || this.mapSize;
-    this.newGame(this.seed, [mine, theirs], size);
+    const opp = Number((document.querySelector("#opponents") as HTMLSelectElement | null)?.value) || this.opponents;
+    const teamUp = (document.querySelector("#teams") as HTMLSelectElement | null)?.value === "team";
+    this.opponents = opp; this.computersTeamUp = teamUp;
+    store.set("bd-opponents", String(opp)); store.set("bd-teams", teamUp ? "team" : "ffa");
+    const theirs = Array.from({ length: opp }, (_, i) => (civs.length ? civs[(this.seed * 7 + 3 + i * 5) % civs.length].id : null));
+    // More players need room: the map grows to fit them.
+    const chosenSize = Number((document.querySelector("#map-size") as HTMLSelectElement | null)?.value) || this.mapSize;
+    const size = Math.max(chosenSize, minMapSize(opp + 1));
+    // Allied computers share team 1; you are on your own.
+    this.newGame(this.seed, [mine, ...theirs], size, teamUp ? [0, ...theirs.map(() => 1)] : []);
     // The speed chosen on the start screen; + and - still change it during the game.
     const chosen = Number((document.querySelector("#start-speed") as HTMLSelectElement | null)?.value);
     if (SPEEDS.includes(chosen)) { this.speed = chosen; this.hud.speed(chosen); }
-    this.world.ais = [new AIController(1, d)];
-    this.world.ais[0].attach(this.world);
+    this.world.ais = this.world.players.filter((p) => p.id !== this.me).map((p) => new AIController(p.id, d));
+    for (const ai of this.world.ais) ai.attach(this.world);
     this.applyReseed();
     // Start zoomed so the map fills the screen as it did at 800 x 600, with the interface scaled to match.
     const u = Math.min(window.innerWidth / 800, window.innerHeight / 600);
@@ -269,8 +290,9 @@ export class Game {
     this.sound.unlock();
     this.sound.startMusic();
     const civ = this.world.players[this.me].civ;
-    const enemyCiv = this.world.players[1].civ;
-    this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules) : [], enemyCiv?.name ?? null);
+    const others = this.world.players.filter((p) => p.id !== this.me).map((p) => p.civ?.name ?? p.name);
+    this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules) : [], others.join(", ") || null);
+    if (size > chosenSize) this.hud.message(`The map was made ${MAP_SIZES.find(([, t]) => t === size)?.[0] ?? size} to fit ${opp + 1} players`);
     this.hud.message(`${civ ? `Your civilization: ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
     this.selectTownCenter();
   }
@@ -329,11 +351,17 @@ export class Game {
     ], "menu");
   }
 
+  /** What the start screen says about the players chosen. */
+  private playersNote(opp: number) {
+    const min = minMapSize(opp + 1);
+    return `${opp + 1} players.${min ? ` The map will be at least ${MAP_SIZES.find(([, t]) => t === min)?.[0]} (${min} x ${min}).` : ""}`;
+  }
+
   /** The players and their civilizations, with what each civilization is good at. */
   private showDiplomacy() {
     const rows = this.world.players.map((p) => {
       const bonuses = p.civ ? describeCiv(p.civ, this.rules).join("; ") : "no bonuses";
-      return `<tr><td style="color:${playerColor(p.id)}"><b>${p.name}</b></td><td>${p.civ?.name ?? "-"}</td><td>${p.id === this.me ? "You" : "Enemy"}</td><td>${bonuses}</td></tr>`;
+      return `<tr><td style="color:${playerColor(p.id)}"><b>${p.name}</b></td><td>${p.civ?.name ?? "-"}</td><td>${p.id === this.me ? "You" : this.world.allied(this.me, p.id) ? "Ally" : "Enemy"}</td><td>${bonuses}</td></tr>`;
     }).join("");
     this.hud.showOverlay("Diplomacy", [`<table>${rows}</table>`, `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`], "menu");
   }
@@ -341,21 +369,27 @@ export class Game {
   /** Your civilization and its bonuses, and the enemy's, for the help screen. */
   private civLines(): string[] {
     const out: string[] = [];
-    const mine = this.world.players[this.me].civ, theirs = this.world.players[1]?.civ;
+    const mine = this.world.players[this.me].civ;
     if (mine) out.push(`<b>You: ${mine.name}</b> · ${describeCiv(mine, this.rules).join(" · ")}`);
-    if (theirs) out.push(`Enemy: ${theirs.name} · ${describeCiv(theirs, this.rules).join(" · ")}`);
+    for (const p of this.world.players) {
+      if (p.id === this.me || !p.civ) continue;
+      out.push(`${p.name}: ${p.civ.name} · ${describeCiv(p.civ, this.rules).join(" · ")}`);
+    }
     return out;
   }
 
+  /** Victory or defeat, once. You lose as soon as you are out, even while the computers fight on. */
   private gameOver(winner: number, how: "conquest" | "wonder" = "conquest") {
-    const won = winner === this.me;
+    if (this.ended) return;
+    this.ended = true;
+    const won = winner >= 0 && this.world.allied(this.me, winner) && !this.world.players[this.me].defeated;
     this.sound.stopMusic();
     this.sound.play(won ? "victory" : "defeat");
-    const p = this.world.players[this.me].stats, e = this.world.players[1].stats;
+    const line = (p: (typeof this.world.players)[number]) =>
+      `<span style="color:${playerColor(p.id)}">${p.name}</span>: gathered ${Math.floor(p.stats.gathered.total)}, trained ${p.stats.trained}, killed ${p.stats.kills}, lost ${p.stats.lost}`;
     this.hud.showOverlay(won ? "Victory" : "Defeat", [
       `${how === "wonder" ? "A Wonder stood its time. " : ""}Time ${clock(this.world.time)}`,
-      `You: gathered ${Math.floor(p.gathered.total)}, trained ${p.trained}, killed ${p.kills}, lost ${p.lost}`,
-      `Enemy: gathered ${Math.floor(e.gathered.total)}, trained ${e.trained}, killed ${e.kills}, lost ${e.lost}`,
+      ...this.world.players.map(line),
       `<span class="choices"><button data-restart>New map (Enter)</button></span>`,
     ], won ? "win" : "lose");
   }
@@ -501,6 +535,7 @@ export class Game {
 
   private handleEvents() {
     const w = this.world;
+    if (this.started && !this.ended && w.winner === null && w.players[this.me].defeated) this.gameOver(-1);
     for (const e of w.events) {
       switch (e.kind) {
         case "hit":
@@ -1179,6 +1214,11 @@ export class Game {
     // The start screen describes the chosen civilization as you pick it.
     document.addEventListener("change", (e) => {
       const t = e.target as HTMLSelectElement;
+      if (t.id === "opponents") {
+        const note = document.querySelector("#players-info");
+        if (note) note.textContent = this.playersNote(Number(t.value) || 1);
+        return;
+      }
       if (t.id !== "civ") return;
       const info = document.querySelector("#civ-info");
       const c = this.rules.civs.find((x) => x.id === t.value);

@@ -481,6 +481,29 @@ describe("the original's rules", () => {
     expect(w.buildings.filter((b) => b.def.id === "small_wall" && b.complete).length).toBe(7);
   });
 
+  it("up to eight players: each has its own start and town, and allies are not enemies", () => {
+    const names = ["You", "E1", "E2", "E3", "E4", "E5", "E6", "E7"];
+    const w = new World(RULES, 4, names, 120, true, { teams: [0, 1, 1, 1, 2, 2, 2, 2] });
+    const tcs = w.players.map((p) => w.buildingsOf(p.id).find((b) => b.def.id === "town_center")!);
+    expect(tcs.every(Boolean)).toBe(true);
+    for (let i = 0; i < tcs.length; i++) for (let j = i + 1; j < tcs.length; j++) expect(tcs[i].center.distance(tcs[j].center)).toBeGreaterThan(20);
+    expect(w.isEnemy(1, 2)).toBe(false); // same team
+    expect(w.isEnemy(1, 4)).toBe(true);
+    expect(w.isEnemy(0, 1)).toBe(true);  // team 0 is on its own
+    expect(w.isEnemy(0, 0)).toBe(false);
+  });
+
+  it("the last team standing wins", () => {
+    const w = new World(RULES, 4, ["A", "B", "C"], 72, true, { teams: [0, 1, 1] });
+    for (const e of [...w.unitsOf(0), ...w.buildingsOf(0)]) w.applyDamage(e, 1e6, -1);
+    run(w, 2);
+    expect(w.winner).toBe(1); // B and C won together
+    const ffa = new World(RULES, 4, ["A", "B", "C"], 72, true);
+    for (const e of [...ffa.unitsOf(0), ...ffa.buildingsOf(0)]) ffa.applyDamage(e, 1e6, -1);
+    run(ffa, 2);
+    expect(ffa.winner).toBeNull(); // B and C still fight each other
+  });
+
   it("civilization bonuses apply: Shang villagers cost 30% less", () => {
     const w = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["shang", "greek"] });
     expect(w.unitCost(0, "villager").food).toBe(35);

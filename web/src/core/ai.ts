@@ -433,12 +433,14 @@ export class AIController {
     if (u) w.move(this.player, group.map((g) => g.id), u.pos, true);
   }
 
+  /** The home of the nearest enemy still in the game: its Town Center, else any building, else where it began. */
   private enemyHome(w: World): Vec2 | null {
-    const e = w.players.find((p) => w.isEnemy(this.player, p.id) && !p.defeated);
-    if (!e) return null;
-    const tc = w.buildings.find((b) => b.alive && b.owner === e.id && b.def.id === "town_center");
-    if (tc) return tc.center;
-    return w.buildings.find((b) => b.alive && b.owner === e.id && !b.isWall)?.center ?? w.startTiles[e.id].center;
+    const mine = w.startTiles[this.player]?.center ?? null;
+    const homes = w.players.filter((p) => w.isEnemy(this.player, p.id) && !p.defeated).map((e) => {
+      const tc = w.buildings.find((b) => b.alive && b.owner === e.id && b.def.id === "town_center");
+      return tc?.center ?? w.buildings.find((b) => b.alive && b.owner === e.id && !b.isWall)?.center ?? w.startTiles[e.id].center;
+    });
+    return mine ? minBy(homes, (h) => h.distance(mine)) : homes[0] ?? null;
   }
 
   private rebuildTownCenter(w: World, villagers: Unit[]) {
