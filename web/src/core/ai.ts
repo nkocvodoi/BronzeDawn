@@ -12,7 +12,7 @@ export const LEVEL = {
   easy: { firstAttack: 1200, firstWave: 5, villagers: [12, 16, 18, 18], producers: 1, counters: false, gather: 1, maxAge: 2, guard: [1, 3, 4, 4] },
   normal: { firstAttack: 720, firstWave: 8, villagers: [20, 26, 30, 32], producers: 2, counters: true, gather: 1, maxAge: 3, guard: [3, 6, 9, 12] },
   // Hard plays like normal with a bigger army and an open economic bonus, as the original's hardest AI did.
-  hard: { firstAttack: 660, firstWave: 10, villagers: [22, 28, 32, 34], producers: 3, counters: true, gather: 1.2, maxAge: 3, guard: [4, 8, 10, 12] },
+  hard: { firstAttack: 900, firstWave: 12, villagers: [22, 28, 32, 34], producers: 3, counters: true, gather: 1.2, maxAge: 3, guard: [4, 8, 10, 12] },
 };
 
 /** Buildings the AI puts up in each age, in order: what the next age needs, then the army. */
@@ -60,6 +60,8 @@ export class AIController {
   /** A wave gathering at a point on the way, so it arrives together rather than one by one. */
   private staging: { at: Vec2; target: Vec2; ids: number[]; since: number } | null = null;
   waves = 0;
+  /** Units sent in an attack wave, who press on once they are in the enemy's land. */
+  private sent = new Set<number>();
   private thinks = 0;
   private level: (typeof LEVEL)[Difficulty];
 
@@ -381,9 +383,13 @@ export class AIController {
 
   private attack(w: World, home: Vec2, army: Unit[], priests: Unit[]) {
     const idle = army.filter((u) => u.order.kind === "idle");
-    // Units that already took a base apart keep going to the next building.
+    // Units sent in a wave that took a base apart keep going to the next building. Defenders that
+    // chased an enemy far from home give up and come back, as the original's computer did: a chase
+    // must not turn into an attack the plan never made.
     const away = idle.filter((u) => dist(u, home) > 18);
-    if (away.length) this.attackNearest(w, away);
+    const raiders = away.filter((u) => this.sent.has(u.id)), strays = away.filter((u) => !this.sent.has(u.id));
+    if (raiders.length) this.attackNearest(w, raiders);
+    if (strays.length) w.move(this.player, strays.map((u) => u.id), home);
     // Priests near a fight convert the strongest enemy in reach.
     for (const pr of priests) {
       if (pr.order.kind !== "idle" || pr.faith < 100) continue;
@@ -422,6 +428,8 @@ export class AIController {
     } else w.move(this.player, ids, target, true);
     this.waves++;
     this.waveSize = Math.min(this.waveSize + 2, 16);
+    for (const id of ids) this.sent.add(id);
+    if (this.sent.size > 400) for (const id of [...this.sent]) if (!w.unit(id)) this.sent.delete(id);
   }
 
   private attackNearest(w: World, group: Unit[]) {

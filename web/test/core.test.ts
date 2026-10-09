@@ -5,6 +5,7 @@ import { Terrain } from "../src/core/grid";
 import { Res } from "../src/core/rules";
 import { scores } from "../src/core/score";
 import { runMatch } from "../src/core/sim";
+import { startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
 import { World } from "../src/core/world";
 
@@ -492,6 +493,20 @@ describe("the original's rules", () => {
     expect(w.isEnemy(1, 4)).toBe(true);
     expect(w.isEnemy(0, 1)).toBe(true);  // team 0 is on its own
     expect(w.isEnemy(0, 0)).toBe(false);
+  });
+
+  it("starts are dealt by the seed: you are not always in the same corner, and two players face each other", () => {
+    const mine = new Set<string>();
+    for (let seed = 1; seed <= 12; seed++) {
+      const [a, b] = startTiles(2, 72, seed);
+      mine.add(`${a.x},${a.y}`);
+      expect(a.x + b.x).toBe(14 + 57); // opposite corners of one diagonal
+      expect(a.y + b.y).toBe(14 + 57);
+      expect(startTiles(2, 72, seed)).toEqual([a, b]); // the same seed, the same starts
+    }
+    expect(mine.size).toBe(4);
+    const eight = startTiles(8, 120, 3).map((t) => `${t.x},${t.y}`);
+    expect(new Set(eight).size).toBe(8);
   });
 
   it("the last team standing wins", () => {
