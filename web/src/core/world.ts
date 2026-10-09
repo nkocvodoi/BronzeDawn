@@ -27,7 +27,8 @@ const FORMATION: Vec2[] = (() => {
 })();
 
 /** `teams`: a team number per player; players who share a number above 0 are allies, 0 is on its own. */
-export interface WorldOptions { civs?: (string | null)[]; teams?: number[] }
+/** `farmsBlock`: farms stop movement as in the original (by default they are walked over, as in the remaster). */
+export interface WorldOptions { civs?: (string | null)[]; teams?: number[]; farmsBlock?: boolean }
 
 /**
  * The whole simulation. No rendering in here: it runs the same in the browser,
@@ -72,6 +73,7 @@ export class World {
     this.pathfinder = new Pathfinder(this.map);
     this.pathfinder.maxExpanded = Math.max(9000, size * size); // a long walk across a Huge map still finds its way
     this.teams = playerNames.map((_, i) => options.teams?.[i] ?? 0);
+    this.farmsBlock = options.farmsBlock === true;
     playerNames.forEach((n, i) => {
       const mods = new Mods(rules);
       const civId = options.civs?.[i];
@@ -97,6 +99,8 @@ export class World {
 
   unitsOf(p: number) { return this.units.filter((u) => u.alive && u.owner === p); }
   buildingsOf(p: number) { return this.buildings.filter((b) => b.alive && b.owner === p); }
+  /** Whether farms stop movement, as in the original. */
+  farmsBlock = false;
   /** Each player's team; 0 means on its own. */
   teams: number[] = [];
   allied(a: number, b: number) { return a === b || (a >= 0 && b >= 0 && this.teams[a] > 0 && this.teams[a] === this.teams[b]); }
@@ -160,8 +164,9 @@ export class World {
     }
     this.buildings.push(b);
     this.byId.set(b.id, b);
-    this.map.setOccupant(b.footprint, b.id, !b.isFarm);
-    if (!b.isFarm) this.nudgeUnits(b.footprint);
+    const solid = !b.isFarm || this.farmsBlock;
+    this.map.setOccupant(b.footprint, b.id, solid);
+    if (solid) this.nudgeUnits(b.footprint);
     return b;
   }
 

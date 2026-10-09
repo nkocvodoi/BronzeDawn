@@ -23,7 +23,7 @@ Gather carry and drop off four resources,gathering,must,yes,yes,
 Hunting gazelles and elephants,gathering,must,yes,yes,
 Dangerous animals,gathering,should,yes,yes,
 Shore fishing,gathering,should,yes,yes,
-Farms behind a Market,gathering,must,yes,partial,walkable and one farmer as in the remaster; the original blocks movement
+Farms behind a Market,gathering,must,yes,yes,walked over by default as in the remaster; a start option blocks them as in the original
 Docks,naval,should,yes,no,
 Fishing boats and deep fish,naval,should,yes,no,
 Trade boats and trade between docks,naval,could,yes,no,
@@ -44,19 +44,19 @@ Fog of war,fog,must,yes,yes,solid black unexplored; a stipple over explored grou
 Dense forests and textured ground,map,should,yes,yes,forest floor; worn patches; curved coast with foam
 Computer opponent,ai,must,yes,yes,three levels
 Five AI levels Easiest to Hardest,ai,could,yes,partial,easy normal hard
-Up to eight players with teams and allies,players,should,yes,no,one against one
+Up to eight players with teams and allies,players,should,yes,partial,1 to 7 computers; each on its own or allied against you; no teams of your own choosing
 Diplomacy stances and tribute,players,could,yes,no,
 Four ages,ages,must,yes,yes,
 Technologies and upgrades,ages,must,yes,yes,65
 Civilizations with bonuses,ages,should,yes,yes,17 with the Lac Viet of Return of Rome
-Each civilization's own missing units and techs,ages,should,yes,partial,only the Persian Academy; the Macedonian Temple; the Lac Viet tree
+Each civilization's own missing units and techs,ages,should,yes,yes,all 17 from the DE tech trees
 Martyrdom,religion,could,yes,yes,Sacrifice (Q) after the Iron Age tech; the AI never uses it as in the original
 Priests convert and heal,religion,should,yes,yes,
 Win by conquest,win,must,yes,yes,
 Wonder victory,win,should,yes,yes,
 Ruins and artifacts victory,win,should,yes,no,
 Score and score or time-limit victory,win,could,yes,partial,the original's five-part score; no score or time-limit victory yet
-Game setup options (reveal map starting age resources population limit),setup,should,yes,partial,civ map size speed difficulty only
+Game setup options (reveal map starting age resources population limit),setup,should,yes,partial,civ; map size; speed; difficulty; number of computers and teams; farms blocking
 Save and load a game,setup,should,yes,no,
 Status box command icons and diamond minimap,hud,must,yes,yes,
 Build menu with the original's keys,hud,must,yes,yes,B then a letter
