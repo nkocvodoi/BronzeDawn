@@ -586,6 +586,38 @@ describe("the original's rules", () => {
     expect(w.blockerForNextAge(0)).toBeNull();
   });
 
+  it("war ships: they sink boats, archers on the shore shoot them, swordsmen on the shore leave them be", () => {
+    const w = blank(30);
+    for (let y = 0; y < 30; y++) for (let x = 14; x < 30; x++) w.map.terrain[y * 30 + x] = Terrain.water;
+    const galley = w.spawnUnit("war_galley", 0, new Tile(18, 10).center);
+    const boat = w.spawnUnit("fishing_boat", 1, new Tile(20, 12).center);
+    run(w, 30);
+    expect(boat.alive).toBe(false);
+    const club = w.spawnUnit("clubman", 1, new Tile(12, 10).center);
+    const bow = w.spawnUnit("bowman", 1, new Tile(12, 14).center);
+    galley.pos = new Tile(15, 12).center; galley.order = { kind: "idle" };
+    run(w, 3);
+    expect(club.order.kind).toBe("idle"); // cannot reach it
+    expect(bow.order.kind).toBe("attack");
+    expect(w.map.terrainAt(galley.pos.tile)).toBe(Terrain.water);
+  });
+
+  it("catapult ships bombard the ground; ship bonuses and tech trees", () => {
+    const w = blank(30);
+    for (let y = 0; y < 30; y++) for (let x = 14; x < 30; x++) w.map.terrain[y * 30 + x] = Terrain.water;
+    w.players[0].age = 3;
+    const cat = w.spawnUnit("catapult_trireme", 0, new Tile(18, 10).center);
+    expect(w.canAttackGround(cat)).toBe(true);
+    w.attackGround(0, [cat.id], new Tile(10, 10).center);
+    expect(cat.order.kind).toBe("attackGround");
+    const c = new World(RULES, 1, ["A", "B", "C", "D"], 24, false, { civs: ["minoan", "greek", "yamato", "babylonian"] });
+    expect(c.unitCost(0, "scout_ship").wood).toBe(Math.round(135 * 0.7));
+    expect(c.unitStats(1, "war_galley").speed).toBeCloseTo(1.8 * 1.3);
+    expect(c.unitStats(2, "trireme").hp).toBe(Math.round(200 * 1.3));
+    expect(c.blockerTech("trireme_tech", 3)).toContain("Not available"); // no Trireme for Babylon
+    expect(RULES.units.get("trireme")!.convert_resist).toBe(2);
+  });
+
   it("fishing boats: five for each finished Dock, counting those in training", () => {
     const w = blank(30);
     for (let y = 0; y < 30; y++) for (let x = 14; x < 30; x++) w.map.terrain[y * 30 + x] = Terrain.water;

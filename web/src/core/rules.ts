@@ -92,7 +92,7 @@ export interface UnitDef {
   min_range?: number;
   /** Stones that land with Attack Ground knock down trees (no wood from them). */
   clears_trees?: boolean;
-  projectile?: "arrow" | "stone" | "bolt" | "spear";
+  projectile?: "arrow" | "stone" | "bolt" | "spear" | "fire";
   /** Elephants and scythe chariots hit everything this close to their target. */
   trample?: number;
   converts?: boolean;
@@ -117,7 +117,7 @@ export interface BuildingDef {
   food_kinds?: ("plant" | "meat")[];
   requires_tech?: string;
   tags?: string[];
-  projectile?: "arrow" | "stone" | "bolt" | "spear";
+  projectile?: "arrow" | "stone" | "bolt" | "spear" | "fire";
   /** Stands in the water by the shore (a Dock). */
   on_water?: boolean;
 }

@@ -103,7 +103,25 @@ units = [
          ["boat", "fishing"], naval=True, gathers=["fish"], gather_rate=0.4),
     unit("fishing_ship", "Fishing Ship", "boat", "bronze", "dock", cost(w=50), 20, 75, 0, 0, 0, 0, 1.5, 2.1, 6,
          ["boat", "fishing"], naval=True, gathers=["fish"], gather_rate=0.4, requires_tech="fishing_ship_tech"),
+    # War ships. Arrows from the Scout Ship line, stones from the catapult ships, fire from the Fire Galley.
+    # All boats are twice as hard to convert, as in the original.
+    unit("scout_ship", "Scout Ship", "warship", "tool", "dock", cost(w=135), 30, 120, 5, 0, 0, 5, 1.4, 1.8, 7,
+         ["boat", "warship", "missile"], naval=True, convert_resist=2),
+    unit("war_galley", "War Galley", "warship", "bronze", "dock", cost(w=135), 30, 160, 8, 0, 0, 6, 1.5, 1.8, 9,
+         ["boat", "warship", "missile"], naval=True, convert_resist=2, requires_tech="war_galley_tech"),
+    unit("trireme", "Trireme", "warship", "iron", "dock", cost(w=135), 30, 200, 12, 0, 0, 7, 2.0, 1.8, 10,
+         ["boat", "warship", "missile"], naval=True, convert_resist=2, requires_tech="trireme_tech"),
+    unit("catapult_trireme", "Catapult Trireme", "warship", "iron", "dock", cost(w=135, g=75), 45, 120, 35, 0, 0, 9, 5.0, 1.4, 12,
+         ["boat", "warship", "catapult_ship"], naval=True, convert_resist=2, area=0.5, damage="melee", projectile="stone",
+         requires_tech="catapult_trireme_tech"),
+    unit("juggernaught", "Juggernaught", "warship", "iron", "dock", cost(w=135, g=75), 45, 200, 35, 0, 0, 10, 5.0, 1.4, 13,
+         ["boat", "warship", "catapult_ship"], naval=True, convert_resist=2, area=1.5, damage="melee", projectile="stone",
+         clears_trees=True, requires_tech="juggernaught_tech"),
+    unit("fire_galley", "Fire Galley", "warship", "iron", "dock", cost(w=115, g=40), 45, 200, 24, 0, 0, 1, 1.0, 2.0, 8,
+         ["boat", "warship", "fire"], naval=True, convert_resist=2, damage="melee", projectile="fire", requires_tech="war_galley_tech"),
 ]
+for u in units:
+    if u["id"] in ("fishing_boat", "fishing_ship"): u["convert_resist"] = 2
 # "Military" is everything trained to fight: not villagers, not priests.
 for u in units:
     if u["id"] not in ("villager", "priest") and "fishing" not in u["tags"]:
@@ -222,7 +240,8 @@ techs = [
     tech("nobility", "Nobility", "bronze", "government_center", cost(f=175, g=120), 70, [stat("hp", 1.15, op="mul", tags=["mounted"])]),
     tech("logistics", "Logistics", "bronze", "government_center", cost(f=180, g=100), 60, [stat("pop", 0.5, op="mul", tags=["melee", "barracks"])]),
     tech("aristocracy", "Aristocracy", "iron", "government_center", cost(f=175, g=150), 60, [stat("speed", 1.25, op="mul", tags=["academy"])]),
-    tech("alchemy", "Alchemy", "iron", "government_center", cost(f=250, g=200), 100, [stat("attack", 1, tags=["missile"]), stat("attack", 1, tags=["siege"])]),
+    tech("alchemy", "Alchemy", "iron", "government_center", cost(f=250, g=200), 100,
+         [stat("attack", 1, tags=["missile"]), stat("attack", 1, tags=["siege"]), stat("attack", 6, units=["fire_galley"])]),
     tech("ballistics", "Ballistics", "iron", "government_center", cost(f=200, g=50), 60, [{"type": "flag", "flag": "ballistics"}]),
     tech("engineering", "Engineering", "iron", "government_center", cost(f=200, w=100), 70, [stat("range", 2, tags=["siege"])]),
     # Temple
@@ -240,6 +259,11 @@ techs = [
     tech("martyrdom", "Martyrdom", "iron", "temple", cost(g=600), 60, [{"type": "flag", "flag": "martyrdom"}]),
     # Dock
     tech("fishing_ship_tech", "Fishing Ship", "bronze", "dock", cost(f=50, w=100), 15, [upgrade("fishing_boat", "fishing_ship")]),
+    tech("war_galley_tech", "War Galley", "bronze", "dock", cost(f=150, w=75), 38, [upgrade("scout_ship", "war_galley")]),
+    tech("trireme_tech", "Trireme", "iron", "dock", cost(f=250, w=100), 40, [upgrade("war_galley", "trireme")], ["war_galley_tech"]),
+    tech("catapult_trireme_tech", "Catapult Trireme", "iron", "dock", cost(f=300, w=100), 60, []),
+    tech("juggernaught_tech", "Juggernaught", "iron", "dock", cost(f=2000, w=900), 150, [upgrade("catapult_trireme", "juggernaught")],
+         ["catapult_trireme_tech", "engineering"]),
     # Unit lines
     tech("battle_axe", "Battle Axe", "tool", "barracks", cost(f=100), 40, []),
     tech("short_sword", "Short Sword", "bronze", "barracks", cost(f=120, g=50), 50, [], ["battle_axe"]),
@@ -274,17 +298,21 @@ civs = [
     civ("choson", "Choson", "asian", [stat("hp", 80, units=["long_swordsman", "legion"]), stat("range", 2, buildings_tags=["tower"]),
                                       stat("cost", 0.7, op="mul", units=["priest"])]),
     civ("egyptian", "Egyptian", "egyptian", [gather(G, 1.2), stat("hp", 1.33, op="mul", tags=["chariot"]), stat("range", 3, tags=["priest"])]),
-    civ("greek", "Greek", "greek", [stat("speed", 1.3, op="mul", tags=["academy"])]),
-    civ("hittite", "Hittite", "babylonian", [stat("hp", 2, op="mul", tags=["catapult"]), stat("attack", 1, tags=["archery"])]),
-    civ("minoan", "Minoan", "greek", [stat("range", 2, units=["composite_bowman"]), {"type": "farm_food", "op": "mul", "value": 1.25}]),
-    civ("persian", "Persian", "babylonian", [gather(F, 1.3, kind="hunt"), stat("speed", 1.5, op="mul", tags=["elephant"])], ["academy"]),
-    civ("phoenician", "Phoenician", "greek", [stat("cost", 0.75, op="mul", tags=["elephant"]), gather(W, 1.3)]),
+    civ("greek", "Greek", "greek", [stat("speed", 1.3, op="mul", tags=["academy"]), stat("speed", 1.3, op="mul", tags=["warship"])]),
+    civ("hittite", "Hittite", "babylonian", [stat("hp", 2, op="mul", tags=["catapult"]), stat("attack", 1, tags=["archery"]), stat("range", 4, tags=["warship"])]),
+    civ("minoan", "Minoan", "greek", [stat("cost", 0.7, op="mul", tags=["boat"]), stat("range", 2, units=["composite_bowman"]),
+                                      {"type": "farm_food", "op": "mul", "value": 1.25}]),
+    civ("persian", "Persian", "babylonian", [gather(F, 1.3, kind="hunt"), stat("speed", 1.5, op="mul", tags=["elephant"]),
+                                             stat("attack_cooldown", 1 / 1.5, op="mul", units=["trireme"])], ["academy"]),
+    civ("phoenician", "Phoenician", "greek", [stat("cost", 0.75, op="mul", tags=["elephant"]), gather(W, 1.3),
+                                              stat("attack_cooldown", 1 / 1.65, op="mul", tags=["catapult_ship"])]),
     civ("shang", "Shang", "asian", [stat("cost", 0.7, op="mul", units=["villager"]), stat("hp", 2, op="mul", buildings_tags=["wall"])]),
     civ("sumerian", "Sumerian", "egyptian", [stat("hp", 15, units=["villager"]), stat("attack_cooldown", 1 / 1.5, op="mul", tags=["catapult"]),
                                             {"type": "farm_food", "op": "mul", "value": 2}]),
     civ("yamato", "Yamato", "asian", [stat("cost", 0.75, op="mul", tags=["cavalry"]), stat("cost", 0.75, op="mul", units=["horse_archer", "heavy_horse_archer"]),
-                                      stat("speed", 1.3, op="mul", units=["villager"])]),
-    civ("carthaginian", "Carthaginian", "roman", [stat("hp", 1.25, op="mul", tags=["academy"]), stat("hp", 1.25, op="mul", tags=["elephant"])]),
+                                      stat("speed", 1.3, op="mul", units=["villager"]), stat("hp", 1.3, op="mul", tags=["boat"])]),
+    civ("carthaginian", "Carthaginian", "roman", [stat("hp", 1.25, op="mul", tags=["academy"]), stat("hp", 1.25, op="mul", tags=["elephant"]),
+                                                  stat("attack", 1.25, op="mul", units=["fire_galley"])]),
     civ("macedonian", "Macedonian", "roman", [stat("pierce_armor", 2, tags=["academy"]), stat("los", 2, tags=["melee"]),
                                               stat("cost", 0.5, op="mul", tags=["siege"]), {"type": "conversion", "stat": "resist", "value": 4}], ["temple"]),
     civ("palmyran", "Palmyran", "roman", [stat("cost", 1.5, op="mul", units=["villager"]), stat("armor", 1, units=["villager"]),
@@ -378,6 +406,16 @@ TREES = {
               "cataphract_tech", "camel_rider", "war_elephant", "armored_elephant", "armored_elephant_tech", "astrology",
               "afterlife", "guard_tower", "guard_tower_tech", "ballista_tower", "ballista_tower_tech", "alchemy", "irrigation"],
 }
+# The ships each tech tree greys out (the same Fandom pages). An upgrade goes with its unit.
+TRI, CAT, JUG, FIRE = ["trireme", "trireme_tech"], ["catapult_trireme", "catapult_trireme_tech"], ["juggernaught", "juggernaught_tech"], ["fire_galley"]
+SHIPS = {
+    "assyrian": CAT + JUG, "babylonian": TRI + CAT + JUG, "carthaginian": CAT + JUG, "choson": FIRE + CAT + JUG,
+    "egyptian": FIRE, "hittite": ["fishing_ship", "fishing_ship_tech"] + TRI + CAT + JUG, "minoan": FIRE, "persian": FIRE,
+    "phoenician": FIRE, "shang": TRI + CAT + JUG, "sumerian": CAT + JUG, "yamato": FIRE, "macedonian": JUG + FIRE,
+    "palmyran": CAT + JUG, "roman": FIRE, "lac_viet": JUG + FIRE,
+}
+for k, v in SHIPS.items():
+    TREES[k] = TREES.get(k, []) + v
 _ids = {x["id"] for x in units} | {x["id"] for x in buildings} | {x["id"] for x in techs}
 for c in civs:
     extra = TREES.get(c["id"], [])

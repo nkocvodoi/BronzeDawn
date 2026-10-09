@@ -339,7 +339,7 @@ export function unitPic(look: UnitLook): Pic {
   }
   if (type === "helepolis") return pic(key, 38, 54, 19 / 38, 50 / 54, (p) => drawHelepolis(p, look));
   if (SIEGE.has(type)) return pic(key, 40, 34, 20 / 40, 30 / 34, (p) => drawSiege(p, look));
-  if (BOATS.has(type)) return pic(key, 44, 36, 22 / 44, 30 / 36, (p) => drawBoat(p, look));
+  if (BOATS.has(type)) return pic(key, 56, 38, 28 / 56, 31 / 38, (p) => drawBoat(p, look));
   if (type === "gazelle") return pic(key, 24, 22, 12 / 24, 19 / 22, (p) => drawGazelle(p, look, false));
   if (type === "lion") return pic(key, 30, 24, 14 / 30, 21 / 24, (p) => drawLion(p, look, false));
   if (type === "alligator") return pic(key, 36, 18, 17 / 36, 14 / 18, (p) => drawAlligator(p, look, false));
@@ -1275,13 +1275,24 @@ function drawFish(p: PixelCanvas, v: number, sea = false) {
 
 // ---- boats
 
-const BOATS = new Set(["fishing_boat", "fishing_ship"]);
+const BOATS = new Set(["fishing_boat", "fishing_ship", "scout_ship", "war_galley", "trireme", "catapult_trireme", "juggernaught", "fire_galley"]);
+/** How each war ship is drawn: half the hull's length, rows of oars, and what stands on deck. */
+const WARSHIP: Record<string, { L: number; oars: number; deck: "archer" | "catapult" | "fire"; tall: number }> = {
+  scout_ship: { L: 15, oars: 1, deck: "archer", tall: 18 },
+  war_galley: { L: 18, oars: 1, deck: "archer", tall: 21 },
+  trireme: { L: 20, oars: 3, deck: "archer", tall: 23 },
+  catapult_trireme: { L: 19, oars: 2, deck: "catapult", tall: 20 },
+  juggernaught: { L: 21, oars: 3, deck: "catapult", tall: 24 },
+  fire_galley: { L: 18, oars: 2, deck: "fire", tall: 19 },
+};
 
 /** A fishing boat, or the bigger fishing ship: a wooden hull, a sail in the owner's colour, and a net
  *  over the side while it fishes. Drawn facing right; the view mirrors it. */
 function drawBoat(p: PixelCanvas, look: UnitLook) {
+  const war = WARSHIP[look.type];
+  if (war) { drawWarship(p, look, war); return; }
   const ship = look.type === "fishing_ship", pc = playerRGB(look.owner);
-  const L = ship ? 18 : 14, cx = 22, wy = 30; // half length, middle, waterline
+  const L = ship ? 18 : 14, cx = Math.floor(p.w / 2), wy = p.h - 7; // half length, middle, waterline
   const hull = ship ? rgb(0x7a4e26) : C.wood, dark = C.woodDark;
   // Wake on the water.
   if (look.pose === "walk") for (let k = 0; k < 4; k++) p.set(cx - L - 2 - k * 2, wy + 1 + (k % 2), rgb(0xd8ecf8), 200 - k * 40);
@@ -1311,11 +1322,64 @@ function drawBoat(p: PixelCanvas, look: UnitLook) {
   p.outline(C.outline, 0.25);
 }
 
+/** A war ship: a long hull with rows of oars, a sail in the owner's colour, and archers, a catapult or a
+ *  fire pot on deck. Rows of oars beat while it sails; the deck weapon recoils as it strikes. */
+function drawWarship(p: PixelCanvas, look: UnitLook, k: (typeof WARSHIP)[string]) {
+  const pc = playerRGB(look.owner), cx = Math.floor(p.w / 2), wy = p.h - 7, L = k.L;
+  const hull = rgb(0x6a4220), dark = C.woodDark;
+  if (look.pose === "walk") for (let i = 0; i < 5; i++) p.set(cx - L - 2 - i * 2, wy + 1 + (i % 2), rgb(0xd8ecf8), 200 - i * 35);
+  for (let x = -L; x <= L; x++) {
+    const t = x / L, depth = Math.round((1 - t * t * t * t) * 6);
+    const top = wy - depth - (x > L - 3 ? (x - (L - 3)) * 2 : 0) - (x < -L + 3 ? 1 : 0);
+    for (let y = top; y <= wy; y++) p.set(cx + x, y, y === top ? lighten(hull, 0.25) : y > wy - 2 ? dark : hull);
+  }
+  // A ram at the bow, a band in the owner's colour along the side.
+  p.line(cx + L, wy - 1, cx + L + 3, wy, C.iron);
+  p.line(cx - L + 3, wy - 4, cx + L - 3, wy - 4, darken(pc, 0.85));
+  // Oars, one row a level, swinging with the stroke.
+  const stroke = look.pose === "walk" ? (look.frame % 2) : 0;
+  for (let r = 0; r < k.oars; r++) for (let x = -L + 4; x <= L - 5; x += 4) {
+    const y0 = wy - 3 + r, dx = stroke ? 1 : -1;
+    p.line(cx + x, y0, cx + x + dx * 2, wy + 2 + r, C.woodLight);
+  }
+  // Mast and a square sail.
+  const mx = cx - 3, mh = k.tall;
+  p.rect(mx, wy - 6 - mh, 1, mh, C.woodDark);
+  p.rect(mx - 6, wy - 4 - mh, 13, 1, C.woodDark);
+  for (let y = 0; y < mh - 9; y++) for (let x = -6; x <= 6; x++) {
+    const edge = Math.abs(x) === 6 || y === mh - 10;
+    p.set(mx + x + (y > (mh - 9) / 2 ? 1 : 0), wy - 3 - mh + y, edge ? darken(pc, 0.7) : y % 5 === 0 ? lighten(pc, 0.15) : pc);
+  }
+  // On deck.
+  const hit = look.pose === "work" && look.frame % 3 === 0;
+  if (k.deck === "archer") {
+    for (const ax of [cx + 6, cx - 10]) {
+      p.rect(ax, wy - 11, 2, 4, C.skin); p.rect(ax - 1, wy - 8, 4, 2, pc); p.line(ax + 2, wy - 12, ax + 3, wy - 8, C.woodDark);
+    }
+  } else if (k.deck === "catapult") {
+    p.rect(cx + 3, wy - 9, 8, 3, C.woodDark);
+    const arm = hit ? -1 : 1;
+    p.line(cx + 5, wy - 9, cx + 5 + 5 * arm, wy - 15, C.wood);
+    p.rect(cx + 4 + 5 * arm, wy - 16, 3, 2, C.stone);
+  } else {
+    // A brazier at the bow, burning.
+    p.rect(cx + L - 6, wy - 9, 4, 3, C.iron);
+    p.set(cx + L - 5, wy - 11 - (hit ? 1 : 0), rgb(0xf8a02c)); p.set(cx + L - 4, wy - 12, rgb(0xd8401c)); p.set(cx + L - 4, wy - 10, rgb(0xfff0a0));
+  }
+  p.outline(C.outline, 0.25);
+}
+
 // ---- projectiles
 
 /** Anchored at the centre, pointing right; the renderer rotates it. */
-export function projectilePic(kind: "arrow" | "stone" | "bolt" | "spear"): Pic {
+export function projectilePic(kind: "arrow" | "stone" | "bolt" | "spear" | "fire"): Pic {
   switch (kind) {
+    case "fire":
+      // The Fire Galley's burning pitch: a ball of flame with a smoky tail.
+      return pic("pj-fire", 9, 7, 0.5, 0.5, (p) => {
+        p.rect(0, 3, 3, 1, rgb(0x5a5450));
+        p.ellipse(5.5, 3.5, 2.8, 2.6, rgb(0xd8401c)); p.ellipse(5.5, 3.5, 1.7, 1.6, rgb(0xf8a02c)); p.set(6, 3, rgb(0xfff0a0));
+      });
     case "stone":
       return pic("pj-stone", 6, 6, 0.5, 0.5, (p) => {
         p.ellipse(3, 3, 2.2, 2, (x, y) => (x + y < 5 ? lighten(C.stone, 0.2) : C.stoneDark));

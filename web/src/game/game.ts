@@ -78,6 +78,7 @@ const TRAIN_KEYS: Record<string, string> = {
   scout: "S", chariot: "R", scythe_chariot: "R", cavalry: "C", heavy_cavalry: "C", cataphract: "C", war_elephant: "E", armored_elephant: "E", camel_rider: "L",
   stone_thrower: "C", catapult: "C", heavy_catapult: "C", ballista: "B", helepolis: "B", priest: "T",
   fishing_boat: "F", fishing_ship: "F",
+  scout_ship: "E", war_galley: "E", trireme: "E", catapult_trireme: "C", juggernaught: "C", fire_galley: "G",
 };
 
 /** Letters for whatever has no key of its own (technologies, advancing). H, P and digits stay global. */
@@ -626,7 +627,7 @@ export class Game {
           if (!this.visible(e.from.tile) && !this.visible(e.to.tile)) break;
           this.sfx(e.projectile === "stone" ? "club" : e.projectile === "spear" ? "spear" : "bow", e.from, 0.7, 0.08);
           const a = iso(e.from), b = iso(e.to);
-          const kind = (["arrow", "stone", "bolt", "spear"].includes(e.projectile) ? e.projectile : "arrow") as "arrow" | "stone" | "bolt" | "spear";
+          const kind = (["arrow", "stone", "bolt", "spear", "fire"].includes(e.projectile) ? e.projectile : "arrow") as "arrow" | "stone" | "bolt" | "spear" | "fire";
           const pic = projectilePic(kind);
           const arrow = new Sprite(pic.texture);
           arrow.width = pic.w; arrow.height = pic.h;
