@@ -26,7 +26,7 @@ rồi chấm lại.
 | Tôn giáo | Thầy tu cải đạo và chữa thương, faith hồi dần, Monotheism |
 | Thắng | Chinh phục, Wonder (đứng 15 phút) |
 | AI | 3 mức, chơi đủ 4 thời đại, săn, nghiên cứu, tập hợp quân trước khi đánh; mức Khó thu nhanh hơn 20% (ghi rõ trên màn hình) |
-| Giao diện | Bố cục kiểu bản gốc, phím xây B + chữ, phím luyện quân của bản gốc, đối tượng nháy khi giao việc, tốc độ 1x đến 3x, hiển thị dân tộc |
+| Giao diện | Bố cục kiểu bản gốc, phím xây B + chữ, phím luyện quân của bản gốc, đối tượng nháy khi giao việc, tốc độ 1x đến 3x, hiển thị dân tộc, tùy chọn ruộng tự trồng lại (kiểu AoE2, bật sẵn, tắt trong Menu) |
 | Hình | Pixel art vẽ bằng code cho mọi unit, thú, công trình (4 thời đại, 4 giai đoạn xây), tường nối liền |
 | Kiểm thử | 34 unit test, smoke test bằng chuột và phím thật trên Chrome, trận AI đấu AI chạy không cần màn hình, CI và deploy lên GitHub Pages |
 

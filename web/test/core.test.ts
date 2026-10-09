@@ -234,6 +234,24 @@ describe("fixes from the logic review", () => {
     expect(working.length).toBe(1);
   });
 
+  it("a spent farm is gone, unless reseeding is on and there is the wood", () => {
+    for (const [reseed, wood] of [[false, 500], [true, 500], [true, 0]] as const) {
+      const w = blank();
+      w.addBuilding("town_center", 0, new Tile(2, 2), true);
+      const farm = w.addBuilding("farm", 0, new Tile(6, 6), true);
+      farm.food = 3;
+      w.players[0].res.set(Res.wood, wood);
+      w.setAutoReseed(0, reseed);
+      const v = w.spawnUnit("villager", 0, new Tile(5, 6).center);
+      w.gather(0, [v.id], farm.id);
+      run(w, 30);
+      const sown = reseed && wood > 0;
+      expect(farm.alive).toBe(sown);
+      expect(w.players[0].res.wood).toBe(sown ? wood - 75 : wood);
+      if (sown) expect(v.order.kind === "gather" || v.order.kind === "return").toBe(true);
+    }
+  });
+
   it("deleting a foundation refunds what was not built", () => {
     const w = blank();
     w.fog[0].revealAll();
