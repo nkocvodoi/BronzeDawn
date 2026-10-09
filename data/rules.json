@@ -109,6 +109,13 @@
   ],
   "fishing_boats_per_dock": 5,
   "wonder_seconds": 900,
+  "relics": {
+   "ruins": 5,
+   "artifacts": 5,
+   "ruins_radius": 3,
+   "artifact_radius": 1.5,
+   "artifact_speed": 0.8
+  },
   "trade_gold_per_tile": 1.1,
   "repair_rate": 0.5,
   "repair_cost": 0.5

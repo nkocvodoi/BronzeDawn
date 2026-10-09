@@ -340,6 +340,8 @@ export function unitPic(look: UnitLook): Pic {
   if (type === "helepolis") return pic(key, 38, 54, 19 / 38, 50 / 54, (p) => drawHelepolis(p, look));
   if (SIEGE.has(type)) return pic(key, 40, 34, 20 / 40, 30 / 34, (p) => drawSiege(p, look));
   if (BOATS.has(type)) return pic(key, 56, 38, 28 / 56, 31 / 38, (p) => drawBoat(p, look));
+  if (type === "ruins") return pic(`ruins-${owner}`, 44, 40, 22 / 44, 33 / 40, (p) => drawRuins(p, owner));
+  if (type === "artifact") return pic(`artifact-${owner}-${pose === "walk" ? frame % 2 : 0}`, 20, 26, 10 / 20, 23 / 26, (p) => drawArtifact(p, owner, pose === "walk" ? frame % 2 : 0));
   if (type === "gazelle") return pic(key, 24, 22, 12 / 24, 19 / 22, (p) => drawGazelle(p, look, false));
   if (type === "lion") return pic(key, 30, 24, 14 / 30, 21 / 24, (p) => drawLion(p, look, false));
   if (type === "alligator") return pic(key, 36, 18, 17 / 36, 14 / 18, (p) => drawAlligator(p, look, false));
@@ -351,6 +353,58 @@ export function unitPic(look: UnitLook): Pic {
     p.outline(C.outline, 0.25);
     if (kit.robe && pose === "work") drawGlow(p, cx, fy - 17, frame % 3);
   });
+}
+
+/** Ruins: a broken colonnade on a cracked platform; whoever holds them flies a pennant from the tallest column. */
+function drawRuins(p: PixelCanvas, owner: number) {
+  const s = C.stone, sD = C.stoneDark, sL = lighten(C.stone, 0.22);
+  p.shadow(22, 34, 19, 4);
+  // The platform, an isometric slab with a broken corner.
+  p.poly([[3, 31], [22, 22], [41, 31], [22, 39]], (x, y) => (y < 30 ? sL : hash(x, y, 31) < 0.08 ? sD : s));
+  p.poly([[3, 31], [22, 39], [22, 41], [3, 33]], sD);
+  p.poly([[22, 39], [41, 31], [41, 33], [22, 41]], darken(sD, 0.85));
+  p.erase([[33, 35], [41, 31], [41, 34], [36, 37]]);
+  p.line(10, 30, 16, 33, sD); p.line(26, 27, 30, 31, sD);
+  // Columns: whole, half, a stump, and one fallen across the slab.
+  const column = (x: number, base: number, h: number, capital: boolean) => {
+    p.rect(x - 2, base - h, 5, h, s);
+    for (let yy = base - h; yy < base; yy++) { p.set(x - 2, yy, sL); p.set(x + 2, yy, sD); }
+    for (let yy = base - h + 2; yy < base; yy += 3) p.set(x, yy, sD);
+    if (capital) p.rect(x - 3, base - h - 2, 7, 2, sL);
+    else p.poly([[x - 2, base - h], [x + 2, base - h - 2], [x + 2, base - h]], sL); // broken top
+    p.rect(x - 3, base - 1, 7, 2, sD);
+  };
+  column(12, 31, 22, true);
+  column(22, 26, 12, false);
+  column(31, 30, 5, false);
+  p.thick(15, 35, 27, 32, s, 4); p.line(15, 33, 27, 30, sL);
+  for (const [x, y] of [[9, 33], [35, 30], [19, 36]]) p.rect(x, y, 2, 1, sD); // rubble
+  if (owner >= 0) {
+    const pc = playerRGB(owner);
+    p.line(12, 2, 12, 9, C.woodDark);
+    p.poly([[13, 2], [19, 4], [13, 6]], pc);
+    p.line(13, 6, 19, 4, darken(pc, 0.7));
+  }
+  p.outline(C.outline, 0.3);
+}
+
+/** An Artifact: a little gold idol on a carrying plinth, wrapped in its holder's colour. Walking, it bobs. */
+function drawArtifact(p: PixelCanvas, owner: number, bob: number) {
+  const g = C.gold, gD = C.goldDark, gL = rgb(0xfff0a0);
+  p.shadow(10, 23, 7, 2);
+  const y0 = bob ? -1 : 0;
+  p.rect(4, 18 + y0, 12, 4, C.woodDark);
+  p.rect(4, 18 + y0, 12, 1, C.wood);
+  p.thick(1, 20 + y0, 19, 20 + y0, C.wood, 1); // carrying poles
+  if (owner >= 0) { const pc = playerRGB(owner); p.rect(5, 16 + y0, 10, 2, pc); p.line(5, 17 + y0, 14, 17 + y0, darken(pc, 0.7)); }
+  else p.rect(5, 16 + y0, 10, 2, C.cloth);
+  // The idol: a seated figure with a tall headdress.
+  p.ellipse(10, 13 + y0, 3.5, 3, (x, y) => (x < 9 ? gL : y > 14 + y0 ? gD : g));
+  p.rect(8, 6 + y0, 5, 5, g); p.set(8, 7 + y0, gL); p.set(12, 9 + y0, gD);
+  p.poly([[8, 6 + y0], [10, 1 + y0], [12, 6 + y0]], (x) => (x < 10 ? gL : g));
+  p.set(9, 8 + y0, C.dark); p.set(11, 8 + y0, C.dark);
+  p.set(4, 4 + y0, gL); p.set(16, 7 + y0, gL); p.set(15, 3 + y0, rgb(0xfffbe0)); // a glint
+  p.outline(C.outline, 0.25);
 }
 
 /** A standing or seated figure. ty is the top of the torso; the head sits above it, the legs below. */

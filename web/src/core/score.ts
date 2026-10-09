@@ -1,6 +1,5 @@
 // The original's score, in its five parts (F-Score in replica/game/aoe1-research.md). It is shown during
-// the game and at its end, and can decide a game. Ruins, Artifacts, tribute and boats are not in the game
-// yet, so their points are not either.
+// the game and at its end, and can decide a game. Tribute is not in the game yet, so its points are not either.
 import type { World } from "./world";
 
 export interface Score { military: number; economy: number; religion: number; technology: number; other: number; total: number }
@@ -26,6 +25,9 @@ export function scores(w: World): Score[] {
   const explored = ps.map((p) => Math.floor((w.fog[p.id].exploredShare * 100) / 3));
   const conversions = ps.map((p) => p.stats.converted);
   const techs = ps.map((p) => p.stats.researched);
+  // Ruins and Artifacts: 10 points each, and 50 more for holding every one on the map.
+  const relics = w.units.filter((u) => u.alive && u.isRelic);
+  const held = ps.map((p) => relics.filter((r) => r.owner === p.id).length);
   const most = { army: leader(army), villagers: leader(villagers), explored: leader(explored), conversions: leader(conversions), techs: leader(techs) };
 
   return ps.map((p, i) => {
@@ -34,7 +36,8 @@ export function scores(w: World): Score[] {
     const economy = Math.floor(s.gathered.gold / 100) + workers[i] + (most.villagers === i ? 25 : 0)
       + explored[i] + (most.explored === i ? 25 : 0);
     const religion = conversions[i] * 2 + (most.conversions === i ? 25 : 0)
-      + buildings(p.id).filter((b) => b.def.id === "temple").length * 3;
+      + buildings(p.id).filter((b) => b.def.id === "temple").length * 3
+      + held[i] * 10 + (relics.length > 0 && held[i] === relics.length ? 50 : 0);
     const technology = techs[i] * 2 + (most.techs === i ? 50 : 0) + (w.firstTo[2] === i ? 25 : 0) + (w.firstTo[3] === i ? 25 : 0);
     const other = (p.defeated ? -100 : 0) + buildings(p.id).filter((b) => b.def.id === "wonder").length * 100;
     return { military, economy, religion, technology, other, total: military + economy + religion + technology + other };

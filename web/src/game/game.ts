@@ -69,7 +69,8 @@ const VICTORIES: [string, string, Victory][] = [
   ...[15, 30, 60, 90].map((m): [string, string, Victory] => [`time-${m}`, `Time limit: best score after ${m} minutes`, { kind: "time", target: m * 60 }]),
 ];
 /** What the end screen says about how the game was won. */
-const HOW_TEXT: Record<WinHow, string> = { conquest: "", wonder: "A Wonder stood its time. ", score: "The target score was reached. ", time: "Time ran out: the best score wins. " };
+const HOW_TEXT: Record<WinHow, string> = { conquest: "", wonder: "A Wonder stood its time. ", score: "The target score was reached. ", time: "Time ran out: the best score wins. ",
+  ruins: "All the Ruins were held for their time. ", artifacts: "All the Artifacts were held for their time. " };
 /** Starting resources: Low is the original's default. */
 const RESOURCE_LEVELS: [string, string][] = [["low", "Low"], ["medium", "Medium"], ["high", "High"], ["deathmatch", "Death Match"]];
 /** A remembered choice, if it is still one of the choices. */
@@ -131,6 +132,8 @@ export class Game {
   startAge = 0;
   popLimit = 50;
   exploredStart = store.get("bd-reveal") === "on";
+  /** Ruins and Artifacts on the map, as in the original's random maps; on unless turned off. */
+  relics = store.get("bd-relics") !== "off";
   /** The game is over for you: won, or defeated while the others play on. */
   private ended = false;
   private seed: number;
@@ -211,7 +214,7 @@ export class Game {
       : ["You", ...Array.from({ length: n - 1 }, (_, i) => (n === 2 ? "Enemy" : `Enemy ${i + 1}`))];
     this.world = new World(this.rules, seed, names, size, true, {
       civs, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, startAge: this.startAge, resources: this.resources,
-      popLimit: this.popLimit, revealMap: this.exploredStart, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2],
+      popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2],
     });
     for (const v of this.views.values()) v.root.destroy({ children: true });
     this.views.clear();
@@ -304,6 +307,7 @@ export class Game {
       `Starting age: <select id="start-age">${opts(this.rules.ages.map((a, i) => [String(i), a.name]), String(this.startAge))}</select>`
         + ` Resources: <select id="resources">${opts(RESOURCE_LEVELS, this.resources)}</select>`
         + ` Population limit: <select id="pop-limit">${opts((this.rules.economy.pop_limits ?? [this.rules.economy.pop_max]).map((k) => [String(k), String(k)]), String(this.popLimit))}</select>`,
+      `<label><input type="checkbox" id="relics"${this.relics ? " checked" : ""}> Ruins and Artifacts (five of each; hold all of either for 15 minutes to win)</label>`,
       `<label><input type="checkbox" id="reveal"${this.exploredStart ? " checked" : ""}> Reveal map: the land is known from the start (units are still hidden by the fog)</label>`,
       `<label><input type="checkbox" id="farms-block"${this.farmsBlock ? " checked" : ""}> Farms block the way, as in the original (off: walk over them, as in the remaster)</label>`,
       `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
@@ -317,6 +321,8 @@ export class Game {
     this.watching = (document.querySelector("#watch") as HTMLInputElement | null)?.checked === true;
     const fb = document.querySelector("#farms-block") as HTMLInputElement | null;
     if (fb) { this.farmsBlock = fb.checked; store.set("bd-farms-block", fb.checked ? "on" : "off"); }
+    const rl = document.querySelector("#relics") as HTMLInputElement | null;
+    if (rl) { this.relics = rl.checked; store.set("bd-relics", rl.checked ? "on" : "off"); }
     const rv = document.querySelector("#reveal") as HTMLInputElement | null;
     if (rv) { this.exploredStart = rv.checked; store.set("bd-reveal", rv.checked ? "on" : "off"); }
     const pickFrom = (sel: string, key: string, ids: string[]) => {
@@ -386,6 +392,7 @@ export class Game {
       "Transports (T at the Dock): right-click one with land units to go aboard, then right-click the land (or U) to put them ashore",
       "Train: F Fishing Boat at the Dock · C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
+      "Ruins and Artifacts: walk any unit up to one to take it; an Artifact you hold can be moved (right-click) and carried in a transport. Hold all of either for 15 minutes to win",
       "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
       "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · Tab: the next unit of the selection · F4 or S: population, scores or nothing above the minimap · F10: menu",
       "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)",
@@ -582,6 +589,7 @@ export class Game {
       return "arrow";
     }
     if (t instanceof Unit && t.isAnimal) return villagers || units.some((u) => !u.isPriest) ? "sword" : "arrow";
+    if (t instanceof Unit && t.isRelic) return "arrow"; // walk up to it to take it
     if (priests && t.owner >= 0) return "staff";
     return t.owner >= 0 ? "sword" : "arrow";
   }
@@ -1009,7 +1017,8 @@ export class Game {
     };
     const w = this.world;
     // Passengers are inside their transport, off the map.
-    for (const u of w.units) show(u, u.aboard === null && (u.owner === this.me || this.visible(u.pos.tile)));
+    // Ruins never move, so like buildings they stay drawn once found.
+    for (const u of w.units) show(u, u.aboard === null && (u.owner === this.me || this.visible(u.pos.tile) || (u.isRelic && u.def.speed === 0 && this.explored(u.pos.tile))));
     for (const b of w.buildings) {
       if (b.owner === this.me || this.revealMap) { show(b, true); continue; }
       const now = this.anyVisible(b.footprint.tiles());

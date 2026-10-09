@@ -179,13 +179,20 @@ export class HUD {
       : w.rules.ages[p.age].name;
     // The original shows no clock, only the countdown while a Wonder stands.
     // A time limit counts down too, and a score target shows what it is.
-    const wonder = w.victory.kind === "standard" ? w.players.find((x) => x.wonderAt !== null) : undefined;
+    // So do all the Ruins or all the Artifacts in one side's hands: the clock nearest to winning shows.
     const v = w.victory;
-    this.time.hidden = !wonder && v.kind !== "time" && v.kind !== "score";
-    if (wonder) this.time.textContent = `Wonder (${wonder.name}) ${clock(Math.max(0, wonder.wonderAt! - w.time))}`;
+    const clocks: { what: string; player: number; at: number }[] = [];
+    if (v.kind === "standard") {
+      for (const x of w.players) if (x.wonderAt !== null) clocks.push({ what: "Wonder", player: x.id, at: x.wonderAt });
+      if (w.relicHold.ruins) clocks.push({ what: "Ruins", ...w.relicHold.ruins });
+      if (w.relicHold.artifact) clocks.push({ what: "Artifacts", ...w.relicHold.artifact });
+    }
+    const soon = clocks.sort((a, b) => a.at - b.at)[0];
+    this.time.hidden = !soon && v.kind !== "time" && v.kind !== "score";
+    if (soon) this.time.textContent = `${soon.what} (${w.players[soon.player].name}) ${clock(Math.max(0, soon.at - w.time))}`;
     else if (v.kind === "time") this.time.textContent = `Time left ${clock(Math.max(0, v.target - w.time))}`;
     else if (v.kind === "score") this.time.textContent = `First to ${v.target}`;
-    this.time.classList.toggle("warn", (!!wonder && wonder.id !== me) || (v.kind === "time" && v.target - w.time < 120));
+    this.time.classList.toggle("warn", (!!soon && !w.allied(soon.player, me)) || (v.kind === "time" && v.target - w.time < 120));
     this.statusBox(w, me, sel);
     if (this.scoreMode !== "off") this.updateScores(w, me);
   }
@@ -255,6 +262,15 @@ export class HUD {
     if (first instanceof ResourceNode) {
       this.stats.innerHTML = `<span style="background-image:url(${this.statUrl.carry})">${Math.floor(first.amount)}</span>`;
       if (first.decay > 0) this.lines[0].textContent = "Meat rots: gather it soon";
+      return;
+    }
+    if (first instanceof Unit && first.isRelic) {
+      this.hpBox.style.visibility = "hidden";
+      const moves = first.def.speed > 0;
+      this.lines[0].textContent = first.owner < 0 ? "Nobody's yet: bring a unit to it to take it" : moves ? "Its holder can move it; an enemy beside it takes it" : "Held until an enemy comes near with nobody of yours there";
+      const h = w.relicHold[moves ? "artifact" : "ruins"];
+      this.lines[1].textContent = h && w.victory.kind === "standard" ? `${w.players[h.player].name} holds them all: ${clock(Math.max(0, h.at - w.time))} left`
+        : "Hold every one for 15 minutes to win · 10 points each";
       return;
     }
     if (first instanceof Unit && first.isAnimal) {
