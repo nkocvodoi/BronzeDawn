@@ -1,4 +1,4 @@
-import { DIRS16, Footprint, Tile, Vec2 } from "./geom";
+import { DIRS16, Footprint, RNG, Tile, Vec2 } from "./geom";
 import { Terrain } from "./grid";
 import type { World } from "./world";
 
@@ -13,7 +13,7 @@ export function generateMap(w: World) {
   const scale = (map.width * map.height) / (72 * 72);
   for (let i = 0; i < map.shade.length; i++) map.shade[i] = w.rng.int(0, 255);
 
-  const starts = startTiles(w.players.length, n);
+  const starts = startTiles(w.players.length, n, w.seed);
   w.startTiles = starts;
   const farFromStarts = (t: Tile, d: number) => starts.every((s) => t.center.distance(s.center) >= d);
 
@@ -126,12 +126,22 @@ export function generateMap(w: World) {
   w.nodes = w.nodes.filter((x) => x.alive);
 }
 
-/** Where each player starts: the corners first, then the middle of each edge, up to eight. */
-export function startTiles(count: number, n: number): Tile[] {
+/** Where each player starts: the corners first, then the middle of each edge, up to eight. Who gets
+ *  which comes from the seed, as in the original, so you cannot tell where the others are: two players
+ *  get one diagonal or the other, either way round; more get the corners, then the edges, shuffled.
+ *  The shuffle has its own random numbers, so the land of a seed stays the same. */
+export function startTiles(count: number, n: number, seed = 0): Tile[] {
   const mid = Math.floor(n / 2);
-  const spots = [new Tile(14, n - 15), new Tile(n - 15, 14), new Tile(14, 14), new Tile(n - 15, n - 15),
-    new Tile(14, mid), new Tile(n - 15, mid), new Tile(mid, 14), new Tile(mid, n - 15)];
-  return spots.slice(0, Math.max(1, Math.min(count, spots.length)));
+  const corners = [new Tile(14, n - 15), new Tile(n - 15, 14), new Tile(14, 14), new Tile(n - 15, n - 15)];
+  const edges = [new Tile(14, mid), new Tile(n - 15, mid), new Tile(mid, 14), new Tile(mid, n - 15)];
+  const rng = new RNG((seed * 7919 + 17) >>> 0);
+  const shuffle = <T>(xs: T[]) => {
+    for (let i = xs.length - 1; i > 0; i--) { const j = rng.int(0, i); [xs[i], xs[j]] = [xs[j], xs[i]]; }
+    return xs;
+  };
+  const k = Math.max(1, Math.min(count, corners.length + edges.length));
+  if (k === 2) return shuffle(rng.int(0, 1) ? [corners[0], corners[1]] : [corners[2], corners[3]]);
+  return [...shuffle(corners), ...shuffle(edges)].slice(0, k);
 }
 
 /** A few animals of one kind standing near a point. */
