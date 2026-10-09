@@ -92,6 +92,7 @@ export class AIController {
     const home = tc.center;
     this.defend(w, army, villagers, bs);
     this.economy(w, tc, villagers, bs);
+    this.repair(w, villagers, bs);
     this.research(w, bs, army);
     this.military(w, army, bs, villagers.length);
     this.attack(w, home, army, priests);
@@ -241,6 +242,24 @@ export class AIController {
       const working = villagers.some((v) => v.order.kind === "build" && (v.order.id === b.id || v.buildQueue.includes(b.id)));
       const v = working ? null : this.pickBuilder(villagers, b.center);
       if (v) w.build(this.player, [v.id], b.id);
+    }
+  }
+
+  /** A badly damaged building gets one villager to repair it, once the fighting there is over and
+   *  there is a margin of resources for it. */
+  private repair(w: World, villagers: Unit[], bs: Building[]) {
+    if (this.difficulty === "easy") return;
+    const p = w.players[this.player];
+    let busy = villagers.filter((v) => v.order.kind === "repair").length;
+    for (const b of bs) {
+      if (busy >= 2) return;
+      if (!b.complete || b.isFarm || b.hp > b.maxHp * 0.6) continue;
+      if (villagers.some((v) => v.order.kind === "repair" && v.order.id === b.id)) continue;
+      if (!p.res.covers(w.bstats(b).cost)) continue; // keep the margin: a full bar costs half of this
+      const danger = w.units.some((u) => u.alive && !u.isAnimal && w.isEnemy(this.player, u.owner) && dist(u, b.center) < 8);
+      if (danger) continue;
+      const v = this.pickBuilder(villagers, b.center);
+      if (v) { w.repair(this.player, [v.id], b.id); busy++; }
     }
   }
 

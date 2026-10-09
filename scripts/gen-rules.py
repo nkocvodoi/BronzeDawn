@@ -307,6 +307,10 @@ rules = {
         "start_villagers": 3,
         "pop_max": 50,
         "wonder_seconds": 900,
+        # Repair: hit points come back at this share of the building speed, and the full bar would cost
+        # this share of the building's price, paid as the work goes.
+        "repair_rate": 0.5,
+        "repair_cost": 0.5,
     },
     "nodes": [
         {"id": "tree", "name": "Tree", "resource": W, "amount": 40},

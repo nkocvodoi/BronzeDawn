@@ -28,6 +28,7 @@ export function jobName(u: Unit): string | null {
   if (!u.isVillager) return null;
   const o = u.order, node = u.lastNodeType ?? "";
   if (o.kind === "build") return "Builder";
+  if (o.kind === "repair") return "Repairer";
   if (o.kind === "attack") return "Hunter";
   if (o.kind !== "gather" && o.kind !== "return") return null;
   if (node === "farm") return "Farmer";
