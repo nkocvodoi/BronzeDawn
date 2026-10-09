@@ -62,7 +62,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [ ] Đồi, vách đá, độ cao (đánh từ trên cao xuống có cơ hội gây gấp 3 sát thương), vùng nước nông lội qua được
 - [ ] Các kiểu bản đồ: inland, highland, continental, hill country, narrows; cỡ Gigantic
 - [ ] Ruins và artifact, thắng bằng giữ ruins và artifact
-- [ ] Mỗi dân tộc thiếu đúng các unit và công nghệ như bản gốc (hiện mới làm cho Persian, Macedonian và Lạc Việt)
+- [x] Mỗi dân tộc thiếu đúng các unit và công nghệ như bản gốc (theo cây công nghệ bản DE, cả 17 dân tộc)
 - [ ] Martyrdom
 - [ ] Điểm số, thắng theo điểm hoặc hết giờ
 - [ ] Tùy chọn khi bắt đầu: mở toàn bản đồ, thời đại khởi đầu, tài nguyên khởi đầu, giới hạn dân số

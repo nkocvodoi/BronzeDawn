@@ -450,6 +450,16 @@ Theocracy and Medicine at the Temple. Our rules have no Urbanization and no ship
 the team bonus applies to the player itself until there are teams. Siegecraft is the way to Heavy Catapult
 here, so the Lac Viet stop at Catapult.
 
+**Every civilization's tech tree (F-Trees, read 2026-10-09).** The DE tech tree page of each civilization
+greys out what it lacks; the lists in `TREES` in `scripts/gen-rules.py` are those greyed items, mapped to our
+ids, including what a missing item locks (no Iron Shield, so no Tower Shield). Pages are
+`https://web.archive.org/web/2024id_/https://ageofempires.fandom.com/wiki/<Civ>/Tree`, or
+`<Civ>_(Age_of_Empires)/Tree` for the Egyptians, Greeks, Persians and Romans (the Roman snapshot used is
+20240414225713). Rise of Rome differs a little, per the pages' "missing before the Definitive Edition" notes:
+the Choson also lacked Nobility; the Egyptians, Shang and Palmyrans Coinage; the Palmyrans Plow; the
+Macedonians the Wheel and Catapult; the Shang Ballistics until a DE patch. We follow DE. Ships, City Watch,
+Conscription, Theocracy, Urbanization and gates are not in the game, so they are left out.
+
 ---
 
 ## 8. Other mechanics
@@ -620,6 +630,7 @@ All web sources were accessed 2026-10-08. Fandom ("F-") pages were read through 
 | S24 | "Villager Resource Gather Rates" (official AoE forums) | https://forums.ageofempires.com/t/villager-resource-gather-rates/33158 |
 | S25 | "Return of Rome: everything you need to know" (official site, accessed 2026-10-09) | https://www.ageofempires.com/news/return-of-rome-everything-you-need-to-know/ |
 | S26 | Lac Viet civilisation page (AoE Heaven, accessed 2026-10-09) | https://aoe.heavengames.com/theacademy/civilisations/lac-viet/ |
+| F-Trees | Fandom tech tree pages of all 17 civilizations, through the Internet Archive | https://web.archive.org/web/2024id_/https://ageofempires.fandom.com/wiki/Assyrians/Tree (and the same for each civ) |
 | F-Lac Viet, F-Lac Viet/Tree | Fandom (through search results; the live site blocks fetches) | https://ageofempires.fandom.com/wiki/Lac_Viet · https://ageofempires.fandom.com/wiki/Lac_Viet/Tree |
 | LQ-Lac Viet | Liquipedia | https://liquipedia.net/ageofempires/Lac_Viet |
 | F-Villager | Fandom | https://ageofempires.fandom.com/wiki/Villager_(Age_of_Empires) |

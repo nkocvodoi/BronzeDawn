@@ -446,7 +446,16 @@ describe("the original's rules", () => {
     for (const id of ["phalanx_tech", "legion_tech", "siegecraft", "engineering", "monotheism"])
       expect(w.blockerTech(id, 0)).toContain("Not available");
     expect(w.blockerUnit("camel_rider", 0)).toContain("Not available");
-    expect(w.blockerUnit("camel_rider", 1)).not.toContain("Not available");
+    expect(w.blockerTech("phalanx_tech", 1)).not.toContain("Not available");
+  });
+
+  it("each civilization lacks what its tech tree lacks", () => {
+    const w = new World(RULES, 1, ["A", "B", "C"], 24, false, { civs: ["egyptian", "greek", "roman"] });
+    expect(w.blockerUnit("cavalry", 0)).toContain("Not available");      // no Cavalry for the Egyptians
+    expect(w.blockerTech("heavy_cavalry_tech", 1)).not.toContain("Not available"); // the Greeks keep it
+    expect(w.blockerBuilding("guard_tower", 2)).toContain("Not available"); // the Romans stop at Sentry Tower
+    expect(w.blockerTech("guard_tower_tech", 2)).toContain("Not available");
+    for (const c of RULES.civs) expect(c.disabled.length).toBeGreaterThan(10);
   });
 
   it("a Wonder that stands long enough wins", () => {

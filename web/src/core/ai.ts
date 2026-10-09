@@ -43,6 +43,8 @@ export function strength(a: UnitDef, b: UnitDef, rules: Rules) {
 }
 
 const dist = (a: Unit, p: Vec2) => a.pos.distance(p);
+/** How far from home villagers are sent for gold and stone once the mines nearby are spent. */
+const FAR = 50;
 function minBy<T>(xs: T[], f: (x: T) => number): T | null {
   let best: T | null = null, bv = Infinity;
   for (const x of xs) { const v = f(x); if (v < bv) { bv = v; best = x; } }
@@ -147,8 +149,10 @@ export class AIController {
       const spot = w.nearestNode(Res.wood, home, 22)?.center ?? home;
       this.placeNear(w, "storage_pit", spot, 2, 7, villagers, false);
     }
-    if (p.age >= 1 && this.count(bs, "storage_pit") < 2 && villagers.length >= 16 && p.res.wood >= 150) {
-      const gold = w.nearestNode(Res.gold, home, 26);
+    // When the gold near home runs out, a new pit by the next mine, further out (as far as the
+    // villagers will go for it), so the Iron Age stays within reach.
+    if (p.age >= 1 && this.count(bs, "storage_pit") < 4 && villagers.length >= 16 && p.res.wood >= 150) {
+      const gold = w.nearestNode(Res.gold, home, FAR);
       if (gold && !bs.some((b) => b.def.id === "storage_pit" && b.distance(gold.center) < 8)) this.placeNear(w, "storage_pit", gold.center, 2, 6, villagers, false);
     }
 
@@ -173,7 +177,7 @@ export class AIController {
     // Farms when the berries and game near home are gone. One farmer each.
     const foodNear = w.nearestNode(Res.food, home, 16) !== null || this.huntNear(w, home) !== null;
     const farms = bs.filter((b) => b.isFarm);
-    const foodWorkers = Math.ceil(this.shares(p)[Res.food] * villagers.length);
+    const foodWorkers = Math.ceil(this.shares(p, this.reserve(w))[Res.food] * villagers.length);
     const wantFarms = Math.max(0, foodWorkers - (foodNear ? 5 : 0));
     const farmsBuilding = farms.filter((f) => !f.complete).length;
     if (farms.length < wantFarms && farmsBuilding < 2 && p.res.wood >= 75 && w.blockerBuilding("farm", this.player) === null) {
@@ -192,12 +196,13 @@ export class AIController {
   }
 
   /** How to split the villagers. A big stockpile of something pulls workers off it. */
-  shares(p: Player): number[] {
+  /** `keep` is what is being saved for the next age: a stock counts as plenty only above it. */
+  shares(p: Player, keep: ResBag = new ResBag()): number[] {
     // Food first in every age, as in the original: villagers, ages, techs and most soldiers cost food.
     const byAge = [[0.65, 0.35, 0, 0], [0.55, 0.3, 0.1, 0.05], [0.55, 0.2, 0.2, 0.05], [0.55, 0.15, 0.25, 0.05]];
     const want = [...byAge[Math.min(p.age, 3)]];
     for (const r of RES_ALL) {
-      const stock = p.res.get(r);
+      const stock = p.res.get(r) - keep.get(r);
       if (stock > 800) want[r] *= 0.1; else if (stock > 400) want[r] *= 0.4;
     }
     if (p.res.stone >= 200) want[Res.stone] = 0;
@@ -207,7 +212,7 @@ export class AIController {
 
   /** Every so often move one worker from the most over-staffed resource to the most under-staffed. */
   private rebalance(w: World, villagers: Unit[], home: Vec2) {
-    const want = this.shares(w.players[this.player]);
+    const want = this.shares(w.players[this.player], this.reserve(w));
     const on: Unit[][] = [[], [], [], []];
     for (const u of villagers) if (u.order.kind === "gather" && u.lastGather !== null && u.carry < 1) on[u.lastGather].push(u);
     const total = villagers.length;
@@ -230,7 +235,7 @@ export class AIController {
       const game = this.huntNear(w, home);
       if (game) { w.attack(this.player, [u.id], game.id); return true; }
     }
-    const n = w.nearestNode(r, home, 30);
+    const n = w.nearestNode(r, home, r === Res.gold || r === Res.stone ? FAR : 30);
     if (n) { w.gather(this.player, [u.id], n.id); return true; }
     return false;
   }
@@ -271,7 +276,7 @@ export class AIController {
       if ((u.order.kind === "gather" || u.order.kind === "return") && u.lastGather !== null) working[u.lastGather]++;
       if (u.order.kind === "attack") working[Res.food]++; // hunting
     }
-    const want = this.shares(w.players[this.player]);
+    const want = this.shares(w.players[this.player], this.reserve(w));
     const total = villagers.length;
     for (const u of idle) {
       const order = [...RES_ALL].sort((a, b) => (want[b] * total - working[b]) - (want[a] * total - working[a]));
@@ -332,8 +337,11 @@ export class AIController {
       } else pick = options[Math.floor(this.thinks / 7) % options.length];
       // Below the standing guard for this age, soldiers come before saving for the next age.
       const cost = w.unitCost(this.player, pick);
+      // Short of guards, the food and wood saved for the next age may go on them, never the gold:
+      // a long war would otherwise keep the Iron Age out of reach.
       const short = army.length < this.level.guard[Math.min(p.age, 3)];
-      if (short ? p.res.covers(cost) : this.affordable(w, cost)) w.train(this.player, b.id, pick);
+      const goldFree = p.res.gold - this.reserve(w).gold >= cost.gold;
+      if (short ? p.res.covers(cost) && goldFree : this.affordable(w, cost)) w.train(this.player, b.id, pick);
     }
   }
 

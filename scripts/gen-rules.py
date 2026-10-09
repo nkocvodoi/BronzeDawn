@@ -288,6 +288,90 @@ civs = [
          "cataphract", "cataphract_tech", "helepolis", "helepolis_tech", "ballista_tower", "ballista_tower_tech"]),
 ]
 
+# What each civilization cannot build, train or research, from the Definitive Edition tech trees
+# (Fandom "<Civ>/Tree" pages, read through the Internet Archive). An upgrade and its unit go
+# together, and so does what a missing item locks (no Iron Shield, no Tower Shield). Ships, City
+# Watch, Conscription, Theocracy, Urbanization and gates are not in this game yet.
+TREES = {
+    "assyrian": ["slinger", "improved_bowman", "improved_bow", "composite_bowman", "composite_bow", "heavy_horse_archer",
+                 "heavy_horse_archer_tech", "elephant_archer", "scythe_chariot", "scythe_chariot_tech", "war_elephant",
+                 "armored_elephant", "armored_elephant_tech", "phalanx", "phalanx_tech", "centurion", "centurion_tech",
+                 "bronze_shield", "iron_shield", "tower_shield", "nobility", "aristocracy", "architecture"],
+    "babylonian": ["heavy_horse_archer", "heavy_horse_archer_tech", "elephant_archer", "heavy_cavalry", "heavy_cavalry_tech",
+                   "cataphract", "cataphract_tech", "war_elephant", "armored_elephant", "armored_elephant_tech", "ballista",
+                   "helepolis", "helepolis_tech", "phalanx", "phalanx_tech", "centurion", "centurion_tech", "iron_shield",
+                   "tower_shield"],
+    "carthaginian": ["legion", "legion_tech", "composite_bowman", "composite_bow", "chariot_archer", "heavy_horse_archer",
+                     "heavy_horse_archer_tech", "chariot", "scythe_chariot", "scythe_chariot_tech", "cataphract", "cataphract_tech",
+                     "catapult", "catapult_tech", "heavy_catapult", "heavy_catapult_tech", "metallurgy", "chain_armor_infantry",
+                     "chain_armor_archers", "chain_armor_cavalry", "fortification", "fortification_tech", "siegecraft",
+                     "astrology", "monotheism", "fanaticism"],
+    "choson": ["composite_bowman", "composite_bow", "chariot_archer", "heavy_horse_archer", "heavy_horse_archer_tech",
+               "elephant_archer", "chariot", "scythe_chariot", "scythe_chariot_tech", "camel_rider", "war_elephant",
+               "armored_elephant", "armored_elephant_tech", "catapult", "catapult_tech", "heavy_catapult", "heavy_catapult_tech",
+               "phalanx", "phalanx_tech", "centurion", "centurion_tech", "chain_armor_infantry", "chain_armor_archers",
+               "chain_armor_cavalry", "iron_shield", "tower_shield", "aristocracy", "alchemy", "engineering"],
+    "egyptian": ["broad_swordsman", "broad_sword", "long_swordsman", "long_sword", "legion", "legion_tech", "horse_archer",
+                 "heavy_horse_archer", "heavy_horse_archer_tech", "cavalry", "heavy_cavalry", "heavy_cavalry_tech", "cataphract",
+                 "cataphract_tech", "armored_elephant", "armored_elephant_tech", "catapult", "catapult_tech", "heavy_catapult",
+                 "heavy_catapult_tech", "ballista", "helepolis", "helepolis_tech", "phalanx", "phalanx_tech", "centurion",
+                 "centurion_tech", "bronze_shield", "iron_shield", "tower_shield", "siegecraft"],
+    "greek": ["broad_swordsman", "broad_sword", "long_swordsman", "long_sword", "legion", "legion_tech", "improved_bowman",
+              "improved_bow", "composite_bowman", "composite_bow", "chariot_archer", "horse_archer", "heavy_horse_archer",
+              "heavy_horse_archer_tech", "elephant_archer", "chariot", "scythe_chariot", "scythe_chariot_tech", "cataphract",
+              "cataphract_tech", "camel_rider", "war_elephant", "armored_elephant", "armored_elephant_tech", "metallurgy",
+              "monotheism", "jihad"],
+    "hittite": ["slinger", "long_swordsman", "long_sword", "legion", "legion_tech", "improved_bowman", "improved_bow",
+                "composite_bowman", "composite_bow", "heavy_cavalry", "heavy_cavalry_tech", "cataphract", "cataphract_tech",
+                "ballista", "helepolis", "helepolis_tech", "centurion", "centurion_tech", "afterlife", "jihad", "mysticism",
+                "monotheism", "medicine", "polytheism", "fanaticism", "architecture", "irrigation"],
+    "minoan": ["legion", "legion_tech", "horse_archer", "heavy_horse_archer", "heavy_horse_archer_tech", "chariot_archer",
+               "elephant_archer", "chariot", "scythe_chariot", "scythe_chariot_tech", "heavy_cavalry", "heavy_cavalry_tech",
+               "cataphract", "cataphract_tech", "war_elephant", "armored_elephant", "armored_elephant_tech", "astrology",
+               "afterlife", "jihad", "mysticism", "monotheism", "fanaticism", "fortification", "fortification_tech",
+               "guard_tower", "guard_tower_tech", "ballista_tower", "ballista_tower_tech"],
+    "persian": ["academy", "hoplite", "phalanx", "phalanx_tech", "centurion", "centurion_tech", "chariot_archer", "chariot",
+                "scythe_chariot", "scythe_chariot_tech", "heavy_catapult", "heavy_catapult_tech", "ballista", "helepolis",
+                "helepolis_tech", "ballista_tower", "ballista_tower_tech", "aristocracy", "craftsmanship", "siegecraft",
+                "irrigation"],
+    "phoenician": ["horse_archer", "heavy_horse_archer", "heavy_horse_archer_tech", "heavy_cavalry", "heavy_cavalry_tech",
+                   "cataphract", "cataphract_tech", "catapult", "catapult_tech", "heavy_catapult", "heavy_catapult_tech",
+                   "ballista", "helepolis", "helepolis_tech", "metallurgy", "chain_armor_infantry", "chain_armor_archers",
+                   "chain_armor_cavalry", "architecture", "siegecraft"],
+    "shang": ["long_swordsman", "long_sword", "legion", "legion_tech", "elephant_archer", "war_elephant", "armored_elephant",
+              "armored_elephant_tech", "heavy_catapult", "heavy_catapult_tech", "phalanx", "phalanx_tech", "centurion",
+              "centurion_tech", "ballista_tower", "ballista_tower_tech", "aristocracy", "alchemy", "engineering", "siegecraft"],
+    "sumerian": ["legion", "legion_tech", "improved_bowman", "improved_bow", "composite_bowman", "composite_bow",
+                 "elephant_archer", "cavalry", "heavy_cavalry", "heavy_cavalry_tech", "cataphract", "cataphract_tech",
+                 "armored_elephant", "armored_elephant_tech", "ballista", "helepolis", "helepolis_tech", "astrology",
+                 "afterlife", "jihad", "monotheism", "fanaticism", "metallurgy", "iron_shield", "tower_shield", "craftsmanship"],
+    "yamato": ["broad_swordsman", "broad_sword", "long_swordsman", "long_sword", "legion", "legion_tech", "chariot_archer",
+               "elephant_archer", "chariot", "scythe_chariot", "scythe_chariot_tech", "camel_rider", "war_elephant",
+               "armored_elephant", "armored_elephant_tech", "catapult", "catapult_tech", "heavy_catapult", "heavy_catapult_tech",
+               "ballista", "helepolis", "helepolis_tech", "astrology", "jihad", "mysticism", "monotheism", "medicine",
+               "fanaticism", "fortification", "fortification_tech", "guard_tower", "guard_tower_tech", "ballista_tower",
+               "ballista_tower_tech", "tower_shield"],
+    "macedonian": ["temple", "priest", "long_swordsman", "long_sword", "legion", "legion_tech", "chariot_archer",
+                   "elephant_archer", "chariot", "scythe_chariot", "scythe_chariot_tech", "camel_rider", "heavy_catapult",
+                   "heavy_catapult_tech", "helepolis", "helepolis_tech", "astrology", "afterlife", "jihad", "mysticism",
+                   "monotheism", "medicine", "polytheism", "fanaticism", "fortification", "fortification_tech", "nobility",
+                   "engineering", "craftsmanship", "siegecraft"],
+    "palmyran": ["long_swordsman", "long_sword", "legion", "legion_tech", "elephant_archer", "cataphract", "cataphract_tech",
+                 "helepolis", "helepolis_tech", "centurion", "centurion_tech", "mysticism", "monotheism", "medicine",
+                 "polytheism", "metallurgy", "tower_shield", "aristocracy", "logistics", "engineering", "craftsmanship",
+                 "irrigation"],
+    "roman": ["composite_bowman", "composite_bow", "chariot_archer", "horse_archer", "heavy_horse_archer",
+              "heavy_horse_archer_tech", "elephant_archer", "heavy_cavalry", "heavy_cavalry_tech", "cataphract",
+              "cataphract_tech", "camel_rider", "war_elephant", "armored_elephant", "armored_elephant_tech", "astrology",
+              "afterlife", "guard_tower", "guard_tower_tech", "ballista_tower", "ballista_tower_tech", "alchemy", "irrigation"],
+}
+_ids = {x["id"] for x in units} | {x["id"] for x in buildings} | {x["id"] for x in techs}
+for c in civs:
+    extra = TREES.get(c["id"], [])
+    unknown = [x for x in extra if x not in _ids]
+    assert not unknown, (c["id"], unknown)
+    c["disabled"] = c["disabled"] + [x for x in extra if x not in c["disabled"]]
+
 rules = {
     "resources": [F, W, G, S],
     "ages": [
