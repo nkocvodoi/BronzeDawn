@@ -76,7 +76,9 @@
   },
   "start_villagers": 3,
   "pop_max": 50,
-  "wonder_seconds": 900
+  "wonder_seconds": 900,
+  "repair_rate": 0.5,
+  "repair_cost": 0.5
  },
  "nodes": [
   {
@@ -1073,7 +1075,8 @@
    "area": 1.5,
    "damage": "melee",
    "projectile": "stone",
-   "requires_tech": "heavy_catapult_tech"
+   "requires_tech": "heavy_catapult_tech",
+   "clears_trees": true
   },
   {
    "id": "ballista",

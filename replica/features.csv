@@ -15,7 +15,7 @@ Alt+digit centers and Shift+digit adds a group,selection,could,yes,partial,Shift
 Tab cycles and Space centers the selection,selection,could,yes,partial,Space centers; no Tab
 Right-click context command,commands,must,yes,yes,
 Context cursors (sword over enemies hand over resources hammer over foundations),commands,should,yes,yes,our own pixel-art pointers: sword axe pick basket hammer staff
-Stand ground and attack ground,commands,should,yes,no,
+Stand ground and attack ground,commands,should,yes,yes,D and T as in the original; Heavy Catapult stones clear trees
 Waypoints with Shift+right-click,commands,could,yes,no,
 Formations that move at the slowest unit's speed,commands,could,yes,no,
 Pathfinding around obstacles,pathfinding,must,yes,yes,A* 8 directions

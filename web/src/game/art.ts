@@ -2647,7 +2647,7 @@ function techGlyph(p: PixelCanvas, g: string) {
 
 const TECH_WORDS: [RegExp, string][] = [
   [/^delete$/, "delete"], [/^stop$/, "stop"], [/^next$/, "next"], [/^back$/, "back"],
-  [/^(build|repair)$/, "hammer"], [/^attack_move$/, "sword"],
+  [/^(build|repair)$/, "hammer"], [/^(attack_move|attack_ground)$/, "sword"], [/^stand_ground$/, "shield"],
   [/^(stone|tool|bronze|iron)_age$|^age_|advance|ascend/, "age"],
   [/coin|gold|bank|market|trade|currency|tax|mint/, "coin"],
   [/shield/, "shield"],

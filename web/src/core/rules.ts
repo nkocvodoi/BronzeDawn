@@ -86,6 +86,8 @@ export interface UnitDef {
   /** Splash radius of a siege stone. */
   area?: number;
   min_range?: number;
+  /** Stones that land with Attack Ground knock down trees (no wood from them). */
+  clears_trees?: boolean;
   projectile?: "arrow" | "stone" | "bolt" | "spear";
   /** Elephants and scythe chariots hit everything this close to their target. */
   trample?: number;

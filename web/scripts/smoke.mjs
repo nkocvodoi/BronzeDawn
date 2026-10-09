@@ -163,6 +163,19 @@ await page.keyboard.press("Escape");
 await page.keyboard.press("-");
 check((await g(() => game.speed)) === 2, "- lowers it again");
 
+// Stand Ground with its original key, D, on a soldier.
+const soldier = await g(() => {
+  const w = game.world, v = w.unitsOf(0).find((u) => u.isVillager);
+  const u = w.spawnUnit("clubman", 0, v.pos);
+  game.selection = [u.id];
+  return u.id;
+});
+await wait(300);
+await page.keyboard.press("d");
+check(await g((id) => game.world.unit(id).standGround, soldier), "D sets a soldier to stand ground");
+await page.keyboard.press("d");
+check(await g((id) => !game.world.unit(id).standGround, soldier), "D again lets it chase");
+
 await page.screenshot({ path: process.env.SHOT ?? "smoke.png" });
 check(errors.length === 0, `no errors in the console${errors.length ? ": " + errors.join(" | ") : ""}`);
 await browser.close();
