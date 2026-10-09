@@ -178,10 +178,14 @@ export class HUD {
     this.age.textContent = up ? `${w.rules.ages[p.age].name} → ${w.rules.ages[Number(up.queue[0].id)].name} ${clock(w.queueTimeLeft(up).current)}`
       : w.rules.ages[p.age].name;
     // The original shows no clock, only the countdown while a Wonder stands.
-    const wonder = w.players.find((x) => x.wonderAt !== null);
-    this.time.hidden = !wonder;
+    // A time limit counts down too, and a score target shows what it is.
+    const wonder = w.victory.kind === "standard" ? w.players.find((x) => x.wonderAt !== null) : undefined;
+    const v = w.victory;
+    this.time.hidden = !wonder && v.kind !== "time" && v.kind !== "score";
     if (wonder) this.time.textContent = `Wonder (${wonder.name}) ${clock(Math.max(0, wonder.wonderAt! - w.time))}`;
-    this.time.classList.toggle("warn", !!wonder && wonder.id !== me);
+    else if (v.kind === "time") this.time.textContent = `Time left ${clock(Math.max(0, v.target - w.time))}`;
+    else if (v.kind === "score") this.time.textContent = `First to ${v.target}`;
+    this.time.classList.toggle("warn", (!!wonder && wonder.id !== me) || (v.kind === "time" && v.target - w.time < 120));
     this.statusBox(w, me, sel);
     if (this.scoreMode !== "off") this.updateScores(w, me);
   }

@@ -7,7 +7,7 @@ import { scores } from "../src/core/score";
 import { runMatch } from "../src/core/sim";
 import { startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
-import { World } from "../src/core/world";
+import { Victory, World } from "../src/core/world";
 
 /** An empty grass map, for tests that set up their own scene. */
 const blank = (size = 24) => new World(RULES, 1, ["A", "B"], size, false);
@@ -808,6 +808,65 @@ describe("the original's rules", () => {
     expect(wonder.complete).toBe(true);
     run(w, (RULES.economy.wonder_seconds ?? 900) + 2);
     expect(w.winner).toBe(0);
+  });
+});
+
+describe("game settings and other victories", () => {
+  /** Two players with a Town Center each, so nobody is out, and the victory setting given. */
+  const pair = (victory: Victory, names = ["A", "B"], teams: number[] = []) => {
+    const w = new World(RULES, 1, names, 24, false, { victory, teams });
+    names.forEach((_, i) => w.addBuilding("town_center", i, new Tile(2 + i * 5, 2 + (i % 2) * 15), true));
+    return w;
+  };
+
+  it("the start screen's settings: age, resources, population limit and an explored map", () => {
+    const w = new World(RULES, 5, ["A", "B"], 72, true, { startAge: 2, resources: "high", popLimit: 100, revealMap: true });
+    for (const p of w.players) {
+      expect(p.age).toBe(2);
+      expect(p.res.food).toBe(RULES.economy.start_levels!.high.food);
+      expect(w.fog[p.id].exploredShare).toBe(1);
+      // Explored, but what is out of sight is still hidden.
+      const far = w.startTiles[1 - p.id];
+      expect(w.fog[p.id].isVisible(far)).toBe(false);
+    }
+    expect(w.popMax).toBe(100);
+    for (let i = 0; i < 30; i++) w.addBuilding("house", 0, new Tile(2 + (i % 10) * 2, 30 + Math.floor(i / 10) * 2), true);
+    w.refreshPopulation();
+    expect(w.players[0].popCap).toBe(100);
+    // Bronze Age buildings may be placed at once.
+    expect(w.blockerBuilding("market", 0)).not.toBe("Needs Bronze Age");
+  });
+
+  it("score victory: the first side to reach the target wins", () => {
+    const w = pair({ kind: "score", target: 300 });
+    run(w, 2);
+    expect(w.winner).toBeNull();
+    w.players[1].stats.researched = 140; // 280 points, and the bonus for the most techs
+    run(w, 2);
+    expect(w.winner).toBe(1);
+  });
+
+  it("time limit: the best score when the clock runs out wins; a team counts its average", () => {
+    const w = pair({ kind: "time", target: 30 }, ["A", "B", "C"], [0, 1, 1]);
+    w.players[0].stats.researched = 40; // A alone: 80 + 50
+    w.players[1].stats.researched = 39; // B and C: (78 + 0) / 2
+    run(w, 25);
+    expect(w.winner).toBeNull();
+    run(w, 6);
+    expect(w.winner).toBe(0);
+  });
+
+  it("conquest only: a Wonder that stands wins nothing", () => {
+    const w = pair({ kind: "conquest" });
+    w.players[0].age = 3;
+    const wonder = w.addBuilding("wonder", 0, new Tile(12, 8), false);
+    wonder.progress = 0.999;
+    w.build(0, [w.spawnUnit("villager", 0, new Tile(11, 9).center).id], wonder.id);
+    run(w, 20);
+    expect(wonder.complete).toBe(true);
+    expect(w.players[0].wonderAt).toBeNull();
+    run(w, (RULES.economy.wonder_seconds ?? 900) + 2);
+    expect(w.winner).toBeNull();
   });
 });
 

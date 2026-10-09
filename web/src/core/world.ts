@@ -28,7 +28,19 @@ const FORMATION: Vec2[] = (() => {
 
 /** `teams`: a team number per player; players who share a number above 0 are allies, 0 is on its own. */
 /** `farmsBlock`: farms stop movement as in the original (by default they are walked over, as in the remaster). */
-export interface WorldOptions { civs?: (string | null)[]; teams?: number[]; farmsBlock?: boolean; mapType?: MapType }
+/** The start screen's game settings, as in the original: `startAge` an age index, `resources` a level of
+ *  `economy.start_levels` (Low, the default, is `economy.start`), `popLimit` instead of `economy.pop_max`,
+ *  `revealMap` every player starts with the map explored. */
+export interface WorldOptions {
+  civs?: (string | null)[]; teams?: number[]; farmsBlock?: boolean; mapType?: MapType;
+  startAge?: number; resources?: string; popLimit?: number; revealMap?: boolean; victory?: Victory;
+}
+
+/** How a game is won. Standard: conquest, or a Wonder that stands its time. Conquest: only conquest.
+ *  Score: the first to reach `target` points. Time: the highest score after `target` seconds. A team
+ *  is scored as the average of its players, as in the original. */
+export type Victory = { kind: "standard" } | { kind: "conquest" } | { kind: "score"; target: number } | { kind: "time"; target: number };
+export type WinHow = "conquest" | "wonder" | "score" | "time";
 
 /**
  * The whole simulation. No rendering in here: it runs the same in the browser,
@@ -74,17 +86,28 @@ export class World {
     this.pathfinder.maxExpanded = Math.max(9000, size * size); // a long walk across a Huge map still finds its way
     this.teams = playerNames.map((_, i) => options.teams?.[i] ?? 0);
     this.farmsBlock = options.farmsBlock === true;
+    this.popMax = options.popLimit ?? rules.economy.pop_max;
+    this.victory = options.victory ?? { kind: "standard" };
+    const stock = (options.resources && rules.economy.start_levels?.[options.resources]) || rules.economy.start;
+    const startAge = Math.max(0, Math.min(rules.ages.length - 1, options.startAge ?? 0));
     playerNames.forEach((n, i) => {
       const mods = new Mods(rules);
       const civId = options.civs?.[i];
       mods.setCiv(civId ? rules.civs.find((c) => c.id === civId) ?? null : null);
-      this.players.push(new Player(i, n, ResBag.of(rules.economy.start), mods));
+      const p = new Player(i, n, ResBag.of(stock), mods);
+      p.age = startAge;
+      this.players.push(p);
       this.fog.push(new Fog(size, size));
       this.alertTimer.push(0);
     });
     if (generate) generateMap(this, options.mapType ?? "inland");
+    // A later start: buildings and units are made at their full hit points for the age.
+    if (startAge > 0) for (const p of this.players) this.refreshHp(p.id);
     this.refreshPopulation();
-    for (const p of this.players) this.fog[p.id].update(this, p.id);
+    for (const p of this.players) {
+      if (options.revealMap) this.fog[p.id].exploreAll();
+      this.fog[p.id].update(this, p.id);
+    }
   }
 
   // ---- lookup
@@ -101,6 +124,9 @@ export class World {
   buildingsOf(p: number) { return this.buildings.filter((b) => b.alive && b.owner === p); }
   /** Whether farms stop movement, as in the original. */
   farmsBlock = false;
+  /** The population limit of this game. */
+  popMax = 50;
+  victory: Victory = { kind: "standard" };
   /** Each player's team; 0 means on its own. */
   teams: number[] = [];
   allied(a: number, b: number) { return a === b || (a >= 0 && b >= 0 && this.teams[a] > 0 && this.teams[a] === this.teams[b]); }
@@ -955,7 +981,7 @@ export class World {
     for (const p of this.players) { p.pop = 0; p.popCap = 0; }
     for (const u of this.units) if (u.alive && u.owner >= 0) this.players[u.owner].pop += this.stats(u).pop;
     for (const b of this.buildings) if (b.alive && b.complete && b.owner >= 0) this.players[b.owner].popCap += b.def.pop_provided ?? 0;
-    for (const p of this.players) p.popCap = Math.min(p.popCap, this.rules.economy.pop_max);
+    for (const p of this.players) p.popCap = Math.min(p.popCap, this.popMax);
   }
 
   private compact() {
@@ -977,18 +1003,47 @@ export class World {
         this.events.push({ kind: "message", player: -1, text: `${p.name} has been defeated` });
         this.milestones.push({ t: this.time, player: p.id, kind: "defeated" });
       }
-      if (p.wonderAt !== null && this.time >= p.wonderAt && !p.defeated) {
-        this.winner = p.id;
-        this.events.push({ kind: "gameOver", winner: p.id, how: "wonder" });
+      if (this.victory.kind === "standard" && p.wonderAt !== null && this.time >= p.wonderAt && !p.defeated) {
+        this.win(p.id, "wonder");
         return;
       }
     }
     // The last player, or the last team, standing. A team's win goes to its first player still in.
     const left = this.players.filter((p) => !p.defeated);
     if (left.length <= 1 || left.every((p) => this.allied(p.id, left[0].id))) {
-      this.winner = left.length ? left[0].id : -1;
-      this.events.push({ kind: "gameOver", winner: this.winner, how: "conquest" });
+      this.win(left.length ? left[0].id : -1, "conquest");
+      return;
     }
+    const v = this.victory;
+    if (v.kind === "score" || v.kind === "time") {
+      const lead = this.scoreLeader();
+      if (v.kind === "score" && lead && lead.score >= v.target) this.win(lead.player, "score");
+      else if (v.kind === "time" && this.time >= v.target) this.win(lead?.player ?? -1, "time");
+    }
+  }
+
+  private win(player: number, how: WinHow) {
+    this.winner = player;
+    this.events.push({ kind: "gameOver", winner: player, how });
+  }
+
+  /** Each player still in, with their side's score: a team's is the average of its players, defeated
+   *  ones too, as in the original. Highest first; ties go to the lower player number. */
+  sideScores(): { player: number; score: number }[] {
+    const sc = scores(this);
+    const out = this.players.filter((p) => !p.defeated).map((p) => {
+      const side = this.players.filter((o) => this.allied(p.id, o.id));
+      return { player: p.id, score: side.reduce((a, o) => a + sc[o.id].total, 0) / side.length };
+    });
+    return out.sort((a, b) => b.score - a.score || a.player - b.player);
+  }
+
+  /** Who leads on score, or null when the top is shared by two sides (nobody wins a tie). */
+  private scoreLeader(): { player: number; score: number } | null {
+    const s = this.sideScores();
+    if (!s.length) return null;
+    const rival = s.find((x) => !this.allied(x.player, s[0].player));
+    return rival && rival.score === s[0].score ? null : s[0];
   }
 
   // ---- buildings
@@ -1620,6 +1675,11 @@ export class World {
   private wonderBuilt(b: Building) {
     const p = this.players[b.owner];
     this.milestones.push({ t: this.time, player: p.id, kind: "wonder" });
+    // Outside the standard victory a Wonder wins nothing; it still counts 100 points to the score.
+    if (this.victory.kind !== "standard") {
+      this.events.push({ kind: "message", player: -1, text: `${p.name} has built a Wonder` });
+      return;
+    }
     p.wonderAt = this.time + (this.rules.economy.wonder_seconds ?? 900);
     this.events.push({ kind: "message", player: -1, text: `${p.name} has built a Wonder. Destroy it or lose.` });
   }

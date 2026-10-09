@@ -149,7 +149,7 @@ export class AIController {
     if (!this.needsFerry) return true;
     const p = w.players[this.player];
     const queued = bs.reduce((n, b) => n + b.queue.filter((q) => q.kind === "unit").length, 0);
-    return p.pop + queued + 3 <= p.popCap || p.popCap < w.rules.economy.pop_max - 2;
+    return p.pop + queued + 3 <= p.popCap || p.popCap < w.popMax - 2;
   }
   private seaCheck: { key: number; across: boolean; at: number } | null = null;
 
@@ -254,7 +254,7 @@ export class AIController {
     // Houses before we are capped.
     const houseBuilding = bs.some((b) => b.def.id === "house" && !b.complete);
     const room = p.popCap - p.pop - queued;
-    if (p.popCap < w.rules.economy.pop_max && room <= 3 && !houseBuilding && p.res.wood >= 30) {
+    if (p.popCap < w.popMax && room <= 3 && !houseBuilding && p.res.wood >= 30) {
       this.placeNear(w, "house", home, 3, 12, villagers);
     }
 

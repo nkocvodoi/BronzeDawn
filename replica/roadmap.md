@@ -7,8 +7,8 @@ Cách đo: `replica/features.csv` liệt kê từng tính năng của bản gố
 `python3 ../replica-skill/replica-diff/parity.py replica/features.csv`. Số liệu của bản gốc lấy từ
 `replica/game/aoe1-research.md` (có nguồn cho từng con số).
 
-**Hiện tại: 87.8 / 100** (đủ 21/21 tính năng bắt buộc).
-Cập nhật lần cuối: 2026-10-09, sau khi có thuyền chở quân, bản đồ đảo, thuyền buôn và AI dùng tàu (Giai đoạn 3 xong, còn phần AI trên đảo).
+**Hiện tại: 88.8 / 100** (đủ 21/21 tính năng bắt buộc).
+Cập nhật lần cuối: 2026-10-09, sau khi có các tùy chọn lúc bắt đầu và thắng theo điểm hoặc hết giờ (Giai đoạn 4, phần 1).
 
 Đây là bảng chấm chi tiết. Bảng thô trước đó cho 95.5 vì gộp nhiều thứ vào một dòng (cả phần tàu thuyền,
 địa hình, âm thanh đều chưa có dòng nào). Mỗi khi xong một hạng mục, sửa cột `clone` trong `features.csv`
@@ -69,8 +69,8 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [x] Mỗi dân tộc thiếu đúng các unit và công nghệ như bản gốc (theo cây công nghệ bản DE, cả 17 dân tộc)
 - [x] Martyrdom (nút Sacrifice, phím Q)
 - [x] Điểm số kiểu bản gốc: quân sự, kinh tế, tôn giáo, công nghệ, khác (trên bản đồ nhỏ và cuối trận)
-- [ ] Thắng theo điểm hoặc hết giờ
-- [ ] Tùy chọn khi bắt đầu: mở toàn bản đồ, thời đại khởi đầu, tài nguyên khởi đầu, giới hạn dân số
+- [x] Thắng theo điểm (300 / 500 / 800) hoặc hết giờ (15 đến 90 phút); đội tính điểm trung bình như bản gốc; chế độ chỉ thắng bằng chinh phục
+- [x] Tùy chọn khi bắt đầu: mở toàn bản đồ, thời đại khởi đầu, tài nguyên khởi đầu (Low đến Death Match), giới hạn dân số (25 đến 200)
 
 ### Giai đoạn 5: nhiều người chơi (lớn)
 - [x] Tới 8 người chơi (1 đến 7 máy), máy đánh riêng hoặc liên minh chống bạn

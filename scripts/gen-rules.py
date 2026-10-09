@@ -451,8 +451,17 @@ rules = {
         "carry": 10,
         "gather_rates": {F: 0.45, W: 0.45, G: 0.45, S: 0.45},
         "start": {F: 200, W: 200, G: 0, S: 150},
+        # The start screen's other stockpiles. Low is "start" above; Medium and High are our numbers (?):
+        # the manual names the levels but gives no table. Death Match is the manual's.
+        "start_levels": {
+            "medium": {F: 500, W: 500, G: 250, S: 250},
+            "high": {F: 1000, W: 1000, G: 750, S: 750},
+            "deathmatch": {F: 20000, W: 20000, G: 10000, S: 20000},
+        },
         "start_villagers": 3,
         "pop_max": 50,
+        # Population limits the start screen offers (R and the patch: 25 to 200).
+        "pop_limits": [25, 50, 75, 100, 125, 150, 175, 200],
         # Fishing boats (and ships) a player may have, alive or in training, for each finished Dock.
         "fishing_boats_per_dock": 5,
         "wonder_seconds": 900,
