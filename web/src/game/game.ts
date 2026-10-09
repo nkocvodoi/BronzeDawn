@@ -6,6 +6,7 @@ import { Terrain } from "../core/grid";
 import { Res, ResBag, Rules } from "../core/rules";
 import { scores } from "../core/score";
 import { clock } from "../core/sim";
+import { MAP_TYPES, MapType } from "../core/mapgen";
 import { World } from "../core/world";
 import { Arch, buildingPic, CIV_RELIEFS, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
@@ -65,7 +66,7 @@ const minMapSize = (players: number) => (players <= 4 ? 0 : players <= 6 ? 96 : 
 const BUILD_KEYS: Record<string, string> = {
   house: "E", barracks: "B", granary: "G", storage_pit: "S", market: "M", farm: "F",
   archery_range: "A", stable: "L", small_wall: "W", watch_tower: "T", government_center: "C", temple: "P",
-  academy: "Y", siege_workshop: "K", town_center: "N", wonder: "O",
+  academy: "Y", siege_workshop: "K", town_center: "N", wonder: "O", dock: "D",
 };
 
 /** The original's train keys, by unit line (an upgraded unit keeps its line's key). */
@@ -76,6 +77,7 @@ const TRAIN_KEYS: Record<string, string> = {
   bowman: "T", improved_bowman: "A", composite_bowman: "A", chariot_archer: "R", horse_archer: "C", heavy_horse_archer: "C", elephant_archer: "E",
   scout: "S", chariot: "R", scythe_chariot: "R", cavalry: "C", heavy_cavalry: "C", cataphract: "C", war_elephant: "E", armored_elephant: "E", camel_rider: "L",
   stone_thrower: "C", catapult: "C", heavy_catapult: "C", ballista: "B", helepolis: "B", priest: "T",
+  fishing_boat: "F", fishing_ship: "F",
 };
 
 /** Letters for whatever has no key of its own (technologies, advancing). H, P and digits stay global. */
@@ -105,6 +107,8 @@ export class Game {
   computersTeamUp = store.get("bd-teams") === "team";
   /** Farms block the way, as in the original; off, they are walked over as in the remaster. Remembered. */
   farmsBlock = store.get("bd-farms-block") === "on";
+  /** The kind of map: Inland with lakes, or one with a sea. Remembered. */
+  mapType: MapType = MAP_TYPES.some(([id]) => id === store.get("bd-map-type")) ? (store.get("bd-map-type") as MapType) : "inland";
   /** The game is over for you: won, or defeated while the others play on. */
   private ended = false;
   private seed: number;
@@ -181,7 +185,7 @@ export class Game {
     const n = Math.max(2, civs.length);
     const names = this.watching ? Array.from({ length: n }, (_, i) => `Computer ${i + 1}`)
       : ["You", ...Array.from({ length: n - 1 }, (_, i) => (n === 2 ? "Enemy" : `Enemy ${i + 1}`))];
-    this.world = new World(this.rules, seed, names, size, true, { civs, teams, farmsBlock: this.farmsBlock });
+    this.world = new World(this.rules, seed, names, size, true, { civs, teams, farmsBlock: this.farmsBlock, mapType: this.mapType });
     for (const v of this.views.values()) v.root.destroy({ children: true });
     this.views.clear();
     for (const g of this.ghosts.values()) g.view.root.destroy({ children: true });
@@ -261,6 +265,7 @@ export class Game {
       "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
       `Your civilization: <select id="civ"><option value="">Random</option>${civs}</select>`,
       `<span id="civ-info">A civilization picked at random. Its bonuses show at the top of the screen.</span>`,
+      `Map: <select id="map-type">${MAP_TYPES.map(([id, name]) => `<option value="${id}"${id === this.mapType ? " selected" : ""}>${name}</option>`).join("")}</select>`,
       `Map size: <select id="map-size">${MAP_SIZES.map(([n, t]) => `<option value="${t}"${t === this.mapSize ? " selected" : ""}>${n} (${t} x ${t})</option>`).join("")}</select>`,
       `Computer players: <select id="opponents">${[1, 2, 3, 4, 5, 6, 7].map((k) => `<option value="${k}"${k === this.opponents ? " selected" : ""}>${k}</option>`).join("")}</select>`
         + ` <select id="teams"><option value="ffa"${this.computersTeamUp ? "" : " selected"}>each on its own</option>`
@@ -292,6 +297,8 @@ export class Game {
     const theirs = Array.from({ length: opp }, (_, i) => (civs.length ? civs[(this.seed * 7 + 3 + i * 5) % civs.length].id : null));
     // More players need room: the map grows to fit them.
     const chosenSize = Number((document.querySelector("#map-size") as HTMLSelectElement | null)?.value) || this.mapSize;
+    const mt = (document.querySelector("#map-type") as HTMLSelectElement | null)?.value as MapType | undefined;
+    if (mt && MAP_TYPES.some(([id]) => id === mt)) { this.mapType = mt; store.set("bd-map-type", mt); }
     const size = Math.max(chosenSize, minMapSize(opp + 1));
     // Allied computers share team 1; you are on your own.
     this.newGame(this.seed, [mine, ...theirs], size, teamUp ? [0, ...theirs.map(() => 1)] : []);
@@ -328,9 +335,9 @@ export class Game {
     this.hud.showOverlay("Controls", [
       "Left click / drag: select · Shift: add · Double click: all of that kind on screen",
       "Right click: move, gather, hunt, build, repair, attack, convert or heal (priests), or set a rally point · Shift + right click: a waypoint",
-      "Villagers: B opens the build menu, then E House · G Granary · S Storage Pit · B Barracks · M Market · F Farm",
+      "Villagers: B opens the build menu, then E House · G Granary · S Storage Pit · B Barracks · D Dock (in the water at the shore) · M Market · F Farm",
       "A Archery Range · L Stable · W Wall · T Tower · C Government Center · P Temple · Y Academy · K Siege Workshop · N Town Center · O Wonder",
-      "Train: C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
+      "Train: F Fishing Boat at the Dock · C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
       "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · Tab: the next unit of the selection · F4 or S: population, scores or nothing above the minimap · F10: menu",
@@ -1104,7 +1111,7 @@ export class Game {
         { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
         { key: "A", title: "Attack-move", detail: "click a point", blocker: null, icon: "attack_move", action: () => { this.attackMovePending = true; this.hud.message("Click where to attack-move"); } },
       ];
-      const soldiers = units.filter((u) => !u.isPriest);
+      const soldiers = units.filter((u) => u.isSoldier);
       if (soldiers.length) {
         const on = soldiers.every((u) => u.standGround);
         out.push({ key: "D", title: on ? "Stand ground: on" : "Stand ground", detail: on ? "press again to let them chase" : "hold this spot, strike only what comes in reach",

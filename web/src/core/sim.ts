@@ -1,5 +1,6 @@
 import { AIController, Difficulty } from "./ai";
 import { RES_ALL, Rules } from "./rules";
+import type { MapType } from "./mapgen";
 import { World } from "./world";
 import { walkable } from "./grid";
 
@@ -14,10 +15,10 @@ export function clock(t: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export function runMatch(rules: Rules, seed: number, minutes = 75, levels: Difficulty[] = ["normal", "normal"]): SimReport {
+export function runMatch(rules: Rules, seed: number, minutes = 75, levels: Difficulty[] = ["normal", "normal"], mapType: MapType = "inland"): SimReport {
   // Civilizations come from the seed too, so a seed always replays the same match.
   const civs = levels.map((_, i) => rules.civs.length ? rules.civs[(seed * 7 + i * 5) % rules.civs.length].id : null);
-  const w = new World(rules, seed, levels.map((_, i) => `AI ${i + 1}`), 72, true, { civs });
+  const w = new World(rules, seed, levels.map((_, i) => `AI ${i + 1}`), 72, true, { civs, mapType });
   w.ais = levels.map((d, i) => new AIController(i, d));
   for (const ai of w.ais) ai.attach(w);
   const problems: string[] = [];
@@ -32,7 +33,8 @@ export function runMatch(rules: Rules, seed: number, minutes = 75, levels: Diffi
         if (RES_ALL.some((r) => p.res.get(r) < -0.001)) problems.push(`player ${p.id} went below zero at ${Math.floor(w.time)}s`);
       }
       for (const u of w.units) {
-        if (!walkable(w.map.terrainAt(u.pos.tile))) problems.push(`unit ${u.id} is standing in water at ${Math.floor(w.time)}s`);
+        // Land units on land, boats on the water.
+        if (walkable(w.map.terrainAt(u.pos.tile)) === u.isBoat) problems.push(`unit ${u.id} is ${u.isBoat ? "a boat on land" : "standing in water"} at ${Math.floor(w.time)}s`);
       }
     }
   }

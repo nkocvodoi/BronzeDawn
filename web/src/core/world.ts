@@ -3,7 +3,7 @@ import { Building, Entity, GAIA, GameEvent, IDLE, Player, QueueItem, ResourceNod
 import { Fog } from "./fog";
 import { Footprint, RNG, Tile, Vec2 } from "./geom";
 import { GridMap, Terrain, walkable } from "./grid";
-import { generateMap } from "./mapgen";
+import { generateMap, MapType } from "./mapgen";
 import { Pathfinder } from "./path";
 import { NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
 import { scores } from "./score";
@@ -28,7 +28,7 @@ const FORMATION: Vec2[] = (() => {
 
 /** `teams`: a team number per player; players who share a number above 0 are allies, 0 is on its own. */
 /** `farmsBlock`: farms stop movement as in the original (by default they are walked over, as in the remaster). */
-export interface WorldOptions { civs?: (string | null)[]; teams?: number[]; farmsBlock?: boolean }
+export interface WorldOptions { civs?: (string | null)[]; teams?: number[]; farmsBlock?: boolean; mapType?: MapType }
 
 /**
  * The whole simulation. No rendering in here: it runs the same in the browser,
@@ -82,7 +82,7 @@ export class World {
       this.fog.push(new Fog(size, size));
       this.alertTimer.push(0);
     });
-    if (generate) generateMap(this);
+    if (generate) generateMap(this, options.mapType ?? "inland");
     this.refreshPopulation();
     for (const p of this.players) this.fog[p.id].update(this, p.id);
   }
@@ -200,7 +200,7 @@ export class World {
   private nudgeUnits(fp: Footprint) {
     for (const u of this.units) {
       if (u.alive && fp.contains(u.pos.tile)) {
-        const t = this.map.nearestPassable(u.pos.tile);
+        const t = this.as(u.isBoat, () => this.map.nearestPassable(u.pos.tile));
         if (t) { u.pos = t.center; u.prevPos = u.pos; u.path = []; }
       }
     }
@@ -218,12 +218,32 @@ export class World {
     return t;
   }
 
+  /** Runs `fn` with the map answering for boats (on water) or for land units. */
+  private as<T>(naval: boolean, fn: () => T): T {
+    const prev = this.map.naval;
+    this.map.naval = naval;
+    try { return fn(); } finally { this.map.naval = prev; }
+  }
+
   canPlace(type: string, origin: Tile, player: number | null = null) {
     const def = this.rules.buildings.get(type);
     if (!def) return false;
-    for (const t of new Footprint(origin, def.size).tiles()) {
-      if (!this.map.inside(t) || !walkable(this.map.terrainAt(t)) || this.map.occupantAt(t) !== 0) return false;
+    const fp = new Footprint(origin, def.size);
+    for (const t of fp.tiles()) {
+      // A Dock stands in the water; everything else on land.
+      if (!this.map.inside(t) || walkable(this.map.terrainAt(t)) === (def.on_water === true) || this.map.occupantAt(t) !== 0) return false;
       if (player !== null && !this.fog[player].isExplored(t)) return false;
+    }
+    if (def.on_water) {
+      // ...at the shore, so villagers can build it from the land beside it.
+      let shore = false;
+      for (let y = fp.origin.y - 1; y <= fp.origin.y + fp.size && !shore; y++) {
+        for (let x = fp.origin.x - 1; x <= fp.origin.x + fp.size; x++) {
+          const t = new Tile(x, y);
+          if (!fp.contains(t) && this.map.inside(t) && walkable(this.map.terrainAt(t)) && this.map.occupantAt(t) === 0) { shore = true; break; }
+        }
+      }
+      if (!shore) return false;
     }
     return true;
   }
@@ -384,6 +404,10 @@ export class World {
   }
 
   private moveOne(u: Unit, to: Vec2, attackMove: boolean) {
+    this.as(u.isBoat, () => this.moveOneHere(u, to, attackMove));
+  }
+
+  private moveOneHere(u: Unit, to: Vec2, attackMove: boolean) {
     let dest = to;
     if (!this.map.passable(dest.tile)) {
       const t = this.map.nearestPassable(dest.tile, 4);
@@ -481,12 +505,25 @@ export class World {
     else if (e instanceof Building && e.isFarm && e.owner === player) res = Res.food;
     else return;
     for (const u of this.own(ids, player)) {
-      if (!u.isVillager) continue;
+      if (!this.canGather(u, e)) continue;
       u.order = { kind: "gather", id: e.id };
       u.lastGather = res;
       u.lastNodeType = e instanceof ResourceNode ? e.def.id : "farm";
       u.path = []; u.repathTimer = 0; u.buildQueue = [];
     }
+  }
+
+  /** Villagers gather everything but deep-sea fish; fishing boats only fish. */
+  canGather(u: Unit, e: Entity) {
+    if (u.isBoat) return e instanceof ResourceNode && e.def.on_water === true && (u.def.gathers ?? []).includes("fish");
+    return u.isVillager && !(e instanceof ResourceNode && e.def.boats_only);
+  }
+
+  /** Where a carrier may unload: boats at a Dock only, villagers at a Dock only with fish. */
+  canDrop(u: Unit, b: Building) {
+    const dock = b.def.on_water === true;
+    if (u.isBoat) return dock;
+    return !dock || (u.lastNodeType === "fish" || u.lastNodeType === "deep_fish");
   }
 
   build(player: number, ids: number[], target: number, queue: number[] = []) {
@@ -528,8 +565,19 @@ export class World {
     }
     if (!rest.length) return result;
     if (this.hostile(player, e)) { this.attack(player, rest.map((u) => u.id), e.id); return "attacked"; }
-    const villagers = rest.filter((u) => u.isVillager).map((u) => u.id);
-    const movers = rest.filter((u) => !u.isVillager).map((u) => u.id);
+    // Fishing boats fish, unload at their Dock, or sail; the others are handled below.
+    const fishers = rest.filter((u) => u.isBoat && u.isGatherer), landed = rest.filter((u) => !(u.isBoat && u.isGatherer));
+    const sailing: number[] = [];
+    if (fishers.length) {
+      if (e instanceof ResourceNode && fishers.some((b) => this.canGather(b, e))) { this.gather(player, fishers.map((u) => u.id), e.id); result = "gathered"; }
+      else if (e instanceof Building && e.owner === player && e.def.on_water && e.complete) {
+        for (const u of fishers) {
+          if (u.carry > 0) { u.order = { kind: "return", resume: null, drop: e.id }; u.path = []; result = "returned"; } else sailing.push(u.id);
+        }
+      } else sailing.push(...fishers.map((u) => u.id));
+    }
+    const villagers = landed.filter((u) => u.isVillager).map((u) => u.id);
+    const movers = [...sailing, ...landed.filter((u) => !u.isVillager).map((u) => u.id)];
     if (villagers.length) {
       if (e instanceof ResourceNode) { this.gather(player, villagers, e.id); result = "gathered"; }
       else if (e instanceof Building && e.owner === player) {
@@ -739,7 +787,8 @@ export class World {
     if (this.winner !== null) return;
     for (const p of this.players) {
       if (p.defeated) continue;
-      const hasUnits = this.units.some((u) => u.alive && u.owner === p.id);
+      // As in the original, fishing (and later trade and transport) boats do not keep a player in the game.
+      const hasUnits = this.units.some((u) => u.alive && u.owner === p.id && !(u.isBoat && !u.isSoldier));
       const hasBuildings = this.buildings.some((b) => b.alive && b.owner === p.id && !b.isWall);
       if (!hasUnits && !hasBuildings) {
         p.defeated = true;
@@ -782,13 +831,14 @@ export class World {
           if (b.queueTimer >= st.train_time) {
             b.queue.shift();
             b.queueTimer = 0;
-            const u = this.spawnUnit(type, p.id, this.exitTile(b, b.rally).center);
+            // Boats come out on the water side of a Dock.
+            const u = this.spawnUnit(type, p.id, this.as(this.rules.units.get(type)?.naval === true, () => this.exitTile(b, b.rally)).center);
             p.pop += st.pop;
             p.stats.trained++;
             this.events.push({ kind: "trained", id: u.id, owner: p.id });
             if (b.rally) {
               const node = this.node(this.map.occupantAt(b.rally.tile));
-              if (u.isVillager && node) this.gather(p.id, [u.id], node.id);
+              if (node && this.canGather(u, node)) this.gather(p.id, [u.id], node.id);
               else this.move(p.id, [u.id], b.rally);
             }
           }
@@ -905,6 +955,10 @@ export class World {
   }
 
   private updateUnit(u: Unit, dt: number) {
+    if (u.isBoat) this.as(true, () => this.updateUnitHere(u, dt)); else this.updateUnitHere(u, dt);
+  }
+
+  private updateUnitHere(u: Unit, dt: number) {
     u.cooldown -= dt;
     u.scanTimer -= dt;
     if (u.isAnimal) { this.updateAnimal(u, dt); return; }
@@ -919,7 +973,7 @@ export class World {
           if (u.isPriest) {
             const hurt = this.units.find((w) => w.alive && w.owner === u.owner && w !== u && !w.isAnimal && w.hp < w.maxHp && w.pos.distance(u.pos) < 6);
             if (hurt) u.order = { kind: "heal", id: hurt.id };
-          } else if (!u.isVillager) {
+          } else if (u.isSoldier) {
             const t = this.scanFor(u, u.standGround ? this.reachOf(u) + 0.3 : this.stats(u).los);
             if (t) u.order = { kind: "attack", id: t.id, auto: true };
           }
@@ -1141,7 +1195,7 @@ export class World {
   private gatherSource(u: Unit, id: number): { src: Entity; res: Res; kind: string | null; foodKind: "plant" | "meat" | null } | null {
     const n = this.node(id);
     if (n && n.amount > 0) {
-      const kind = n.def.id === "fish" ? "fish" : n.decay > 0 ? "hunt" : n.res === Res.food ? "forage" : null;
+      const kind = n.def.on_water ? "fish" : n.decay > 0 ? "hunt" : n.res === Res.food ? "forage" : null;
       return { src: n, res: n.res, kind, foodKind: n.foodKind };
     }
     const b = this.building(id);
@@ -1177,7 +1231,8 @@ export class World {
       if (src instanceof Building) src.farmer = u.id;
       this.face(u, src.center);
       u.busy = true;
-      const base = src instanceof ResourceNode ? src.def.rate ?? this.rules.gatherRate(res) : this.rules.gatherRate(res);
+      // Boats gather at their own pace; villagers at the node's or the resource's.
+      const base = u.def.gather_rate ?? (src instanceof ResourceNode ? src.def.rate ?? this.rules.gatherRate(res) : this.rules.gatherRate(res));
       const rate = base * mods.gather(res, kind) * this.players[u.owner].gatherBonus;
       const yieldK = mods.yieldOf(res);
       if (src instanceof ResourceNode) {
@@ -1206,8 +1261,11 @@ export class World {
       u.lastGather = res;
     } else if (a === "blocked") {
       // Cannot reach this one (fenced in by trees): try another.
-      const n = this.nearestNode(res, u.pos, 10, id);
-      if (n) { u.order = { kind: "gather", id: n.id }; u.repathTimer = 0; } else u.order = IDLE;
+      const n = u.isBoat ? null : this.nearestNode(res, u.pos, 10, id);
+      const next = u.isBoat ? this.nextSource(u) : null;
+      if (n) { u.order = { kind: "gather", id: n.id }; u.repathTimer = 0; }
+      else if (next && !(next.kind === "gather" && next.id === id)) { u.order = next; u.repathTimer = 0; }
+      else u.order = IDLE;
     }
   }
 
@@ -1231,6 +1289,16 @@ export class World {
       return f ? { kind: "gather", id: f.id } : null;
     }
     if (u.lastGather === null) return null;
+    if (u.isBoat) {
+      // A boat goes on to the nearest fish of either kind, and further than a villager would.
+      let best: ResourceNode | null = null, bestD = 30;
+      for (const x of this.nodes) {
+        if (!x.alive || !x.def.on_water || x.amount <= 0) continue;
+        const d = x.center.distance(u.pos);
+        if (d < bestD) { bestD = d; best = x; }
+      }
+      return best ? { kind: "gather", id: best.id } : null;
+    }
     const n = this.nearestNode(u.lastGather, u.pos, 10, null, type);
     return n ? { kind: "gather", id: n.id } : null;
   }
@@ -1243,7 +1311,8 @@ export class World {
     const r = u.carryRes;
     // The drop-off the player right-clicked, while it stands; otherwise the nearest that takes this load.
     const chosen = dropId !== undefined ? this.building(dropId) : null;
-    const drop = chosen && chosen.complete && chosen.dropsOff(r, u.carryKind) ? chosen : this.nearestDropOff(r, u.owner, u.pos, u.carryKind);
+    const drop = chosen && chosen.complete && chosen.dropsOff(r, u.carryKind) && this.canDrop(u, chosen) ? chosen
+      : this.nearestDropOff(r, u.owner, u.pos, u.carryKind, u);
     if (!drop) {
       u.order = IDLE;
       this.events.push({ kind: "message", player: u.owner, text: `No place to drop off ${u.carryKind === "meat" ? "meat" : RES_KEY[r]}` });
@@ -1432,7 +1501,7 @@ export class World {
         // Elephants and the hunters' prey: fight back or run.
         if (t.animal!.behavior === "flee") this.flee(t, a.center);
         else t.order = { kind: "attack", id: a.id };
-      } else if (!t.isPriest && (!t.isVillager || (a instanceof Unit && a.isAnimal)) && t.order.kind === "idle" && this.hostile(t.owner, a)) {
+      } else if ((t.isSoldier || (t.isVillager && a instanceof Unit && a.isAnimal)) && t.order.kind === "idle" && this.hostile(t.owner, a)) {
         // Idle soldiers hit back; villagers only fight off animals. Standing ground, only what is in reach.
         t.order = { kind: "attack", id: a.id, auto: true };
       } else if (t.isVillager && a instanceof Unit && a.isAnimal && t.order.kind !== "move") {
@@ -1533,10 +1602,11 @@ export class World {
     return best;
   }
 
-  nearestDropOff(r: Res, owner: number, p: Vec2, kind: "plant" | "meat" | null = null): Building | null {
+  nearestDropOff(r: Res, owner: number, p: Vec2, kind: "plant" | "meat" | null = null, carrier: Unit | null = null): Building | null {
     let best: Building | null = null, bestD = Infinity;
     for (const b of this.buildings) {
       if (!b.alive || !b.complete || b.owner !== owner || !b.dropsOff(r, kind)) continue;
+      if (carrier ? !this.canDrop(carrier, b) : b.def.on_water) continue;
       const d = b.distance(p);
       if (d < bestD) { bestD = d; best = b; }
     }
@@ -1569,6 +1639,7 @@ export class World {
           for (const j of list) {
             if (j <= i) continue;
             const b = this.units[j];
+            if (a.isBoat !== b.isBoat) continue; // a boat by the shore and a villager on it are not in each other's way
             const d = b.pos.sub(a.pos);
             const len = d.length;
             if (len >= minD) continue;
@@ -1577,11 +1648,11 @@ export class World {
             const aFree = !a.busy && !a.path.length, bFree = !b.busy && !b.path.length;
             if (aFree) {
               const np = a.pos.sub(dir.mul(bFree ? push : push * 2));
-              if (this.map.passable(np.tile)) a.pos = np;
+              if (this.as(a.isBoat, () => this.map.passable(np.tile))) a.pos = np;
             }
             if (bFree) {
               const np = b.pos.add(dir.mul(aFree ? push : push * 2));
-              if (this.map.passable(np.tile)) b.pos = np;
+              if (this.as(b.isBoat, () => this.map.passable(np.tile))) b.pos = np;
             }
           }
         }

@@ -54,6 +54,8 @@ export interface NodeDef {
   /** "plant" food goes to a Granary, "meat" to a Storage Pit; the Town Center takes both. */
   food_kind?: "plant" | "meat";
   on_water?: boolean;
+  /** Deep-sea fish: only boats reach them. */
+  boats_only?: boolean;
 }
 export interface AnimalDef {
   id: string; name: string; hp: number; attack: number; armor: number; attack_cooldown?: number;
@@ -97,6 +99,12 @@ export interface UnitDef {
   convert_resist?: number;
   /** Scouts do not chase villagers on their own. */
   ignores_villagers?: boolean;
+  /** Boats: they move on water only. */
+  naval?: boolean;
+  /** Boats that gather, and what from ("fish"). */
+  gathers?: string[];
+  /** A boat's own gather rate, whatever it gathers. */
+  gather_rate?: number;
 }
 export interface BuildingDef {
   id: string; name: string; age: string; cost: Record<string, number>; size: number;
@@ -108,6 +116,8 @@ export interface BuildingDef {
   requires_tech?: string;
   tags?: string[];
   projectile?: "arrow" | "stone" | "bolt" | "spear";
+  /** Stands in the water by the shore (a Dock). */
+  on_water?: boolean;
 }
 
 /** What an effect applies to. Unit tags must all match; building tags match any, "!tag" excludes, "*" is every building. */

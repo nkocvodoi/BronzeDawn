@@ -98,10 +98,15 @@ units = [
     # Temple
     unit("priest", "Priest", "priest", "bronze", "temple", cost(g=125), 50, 25, 0, 0, 0, 10, 1.5, 0.8, 12, ["priest"],
          converts=True, heal=3),
+    # Dock. Boats gather at their own pace (the slowest in the game) and only bring food to a Dock.
+    unit("fishing_boat", "Fishing Boat", "boat", "stone", "dock", cost(w=50), 20, 45, 0, 0, 0, 0, 1.5, 1.45, 6,
+         ["boat", "fishing"], naval=True, gathers=["fish"], gather_rate=0.4),
+    unit("fishing_ship", "Fishing Ship", "boat", "bronze", "dock", cost(w=50), 20, 75, 0, 0, 0, 0, 1.5, 2.1, 6,
+         ["boat", "fishing"], naval=True, gathers=["fish"], gather_rate=0.4, requires_tech="fishing_ship_tech"),
 ]
 # "Military" is everything trained to fight: not villagers, not priests.
 for u in units:
-    if u["id"] not in ("villager", "priest"):
+    if u["id"] not in ("villager", "priest") and "fishing" not in u["tags"]:
         u["tags"] = u["tags"] + ["military"]
 
 # ---------------------------------------------------------------- buildings
@@ -123,6 +128,9 @@ buildings = [
     building("granary", "Granary", "stone", cost(w=120), 350, 3, 30, 5, drop_off=[F], food_kinds=["plant"]),
     building("storage_pit", "Storage Pit", "stone", cost(w=120), 350, 3, 30, 4, drop_off=[F, W, G, S], food_kinds=["meat"]),
     building("barracks", "Barracks", "stone", cost(w=125), 350, 3, 30, 5, trains=trains["barracks"]),
+    # Stands in the water at the shore; takes the boats' fish, and in Return of Rome the villagers' too.
+    building("dock", "Dock", "stone", cost(w=100), 350, 3, 50, 5, drop_off=[F], food_kinds=["meat"], on_water=True,
+             trains=trains["dock"], tags=["dock"]),
     building("archery_range", "Archery Range", "tool", cost(w=150), 350, 3, 40, 4, requires=["barracks"], trains=trains["archery_range"]),
     building("stable", "Stable", "tool", cost(w=150), 350, 3, 40, 4, requires=["barracks"], trains=trains["stable"]),
     building("market", "Market", "tool", cost(w=150), 350, 3, 40, 5, requires=["granary"]),
@@ -230,6 +238,8 @@ techs = [
     tech("medicine", "Medicine", "iron", "temple", cost(g=150), 60, [{"type": "heal", "value": 3}]),
     # Rise of Rome: a priest gives its life for a conversion that cannot fail (not of priests).
     tech("martyrdom", "Martyrdom", "iron", "temple", cost(g=600), 60, [{"type": "flag", "flag": "martyrdom"}]),
+    # Dock
+    tech("fishing_ship_tech", "Fishing Ship", "bronze", "dock", cost(f=50, w=100), 15, [upgrade("fishing_boat", "fishing_ship")]),
     # Unit lines
     tech("battle_axe", "Battle Axe", "tool", "barracks", cost(f=100), 40, []),
     tech("short_sword", "Short Sword", "bronze", "barracks", cost(f=120, g=50), 50, [], ["battle_axe"]),
@@ -380,7 +390,7 @@ rules = {
     "ages": [
         {"id": "stone", "name": "Stone Age"},
         {"id": "tool", "name": "Tool Age", "cost": cost(f=500), "research_time": 120, "requires_buildings": 2,
-         "requires_from": ["granary", "storage_pit", "barracks"]},
+         "requires_from": ["granary", "storage_pit", "barracks", "dock"]},
         {"id": "bronze", "name": "Bronze Age", "cost": cost(f=800), "research_time": 140, "requires_buildings": 2,
          "requires_from": ["market", "archery_range", "stable"]},
         {"id": "iron", "name": "Iron Age", "cost": cost(f=1000, g=800), "research_time": 160, "requires_buildings": 2,
@@ -406,6 +416,7 @@ rules = {
         {"id": "gold_mine", "name": "Gold Mine", "resource": G, "amount": 400},
         {"id": "stone_mine", "name": "Stone Mine", "resource": S, "amount": 300},
         {"id": "fish", "name": "Shore Fish", "resource": F, "amount": 250, "food_kind": "meat", "rate": 0.6, "on_water": True},
+        {"id": "deep_fish", "name": "Fish", "resource": F, "amount": 300, "food_kind": "meat", "rate": 0.4, "on_water": True, "boats_only": True},
     ],
     "animals": [
         {"id": "gazelle", "name": "Gazelle", "hp": 8, "attack": 0, "armor": 0, "speed": 1.5, "los": 4, "food": 150,

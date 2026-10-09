@@ -21,7 +21,8 @@
    "requires_from": [
     "granary",
     "storage_pit",
-    "barracks"
+    "barracks",
+    "dock"
    ]
   },
   {
@@ -120,6 +121,16 @@
    "food_kind": "meat",
    "rate": 0.6,
    "on_water": true
+  },
+  {
+   "id": "deep_fish",
+   "name": "Fish",
+   "resource": "food",
+   "amount": 300,
+   "food_kind": "meat",
+   "rate": 0.4,
+   "on_water": true,
+   "boats_only": true
   }
  ],
  "animals": [
@@ -1159,6 +1170,65 @@
    ],
    "converts": true,
    "heal": 3
+  },
+  {
+   "id": "fishing_boat",
+   "name": "Fishing Boat",
+   "class": "boat",
+   "age": "stone",
+   "trained_at": "dock",
+   "cost": {
+    "wood": 50
+   },
+   "train_time": 20,
+   "hp": 45,
+   "attack": 0,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 0,
+   "attack_cooldown": 1.5,
+   "speed": 1.45,
+   "los": 6,
+   "pop": 1,
+   "tags": [
+    "boat",
+    "fishing"
+   ],
+   "naval": true,
+   "gathers": [
+    "fish"
+   ],
+   "gather_rate": 0.4
+  },
+  {
+   "id": "fishing_ship",
+   "name": "Fishing Ship",
+   "class": "boat",
+   "age": "bronze",
+   "trained_at": "dock",
+   "cost": {
+    "wood": 50
+   },
+   "train_time": 20,
+   "hp": 75,
+   "attack": 0,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 0,
+   "attack_cooldown": 1.5,
+   "speed": 2.1,
+   "los": 6,
+   "pop": 1,
+   "tags": [
+    "boat",
+    "fishing"
+   ],
+   "naval": true,
+   "gathers": [
+    "fish"
+   ],
+   "gather_rate": 0.4,
+   "requires_tech": "fishing_ship_tech"
   }
  ],
  "buildings": [
@@ -1259,6 +1329,32 @@
     "broad_swordsman",
     "long_swordsman",
     "legion"
+   ]
+  },
+  {
+   "id": "dock",
+   "name": "Dock",
+   "age": "stone",
+   "cost": {
+    "wood": 100
+   },
+   "hp": 350,
+   "size": 3,
+   "build_time": 50,
+   "los": 5,
+   "drop_off": [
+    "food"
+   ],
+   "food_kinds": [
+    "meat"
+   ],
+   "on_water": true,
+   "trains": [
+    "fishing_boat",
+    "fishing_ship"
+   ],
+   "tags": [
+    "dock"
    ]
   },
   {
@@ -2780,6 +2876,25 @@
     {
      "type": "flag",
      "flag": "martyrdom"
+    }
+   ]
+  },
+  {
+   "id": "fishing_ship_tech",
+   "name": "Fishing Ship",
+   "age": "bronze",
+   "building": "dock",
+   "cost": {
+    "food": 50,
+    "wood": 100
+   },
+   "time": 15,
+   "requires": [],
+   "effects": [
+    {
+     "type": "upgrade",
+     "from": "fishing_boat",
+     "to": "fishing_ship"
     }
    ]
   },

@@ -521,6 +521,49 @@ describe("the original's rules", () => {
     expect(new Set(eight).size).toBe(8);
   });
 
+  it("map types: every one but Inland has a sea, deep fish for boats, and every base on land", () => {
+    for (const mapType of ["coastal", "continental", "mediterranean"] as const) {
+      for (const seed of [1, 2]) {
+        const w = new World(RULES, seed, ["A", "B"], 72, true, { mapType });
+        const water = w.map.terrain.filter((t) => t === Terrain.water).length;
+        expect(water, mapType).toBeGreaterThan(72 * 72 * 0.08);
+        expect(w.nodes.filter((n) => n.def.id === "deep_fish").length, mapType).toBeGreaterThan(4);
+        for (const p of w.players) expect(w.buildingsOf(p.id).some((b) => b.def.id === "town_center"), mapType).toBe(true);
+      }
+    }
+    const inland = new World(RULES, 1, ["A", "B"], 72, true);
+    expect(inland.nodes.some((n) => n.def.id === "deep_fish")).toBe(false);
+  });
+
+  it("a Dock stands at the shore; its fishing boats sail, fish out at sea and bring the food back", () => {
+    const w = blank(30);
+    for (let y = 0; y < 30; y++) for (let x = 14; x < 30; x++) w.map.terrain[y * 30 + x] = Terrain.water;
+    expect(w.canPlace("dock", new Tile(10, 5))).toBe(false); // on land
+    expect(w.canPlace("dock", new Tile(20, 5))).toBe(false); // out at sea
+    expect(w.canPlace("dock", new Tile(14, 5))).toBe(true);  // in the water by the shore
+    const dock = w.addBuilding("dock", 0, new Tile(14, 5), true);
+    w.addBuilding("town_center", 0, new Tile(3, 3), true);
+    const fish = w.addNode("deep_fish", new Tile(22, 6))!;
+    w.players[0].res.set(Res.wood, 200);
+    w.train(0, dock.id, "fishing_boat");
+    run(w, 25);
+    const boat = w.unitsOf(0).find((u) => u.def.id === "fishing_boat")!;
+    expect(boat).toBeDefined();
+    expect(w.map.terrainAt(boat.pos.tile)).toBe(Terrain.water);
+    const food = w.players[0].res.food;
+    w.smart(0, [boat.id], fish.id, fish.center);
+    run(w, 90);
+    expect(w.players[0].res.food).toBeGreaterThan(food);
+    expect(w.map.terrainAt(boat.pos.tile)).toBe(Terrain.water); // never on land
+    // Villagers cannot reach deep fish, and a Dock counts for the Tool Age.
+    const v = w.spawnUnit("villager", 0, new Tile(12, 6).center);
+    w.gather(0, [v.id], fish.id);
+    expect(v.order.kind).toBe("idle");
+    w.addBuilding("granary", 0, new Tile(3, 10), true);
+    w.players[0].res.set(Res.food, 600);
+    expect(w.blockerForNextAge(0)).toBeNull();
+  });
+
   it("the last team standing wins", () => {
     const w = new World(RULES, 4, ["A", "B", "C"], 72, true, { teams: [0, 1, 1] });
     for (const e of [...w.unitsOf(0), ...w.buildingsOf(0)]) w.applyDamage(e, 1e6, -1);
