@@ -5,7 +5,7 @@ import { Terrain } from "../src/core/grid";
 import { Res } from "../src/core/rules";
 import { scores } from "../src/core/score";
 import { runMatch } from "../src/core/sim";
-import { startTiles } from "../src/core/mapgen";
+import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
 import { Victory, World } from "../src/core/world";
 
@@ -543,8 +543,8 @@ describe("the original's rules", () => {
     expect(new Set(eight).size).toBe(8);
   });
 
-  it("map types: every one but Inland has a sea, deep fish for boats, and every base on land", () => {
-    for (const mapType of ["coastal", "continental", "mediterranean"] as const) {
+  it("map types: every one but the land maps has a sea, deep fish for boats, and every base on land", () => {
+    for (const mapType of ["coastal", "continental", "mediterranean", "highland", "narrows"] as const) {
       for (const seed of [1, 2]) {
         const w = new World(RULES, seed, ["A", "B"], 72, true, { mapType });
         const water = w.map.terrain.filter((t) => t === Terrain.water).length;
@@ -555,6 +555,29 @@ describe("the original's rules", () => {
     }
     const inland = new World(RULES, 1, ["A", "B"], 72, true);
     expect(inland.nodes.some((n) => n.def.id === "deep_fish")).toBe(false);
+  });
+
+  it("Highland and Hill Country are hillier than Inland, Hill Country has the most cliffs, and every map links its bases by land", () => {
+    const share = (mapType: MapType, f: (w: World) => number) => [1, 2, 3].reduce((a, seed) => a + f(new World(RULES, seed, ["A", "B", "C", "D"], 96, true, { mapType })), 0);
+    const high = (w: World) => w.map.elevation.filter((e) => e >= 2).length;
+    const cliffs = (w: World) => w.map.terrain.filter((t) => t === Terrain.cliff).length;
+    expect(share("highland", high)).toBeGreaterThan(share("inland", high) * 1.5);
+    expect(share("hill_country", high)).toBeGreaterThan(share("inland", high) * 1.5);
+    expect(share("hill_country", cliffs)).toBeGreaterThan(share("inland", cliffs));
+    for (const mapType of ["highland", "hill_country", "narrows"] as const) {
+      for (const seed of [1, 2, 3]) {
+        const w = new World(RULES, seed, ["A", "B", "C", "D"], 96, true, { mapType });
+        const s0 = w.startTiles[0];
+        const seen = w.map.reachable(new Tile(s0.x + 2, s0.y + 2), (id) => w.building(id) !== null);
+        for (const s of w.startTiles) expect(seen[w.map.index(new Tile(s.x + 2, s.y + 2))], `${mapType} ${seed}`).toBe(1);
+      }
+    }
+  });
+
+  it("a Gigantic map holds eight players", () => {
+    const w = new World(RULES, 5, ["A", "B", "C", "D", "E", "F", "G", "H"], 200, true);
+    expect(w.buildings.filter((b) => b.def.id === "town_center").length).toBe(8);
+    expect(w.nodes.length).toBeGreaterThan(3000);
   });
 
   it("a Dock stands at the shore; its fishing boats sail, fish out at sea and bring the food back", () => {

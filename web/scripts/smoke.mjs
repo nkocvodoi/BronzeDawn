@@ -37,7 +37,8 @@ await page.goto(`http://localhost:${port}/?seed=5`);
 await page.waitForFunction(() => window.game);
 check(await page.isVisible("#overlay [data-start]"), "start screen offers the difficulty choice");
 
-check((await page.$$eval("#map-type option", (o) => o.length)) === 6, "the start screen offers six kinds of map");
+check((await page.$$eval("#map-type option", (o) => o.length)) === 9, "the start screen offers nine kinds of map");
+check((await page.$$eval("#map-size option", (o) => o.map((x) => x.textContent))).some((t) => t.startsWith("Gigantic")), "and five sizes, up to Gigantic");
 await page.selectOption("#opponents", "3");
 check((await page.textContent("#players-info")).includes("4 players"), "the start screen counts the players chosen");
 await page.selectOption("#opponents", "1");
