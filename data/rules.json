@@ -77,6 +77,7 @@
   },
   "start_villagers": 3,
   "pop_max": 50,
+  "fishing_boats_per_dock": 5,
   "wonder_seconds": 900,
   "repair_rate": 0.5,
   "repair_cost": 0.5
