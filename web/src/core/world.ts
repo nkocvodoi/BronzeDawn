@@ -1336,7 +1336,7 @@ export class World {
 
   private updateBuild(u: Unit, id: number, dt: number) {
     const b = this.building(id);
-    if (!b || b.owner !== u.owner) { this.nextFoundation(u) || (u.order = IDLE); return; }
+    if (!b || b.owner !== u.owner) { this.nextFoundation(u) || this.nearbyFoundation(u, u.pos) || (u.order = IDLE); return; }
     if (b.complete) { this.afterBuild(u, b); return; }
     const a = this.approach(u, b, 0.9, dt);
     if (a === "arrived") {
@@ -1388,12 +1388,26 @@ export class World {
     return false;
   }
 
-  /** After finishing a building: the next wall piece, farm it, or gather next to a new drop-off. */
+  /** A builder with nothing queued helps with the nearest unfinished building of its owner close by. */
+  private nearbyFoundation(u: Unit, at: Vec2): boolean {
+    let next: Building | null = null;
+    for (const b of this.buildingsOf(u.owner)) {
+      if (b.complete || b.center.distance(at) > 10) continue;
+      if (!next || b.center.distance(u.pos) < next.center.distance(u.pos)) next = b;
+    }
+    if (!next) return false;
+    u.order = { kind: "build", id: next.id }; u.path = []; u.repathTimer = 0;
+    return true;
+  }
+
+  /** After finishing a building: the next wall piece, farm it, help with an unfinished building
+   *  nearby, or gather next to a new drop-off. */
   private afterBuild(u: Unit, b: Building) {
     u.path = [];
     u.repathTimer = 0;
     if (this.nextFoundation(u)) return;
     if (b.isFarm) { u.order = { kind: "gather", id: b.id }; u.lastGather = Res.food; u.lastNodeType = "farm"; return; }
+    if (this.nearbyFoundation(u, b.center)) return;
     if (b.def.drop_off && b.def.id !== "town_center") {
       const prefs = b.def.drop_off.map((k) => RES_KEY.indexOf(k as (typeof RES_KEY)[number])).filter((r) => r >= 0) as Res[];
       const ordered = (u.lastGather !== null && prefs.includes(u.lastGather) ? [u.lastGather] : []).concat(prefs);

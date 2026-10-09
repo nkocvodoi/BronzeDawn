@@ -131,6 +131,28 @@ describe("production", () => {
     expect(b.complete).toBe(true);
   });
 
+  it("a builder goes on to an unfinished building nearby, also when its own is deleted; not one far away", () => {
+    const w = blank(40);
+    w.fog[0].revealAll();
+    w.addBuilding("town_center", 0, new Tile(2, 2), true);
+    w.players[0].res.set(Res.wood, 500);
+    const v = w.spawnUnit("villager", 0, new Tile(8, 8).center);
+    const first = w.building((w.place(0, "house", new Tile(10, 10), [v.id]) as { id: number }).id)!;
+    const near = w.building((w.place(0, "house", new Tile(14, 10), []) as { id: number }).id)!;
+    const far = w.building((w.place(0, "house", new Tile(34, 34), []) as { id: number }).id)!;
+    run(w, 60);
+    expect(first.complete).toBe(true);
+    expect(near.complete).toBe(true);
+    expect(far.progress).toBe(0);
+    // Its foundation deleted under it: on to the next one close by.
+    const a = w.building((w.place(0, "house", new Tile(10, 14), [v.id]) as { id: number }).id)!;
+    const b = w.building((w.place(0, "house", new Tile(14, 14), []) as { id: number }).id)!;
+    run(w, 3);
+    w.destroy(0, a.id);
+    run(w, 40);
+    expect(b.complete).toBe(true);
+  });
+
   it("checks placement and builds a house", () => {
     const w = blank();
     w.addBuilding("town_center", 0, new Tile(5, 5), true);
