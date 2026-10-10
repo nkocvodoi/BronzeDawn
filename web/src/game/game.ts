@@ -224,6 +224,7 @@ export class Game {
     this.buildWorld();
     this.bindInput();
     app.ticker.add((t) => this.frame(t.deltaMS / 1000));
+    setInterval(() => this.keepOnlineGameGoing(), 250);
     this.showStart();
   }
 
@@ -493,6 +494,64 @@ export class Game {
 
   // ---- playing online
 
+  /** When the online game last had to wait for the other side, and when that was last said. */
+  private waitingSince = 0;
+  private waitSaid = 0;
+  private netFailed = false;
+  private lastNetStep = 0;
+
+  /** One frame of an online game. The world moves in lockstep: as fast as the clock says, but only as far
+   *  as the turns allow. Menus do not pause it; only the host can (F3). A guest that has fallen behind
+   *  catches up. When it must wait for the other side it says so, rather than looking frozen. */
+  private netFrame(dt: number, hidden = false) {
+    const net = this.net;
+    if (!net || this.netFailed) return;
+    try {
+      this.accumulator += dt * this.speed;
+      const behind = net instanceof LockstepGuest ? Math.max(0, net.buffered - (hidden ? 0 : DELAY)) * TURN_TICKS : 0;
+      const maxSteps = Math.ceil((hidden ? 120 : 6) * this.speed) + behind;
+      let steps = 0;
+      while ((this.accumulator >= World.dt || steps < behind) && steps < maxSteps && net.stepTick()) {
+        this.accumulator = Math.max(0, this.accumulator - World.dt); steps++;
+      }
+      const waiting = steps === 0 && this.accumulator >= World.dt && !(net instanceof LockstepHost && this.hostPaused);
+      if (this.accumulator > World.dt * 2) this.accumulator = World.dt; // waiting for a turn: do not race when it comes
+      const now = performance.now();
+      if (!waiting) this.waitingSince = 0;
+      else if (!this.waitingSince) this.waitingSince = now;
+      else if (now - this.waitingSince > 1500 && now - this.waitSaid > 4000) {
+        this.waitSaid = now;
+        this.hud.message(net instanceof LockstepHost
+          ? "Waiting for the other players' games to catch up (is a window hidden, or the connection slow?)"
+          : "Waiting for the host's game (is the host's window hidden, or the connection slow?)", "warn");
+      }
+      if (net.desync !== null && !this.desyncShown) {
+        this.desyncShown = true;
+        this.hud.message(`The games on the two machines no longer agree (turn ${net.desync}). Please start a new one.`, "warn");
+      }
+      this.handleEvents();
+    } catch (e) {
+      // Shown, not swallowed: the other side would only see the game stop.
+      this.netFailed = true;
+      const err = e as Error;
+      console.error(err);
+      this.hud.showOverlay("The online game stopped", [
+        "Something went wrong in the game on this machine, so it cannot go on. Please tell us what it says:",
+        `<textarea readonly rows="5">${String(err.stack ?? err.message ?? err).replace(/</g, "&lt;").slice(0, 1500)}</textarea>`,
+        `<span class="choices"><button data-restart>New map</button></span>`,
+      ], "lose");
+    }
+  }
+
+  /** A hidden window gets no frames: the browser stops drawing it. Online that would stop everyone, so the
+   *  game goes on from a timer (which hidden windows still get, about once a second). */
+  private keepOnlineGameGoing() {
+    const now = performance.now();
+    const dt = this.lastNetStep ? Math.min(5, (now - this.lastNetStep) / 1000) : 0;
+    this.lastNetStep = now;
+    if (document.hidden && this.started && this.net && this.world.winner === null) this.netFrame(dt, true);
+  }
+
   /** Everything every machine needs to build the same world: sent by the host when the game starts. */
   private worldFromSetup(st: OnlineSetup): World {
     const w = new World(this.rules, st.seed, st.names, st.size, true, st.options);
@@ -526,7 +585,7 @@ export class Game {
   private beginOnline(setup: OnlineSetup, me: number, host: Conn | null) {
     const w = this.worldFromSetup(setup);
     this.me = me; this.watching = false; this.watchAll = false; this.revealMap = false; this.ended = false;
-    this.seed = setup.seed; this.mapSize = setup.size; this.hostPaused = false; this.desyncShown = false;
+    this.seed = setup.seed; this.mapSize = setup.size; this.hostPaused = false; this.desyncShown = false; this.netFailed = false;
     this.useWorld(w);
     let net: LockstepHost | LockstepGuest;
     if (!host && this.online?.role === "host") {
@@ -559,7 +618,7 @@ export class Game {
   private leaveOnline() {
     if (this.online?.role === "host") { for (const f of this.online.friends) f.peer.close(); this.online.invite?.peer.close(); this.online.room?.close(); }
     if (this.online?.role === "guest") this.online.peer?.close();
-    this.online = null; this.net = null; this.hostPaused = false; this.desyncShown = false;
+    this.online = null; this.net = null; this.hostPaused = false; this.desyncShown = false; this.netFailed = false;
   }
 
   /** Host or join. */
@@ -1004,21 +1063,7 @@ export class Game {
     this.scrollCamera(dt);
     const w = this.world;
     if (this.started && this.net && w.winner === null) {
-      // Online the world moves in lockstep: as fast as the clock says, but only as far as the turns allow.
-      // Menus do not pause it; only the host can (F3). A guest that has fallen behind catches up.
-      this.accumulator += dt * this.speed;
-      const behind = this.net instanceof LockstepGuest ? Math.max(0, this.net.buffered - DELAY) * TURN_TICKS : 0;
-      const maxSteps = Math.ceil(6 * this.speed) + behind;
-      let steps = 0;
-      while ((this.accumulator >= World.dt || steps < behind) && steps < maxSteps && this.net.stepTick()) {
-        this.accumulator = Math.max(0, this.accumulator - World.dt); steps++;
-      }
-      if (this.accumulator > World.dt * 2) this.accumulator = World.dt; // waiting for a turn: do not race when it comes
-      if (this.net.desync !== null && !this.desyncShown) {
-        this.desyncShown = true;
-        this.hud.message(`The games on the two machines no longer agree (turn ${this.net.desync}). Please start a new one.`, "warn");
-      }
-      this.handleEvents();
+      this.netFrame(dt);
     } else if (this.started && !this.paused && w.winner === null) {
       this.accumulator += dt * this.speed;
       let steps = 0;
