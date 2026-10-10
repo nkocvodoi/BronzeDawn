@@ -69,7 +69,7 @@ Unit voices and acknowledgements,audio,should,yes,yes,formant-synthesized made-u
 Music,audio,could,yes,yes,procedural: drone lyre hand drum flute in D dorian
 Death animations and decaying bodies,art,could,yes,partial,bodies fade; no bones
 Buildings change look with each age,art,should,yes,yes,
-Multiplayer,modes,should,yes,no,the simulation is deterministic already
+Multiplayer,modes,should,yes,yes,online with friends: WebRTC in lockstep; codes passed by hand (no server); up to 8 players with computers; fingerprints catch a desync
 Campaigns and scenarios,modes,could,yes,skip,out of scope
 Scenario editor,modes,could,yes,skip,out of scope
 The original's sprites sounds music and name,assets,must,yes,skip,clean-room: never copied
