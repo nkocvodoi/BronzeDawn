@@ -43,6 +43,11 @@ export interface WorldOptions {
  *  Score: the first to reach `target` points. Time: the highest score after `target` seconds. A team
  *  is scored as the average of its players, as in the original. */
 export type Victory = { kind: "standard" } | { kind: "conquest" } | { kind: "score"; target: number } | { kind: "time"; target: number };
+/** How one player stands toward another, as in the original's Diplomacy screen. Each player sets their own:
+ *  an alliance holds when both have set it. Units and towers attack only those set as enemies. */
+export type Stance = "ally" | "neutral" | "enemy";
+export const STANCES: Stance[] = ["ally", "neutral", "enemy"];
+
 export type WinHow = "conquest" | "wonder" | "score" | "time" | "ruins" | "artifacts";
 
 /**
@@ -92,6 +97,9 @@ export class World {
     this.pathfinder = new Pathfinder(this.map);
     this.pathfinder.maxExpanded = Math.max(9000, size * size); // a long walk across a Huge map still finds its way
     this.teams = playerNames.map((_, i) => options.teams?.[i] ?? 0);
+    // Players on the same team start as allies; everyone else starts as an enemy.
+    this.stance = playerNames.map((_, a) => playerNames.map((_, b) => (a === b || (this.teams[a] > 0 && this.teams[a] === this.teams[b]) ? "ally" : "enemy")));
+    this.tributed = playerNames.map(() => playerNames.map(() => 0));
     this.farmsBlock = options.farmsBlock === true;
     this.popMax = options.popLimit ?? rules.economy.pop_max;
     this.victory = options.victory ?? { kind: "standard" };
@@ -136,8 +144,44 @@ export class World {
   victory: Victory = { kind: "standard" };
   /** Each player's team; 0 means on its own. */
   teams: number[] = [];
-  allied(a: number, b: number) { return a === b || (a >= 0 && b >= 0 && this.teams[a] > 0 && this.teams[a] === this.teams[b]); }
-  isEnemy(a: number, b: number) { return a !== GAIA && b !== GAIA && !this.allied(a, b); }
+  /** stance[a][b]: how player a stands toward player b. */
+  stance: Stance[][] = [];
+  /** tributed[a][b]: everything a has sent b, for the computer's answer to it. */
+  tributed: number[][] = [];
+  /** Both have set an alliance (and a player is its own ally). */
+  allied(a: number, b: number) { return a === b || (a >= 0 && b >= 0 && this.stance[a]?.[b] === "ally" && this.stance[b]?.[a] === "ally"); }
+  /** Whether a's units and towers attack b's. */
+  isEnemy(a: number, b: number) { return a !== GAIA && b !== GAIA && a !== b && (this.stance[a]?.[b] ?? "enemy") === "enemy"; }
+
+  /** A player changes how they stand toward another. The computer answers: an enemy is an enemy back, and
+   *  whoever declares an alliance must still win it (see `tribute`). Everyone is told, as in the original. */
+  setStance(a: number, b: number, s: Stance) {
+    if (a === b || a < 0 || b < 0 || this.stance[a][b] === s) return;
+    this.stance[a][b] = s;
+    const word = s === "ally" ? "an ally of" : s === "neutral" ? "neutral toward" : "an enemy of";
+    this.events.push({ kind: "message", player: -1, text: `${this.players[a].name} is now ${word} ${this.players[b].name}` });
+    if (s === "enemy" && this.ais.some((ai) => ai.player === b)) this.setStance(b, a, "enemy");
+  }
+
+  /** Sends resources to another player. The sender pays a fee on top (none with Coinage, or for the
+   *  Palmyrans). A computer that is neutral toward the sender turns ally once it has had enough. */
+  tribute(from: number, to: number, r: Res, amount: number): string | null {
+    if (from === to || from < 0 || to < 0 || amount <= 0) return "Nobody to send to";
+    if (this.players[to].defeated) return `${this.players[to].name} is out of the game`;
+    const p = this.players[from];
+    const fee = p.mods.flags.has("free_tribute") ? 0 : this.rules.economy.tribute_fee ?? 0.25;
+    const pay = Math.ceil(amount * (1 + fee));
+    if (p.res.get(r) < pay) return "Not enough resources";
+    p.res.set(r, p.res.get(r) - pay);
+    this.players[to].res.set(r, this.players[to].res.get(r) + amount);
+    p.stats.tributed += amount;
+    this.tributed[from][to] += amount;
+    this.events.push({ kind: "message", player: -1, text: `${p.name} sent ${amount} ${RES_KEY[r]} to ${this.players[to].name}` });
+    if (this.ais.some((ai) => ai.player === to) && this.stance[to][from] === "neutral" && this.tributed[from][to] >= (this.rules.economy.tribute_to_ally ?? 2600)) {
+      this.setStance(to, from, "ally");
+    }
+    return null;
+  }
 
   /** May something owned by `owner` attack `t`? Players hunt animals; animals fight players. */
   hostile(owner: number, t: Entity) {

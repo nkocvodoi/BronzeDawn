@@ -239,7 +239,7 @@ techs = [
     tech("stone_mining", "Stone Mining", "tool", "market", cost(f=100, s=50), 30, [gather(S, 1.3, 3)]),
     tech("siegecraft", "Siegecraft", "iron", "market", cost(f=190, s=100), 60, [gather(S, 1.3, 3)], ["stone_mining"]),
     tech("gold_mining", "Gold Mining", "tool", "market", cost(f=120, w=100), 50, [gather(G, 1.3, 3)]),
-    tech("coinage", "Coinage", "iron", "market", cost(f=200, g=100), 60, [{"type": "mine_yield", "resource": G, "value": 1.25}], ["gold_mining"]),
+    tech("coinage", "Coinage", "iron", "market", cost(f=200, g=100), 60, [{"type": "mine_yield", "resource": G, "value": 1.25}, {"type": "flag", "flag": "free_tribute"}], ["gold_mining"]),
     tech("domestication", "Domestication", "tool", "market", cost(f=200, w=50), 40, [{"type": "farm_food", "op": "add", "value": 75}]),
     tech("plow", "Plow", "bronze", "market", cost(f=250, w=75), 75, [{"type": "farm_food", "op": "add", "value": 75}], ["domestication"]),
     tech("irrigation", "Irrigation", "iron", "market", cost(f=300, w=100), 100, [{"type": "farm_food", "op": "add", "value": 75}], ["plow"]),
@@ -328,7 +328,8 @@ civs = [
     civ("macedonian", "Macedonian", "roman", [stat("pierce_armor", 2, tags=["academy"]), stat("los", 2, tags=["melee"]),
                                               stat("cost", 0.5, op="mul", tags=["siege"]), {"type": "conversion", "stat": "resist", "value": 4}], ["temple"]),
     civ("palmyran", "Palmyran", "roman", [stat("cost", 1.5, op="mul", units=["villager"]), stat("armor", 1, units=["villager"]),
-                                          stat("pierce_armor", 1, units=["villager"]), gather("all", 1.2), stat("speed", 1.25, op="mul", units=["camel_rider"])]),
+                                          stat("pierce_armor", 1, units=["villager"]), gather("all", 1.2), stat("speed", 1.25, op="mul", units=["camel_rider"]),
+                                          {"type": "flag", "flag": "free_tribute"}]),
     civ("roman", "Roman", "roman", [stat("cost", 0.85, op="mul", buildings_tags=["!tower", "!wall", "!wonder"]), stat("cost", 0.5, op="mul", buildings_tags=["tower"]),
                                     stat("attack_cooldown", 1 / 1.33, op="mul", tags=["swordsman"])]),
     # Return of Rome's Lac Viet. Foragers were +20% at release, +15% since a later patch. The team bonus
@@ -472,6 +473,11 @@ rules = {
         "relics": {"ruins": 5, "artifacts": 5, "ruins_radius": 3, "artifact_radius": 1.5, "artifact_speed": 0.8},
         # Trade: gold per trip for each tile between the two Docks (our number: about 7 to 75 a trip, as reported).
         "trade_gold_per_tile": 1.1,
+        # Tribute: sent 100 at a time; the original takes a 25% fee on top (pay 125 to send 100), none with
+        # Coinage or for the Palmyrans.
+        "tribute_fee": 0.25,
+        # A computer that is neutral toward you turns ally after this much tribute (the original's figure).
+        "tribute_to_ally": 2600,
         # Repair: hit points come back at this share of the building speed, and the full bar would cost
         # this share of the building's price, paid as the work goes.
         "repair_rate": 0.5,

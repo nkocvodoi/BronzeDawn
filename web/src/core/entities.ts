@@ -199,6 +199,8 @@ export class PlayerStats {
   built = 0;
   researched = 0;
   converted = 0;
+  /** Resources sent to other players. */
+  tributed = 0;
 }
 
 export class Player {

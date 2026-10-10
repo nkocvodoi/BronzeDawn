@@ -1,5 +1,5 @@
 // The original's score, in its five parts (F-Score in replica/game/aoe1-research.md). It is shown during
-// the game and at its end, and can decide a game. Tribute is not in the game yet, so its points are not either.
+// the game and at its end, and can decide a game.
 import type { World } from "./world";
 
 export interface Score { military: number; economy: number; religion: number; technology: number; other: number; total: number }
@@ -33,7 +33,7 @@ export function scores(w: World): Score[] {
   return ps.map((p, i) => {
     const s = p.stats;
     const military = Math.floor(s.kills / 2) + s.razed + Math.max(0, s.kills - s.casualties) + (most.army === i ? 25 : 0);
-    const economy = Math.floor(s.gathered.gold / 100) + workers[i] + (most.villagers === i ? 25 : 0)
+    const economy = Math.floor(s.gathered.gold / 100) + Math.floor(s.tributed / 60) + workers[i] + (most.villagers === i ? 25 : 0)
       + explored[i] + (most.explored === i ? 25 : 0);
     const religion = conversions[i] * 2 + (most.conversions === i ? 25 : 0)
       + buildings(p.id).filter((b) => b.def.id === "temple").length * 3

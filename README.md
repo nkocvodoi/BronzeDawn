@@ -51,6 +51,7 @@ tài nguyên, xây nhà, lên Tool Age rồi tiêu diệt đối thủ.
 | Lính: S / A | Dừng / Attack-move |
 | Map size (web) | Chọn Small 72, Medium 96, Large 120, Huge 144, Gigantic 200 ở màn hình bắt đầu |
 | Tùy chọn trận (web) | Màn hình bắt đầu: kiểu bản đồ (9 kiểu), cách thắng (chuẩn, chỉ chinh phục, theo điểm, hết giờ), thời đại khởi đầu, tài nguyên (Low đến Death Match), giới hạn dân số, mở bản đồ, Ruins và Artifact |
+| Diplomacy (web) | Nút Diplomacy trên thanh trên cùng: đặt đồng minh / trung lập / kẻ thù với từng người, gửi cống nạp 100 mỗi loại tài nguyên |
 | Ruins, Artifact (web) | Đưa một unit đến gần để chiếm; Artifact của bạn bấm chuột phải để di chuyển, chở được bằng thuyền. Giữ hết một loại 15 phút là thắng |
 | H, `.` | Về Town Center, chọn villager đang rảnh |
 | Cmd+1..9, 1..9 | Lưu và gọi nhóm quân (trên web: Ctrl hoặc Alt+1..9) |

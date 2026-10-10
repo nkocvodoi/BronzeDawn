@@ -490,6 +490,7 @@ Conscription, Theocracy, Urbanization and gates are not in the game, so they are
 | Tribute | Through the Diplomacy screen, in 100-unit clicks. 25% fee in O (pay 125 to send 100). Coinage or Palmyrans make it free. DE wiki says 30% and requires a Market (DE rule) | S1, F-Tribute |
 | AI and tribute | A neutral computer player can turn ally if you tribute 2,600+ resources. A hostile one never does | F-Tribute |
 | Diplomacy stances | Ally; Neutral (attacks military and buildings but not villagers); Enemy. Allied victory option | S1 |
+| Ours (stances) | `web/src/core/world.ts`: each player sets its own stance; an alliance holds when both set it; units and towers attack enemies only, so a neutral is left alone (the manual's "neutral attacks military" is not done); allied victory is always on; a computer you declare enemy turns enemy at once | — |
 | Market exchange | **None in O/R** (no buy/sell). Return of Rome added it. The O Market only holds techs and unlocks Farms | F-Market |
 | Repair | Villagers repair buildings and ships for a resource cost, faster with more villagers | S1 |
 | Delete | DEL kills your own unit or building. Partial refund on unfinished buildings | S1 |

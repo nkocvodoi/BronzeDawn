@@ -3,11 +3,11 @@ import { AIController, Difficulty } from "../core/ai";
 import { Building, Entity, ResourceNode, Unit } from "../core/entities";
 import { Tile, Vec2 } from "../core/geom";
 import { Terrain } from "../core/grid";
-import { Res, ResBag, Rules } from "../core/rules";
+import { Res, RES_KEY as RES_NAME, ResBag, Rules } from "../core/rules";
 import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import { MAP_TYPES, MapType } from "../core/mapgen";
-import { Victory, WinHow, World } from "../core/world";
+import { Stance, STANCES, Victory, WinHow, World } from "../core/world";
 import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
 import { drawTimeline } from "./timeline";
@@ -122,7 +122,10 @@ export class Game {
   reseed = store.get("bd-reseed") !== "off";
   /** How many computer players, and whether they fight as one team against you. Remembered between games. */
   opponents = Math.min(7, Math.max(1, Number(store.get("bd-opponents")) || 1));
-  computersTeamUp = store.get("bd-teams") === "team";
+  /** Teams: each on its own, the computers allied against you, or teams of your own choosing. Remembered. */
+  teamMode: "ffa" | "team" | "custom" = (["ffa", "team", "custom"].includes(store.get("bd-teams") ?? "") ? store.get("bd-teams") : "ffa") as "ffa" | "team" | "custom";
+  /** The chosen teams, by player (0 for none): you first, then each computer. */
+  teamList: number[] = (store.get("bd-team-list") ?? "").split(",").map((x) => Number(x) || 0).concat(Array(8).fill(0)).slice(0, 8);
   /** Farms block the way, as in the original; off, they are walked over as in the remaster. Remembered. */
   farmsBlock = store.get("bd-farms-block") === "on";
   /** The kind of map: Inland with lakes, or one with a sea. Remembered. */
@@ -317,8 +320,8 @@ export class Game {
       `Map: <select id="map-type">${MAP_TYPES.map(([id, name]) => `<option value="${id}"${id === this.mapType ? " selected" : ""}>${name}</option>`).join("")}</select>`,
       `Map size: <select id="map-size">${MAP_SIZES.map(([n, t]) => `<option value="${t}"${t === this.mapSize ? " selected" : ""}>${n} (${t} x ${t})</option>`).join("")}</select>`,
       `Computer players: <select id="opponents">${[1, 2, 3, 4, 5, 6, 7].map((k) => `<option value="${k}"${k === this.opponents ? " selected" : ""}>${k}</option>`).join("")}</select>`
-        + ` <select id="teams"><option value="ffa"${this.computersTeamUp ? "" : " selected"}>each on its own</option>`
-        + `<option value="team"${this.computersTeamUp ? " selected" : ""}>allied against you</option></select>`,
+        + ` <select id="teams">${opts([["ffa", "each on its own"], ["team", "allied against you"], ["custom", "teams of my choosing"]], this.teamMode)}</select>`,
+      `<span id="team-rows"${this.teamMode === "custom" ? "" : " hidden"}>${this.teamRows(this.opponents)}</span>`,
       `<span id="players-info">${this.playersNote(this.opponents)}</span>`,
       `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
       `Victory: <select id="victory">${opts(VICTORIES.map(([id, name]) => [id, name]), this.victoryId)}</select>`,
@@ -360,9 +363,14 @@ export class Game {
     const civs = this.rules.civs;
     const mine = pick ?? (civs.length ? civs[Math.floor(Math.random() * civs.length)].id : null);
     const opp = Number((document.querySelector("#opponents") as HTMLSelectElement | null)?.value) || this.opponents;
-    const teamUp = (document.querySelector("#teams") as HTMLSelectElement | null)?.value === "team";
-    this.opponents = opp; this.computersTeamUp = teamUp;
-    store.set("bd-opponents", String(opp)); store.set("bd-teams", teamUp ? "team" : "ffa");
+    const mode = (document.querySelector("#teams") as HTMLSelectElement | null)?.value;
+    if (mode === "ffa" || mode === "team" || mode === "custom") this.teamMode = mode;
+    for (let i = 0; i <= opp; i++) {
+      const sel = document.querySelector(`#team-${i}`) as HTMLSelectElement | null;
+      if (sel) this.teamList[i] = Number(sel.value) || 0;
+    }
+    this.opponents = opp;
+    store.set("bd-opponents", String(opp)); store.set("bd-teams", this.teamMode); store.set("bd-team-list", this.teamList.join(","));
     const theirs = Array.from({ length: opp }, (_, i) => (civs.length ? civs[(this.seed * 7 + 3 + i * 5) % civs.length].id : null));
     // More players need room: the map grows to fit them.
     const chosenSize = Number((document.querySelector("#map-size") as HTMLSelectElement | null)?.value) || this.mapSize;
@@ -370,7 +378,8 @@ export class Game {
     if (mt && MAP_TYPES.some(([id]) => id === mt)) { this.mapType = mt; store.set("bd-map-type", mt); }
     const size = Math.max(chosenSize, minMapSize(opp + 1));
     // Allied computers share team 1; you are on your own.
-    this.newGame(this.seed, [mine, ...theirs], size, teamUp ? [0, ...theirs.map(() => 1)] : []);
+    const teams = this.teamMode === "team" ? [0, ...theirs.map(() => 1)] : this.teamMode === "custom" ? this.teamList.slice(0, opp + 1) : [];
+    this.newGame(this.seed, [mine, ...theirs], size, teams);
     // The speed chosen on the start screen; + and - still change it during the game.
     const chosen = Number((document.querySelector("#start-speed") as HTMLSelectElement | null)?.value);
     if (this.speeds.includes(chosen)) { this.speed = chosen; this.hud.speed(chosen); }
@@ -490,19 +499,54 @@ export class Game {
     ], "menu");
   }
 
+  /** One team choice for you and for each computer, for "teams of my choosing". */
+  private teamRows(opp: number) {
+    const sel = (i: number) => `<select id="team-${i}">${[0, 1, 2, 3, 4].map((t) => `<option value="${t}"${t === this.teamList[i] ? " selected" : ""}>${t ? `Team ${t}` : "no team"}</option>`).join("")}</select>`;
+    return Array.from({ length: opp + 1 }, (_, i) => `${i === 0 ? "You" : `Computer ${i}`}: ${sel(i)}`).join(" · ");
+  }
+
   /** What the start screen says about the players chosen. */
   private playersNote(opp: number) {
     const min = minMapSize(opp + 1);
     return `${opp + 1} players.${min ? ` The map will be at least ${MAP_SIZES.find(([, t]) => t === min)?.[0]} (${min} x ${min}).` : ""}`;
   }
 
-  /** The players and their civilizations, with what each civilization is good at. */
+  /** The players and their civilizations, with what each civilization is good at; and, as in the original's
+   *  Diplomacy screen, how you stand toward each (ally, neutral, enemy) and tribute to send them. */
   private showDiplomacy() {
-    const rows = this.world.players.map((p) => {
+    const w = this.world, me = this.me;
+    const word: Record<Stance, string> = { ally: "Ally", neutral: "Neutral", enemy: "Enemy" };
+    const fee = w.players[me].mods.flags.has("free_tribute") ? 0 : w.rules.economy.tribute_fee ?? 0.25;
+    const rows = w.players.map((p) => {
       const bonuses = p.civ ? describeCiv(p.civ, this.rules).join("; ") : "no bonuses";
-      return `<tr><td style="color:${playerColor(p.id)}"><b>${p.name}</b></td><td>${p.civ?.name ?? "-"}</td><td>${this.watching ? "Computer" : p.id === this.me ? "You" : this.world.allied(this.me, p.id) ? "Ally" : "Enemy"}</td><td>${bonuses}</td></tr>`;
+      const name = `<td style="color:${playerColor(p.id)}"><b>${p.name}</b>${p.defeated ? " (out)" : ""}</td><td>${p.civ?.name ?? "-"}</td>`;
+      if (this.watching || p.id === me) return `<tr>${name}<td>${this.watching ? "Computer" : "You"}</td><td></td><td></td><td class="bonus">${bonuses}</td></tr>`;
+      const mine = STANCES.map((s) => `<button data-stance="${p.id}:${s}"${w.stance[me][p.id] === s ? ' class="picked"' : ""}>${word[s]}</button>`).join("");
+      const tribute = p.defeated ? "" : ([Res.food, Res.wood, Res.gold, Res.stone] as Res[]).map((r) => `<button data-tribute="${p.id}:${r}">100 ${RES_NAME[r]}</button>`).join("");
+      return `<tr>${name}<td><span class="seg">${mine}</span></td><td>${word[w.stance[p.id][me]]}</td><td><span class="seg">${tribute}</span></td><td class="bonus">${bonuses}</td></tr>`;
     }).join("");
-    this.hud.showOverlay("Diplomacy", [`<table>${rows}</table>`, `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`], "menu");
+    const head = this.watching ? "" : `<tr><th></th><th></th><th>You toward them</th><th>Them toward you</th><th>Tribute${fee ? ` (costs ${Math.round(fee * 100)}% more)` : " (free)"}</th><th></th></tr>`;
+    this.hud.showOverlay("Diplomacy", [
+      `<table class="diplomacy">${head}${rows}</table>`,
+      this.watching ? "" : "Units and towers attack only enemies. An alliance holds when both sides have set it. A computer that is neutral toward you may become your ally if you send it enough.",
+      `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`,
+    ], "menu");
+  }
+
+  /** A click in the Diplomacy screen: a new stance, or 100 of a resource sent. */
+  private diplomacyClick(t: HTMLElement): boolean {
+    const st = t.closest("[data-stance]") as HTMLElement | null, tr = t.closest("[data-tribute]") as HTMLElement | null;
+    if (!st && !tr) return false;
+    if (st) {
+      const [pid, s] = st.dataset.stance!.split(":");
+      this.world.setStance(this.me, Number(pid), s as Stance);
+    } else {
+      const [pid, r] = tr!.dataset.tribute!.split(":").map(Number);
+      const why = this.world.tribute(this.me, pid, r as Res, 100);
+      if (why) this.hud.message(why);
+    }
+    this.showDiplomacy();
+    return true;
   }
 
   /** Your civilization and its bonuses, and the enemy's, for the help screen. */
@@ -1388,9 +1432,15 @@ export class Game {
     // The start screen describes the chosen civilization as you pick it.
     document.addEventListener("change", (e) => {
       const t = e.target as HTMLSelectElement;
-      if (t.id === "opponents") {
-        const note = document.querySelector("#players-info");
-        if (note) note.textContent = this.playersNote(Number(t.value) || 1);
+      if (t.id === "opponents" || t.id === "teams") {
+        const note = document.querySelector("#players-info"), rows = document.querySelector("#team-rows") as HTMLElement | null;
+        const opp = Number((document.querySelector("#opponents") as HTMLSelectElement | null)?.value) || 1;
+        if (note) note.textContent = this.playersNote(opp);
+        if (rows) {
+          for (let i = 0; i <= 7; i++) { const s = document.querySelector(`#team-${i}`) as HTMLSelectElement | null; if (s) this.teamList[i] = Number(s.value) || 0; }
+          rows.innerHTML = this.teamRows(opp);
+          rows.hidden = (document.querySelector("#teams") as HTMLSelectElement | null)?.value !== "custom";
+        }
         return;
       }
       if (t.id !== "civ") return;
@@ -1438,6 +1488,7 @@ export class Game {
         if (t.closest("#menu-btn")) { open(() => this.showMenu()); return; }
         if (t.closest("#help-btn")) { open(() => this.showHelp()); return; }
         if (t.closest("#diplomacy-btn")) { open(() => this.showDiplomacy()); return; }
+        if (this.diplomacyClick(t)) return;
         if (t.closest("#score-btn")) { this.scoresToggled(); return; }
         if (t.closest("#resume-btn")) { this.hud.hideOverlay(); this.paused = false; return; }
         if (t.closest("#help-open")) { this.showHelp(); return; }

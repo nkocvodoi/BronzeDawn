@@ -49,10 +49,24 @@ await page.click("[data-start=normal]");
 await page.click("#diplomacy-btn");
 const diplomacy = await page.textContent("#overlay");
 check(diplomacy.includes("Greek") && diplomacy.includes("Academy units") && diplomacy.includes("Enemy"), "Diplomacy lists your civilization with its bonuses, and the enemy's");
+await page.click("[data-stance='1:neutral']");
+check(await g(() => game.world.stance[0][1] === "neutral" && game.world.stance[1][0] === "enemy"), "Diplomacy sets you neutral toward the computer; it stays your enemy");
+await page.click("[data-stance='1:enemy']");
+await page.click("[data-tribute='1:3']");
+check(await g(() => game.world.players[0].res.stone === 25 && game.world.players[1].res.stone === 250), "tribute: 100 stone sent costs 125");
 await page.keyboard.press("Escape");
 check((await g(() => game.speed)) === 1.5, "the start screen sets the game speed");
 check(await g(() => game.started && game.world.ais.length === 1), "clicking Normal starts the game against one AI");
 check(await g(() => game.world.units.filter((u) => u.isRelic).length === 10), "the map has five Ruins and five Artifacts");
+// The ground is drawn piece by piece: every piece has ground in it, and together they cover the map's diamond
+// (half the picture). A piece once came out empty and the rest shifted, leaving black where the map was seen.
+const ground = await g(() => game.terrain.children.map((c) => {
+  const cv = c.texture.source.resource, d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data;
+  let filled = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) filled++;
+  return { filled, area: cv.width * cv.height };
+}));
+const share = ground.reduce((a, x) => a + x.filled, 0) / ground.reduce((a, x) => a + x.area, 0);
+check(ground.length > 1 && ground.every((x) => x.filled > 0) && share > 0.45 && share < 0.55, `the ground is drawn in ${ground.length} pieces that cover the map (${(share * 100).toFixed(1)}% of the picture)`);
 
 check(await page.evaluate(() => document.body.classList.contains("playing")), "the panels slide in when the game starts");
 check((await page.textContent("#scores")).includes("Population") && /You \(Greek\): 3\/4/.test(await page.textContent("#scores")), "the list above the minimap shows each player's population");
@@ -222,6 +236,9 @@ check(await g(() => !game.revealMap && game.me === 0), "V follows one player");
 await g(() => game.restart());
 await page.waitForSelector("#victory");
 await page.uncheck("#watch");
+await page.selectOption("#opponents", "3");
+await page.selectOption("#teams", "custom");
+for (const [i, t] of [[0, "1"], [1, "1"], [2, "2"], [3, "2"]]) await page.selectOption(`#team-${i}`, t);
 await page.selectOption("#victory", "time-30");
 await page.selectOption("#start-age", "2");
 await page.selectOption("#resources", "high");
@@ -231,6 +248,7 @@ await page.click("[data-start=normal]");
 await wait(300);
 const set = await g(() => ({ age: game.world.players[0].age, food: game.world.players[0].res.food, pop: game.world.popMax,
   explored: game.world.fog[0].exploredShare, v: game.world.victory }));
+check(await g(() => game.world.allied(0, 1) && game.world.isEnemy(0, 2) && game.world.allied(2, 3)), "teams of your choosing: you and Computer 1 against Computers 2 and 3");
 check(set.age === 2 && set.food >= 900 && set.pop === 100 && set.explored === 1, "the start screen sets the age, resources, population limit and an explored map");
 check(set.v.kind === "time" && /Time left 29:\d\d|Time left 30:00/.test(await page.textContent("#clock")), "a time limit counts down in the top bar");
 

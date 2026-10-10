@@ -187,6 +187,13 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #civ-info { display: inline-block; max-width: 560px; font-size: 14px; color: var(--gold); min-height: 2.4em; }
 #overlay table { margin: 6px auto; border-collapse: collapse; text-align: left; font-size: 15px; }
 #overlay td { padding: 4px 12px; border-bottom: 1px solid rgba(200, 164, 98, .35); vertical-align: top; }
+/* Diplomacy: small buttons in a row, the chosen stance lit; the civilization's bonuses in small print. */
+#overlay table.diplomacy td { vertical-align: middle; }
+#overlay .seg { display: inline-flex; gap: 3px; flex-wrap: wrap; }
+#overlay .seg button { font-size: 12px; padding: 3px 7px; }
+#overlay .seg button.picked { background: linear-gradient(#a8844a, #7a5c2c); color: #fff6dc; }
+#overlay .seg button:not(.picked) { color: #b8a888; }
+#overlay table.diplomacy .bonus { font-size: 11px; color: #c8b896; max-width: 260px; }
 #timeline { display: block; width: min(640px, 80vw); height: 260px; margin: 8px auto 4px; image-rendering: auto; cursor: crosshair; }
 #timeline-read { min-height: 34px; font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
 .timeline-key { font-size: 11px; color: #c8b896; text-align: center; }

@@ -44,8 +44,8 @@ Fog of war,fog,must,yes,yes,solid black unexplored; a stipple over explored grou
 Dense forests and textured ground,map,should,yes,yes,forest floor; worn patches; curved coast with foam
 Computer opponent,ai,must,yes,yes,three levels
 Five AI levels Easiest to Hardest,ai,could,yes,partial,easy normal hard
-Up to eight players with teams and allies,players,should,yes,partial,1 to 7 computers; each on its own or allied against you; no teams of your own choosing
-Diplomacy stances and tribute,players,could,yes,no,
+Up to eight players with teams and allies,players,should,yes,yes,1 to 7 computers; each on its own; allied against you; or teams of your own choosing (up to four); allies win together
+Diplomacy stances and tribute,players,could,yes,yes,ally / neutral / enemy set by each player; tribute 100 at a time with the 25% fee (none with Coinage or for Palmyrans); a neutral computer turns ally after 2600; tribute counts for the score
 Four ages,ages,must,yes,yes,
 Technologies and upgrades,ages,must,yes,yes,65
 Civilizations with bonuses,ages,should,yes,yes,17 with the Lac Viet of Return of Rome

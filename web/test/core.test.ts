@@ -908,6 +908,65 @@ describe("game settings and other victories", () => {
   });
 });
 
+describe("diplomacy and tribute", () => {
+  it("teams start allied, the rest as enemies; units leave the neutral alone and fight enemies", () => {
+    const w = new World(RULES, 1, ["A", "B", "C"], 30, false, { teams: [1, 1, 0] });
+    expect(w.allied(0, 1)).toBe(true);
+    expect(w.isEnemy(0, 2)).toBe(true);
+    const guard = w.spawnUnit("clubman", 0, new Tile(10, 10).center);
+    const stranger = w.spawnUnit("clubman", 2, new Tile(12, 10).center);
+    w.setStance(0, 2, "neutral");
+    w.setStance(2, 0, "neutral");
+    run(w, 5);
+    expect(stranger.hp).toBe(stranger.maxHp);
+    expect(guard.hp).toBe(guard.maxHp);
+    w.setStance(0, 2, "enemy");
+    run(w, 5);
+    expect(stranger.hp).toBeLessThan(stranger.maxHp); // A's clubman goes for C's now
+    expect(guard.hp).toBe(guard.maxHp); // and C, still neutral, does not strike back
+  });
+
+  it("an alliance needs both sides, and allies standing alone win together", () => {
+    const w = new World(RULES, 1, ["A", "B", "C"], 30, false);
+    for (const i of [0, 1, 2]) w.addBuilding("town_center", i, new Tile(2 + i * 9, 2), true);
+    w.setStance(0, 1, "ally");
+    expect(w.allied(0, 1)).toBe(false);
+    w.setStance(1, 0, "ally");
+    expect(w.allied(0, 1)).toBe(true);
+    for (const b of w.buildingsOf(2)) w.destroy(2, b.id);
+    run(w, 2);
+    expect(w.winner === 0 || w.winner === 1).toBe(true);
+  });
+
+  it("tribute costs a quarter more, nothing with Coinage, and counts for the score", () => {
+    const w = new World(RULES, 1, ["A", "B"], 24, false);
+    w.players[0].res.set(Res.gold, 500);
+    expect(w.tribute(0, 1, Res.gold, 100)).toBeNull();
+    expect(w.players[0].res.gold).toBe(375);
+    expect(w.players[1].res.gold).toBe(100);
+    w.players[0].mods.research(RULES.techs.get("coinage")!);
+    expect(w.tribute(0, 1, Res.gold, 300)).toBeNull();
+    expect(w.players[0].res.gold).toBe(75);
+    expect(w.tribute(0, 1, Res.gold, 100)).toBe("Not enough resources");
+    expect(w.players[0].stats.tributed).toBe(400);
+    expect(scores(w)[0].economy).toBeGreaterThanOrEqual(Math.floor(400 / 60));
+  });
+
+  it("a computer answers: an enemy back at once, an ally only when neutral and paid enough", () => {
+    const w = new World(RULES, 1, ["You", "Computer"], 24, false);
+    w.ais = [new AIController(1, "normal")];
+    w.setStance(0, 1, "neutral");
+    w.players[0].res.set(Res.food, 10000);
+    w.tribute(0, 1, Res.food, 3000);
+    expect(w.stance[1][0]).toBe("enemy"); // a hostile computer never turns
+    w.stance[1][0] = "neutral";
+    for (let i = 0; i < 26; i++) w.tribute(0, 1, Res.food, 100);
+    expect(w.stance[1][0]).toBe("ally");
+    w.setStance(0, 1, "enemy");
+    expect(w.stance[1][0]).toBe("enemy");
+  });
+});
+
 describe("ruins and artifacts", () => {
   /** A blank map with a Town Center each, so nobody is out. */
   const field = (victory: Victory = { kind: "standard" }) => {

@@ -131,7 +131,8 @@ function terrainFrame(map: GridMap) {
  *  picture. `forest` marks tiles under trees (1) and next to them (2), whose ground is drawn darker. */
 export function terrainTexture(map: GridMap, forest?: Uint8Array, win?: { x0: number; y0: number; w: number; h: number }): { texture: Texture; x: number; y: number; w: number; h: number } {
   const { W, H, left } = terrainFrame(map);
-  const x0 = win?.x0 ?? 0, y0 = win?.y0 ?? 0, cw = win?.w ?? W, ch = win?.h ?? H;
+  // ox, oy: the window's corner (the loop below has its own x0, y0 for the coast).
+  const ox = win?.x0 ?? 0, oy = win?.y0 ?? 0, cw = win?.w ?? W, ch = win?.h ?? H;
   const p = new PixelCanvas(cw, ch);
   const n = map.width;
   const terrainAt = (x: number, y: number): Terrain | null =>
@@ -150,8 +151,8 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array, win?: { x0: nu
     const list = (named[key] ?? []).filter((f) => ASSETS.image(f));
     if (list.length) tileFiles[t] = list;
   }
-  for (let py = y0; py < y0 + ch; py++) {
-    for (let px = x0; px < x0 + cw; px++) {
+  for (let py = oy; py < oy + ch; py++) {
+    for (let px = ox; px < ox + cw; px++) {
       const w = fromIso(left + (px + 0.5) * PX, (py + 0.5) * PX);
       const tx = Math.floor(w.x), ty = Math.floor(w.y);
       const t = terrainAt(tx, ty);
@@ -188,7 +189,7 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array, win?: { x0: nu
         const r = hash(px, py, 3);
         if (r < 0.06) c = mix(c, GRASS_FLECK, 0.55);                                  // yellow flecks
         else if (r < 0.1) c = darken(c, 0.78);                                       // dark flecks
-        else if (r < 0.104 && (px & 1) === 0) { c = rgb(0x3e6a24); p.set(px - x0, py - y0 - 1, rgb(0x3e6a24)); } // a tuft
+        else if (r < 0.104 && (px & 1) === 0) { c = rgb(0x3e6a24); p.set(px - ox, py - oy - 1, rgb(0x3e6a24)); } // a tuft
         // Worn patches of bare earth, ragged at the edge.
         const worn = vnoise(w.x, w.y, 2.2, 23) * 0.7 + vnoise(w.x, w.y, 0.9, 24) * 0.3;
         if (worn > 0.78 || (worn > 0.73 && bayer(px, py) < (worn - 0.73) / 0.05)) c = WORN[Math.floor(hash(px >> 1, py, 25) * 3)];
@@ -242,10 +243,10 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array, win?: { x0: nu
           c = k >= 1 ? lighten(c, Math.min(0.35, k - 1)) : darken(c, Math.max(0.6, k));
         }
       }
-      p.set(px - x0, py - y0, c);
+      p.set(px - ox, py - oy, c);
     }
   }
-  return { texture: p.toTexture(), x: left + x0 * PX, y: y0 * PX, w: cw * PX, h: ch * PX };
+  return { texture: p.toTexture(), x: left + ox * PX, y: oy * PX, w: cw * PX, h: ch * PX };
 }
 
 /** The map ground cut into pieces no bigger than 2048 pixels, which every GPU accepts. Large maps need it. */

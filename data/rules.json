@@ -119,6 +119,8 @@
    "artifact_speed": 0.8
   },
   "trade_gold_per_tile": 1.1,
+  "tribute_fee": 0.25,
+  "tribute_to_ally": 2600,
   "repair_rate": 0.5,
   "repair_cost": 0.5
  },
@@ -2738,6 +2740,10 @@
      "type": "mine_yield",
      "resource": "gold",
      "value": 1.25
+    },
+    {
+     "type": "flag",
+     "flag": "free_tribute"
     }
    ]
   },
@@ -4714,6 +4720,10 @@
        "camel_rider"
       ]
      }
+    },
+    {
+     "type": "flag",
+     "flag": "free_tribute"
     }
    ],
    "disabled": [

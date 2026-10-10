@@ -79,6 +79,9 @@ export interface EconomyDef {
   wonder_seconds?: number;
   /** How many Ruins and Artifacts a map gets, how near a unit must be to take one, how fast an Artifact moves. */
   relics?: { ruins: number; artifacts: number; ruins_radius: number; artifact_radius: number; artifact_speed: number };
+  /** Tribute: the fee on top of what is sent, and how much makes a neutral computer an ally. */
+  tribute_fee?: number;
+  tribute_to_ally?: number;
   /** Gold a trade trip brings for each tile between the two Docks. */
   trade_gold_per_tile?: number;
   /** Repair speed, as a share of the building speed. */
