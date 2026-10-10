@@ -212,3 +212,6 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay ul.friends { list-style: none; padding: 0; margin: 6px 0; }
 #overlay .online-note { display: block; color: var(--gold); font-size: 14px; }
 #overlay .online-note button { font-size: 12px; padding: 3px 10px; }
+#overlay .room-code { display: block; font-size: 40px; font-weight: 700; letter-spacing: 6px; color: var(--gold); margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+#overlay .hint { display: block; font-size: 11px; color: #c8b896; max-width: 520px; margin: 0 auto; }
+#overlay #room-in { font: 700 22px/1 ui-monospace, monospace; width: 9ch; text-align: center; letter-spacing: 3px; padding: 6px; background: #2a2218; color: #f3e4bd; border: 2px solid #c8a462; }

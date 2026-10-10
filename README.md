@@ -51,7 +51,7 @@ tài nguyên, xây nhà, lên Tool Age rồi tiêu diệt đối thủ.
 | Lính: S / A | Dừng / Attack-move |
 | Map size (web) | Chọn Small 72, Medium 96, Large 120, Huge 144, Gigantic 200 ở màn hình bắt đầu |
 | Tùy chọn trận (web) | Màn hình bắt đầu: kiểu bản đồ (9 kiểu), cách thắng (chuẩn, chỉ chinh phục, theo điểm, hết giờ), thời đại khởi đầu, tài nguyên (Low đến Death Match), giới hạn dân số, mở bản đồ, Ruins và Artifact |
-| Chơi online (web) | Play with friends online → Host a game → Invite a friend: gửi mã mời cho bạn, dán mã trả lời của bạn vào, Connect; rồi chọn thiết lập và bắt đầu. Bạn bè: Join a friend's game, dán mã mời, gửi lại mã trả lời. Chỉ host tạm dừng (F3) và đổi tốc độ |
+| Chơi online (web) | Play with friends online → Host a game: game cho một mã phòng 6 số; bạn bè chọn Join a friend's game và gõ mã đó; rồi host chọn thiết lập và bắt đầu. Mã dài (không qua máy chủ nào) vẫn có ở nút Use long codes instead. Chỉ host tạm dừng (F3) và đổi tốc độ. Hai mạng chặt (thường là 4G) có thể không nối thẳng được: khi đó cần một máy chủ TURN, cho vào lúc build bằng VITE_TURN_URLS, VITE_TURN_USERNAME, VITE_TURN_CREDENTIAL |
 | Lưu, tải (web) | Menu → Save or load a game: lưu trong trình duyệt, lưu ra file .bdsave, tải lại từ danh sách hoặc từ file; màn hình bắt đầu có nút Load a saved game |
 | Diplomacy (web) | Nút Diplomacy trên thanh trên cùng: đặt đồng minh / trung lập / kẻ thù với từng người, gửi cống nạp 100 mỗi loại tài nguyên |
 | Ruins, Artifact (web) | Đưa một unit đến gần để chiếm; Artifact của bạn bấm chuột phải để di chuyển, chở được bằng thuyền. Giữ hết một loại 15 phút là thắng |

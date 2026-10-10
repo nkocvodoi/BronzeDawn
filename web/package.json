@@ -13,6 +13,7 @@
     "smoke:online": "node scripts/smoke-online.mjs"
   },
   "dependencies": {
+    "peerjs": "1.5.4",
     "pixi.js": "^8.22.0"
   },
   "devDependencies": {
