@@ -53,6 +53,15 @@ await page.keyboard.press("Escape");
 check((await g(() => game.speed)) === 1.5, "the start screen sets the game speed");
 check(await g(() => game.started && game.world.ais.length === 1), "clicking Normal starts the game against one AI");
 check(await g(() => game.world.units.filter((u) => u.isRelic).length === 10), "the map has five Ruins and five Artifacts");
+// The ground is drawn piece by piece: every piece has ground in it, and together they cover the map's diamond
+// (half the picture). A piece once came out empty and the rest shifted, leaving black where the map was seen.
+const ground = await g(() => game.terrain.children.map((c) => {
+  const cv = c.texture.source.resource, d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data;
+  let filled = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) filled++;
+  return { filled, area: cv.width * cv.height };
+}));
+const share = ground.reduce((a, x) => a + x.filled, 0) / ground.reduce((a, x) => a + x.area, 0);
+check(ground.length > 1 && ground.every((x) => x.filled > 0) && share > 0.45 && share < 0.55, `the ground is drawn in ${ground.length} pieces that cover the map (${(share * 100).toFixed(1)}% of the picture)`);
 
 check(await page.evaluate(() => document.body.classList.contains("playing")), "the panels slide in when the game starts");
 check((await page.textContent("#scores")).includes("Population") && /You \(Greek\): 3\/4/.test(await page.textContent("#scores")), "the list above the minimap shows each player's population");
