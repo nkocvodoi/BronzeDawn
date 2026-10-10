@@ -79,6 +79,8 @@ await host.waitForFunction(() => document.querySelector("#overlay")?.textContent
 check((await host.textContent("#overlay")).includes("Egyptian"), "the host sees the friend's civilization");
 
 await host.click("#online-setup");
+await host.selectOption("#opponents", "0");
+check((await host.textContent("#start-choices")).trim() === "Start the game", "with a friend in, the host may have no computer players at all (one Start button then)");
 await host.selectOption("#opponents", "1");
 await host.click("[data-start=normal]");
 await guest.waitForFunction(() => window.game.started, null, { timeout: 10000 });

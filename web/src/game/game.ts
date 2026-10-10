@@ -382,10 +382,10 @@ export class Game {
       `<span id="civ-info">A civilization picked at random. Its bonuses show at the top of the screen.</span>`,
       `Map: <select id="map-type">${MAP_TYPES.map(([id, name]) => `<option value="${id}"${id === this.mapType ? " selected" : ""}>${name}</option>`).join("")}</select>`,
       `Map size: <select id="map-size">${MAP_SIZES.map(([n, t]) => `<option value="${t}"${t === this.mapSize ? " selected" : ""}>${n} (${t} x ${t})</option>`).join("")}</select>`,
-      `Computer players: <select id="opponents">${[1, 2, 3, 4, 5, 6, 7].map((k) => `<option value="${k}"${k === this.opponents ? " selected" : ""}>${k}</option>`).join("")}</select>`
+      `Computer players: <select id="opponents">${this.computerChoices().map((k) => `<option value="${k}"${k === this.computersShown() ? " selected" : ""}>${k}</option>`).join("")}</select>`
         + ` <select id="teams">${opts([["ffa", "each on its own"], ["team", "allied against you"], ["custom", "teams of my choosing"]], this.teamMode)}</select>`,
-      `<span id="team-rows"${this.teamMode === "custom" ? "" : " hidden"}>${this.teamRows(this.opponents)}</span>`,
-      `<span id="players-info">${this.playersNote(this.opponents)}</span>`,
+      `<span id="team-rows"${this.teamMode === "custom" ? "" : " hidden"}>${this.teamRows(this.computersShown())}</span>`,
+      `<span id="players-info">${this.playersNote(this.computersShown())}</span>`,
       `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
       `Victory: <select id="victory">${opts(VICTORIES.map(([id, name]) => [id, name]), this.victoryId)}</select>`,
       `Starting age: <select id="start-age">${opts(this.rules.ages.map((a, i) => [String(i), a.name]), String(this.startAge))}</select>`
@@ -395,7 +395,7 @@ export class Game {
       `<label><input type="checkbox" id="reveal"${this.exploredStart ? " checked" : ""}> Reveal map: the land is known from the start (units are still hidden by the fog)</label>`,
       `<label><input type="checkbox" id="farms-block"${this.farmsBlock ? " checked" : ""}> Farms block the way, as in the original (off: walk over them, as in the remaster)</label>`,
       hosting ? "" : `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
-      `<span class="choices">${DIFFICULTIES.map((d, i) => `<button data-start="${d}">${i + 1} · ${DIFFICULTY_NAME[d]}</button>`).join("")}</span>`,
+      `<span class="choices" id="start-choices">${this.startButtons(this.computersShown())}</span>`,
       "Hard and Hardest: the computer gathers 20% faster. Hardest also starts with 2,000 more of each resource, as the original's Hardest cheats.",
       this.online?.role === "host" && this.online.friends.length
         ? `<span class="online-note">Online: ${this.online.friends.length} friend${this.online.friends.length > 1 ? "s" : ""} connected, playing as Player 2${this.online.friends.length > 1 ? ` to ${this.online.friends.length + 1}` : ""}. The computer players come after them. <button id="online-open">Lobby</button></span>`
@@ -428,7 +428,7 @@ export class Game {
     const pick = (document.querySelector("#civ") as HTMLSelectElement | null)?.value || null;
     const civs = this.rules.civs;
     const mine = pick ?? (civs.length ? civs[Math.floor(Math.random() * civs.length)].id : null);
-    const opp = Number((document.querySelector("#opponents") as HTMLSelectElement | null)?.value) || this.opponents;
+    const opp = this.computersChosen();
     const mode = (document.querySelector("#teams") as HTMLSelectElement | null)?.value;
     if (mode === "ffa" || mode === "team" || mode === "custom") this.teamMode = mode;
     for (let i = 0; i <= opp; i++) {
@@ -1044,8 +1044,32 @@ export class Game {
 
   /** What the start screen says about the players chosen. */
   private playersNote(opp: number) {
-    const min = minMapSize(opp + 1);
-    return `${opp + 1} players.${min ? ` The map will be at least ${MAP_SIZES.find(([, t]) => t === min)?.[0]} (${min} x ${min}).` : ""}`;
+    const total = opp + 1 + this.friendsIn();
+    const min = minMapSize(total);
+    return `${total} players.${min ? ` The map will be at least ${MAP_SIZES.find(([, t]) => t === min)?.[0]} (${min} x ${min}).` : ""}`;
+  }
+
+  /** Friends connected to this host, who play beside the computers. */
+  private friendsIn() { return this.online?.role === "host" ? this.online.friends.filter((f) => f.peer.open).length : 0; }
+
+  /** How many computers may play: with friends in, none at all if wished, and no more than eight players in all;
+   *  alone, at least one, to have someone to play against. */
+  private computerChoices(): number[] {
+    const friends = this.friendsIn();
+    const lo = friends ? 0 : 1, hi = 7 - friends;
+    return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+  }
+  private computersShown() { const c = this.computerChoices(); return Math.min(c[c.length - 1], Math.max(c[0], this.opponents)); }
+  /** The number of computers chosen on the screen (0 is a choice, not a missing one). */
+  private computersChosen() {
+    const v = Number((document.querySelector("#opponents") as HTMLSelectElement | null)?.value);
+    const c = this.computerChoices();
+    return Number.isFinite(v) && c.includes(v) ? v : this.computersShown();
+  }
+  /** The start buttons: a level for the computers, or, with none playing, just Start. */
+  private startButtons(computers: number) {
+    return computers === 0 ? `<button data-start="normal">Start the game</button>`
+      : DIFFICULTIES.map((d, i) => `<button data-start="${d}">${i + 1} · ${DIFFICULTY_NAME[d]}</button>`).join("");
   }
 
   /** The players and their civilizations, with what each civilization is good at; and, as in the original's
@@ -1981,7 +2005,9 @@ export class Game {
       }
       if (t.id === "opponents" || t.id === "teams") {
         const note = document.querySelector("#players-info"), rows = document.querySelector("#team-rows") as HTMLElement | null;
-        const opp = Number((document.querySelector("#opponents") as HTMLSelectElement | null)?.value) || 1;
+        const opp = this.computersChosen();
+        const sc = document.querySelector("#start-choices");
+        if (sc) sc.innerHTML = this.startButtons(opp);
         if (note) note.textContent = this.playersNote(opp);
         if (rows) {
           for (let i = 0; i <= 7; i++) { const s = document.querySelector(`#team-${i}`) as HTMLSelectElement | null; if (s) this.teamList[i] = Number(s.value) || 0; }
