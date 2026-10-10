@@ -683,6 +683,21 @@ describe("the original's rules", () => {
     expect(riders.every((u) => !u.alive)).toBe(true);
   });
 
+  it("on an island map the AI builds a Dock on its own shore and has a transport within fifteen minutes", () => {
+    for (const mapType of ["small_islands", "large_islands"] as const) {
+      for (const seed of [1, 2]) {
+        const w = new World(RULES, seed, ["A", "B"], 72, true, { mapType });
+        w.ais = [new AIController(0, "hard"), new AIController(1, "normal")];
+        for (const ai of w.ais) ai.attach(w);
+        run(w, 15 * 60);
+        for (const p of w.players) {
+          expect(w.buildingsOf(p.id).some((b) => b.def.on_water && b.complete), `${mapType} ${seed} player ${p.id} Dock`).toBe(true);
+          expect(w.unitsOf(p.id).some((u) => u.isTransport), `${mapType} ${seed} player ${p.id} transport`).toBe(true);
+        }
+      }
+    }
+  }, 120_000);
+
   it("island maps: every base on its own island, no way across but by sea", () => {
     for (const mapType of ["large_islands", "small_islands"] as const) {
       const w = new World(RULES, 3, ["A", "B"], 72, true, { mapType });

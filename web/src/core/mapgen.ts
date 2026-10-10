@@ -145,6 +145,8 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
     }
   }
 
+  if (islands(type)) islandWoods(w, starts);
+
   // Land paths between the bases, except where the sea is meant to part them.
   if (!islands(type)) connect(w, starts);
   if (!landOnly(type)) deepFish(w, starts);
@@ -249,6 +251,34 @@ function relics(w: World, starts: Tile[]) {
   }
 }
 
+/** An island holds only its own wood, where a land map shares all its woods: the woods placed around a base
+ *  left an island about 3,000, gone before its boats were built. Woods go round the island's edge, away
+ *  from the town, until it holds about `ISLAND_WOOD`. */
+const ISLAND_WOOD = 10000;
+function islandWoods(w: World, starts: Tile[]) {
+  const map = w.map;
+  for (const s of starts) {
+    // The island under the base: every land tile joined to it, trees and all.
+    const land = new Uint8Array(map.width * map.height), stack = [s];
+    land[map.index(s)] = 1;
+    while (stack.length) {
+      const t = stack.pop()!;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const o = new Tile(t.x + dx, t.y + dy);
+        if (!map.inside(o) || land[map.index(o)] || map.terrainAt(o) === Terrain.water) continue;
+        land[map.index(o)] = 1;
+        stack.push(o);
+      }
+    }
+    const wood = () => w.nodes.reduce((a, n) => a + (n.alive && n.def.resource === "wood" && land[map.index(n.tile)] ? n.amount : 0), 0);
+    for (let tries = 0; tries < 60 && wood() < ISLAND_WOOD; tries++) {
+      const c = s.center.add(DIRS16[w.rng.int(0, 15)].mul(w.rng.int(12, 18))).tile;
+      if (!map.inside(c) || !land[map.index(c)]) continue;
+      forest(w, c, 2 + w.rng.int(0, 15) / 10, 0.92);
+    }
+  }
+}
+
 /** A depth from the edge for each tile along it: a slow random walk between lo and hi. */
 function coastline(w: World, len: number, lo: number, hi: number): number[] {
   const out: number[] = [];
@@ -282,9 +312,10 @@ function sea(w: World, type: MapType) {
     map.terrain.fill(Terrain.water);
     const big = type === "large_islands";
     const land = (t: Tile) => { map.terrain[map.index(t)] = Terrain.grass; };
+    // Each base's island is big enough for a town and a ring of woods around it (see islandWoods).
     for (const s of w.startTiles) {
-      blob(w, s, n * (big ? 0.25 : 0.2), land);
-      for (let k = 0; k < 3; k++) blob(w, new Tile(s.x + w.rng.int(-6, 6), s.y + w.rng.int(-6, 6)), n * (big ? 0.14 : 0.11), land);
+      blob(w, s, n * (big ? 0.28 : 0.24), land);
+      for (let k = 0; k < 3; k++) blob(w, new Tile(s.x + w.rng.int(-6, 6), s.y + w.rng.int(-6, 6)), n * (big ? 0.16 : 0.13), land);
     }
     const scale = (n * n) / (72 * 72);
     for (let k = 0; k < Math.round((big ? 1 : 4) * scale); k++) {
