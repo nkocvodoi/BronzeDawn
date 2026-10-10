@@ -77,7 +77,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [x] Tới 8 người chơi (1 đến 7 máy), máy đánh riêng hoặc liên minh chống bạn
 - [x] Chia đội tùy ý (tới 4 đội), đồng minh với máy, trạng thái ngoại giao (đồng minh / trung lập / kẻ thù) trong màn hình Diplomacy, cống nạp 100 mỗi lần (phí 25%, miễn phí khi có Coinage hoặc là người Palmyran); máy trung lập được cống đủ 2600 sẽ thành đồng minh
 - [x] 5 mức AI: Easiest (dừng ở Tool Age, tối đa 8 lính), Easy, Moderate, Hard (thu nhanh hơn 20%), Hardest (như Hard, thêm 2000 mỗi loại lúc đầu, như bản gốc ăn gian); AI không xuất quân khi ít hơn 80% quân địch
-- [ ] Lưu và tải trận
+- [x] Lưu và tải trận: lưu toàn bộ trạng thái (cả AI) trong trình duyệt hoặc ra file .bdsave (nén gzip, khoảng 0,1 MB cho bản đồ nhỏ); trận tải lại chạy tiếp y hệt trận đã lưu
 - [ ] Chơi online với bạn bè: lockstep qua WebRTC. Phần mô phỏng đã tất định sẵn cho việc này.
 
 ## Chỗ đang khác bản gốc (đã chọn, có thể đổi)

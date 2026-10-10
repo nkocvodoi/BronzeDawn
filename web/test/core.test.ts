@@ -7,7 +7,8 @@ import { scores } from "../src/core/score";
 import { runMatch } from "../src/core/sim";
 import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
-import { Victory, World } from "../src/core/world";
+import { Victory, World, WorldOptions } from "../src/core/world";
+import { loadWorld, saveWorld } from "../src/core/save";
 
 /** An empty grass map, for tests that set up their own scene. */
 const blank = (size = 24) => new World(RULES, 1, ["A", "B"], size, false);
@@ -905,6 +906,40 @@ describe("game settings and other victories", () => {
     expect(w.players[0].wonderAt).toBeNull();
     run(w, (RULES.economy.wonder_seconds ?? 900) + 2);
     expect(w.winner).toBeNull();
+  });
+});
+
+describe("saving and loading", () => {
+  /** A whole match's state, for comparing two worlds: the saved form of everything in it. */
+  const state = (w: World) => JSON.stringify(saveWorld(w).world);
+
+  for (const [name, mapType, opts] of [
+    ["inland, two AIs", "inland", {}],
+    ["islands, with relics, hills and a time limit", "small_islands", { victory: { kind: "time", target: 3600 } }],
+  ] as [string, MapType, Partial<WorldOptions>][]) {
+    it(`a loaded game goes on exactly as the saved one: ${name}`, () => {
+      const w = new World(RULES, 4, ["A", "B", "C"], 72, true, { mapType, teams: [0, 1, 1], ...opts });
+      w.ais = [new AIController(0, "hard"), new AIController(1, "normal"), new AIController(2, "easy")];
+      for (const ai of w.ais) ai.attach(w);
+      run(w, 9 * 60);
+      // Through text, as a save file goes to disk and comes back.
+      const back = loadWorld(JSON.parse(JSON.stringify(saveWorld(w))), RULES);
+      expect(state(back)).toBe(state(w));
+      run(w, 6 * 60);
+      run(back, 6 * 60);
+      expect(back.time).toBe(w.time);
+      expect(state(back)).toBe(state(w));
+      expect(back.units.length).toBeGreaterThan(20);
+    }, 120_000);
+  }
+
+  it("refuses a save from another version, and a save that names what these rules lack", () => {
+    const w = new World(RULES, 1, ["A", "B"], 24, false);
+    w.spawnUnit("villager", 0, new Tile(3, 3).center);
+    const f = saveWorld(w);
+    expect(() => loadWorld({ ...f, format: 999 }, RULES)).toThrow(/another version/);
+    const broken = JSON.parse(JSON.stringify(f).replace('"r":"/units/villager"', '"r":"/units/no_such_unit"'));
+    expect(() => loadWorld(broken, RULES)).toThrow(/no_such_unit/);
   });
 });
 
