@@ -1247,6 +1247,22 @@ export function cliffPic(variant: number): Pic {
   });
 }
 
+/** The dark floor under a tree and around it, as its own picture: it goes with the tree when the tree is cut
+ *  (drawn into the ground, it stayed behind as a dark patch). A diamond a tile wide, dithered thinner at its
+ *  rim, about as dark as the ground under a wood used to be drawn. */
+export function forestFloorPic(): Pic {
+  const tw = HALF_W / PX, th = HALF_H / PX; // half a tile in art pixels: 16 x 8
+  const w = Math.round(tw * 3.2), h = Math.round(th * 3.2);
+  return pic("forest-floor", w, h, 0.5, 0.5, (p) => {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const d = Math.abs(x + 0.5 - w / 2) / (w / 2) + Math.abs(y + 0.5 - h / 2) / (h / 2); // 0 centre, 1 rim
+      if (d > 1) continue;
+      if (d < 0.6) p.set(x, y, FOREST_FLOOR, 150);
+      else if (bayer(x, y) < 0.5 * (1 - (d - 0.6) / 0.4)) p.set(x, y, FOREST_FLOOR, 110);
+    }
+  });
+}
+
 export function nodePic(type: string, variant: number): Pic {
   const files = ASSETS.manifest.resources?.[type];
   if (files) {

@@ -1002,7 +1002,7 @@ export class World {
       for (let i = 0; i < 4; i++) out.values[i] = Math.floor(back.values[i] * (1 - e.progress) * 0.5);
       this.players[player].res.add(out);
     }
-    this.kill(e, 0);
+    this.kill(e, 0, true);
   }
 
   // ---- technologies
@@ -1924,7 +1924,8 @@ export class World {
     if (t.hp <= 0) this.kill(t, attackerId);
   }
 
-  private kill(t: Entity, attackerId: number) {
+  /** `deleted`: its owner removed it (the Delete key), rather than it falling. */
+  private kill(t: Entity, attackerId: number, deleted = false) {
     t.alive = false;
     t.hp = 0;
     if (t instanceof Unit && t.cargo.length) {
@@ -1950,7 +1951,7 @@ export class World {
     if (a && a.owner >= 0 && a.owner !== t.owner && !(t instanceof Unit && t.isAnimal)) {
       if (t instanceof Building) this.players[a.owner].stats.razed++; else this.players[a.owner].stats.kills++;
     }
-    this.events.push({ kind: "died", id: t.id, owner: t.owner, at: t.center, wasBuilding: t instanceof Building });
+    this.events.push({ kind: "died", id: t.id, owner: t.owner, at: t.center, wasBuilding: t instanceof Building, deleted });
     // Only a villager's kill leaves meat; soldiers' kills are wasted, as in the original.
     if (t instanceof Unit && t.isAnimal && a instanceof Unit && a.isVillager) {
       const meat = this.addCarcass(t);

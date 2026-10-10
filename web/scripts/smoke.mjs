@@ -35,7 +35,15 @@ const at = async (id) => g((id) => { const e = game.world.entity(id); game.look(
 
 await page.goto(`http://localhost:${port}/?seed=5`);
 await page.waitForFunction(() => window.game);
-check(await page.isVisible("#overlay [data-start]"), "start screen offers the difficulty choice");
+const menu = await page.$$eval(".mainmenu-list button", (b) => b.map((x) => x.textContent));
+check(menu.join("|") === "Single Player|Multiplayer|Saved Games|Help", `the main menu offers ${menu.join(", ")}`);
+await page.keyboard.press("3");
+check(!(await g(() => game.started)), "a digit on the main menu does not start a game");
+await page.click("#mm-help");
+check(await page.isVisible("#overlay .help"), "Help opens from the main menu");
+await page.click("#mm-back");
+await page.click("#mm-single");
+check(await page.isVisible("#overlay [data-start]"), "Single Player leads to the settings and the difficulty choice");
 check((await page.$$eval("[data-start]", (b) => b.map((x) => x.textContent))).join("|") === "1 · Easiest|2 · Easy|3 · Moderate|4 · Hard|5 · Hardest", "the five levels of the original, Easiest to Hardest");
 
 check((await page.$$eval("#map-type option", (o) => o.length)) === 9, "the start screen offers nine kinds of map");
@@ -235,6 +243,7 @@ await page.screenshot({ path: process.env.SHOT ?? "smoke.png" });
 
 // Watch mode: a new map with every player a computer; you only look.
 await g(() => game.restart());
+await page.click("#mm-single");
 await page.waitForSelector("#watch");
 await page.check("#watch");
 await page.click("[data-start=normal]");
@@ -249,6 +258,7 @@ check(await g(() => !game.revealMap && game.me === 0), "V follows one player");
 // The original's game settings: a later age, a bigger stockpile, another population limit, an explored
 // map and a time limit, all taken from the start screen.
 await g(() => game.restart());
+await page.click("#mm-single");
 await page.waitForSelector("#victory");
 await page.uncheck("#watch");
 await page.selectOption("#opponents", "3");

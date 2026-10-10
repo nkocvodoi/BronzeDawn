@@ -13,7 +13,7 @@ import { Command as Order, CommandResult, runCommand } from "../core/commands";
 import { DELAY, LockstepGuest, LockstepHost, TURN_TICKS } from "../core/net";
 import { Conn, HAS_RELAY, joinRoom, Peer, Room } from "./rtc";
 import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
-import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
+import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, forestFloorPic, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
 import { drawTimeline } from "./timeline";
 import { describe, describeCiv } from "./describe";
@@ -157,6 +157,9 @@ export class Game {
   private worldLayer = new Container();
   private terrain = new Container();
   private cliffs: Sprite[] = [];
+  /** The dark floor under each tree, by the tree's id: it goes when the tree does. */
+  private floors = new Container();
+  private floorOf = new Map<number, Sprite>();
   private entities = new Container();
   private effects = new Container();
   private fogSprite = new Sprite();
@@ -192,7 +195,7 @@ export class Game {
     role: "host"; friends: { peer: Conn; civ: string | null; slot: number }[];
     /** The six-digit room friends join by; or, with `longCodes`, an invitation made by hand. */
     room: Room | null; longCodes: boolean; invite: { peer: Peer; code: string; accept: (a: string) => Promise<void>; tried: boolean } | null;
-  } | { role: "guest"; peer: Conn | null; civ: string | null; longCodes: boolean; code: string | null } | null = null;
+  } | { role: "guest"; peer: Conn | null; civ: string | null; longCodes: boolean; code: string | null; joining?: { code: string; since: number } | null; room?: string; tried?: string } | null = null;
   /** The host has paused an online game (F3). */
   private hostPaused = false;
   private desyncShown = false;
@@ -216,7 +219,7 @@ export class Game {
     this.popLimit = Number(remembered("bd-pop-limit", (rules.economy.pop_limits ?? []).map(String), String(rules.economy.pop_max)));
     this.world = new World(rules, seed, ["You", "Enemy"]);
     this.entities.sortableChildren = true;
-    this.worldLayer.addChild(this.terrain, this.entities, this.effects, this.fogSprite);
+    this.worldLayer.addChild(this.terrain, this.floors, this.entities, this.effects, this.fogSprite);
     // Hard black edges and a stipple over explored ground, drawn on the GPU from the smooth fog texture.
     this.fogFilter = new FogFilter(app.renderer.resolution);
     this.fogSprite.filters = [this.fogFilter.filter];
@@ -225,7 +228,7 @@ export class Game {
     this.bindInput();
     app.ticker.add((t) => this.frame(t.deltaMS / 1000));
     setInterval(() => this.keepOnlineGameGoing(), 250);
-    this.showStart();
+    this.showMainMenu();
   }
 
   // ---- setup
@@ -260,16 +263,20 @@ export class Game {
 
   private buildWorld() {
     this.terrain.removeChildren().forEach((c) => c.destroy({ texture: true }));
-    // The ground under a forest is dark, and a little darker around it.
-    const map = this.world.map, forest = new Uint8Array(map.width * map.height);
+    // The ground under a forest is dark: a floor picture under each tree, which goes when the tree is cut.
+    const map = this.world.map;
+    this.floors.removeChildren().forEach((c) => c.destroy());
+    this.floorOf.clear();
+    const floor = forestFloorPic();
     for (const r of this.world.nodes) {
-      if (r.def.id !== "tree") continue;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        const x = r.tile.x + dx, y = r.tile.y + dy;
-        if (x < 0 || y < 0 || x >= map.width || y >= map.height) continue;
-        const i = y * map.width + x;
-        forest[i] = dx === 0 && dy === 0 ? 1 : forest[i] || 2;
-      }
+      if (r.def.id !== "tree" || !r.alive) continue;
+      const sp = new Sprite(floor.texture);
+      sp.width = floor.w; sp.height = floor.h;
+      sp.anchor.set(floor.ax, floor.ay);
+      const at = iso(r.center);
+      sp.position.set(at.x, at.y);
+      this.floors.addChild(sp);
+      this.floorOf.set(r.id, sp);
     }
     // Cliffs stand up from the ground: a rock sprite on each cliff tile, drawn in depth order with everything else.
     for (const c of this.cliffs) c.destroy();
@@ -287,7 +294,7 @@ export class Game {
       this.entities.addChild(sp);
       this.cliffs.push(sp);
     }
-    for (const t of terrainChunks(this.world.map, forest)) {
+    for (const t of terrainChunks(this.world.map)) {
       const ground = new Sprite(t.texture);
       ground.position.set(t.x, t.y);
       ground.width = t.w;
@@ -333,13 +340,44 @@ export class Game {
 
   // ---- screens
 
+  /** The first screen, as the original's: one column of choices. Single Player and Multiplayer each lead to
+   *  their own steps; the game's settings come after. */
+  showMainMenu() {
+    this.started = false;
+    this.hud.playing(false);
+    this.hud.showOverlay("Bronze Dawn", [
+      `<span class="tagline">From the Stone Age to the Iron Age</span>`,
+      `<span class="mainmenu-list">`
+        + `<button id="mm-single">Single Player</button>`
+        + `<button id="mm-multi">Multiplayer</button>`
+        + `<button id="saves-open">Saved Games</button>`
+        + `<button id="mm-help">Help</button>`
+        + `</span>`,
+      `<span class="small">Press ? at any time in a game for the controls</span>`,
+    ], "mainmenu");
+  }
+
+  /** A click on the main menu or the setup screen's Back. */
+  private menuClick(t: HTMLElement): boolean {
+    const id = t.closest("button")?.id ?? "";
+    if (id === "mm-single") { if (this.online) this.leaveOnline(); this.showStart(); return true; }
+    if (id === "mm-multi") { this.showOnline(); return true; }
+    if (id === "mm-help") { this.showHelp(); return true; }
+    if (id === "mm-back") { this.showMainMenu(); return true; }
+    if (id === "setup-back") { if (this.online?.role === "host") this.showHostLobby(); else this.showMainMenu(); return true; }
+    return false;
+  }
+
+  /** The game's settings, then the level to start at: for one player against computers, or for the host of
+   *  an online game once friends have joined. */
   showStart() {
     this.started = false;
     this.hud.playing(false);
     const civs = this.rules.civs.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
     const opts = (xs: [string, string][], on: string) => xs.map(([id, name]) => `<option value="${id}"${id === on ? " selected" : ""}>${name}</option>`).join("");
-    this.hud.showOverlay("Bronze Dawn", [
-      "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
+    const hosting = this.online?.role === "host" && this.online.friends.length > 0;
+    this.hud.showOverlay(hosting ? "Multiplayer" : "Single Player", [
+      hosting ? "Choose the settings for everyone, then start at a level for the computer players." : "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
       `Your civilization: <select id="civ"><option value="">Random</option>${civs}</select>`,
       `<span id="civ-info">A civilization picked at random. Its bonuses show at the top of the screen.</span>`,
       `Map: <select id="map-type">${MAP_TYPES.map(([id, name]) => `<option value="${id}"${id === this.mapType ? " selected" : ""}>${name}</option>`).join("")}</select>`,
@@ -356,15 +394,14 @@ export class Game {
       `<label><input type="checkbox" id="relics"${this.relics ? " checked" : ""}> Ruins and Artifacts (five of each; hold all of either for 15 minutes to win)</label>`,
       `<label><input type="checkbox" id="reveal"${this.exploredStart ? " checked" : ""}> Reveal map: the land is known from the start (units are still hidden by the fog)</label>`,
       `<label><input type="checkbox" id="farms-block"${this.farmsBlock ? " checked" : ""}> Farms block the way, as in the original (off: walk over them, as in the remaster)</label>`,
-      `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
+      hosting ? "" : `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
       `<span class="choices">${DIFFICULTIES.map((d, i) => `<button data-start="${d}">${i + 1} · ${DIFFICULTY_NAME[d]}</button>`).join("")}</span>`,
       "Hard and Hardest: the computer gathers 20% faster. Hardest also starts with 2,000 more of each resource, as the original's Hardest cheats.",
       this.online?.role === "host" && this.online.friends.length
         ? `<span class="online-note">Online: ${this.online.friends.length} friend${this.online.friends.length > 1 ? "s" : ""} connected, playing as Player 2${this.online.friends.length > 1 ? ` to ${this.online.friends.length + 1}` : ""}. The computer players come after them. <button id="online-open">Lobby</button></span>`
         : "",
-      `<span class="choices"><button id="saves-open">Load a saved game</button><button id="online-open">Play with friends online</button></span>`,
-      "Press ? at any time for the controls",
-    ]);
+      `<span class="choices"><button id="setup-back">Back</button></span>`,
+    ], "setup");
   }
 
   start(d: Difficulty) {
@@ -625,7 +662,7 @@ export class Game {
   private showOnline() {
     if (this.online?.role === "host") { this.showHostLobby(); return; }
     if (this.online?.role === "guest") { this.showJoin(); return; }
-    this.hud.showOverlay("Play with friends online", [
+    this.hud.showOverlay("Multiplayer", [
       "Up to eight players in all, friends and computers, on any networks. The host opens a room and gets a six-digit code; friends type it in. No account needed.",
       `<span class="choices"><button id="host-btn">Host a game</button><button id="join-btn">Join a friend's game</button><button id="online-back">Back</button></span>`,
     ], "menu");
@@ -675,11 +712,33 @@ export class Game {
     const o = this.online;
     const civs = this.rules.civs.map((c) => `<option value="${c.id}"${c.id === o.civ ? " selected" : ""}>${c.name}</option>`).join("");
     const connected = !!o.peer?.open;
-    const how = connected ? "" : o.longCodes
+    const pretty = (c: string) => `${c.slice(0, 3)} ${c.slice(3)}`;
+    // Joining by room code: a clear panel while it looks for the host, and once it is in.
+    if (connected || o.joining) {
+      const room = o.room ?? o.joining?.code ?? "";
+      this.hud.showOverlay("Join a friend's game", [
+        connected
+          ? `<div class="join-state ok"><span class="join-tick">✓</span><b>Connected${room ? ` to room ${pretty(room)}` : ""}</b><span>Waiting for the host to start the game<span class="dots"></span></span></div>`
+          : `<div class="join-state"><span class="spinner"></span><b>Joining room ${pretty(room)}…</b><span>Finding the host and a way between your machines (<span id="join-secs">0</span> s)</span></div>`,
+        status ? `<span id="online-status">${status}</span>` : "",
+        `<span class="choices"><button id="online-leave">${connected ? "Leave" : "Cancel"}</button></span>`,
+      ], "menu");
+      if (!connected) {
+        const tick = () => {
+          const el = document.querySelector("#join-secs");
+          if (!el || !o.joining || this.online !== o) return;
+          el.textContent = String(Math.floor((performance.now() - o.joining.since) / 1000));
+          setTimeout(tick, 500);
+        };
+        tick();
+      }
+      return;
+    }
+    const how = o.longCodes
       ? (o.code
         ? `Send this answer code back to the host:<textarea id="answer-code" readonly rows="3">${o.code}</textarea><button id="copy-answer">Copy</button>`
         : `Paste the host's invitation code:<textarea id="invite-in" rows="3" placeholder="BD1-..."></textarea><button id="answer-btn">Make my answer code</button>`)
-      : `Room code: <input id="room-in" inputmode="numeric" maxlength="7" placeholder="123 456" autocomplete="off"> <button id="join-room">Join</button>`;
+      : `Room code: <input id="room-in" inputmode="numeric" maxlength="7" placeholder="123 456" autocomplete="off" value="${o.tried ? pretty(o.tried) : ""}"> <button id="join-room">Join</button>`;
     this.hud.showOverlay("Join a friend's game", [
       `Your civilization: <select id="guest-civ"${connected ? " disabled" : ""}><option value="">Random</option>${civs}</select>`,
       how,
@@ -711,9 +770,11 @@ export class Game {
     const civ = () => (document.querySelector("#guest-civ") as HTMLSelectElement | null)?.value || null;
     switch (id) {
       case "online-open": this.showOnline(); return true;
-      case "online-back": this.showStart(); return true;
-      case "online-setup": this.showStart(); return true; // the friends stay connected; Lobby on the start screen goes back
-      case "online-leave": this.leaveOnline(); this.showStart(); return true;
+      case "online-back": this.showMainMenu(); return true;
+      case "online-setup": // with friends in: on to the settings (they stay connected); alone: back to Host or Join
+        if (this.online?.role === "host" && this.online.friends.length) this.showStart(); else { this.leaveOnline(); this.showOnline(); }
+        return true;
+      case "online-leave": this.leaveOnline(); this.showMainMenu(); return true;
       case "host-btn": {
         const o: Extract<NonNullable<Game["online"]>, { role: "host" }> = { role: "host", friends: [], room: null, longCodes: false, invite: null };
         this.online = o;
@@ -739,9 +800,16 @@ export class Game {
         const o = this.online;
         if (o?.role !== "guest") return true;
         o.civ = civ();
-        const code = text("#room-in");
-        this.showJoin("Connecting…");
-        joinRoom(code).then((conn) => { if (this.online === o) this.joinedHost(conn); else conn.close(); }, (e) => { if (this.online === o) this.showJoin(e.message); });
+        const code = text("#room-in").replace(/\D/g, "");
+        if (code.length !== 6) { this.showJoin("A room code has six digits"); return true; }
+        o.joining = { code, since: performance.now() };
+        o.tried = code; // kept in the box if it fails, to correct rather than type again
+        this.showJoin();
+        joinRoom(code).then((conn) => {
+          if (this.online !== o || !o.joining) { conn.close(); return; }
+          o.joining = null; o.room = code;
+          this.joinedHost(conn);
+        }, (e) => { if (this.online === o && o.joining) { o.joining = null; this.showJoin(e.message); } });
         return true;
       }
       case "invite-btn": {
@@ -871,7 +939,7 @@ export class Game {
     if (del) { deleteSave(Number(del.dataset.deleteSave)).then(() => this.showSaves()); return true; }
     if (t.closest("#save-btn")) { this.saveGame(); return true; }
     if (t.closest("#save-file-btn")) { this.saveToFile(); return true; }
-    if (t.closest("#saves-back")) { this.showStart(); return true; }
+    if (t.closest("#saves-back")) { this.showMainMenu(); return true; }
     if (t.closest("#saves-open")) { this.paused = true; this.showSaves(); return true; }
     return false;
   }
@@ -893,8 +961,8 @@ export class Game {
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
       "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar), and 5x, 10x when watching · F3 pause",
       "Watching the computers: V follows one player (its fog, resources and panel), then the next, then everything",
-      ...this.civLines(),
-      "Press ? or Esc to close",
+      ...(this.started ? this.civLines() : []),
+      this.started ? "Press ? or Esc to close" : `<span class="choices"><button id="mm-back">Back</button></span>`,
     ], "help");
   }
 
@@ -1237,6 +1305,8 @@ export class Game {
           break;
         }
         case "died": {
+          const fl = this.floorOf.get(e.id);
+          if (fl) { fl.destroy(); this.floorOf.delete(e.id); }
           const v = this.views.get(e.id);
           if (v && e.wasBuilding && e.owner !== this.me && this.seen.has(e.id) && !this.anyVisible(this.footprintTiles(v))) {
             // Destroyed where the player cannot see: they find out when they look.
@@ -1251,8 +1321,9 @@ export class Game {
           if (e.wasBuilding) { if (v && this.anyVisible(v.tiles)) this.sfx("collapse", e.at, 1, 0.3); }
           else if (v?.isUnit && v.root.visible) this.sfx(e.owner >= 0 ? "die" : "thud", e.at, 0.8, 0.15);
           if (v) {
-            if (v.isUnit && v.root.visible) this.corpse(v);
-            if (e.wasBuilding && this.explored(e.at.tile)) this.rubble(v);
+            // Deleted on purpose, it is just gone in a puff: no body, no rubble.
+            if (v.isUnit && v.root.visible && !e.deleted) this.corpse(v);
+            if (e.wasBuilding && this.explored(e.at.tile) && !e.deleted) this.rubble(v);
             v.root.destroy({ children: true });
             this.views.delete(e.id);
           }
@@ -1956,6 +2027,7 @@ export class Game {
         return;
       }
       if (t.closest("#speed")) { this.setSpeed(0, (this.speeds.indexOf(this.speed) + 1) % this.speeds.length); return; }
+      if (this.menuClick(t)) return;
       if (this.savesClick(t)) return;
       if (this.onlineClick(t)) return;
       // Menu, Diplomacy and ? open their screens and pause, as the original's did.
@@ -2058,7 +2130,7 @@ export class Game {
     this.me = 0;
     this.revealMap = false;
     this.newGame(Math.floor(Math.random() * 999_999) + 1);
-    this.showStart();
+    this.showMainMenu();
   }
 
   private mouseDown(e: MouseEvent) {
@@ -2255,11 +2327,20 @@ export class Game {
 
   private keyDown(e: KeyboardEvent) {
     const key = e.key;
+    // Typing in a box (a room code, a team) is typing, not orders: the game's keys leave it alone. Enter in
+    // the room code box joins.
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) {
+      if (key === "Enter" && t.id === "room-in") (document.querySelector("#join-room") as HTMLButtonElement | null)?.click();
+      return;
+    }
     if (key.startsWith("Arrow")) { this.keys.add(key); e.preventDefault(); return; }
     const ch = key.length === 1 ? key.toUpperCase() : key;
     if (!this.started) {
+      // 1 to 5 start at a level, on the setup screen only.
       const d = DIFFICULTIES[Number(ch) - 1] as Difficulty | undefined;
-      if (d) this.start(d);
+      if (d && document.querySelector("#overlay:not([hidden]) [data-start]")) this.start(d);
+      if (key === "Escape" && document.querySelector("#mm-back, #setup-back")) (document.querySelector("#mm-back, #setup-back") as HTMLButtonElement).click();
       return;
     }
     if (this.world.winner !== null) { if (key === "Enter") this.restart(); return; }
