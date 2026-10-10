@@ -8,6 +8,8 @@ import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import { MAP_TYPES, MapType } from "../core/mapgen";
 import { Stance, STANCES, Victory, WinHow, World } from "../core/world";
+import { loadWorld, SaveFile, saveWorld } from "../core/save";
+import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
 import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
 import { drawTimeline } from "./timeline";
@@ -217,10 +219,15 @@ export class Game {
     const n = Math.max(2, civs.length);
     const names = this.watching ? Array.from({ length: n }, (_, i) => `Computer ${i + 1}`)
       : ["You", ...Array.from({ length: n - 1 }, (_, i) => (n === 2 ? "Enemy" : `Enemy ${i + 1}`))];
-    this.world = new World(this.rules, seed, names, size, true, {
+    this.useWorld(new World(this.rules, seed, names, size, true, {
       civs, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, startAge: this.startAge, resources: this.resources,
       popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2],
-    });
+    }));
+  }
+
+  /** A new world on screen: everything drawn for the old one goes. */
+  private useWorld(w: World) {
+    this.world = w;
     for (const v of this.views.values()) v.root.destroy({ children: true });
     this.views.clear();
     for (const g of this.ghosts.values()) g.view.root.destroy({ children: true });
@@ -334,6 +341,7 @@ export class Game {
       `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
       `<span class="choices">${DIFFICULTIES.map((d, i) => `<button data-start="${d}">${i + 1} · ${DIFFICULTY_NAME[d]}</button>`).join("")}</span>`,
       "Hard and Hardest: the computer gathers 20% faster. Hardest also starts with 2,000 more of each resource, as the original's Hardest cheats.",
+      `<span class="choices"><button id="saves-open">Load a saved game</button></span>`,
       "Press ? at any time for the controls",
     ]);
   }
@@ -390,6 +398,16 @@ export class Game {
     // Start zoomed so the map fills the screen as it did at 800 x 600, with the interface scaled to match.
     const u = Math.min(window.innerWidth / 800, window.innerHeight / 600);
     this.cam.zoom = ZOOMS.reduce((a, b) => (Math.abs(b - 1 / u) < Math.abs(a - 1 / u) ? b : a));
+    this.enterGame();
+    const civ = this.world.players[this.me].civ;
+    if (size > chosenSize) this.hud.message(`The map was made ${MAP_SIZES.find(([, t]) => t === size)?.[0] ?? size} to fit ${opp + 1} players`);
+    if (this.watching) this.hud.message(`Watching ${this.world.players.length} computers. V: follow a player or see everything · + and -: speed up to 10x`);
+    else this.hud.message(`${civ ? `Your civilization: ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
+    this.selectTownCenter();
+  }
+
+  /** The game on screen and running: panels in, the interface in your civilization's style, music. */
+  private enterGame() {
     this.started = true;
     this.paused = false;
     this.hud.playing(true);
@@ -403,10 +421,92 @@ export class Game {
     const civ = this.world.players[this.me].civ;
     const others = this.world.players.filter((p) => p.id !== this.me).map((p) => p.civ?.name ?? p.name);
     this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules) : [], others.join(", ") || null);
-    if (size > chosenSize) this.hud.message(`The map was made ${MAP_SIZES.find(([, t]) => t === size)?.[0] ?? size} to fit ${opp + 1} players`);
-    if (this.watching) this.hud.message(`Watching ${this.world.players.length} computers. V: follow a player or see everything · + and -: speed up to 10x`);
-    else this.hud.message(`${civ ? `Your civilization: ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
-    this.selectTownCenter();
+  }
+
+  // ---- saving and loading
+
+  /** What the interface keeps beside the world in a save. */
+  private uiState() {
+    return { me: this.me, watching: this.watching, watchAll: this.watchAll, speed: this.speed, seed: this.seed, mapSize: this.mapSize,
+      reseed: this.reseed, cam: { ...this.cam }, seen: [...this.seen], groups: [...this.groups] };
+  }
+
+  /** A name to list a save by: who plays whom, and how far in. */
+  private saveName() {
+    const w = this.world, mine = w.players[this.me];
+    const others = w.players.filter((p) => p.id !== this.me).map((p) => p.civ?.name ?? p.name);
+    return `${this.watching ? "Watching" : mine.civ?.name ?? mine.name} vs ${others.join(", ")} · ${w.rules.ages[mine.age].name} · ${clock(w.time)}`;
+  }
+
+  /** Saves the game in the browser. */
+  async saveGame() {
+    if (!this.started || this.ended) { this.hud.message("There is no game to save"); return; }
+    try {
+      await storeSave(this.saveName(), saveWorld(this.world, this.uiState()));
+      this.hud.message("Game saved");
+    } catch (e) { this.hud.message(`Could not save: ${(e as Error).message}`); }
+    if (document.querySelector("#saves")) this.showSaves();
+  }
+
+  /** Saves the game to a file. */
+  private async saveToFile() {
+    if (!this.started || this.ended) { this.hud.message("There is no game to save"); return; }
+    const blob = await pack(saveWorld(this.world, this.uiState()));
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `bronze-dawn-${clock(this.world.time).replace(":", "-")}.bdsave`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  /** A saved game back on screen, as it was: the world, whose eyes you see it through, the camera. */
+  loadGame(file: SaveFile) {
+    let w: World;
+    try { w = loadWorld(file, this.rules); } catch (e) { this.hud.message(`Could not load: ${(e as Error).message}`); return; }
+    const ui = (file.ui ?? {}) as Partial<ReturnType<Game["uiState"]>>;
+    this.me = ui.me ?? 0;
+    this.watching = ui.watching ?? false;
+    this.watchAll = ui.watchAll ?? true;
+    this.seed = ui.seed ?? w.seed;
+    this.mapSize = ui.mapSize ?? w.map.width;
+    this.ended = false;
+    this.useWorld(w);
+    for (const id of ui.seen ?? []) this.seen.add(id);
+    for (const [k, ids] of ui.groups ?? []) this.groups.set(k, ids);
+    if (ui.speed && this.speeds.includes(ui.speed)) { this.speed = ui.speed; this.hud.speed(ui.speed); }
+    if (ui.reseed !== undefined) this.reseed = ui.reseed;
+    this.revealMap = this.watching && this.watchAll;
+    if (ui.cam) { this.cam.x = ui.cam.x; this.cam.y = ui.cam.y; this.cam.zoom = ui.cam.zoom; this.clampCamera(); }
+    this.enterGame();
+    this.hud.message(`Game loaded: ${clock(w.time)}`);
+  }
+
+  /** The saved games, to load or delete, and saving to or from a file. */
+  async showSaves() {
+    let list: SaveInfo[] = [];
+    try { list = await listSaves(); } catch (e) { this.hud.message(`Saved games are not available here: ${(e as Error).message}`); }
+    const esc = (x: string) => x.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]!);
+    const rows = list.map((s) => `<tr><td>${esc(s.name)}</td><td>${new Date(s.saved).toLocaleString()}</td>`
+      + `<td><span class="seg"><button data-load="${s.id}">Load</button><button data-delete-save="${s.id}">Delete</button></span></td></tr>`).join("");
+    const playing = this.started && !this.ended;
+    this.hud.showOverlay("Saved games", [
+      rows ? `<table id="saves" class="diplomacy">${rows}</table>` : `<span id="saves">No saved games yet.</span>`,
+      `<span class="choices">${playing ? `<button id="save-btn">Save this game</button><button id="save-file-btn">Save to a file</button>` : ""}`
+        + `<label class="file-btn"><input type="file" id="load-file" accept=".bdsave,.json" hidden><span>Load from a file</span></label>`
+        + `<button id="${playing ? "resume-btn" : "saves-back"}">${playing ? "Return to game (Esc)" : "Back"}</button></span>`,
+    ], "menu");
+  }
+
+  /** A click in the saved games screen. */
+  private savesClick(t: HTMLElement): boolean {
+    const load = t.closest("[data-load]") as HTMLElement | null, del = t.closest("[data-delete-save]") as HTMLElement | null;
+    if (load) { readSave(Number(load.dataset.load)).then((f) => this.loadGame(f), (e) => this.hud.message(`Could not load: ${e.message}`)); return true; }
+    if (del) { deleteSave(Number(del.dataset.deleteSave)).then(() => this.showSaves()); return true; }
+    if (t.closest("#save-btn")) { this.saveGame(); return true; }
+    if (t.closest("#save-file-btn")) { this.saveToFile(); return true; }
+    if (t.closest("#saves-back")) { this.showStart(); return true; }
+    if (t.closest("#saves-open")) { this.paused = true; this.showSaves(); return true; }
+    return false;
   }
 
   private showHelp() {
@@ -469,6 +569,7 @@ export class Game {
         ${t("lock-btn", "Keep the mouse in the game", this.lock.wanted)}
         ${t("reseed-btn", "Farms sow themselves again", this.reseed)}
         <button id="fs-btn">${document.fullscreenElement ? "Leave full screen" : "Full screen"}</button>
+        <button id="saves-open">Save or load a game</button>
         <button id="timeline-btn">Timeline</button>
         <button id="credits-btn">Credits</button>
         <button data-restart>Quit to a new map</button>
@@ -1432,6 +1533,11 @@ export class Game {
     // The start screen describes the chosen civilization as you pick it.
     document.addEventListener("change", (e) => {
       const t = e.target as HTMLSelectElement;
+      if (t.id === "load-file") {
+        const f = (t as unknown as HTMLInputElement).files?.[0];
+        if (f) unpack(f).then((s) => this.loadGame(s), (err) => this.hud.message(`Could not read that file: ${err.message}`));
+        return;
+      }
       if (t.id === "opponents" || t.id === "teams") {
         const note = document.querySelector("#players-info"), rows = document.querySelector("#team-rows") as HTMLElement | null;
         const opp = Number((document.querySelector("#opponents") as HTMLSelectElement | null)?.value) || 1;
@@ -1480,6 +1586,7 @@ export class Game {
         return;
       }
       if (t.closest("#speed")) { this.setSpeed(0, (this.speeds.indexOf(this.speed) + 1) % this.speeds.length); return; }
+      if (this.savesClick(t)) return;
       // Menu, Diplomacy and ? open their screens and pause, as the original's did.
       if (this.started) {
         const open = (show: () => void) => {

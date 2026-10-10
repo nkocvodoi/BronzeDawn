@@ -217,6 +217,20 @@ const pair = await g(() => { const vs = game.world.unitsOf(0).filter((u) => u.is
 await page.keyboard.press("Tab");
 check(await g((p) => game.selection[0] === p[1] && game.selection[1] === p[0], pair), "Tab brings the next unit of the selection forward");
 
+// Save in the browser, play on, then load: the game is back as it was saved.
+await g(() => game.saveGame());
+const savedAt = await g(() => ({ t: game.world.time, n: game.world.units.length, food: game.world.players[0].res.food }));
+check((await page.textContent("#messages")).includes("Game saved"), "the game saves in the browser");
+await wait(1500);
+await page.click("#menu-btn");
+await page.click("#saves-open");
+await page.waitForSelector("[data-load]");
+check((await page.$$("[data-load]")).length >= 1, "the saved games screen lists the save");
+await page.click("[data-load]");
+await wait(500);
+const loaded = await g(() => ({ t: game.world.time, n: game.world.units.length, food: game.world.players[0].res.food, started: game.started, paused: game.paused }));
+check(loaded.started && !loaded.paused && Math.abs(loaded.t - savedAt.t) < 1 && loaded.n === savedAt.n, `loading puts the game back where it was saved (${savedAt.t.toFixed(1)}s, ${loaded.t.toFixed(1)}s)`);
+
 await page.screenshot({ path: process.env.SHOT ?? "smoke.png" });
 
 // Watch mode: a new map with every player a computer; you only look.

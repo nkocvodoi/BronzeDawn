@@ -190,6 +190,11 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 /* Diplomacy: small buttons in a row, the chosen stance lit; the civilization's bonuses in small print. */
 #overlay table.diplomacy td { vertical-align: middle; }
 #overlay .seg { display: inline-flex; gap: 3px; flex-wrap: wrap; }
+/* A file picker that looks like the other buttons. */
+#overlay .file-btn span {
+  display: inline-block; font-weight: 700; font-size: 16px; color: #f3e4bd; cursor: pointer; padding: 8px 20px;
+  background: linear-gradient(#6e5534, #4a3820); border: 2px solid; border-color: #c8a462 #1e1208 #1e1208 #c8a462; text-shadow: 1px 1px 0 #000;
+}
 #overlay .seg button { font-size: 12px; padding: 3px 7px; }
 #overlay .seg button.picked { background: linear-gradient(#a8844a, #7a5c2c); color: #fff6dc; }
 #overlay .seg button:not(.picked) { color: #b8a888; }
