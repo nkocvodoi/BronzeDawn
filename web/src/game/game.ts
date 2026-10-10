@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Matrix, Sprite, Texture } from "pixi.js";
-import { AIController, Difficulty } from "../core/ai";
+import { AIController, DIFFICULTIES, DIFFICULTY_NAME, Difficulty } from "../core/ai";
 import { Building, Entity, ResourceNode, Unit } from "../core/entities";
 import { Tile, Vec2 } from "../core/geom";
 import { Terrain } from "../core/grid";
@@ -332,8 +332,8 @@ export class Game {
       `<label><input type="checkbox" id="reveal"${this.exploredStart ? " checked" : ""}> Reveal map: the land is known from the start (units are still hidden by the fog)</label>`,
       `<label><input type="checkbox" id="farms-block"${this.farmsBlock ? " checked" : ""}> Farms block the way, as in the original (off: walk over them, as in the remaster)</label>`,
       `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
-      `<span class="choices"><button data-start="easy">1 · Easy</button><button data-start="normal">2 · Normal</button><button data-start="hard">3 · Hard</button></span>`,
-      "Hard: the computer gathers 20% faster.",
+      `<span class="choices">${DIFFICULTIES.map((d, i) => `<button data-start="${d}">${i + 1} · ${DIFFICULTY_NAME[d]}</button>`).join("")}</span>`,
+      "Hard and Hardest: the computer gathers 20% faster. Hardest also starts with 2,000 more of each resource, as the original's Hardest cheats.",
       "Press ? at any time for the controls",
     ]);
   }
@@ -1776,7 +1776,7 @@ export class Game {
     if (key.startsWith("Arrow")) { this.keys.add(key); e.preventDefault(); return; }
     const ch = key.length === 1 ? key.toUpperCase() : key;
     if (!this.started) {
-      const d = ({ "1": "easy", "2": "normal", "3": "hard" } as Record<string, Difficulty>)[ch];
+      const d = DIFFICULTIES[Number(ch) - 1] as Difficulty | undefined;
       if (d) this.start(d);
       return;
     }

@@ -908,6 +908,23 @@ describe("game settings and other victories", () => {
   });
 });
 
+describe("the five AI levels", () => {
+  it("Hardest starts with 2,000 more of each resource; the others start even", () => {
+    for (const d of ["easiest", "easy", "normal", "hard", "hardest"] as const) {
+      const w = new World(RULES, 1, ["A", "B"], 24, false);
+      new AIController(1, d).attach(w);
+      const extra = d === "hardest" ? 2000 : 0;
+      expect(w.players[1].res.food, d).toBe(RULES.economy.start.food + extra);
+      expect(w.players[1].res.stone, d).toBe(RULES.economy.start.stone + extra);
+    }
+  });
+
+  it("Easiest stops at the Tool Age", () => {
+    const r = runMatch(RULES, 2, 25, ["easiest", "easiest"]);
+    for (const line of r.lines) expect(line).not.toMatch(/Bronze Age|Iron Age/);
+  }, 120_000);
+});
+
 describe("diplomacy and tribute", () => {
   it("teams start allied, the rest as enemies; units leave the neutral alone and fight enemies", () => {
     const w = new World(RULES, 1, ["A", "B", "C"], 30, false, { teams: [1, 1, 0] });

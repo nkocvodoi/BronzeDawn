@@ -4,15 +4,26 @@ import { walkable } from "./grid";
 import { RES_ALL, Res, ResBag, Rules, UnitDef } from "./rules";
 import type { World } from "./world";
 
-export type Difficulty = "easy" | "normal" | "hard";
-export const DIFFICULTIES: Difficulty[] = ["easy", "normal", "hard"];
+/** The original's five levels, Easiest to Hardest. "normal" is the one the original calls Moderate. */
+export type Difficulty = "easiest" | "easy" | "normal" | "hard" | "hardest";
+export const DIFFICULTIES: Difficulty[] = ["easiest", "easy", "normal", "hard", "hardest"];
+export const DIFFICULTY_NAME: Record<Difficulty, string> = { easiest: "Easiest", easy: "Easy", normal: "Moderate", hard: "Hard", hardest: "Hardest" };
 
-export const LEVEL = {
-  // Easy is passive, as the original's easiest AI was: a small economy, late small attacks, no Iron Age.
-  easy: { firstAttack: 1200, firstWave: 5, villagers: [12, 16, 18, 18], producers: 1, counters: false, gather: 1, maxAge: 2, guard: [1, 3, 4, 4] },
-  normal: { firstAttack: 720, firstWave: 8, villagers: [20, 26, 30, 32], producers: 2, counters: true, gather: 1, maxAge: 3, guard: [3, 6, 9, 12] },
-  // Hard plays like normal with a bigger army and an open economic bonus, as the original's hardest AI did.
-  hard: { firstAttack: 900, firstWave: 12, villagers: [22, 28, 32, 34], producers: 3, counters: true, gather: 1.2, maxAge: 3, guard: [4, 8, 10, 12] },
+/** `slow`: thinks every other second, and researches little. `bonus`: extra stock at the start. */
+export const LEVEL: Record<Difficulty, {
+  firstAttack: number; firstWave: number; villagers: number[]; producers: number; counters: boolean; gather: number;
+  maxAge: number; guard: number[]; slow: boolean; bonus: number; maxArmy?: number;
+}> = {
+  // Easiest barely fights: a small town that stops at the Tool Age, an army of eight at most, a late small raid.
+  easiest: { firstAttack: 1800, firstWave: 4, villagers: [8, 10, 10, 10], producers: 1, counters: false, gather: 1, maxAge: 1, guard: [1, 2, 2, 2], slow: true, bonus: 0, maxArmy: 8 },
+  // Easy is passive: a small economy, late small attacks, no Iron Age.
+  easy: { firstAttack: 1200, firstWave: 5, villagers: [12, 16, 18, 18], producers: 1, counters: false, gather: 1, maxAge: 2, guard: [1, 3, 4, 4], slow: true, bonus: 0 },
+  normal: { firstAttack: 720, firstWave: 8, villagers: [20, 26, 30, 32], producers: 2, counters: true, gather: 1, maxAge: 3, guard: [3, 6, 9, 12], slow: false, bonus: 0 },
+  // Hard plays like Moderate with a bigger army and an open economic bonus.
+  hard: { firstAttack: 900, firstWave: 12, villagers: [22, 28, 32, 34], producers: 3, counters: true, gather: 1.2, maxAge: 3, guard: [4, 8, 10, 12], slow: false, bonus: 0 },
+  // Hardest is Hard with extra resources at the start, as the original's Hardest cheats with (players put it
+  // at about 2,000 of each; there is no official figure).
+  hardest: { firstAttack: 900, firstWave: 12, villagers: [22, 28, 32, 34], producers: 3, counters: true, gather: 1.2, maxAge: 3, guard: [4, 8, 10, 12], slow: false, bonus: 2000 },
 };
 
 /** Buildings the AI puts up in each age, in order: what the next age needs, then the army. */
@@ -72,9 +83,11 @@ export class AIController {
     this.waveSize = this.level.firstWave;
   }
 
-  /** Called once when the AI joins a world: applies its open economic bonus. */
+  /** Called once when the AI joins a world: applies its open economic bonus, and Hardest's extra stock. */
   attach(w: World) {
-    w.players[this.player].gatherBonus = this.level.gather;
+    const p = w.players[this.player];
+    p.gatherBonus = this.level.gather;
+    if (this.level.bonus) for (const r of RES_ALL) p.res.set(r, p.res.get(r) + this.level.bonus);
   }
 
   /** The plan, once a second. */
@@ -82,7 +95,7 @@ export class AIController {
     const p = w.players[this.player];
     if (p.defeated) return;
     this.thinks++;
-    if (this.difficulty === "easy" && this.thinks % 2 === 0) return;
+    if (this.level.slow && this.thinks % 2 === 0) return;
 
     const mine = w.unitsOf(this.player);
     const villagers = mine.filter((u) => u.isVillager);
@@ -555,7 +568,7 @@ export class AIController {
   /** A badly damaged building gets one villager to repair it, once the fighting there is over and
    *  there is a margin of resources for it. */
   private repair(w: World, villagers: Unit[], bs: Building[]) {
-    if (this.difficulty === "easy") return;
+    if (this.level.slow) return;
     const p = w.players[this.player];
     let busy = villagers.filter((v) => v.order.kind === "repair").length;
     for (const b of bs) {
@@ -593,7 +606,7 @@ export class AIController {
 
   private research(w: World, bs: Building[], army: Unit[]) {
     if (this.thinks % 3 !== 0) return;
-    if (this.difficulty === "easy" && (this.thinks / 3) % 3 !== 0) return;
+    if (this.level.slow && (this.thinks / 3) % 3 !== 0) return;
     const p = w.players[this.player];
     // Keep the army's unit lines current, then the list; tower upgrades once towers stand.
     const uses = new Set(army.map((u) => u.def.id));
@@ -620,6 +633,7 @@ export class AIController {
   private military(w: World, army: Unit[], bs: Building[], villagers: number) {
     const p = w.players[this.player];
     if (villagers < 10 && !army.length && w.time <= 400) return;
+    if (this.level.maxArmy !== undefined && army.length >= this.level.maxArmy) return;
     // Waiting for a transport to cross the sea: leave room in the population for it.
     if (!this.ferryRoom(w, bs)) return;
     const enemyArmy = w.units.filter((u) => u.alive && !u.isRelic && w.isEnemy(this.player, u.owner) && !u.isVillager);
@@ -732,7 +746,9 @@ export class AIController {
     const target = this.enemyHome(w);
     // Over the sea a wave lands a few at a time, so it waits for at least ten.
     const sea = !!target && this.overSea(w, home, target);
-    if (!(ready.length >= this.waveSize || ((maxed || weak) && (!sea || ready.length >= 10))) || !target) return;
+    // A wave the enemy's army would swallow whole is not sent, unless there is no more room to grow.
+    const enough = ready.length >= this.waveSize && ready.length >= theirArmy * 0.8;
+    if (!(enough || ((maxed || weak) && (!sea || ready.length >= 10))) || !target) return;
     const sendPriests = priests.filter((u) => u.order.kind === "idle" && dist(u, home) <= 18).map((u) => u.id);
     const ids = ready.map((u) => u.id).concat(sendPriests);
     // Over the water (islands): by transport, as many as it carries a trip.
