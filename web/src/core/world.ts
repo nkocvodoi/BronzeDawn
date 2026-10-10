@@ -628,16 +628,24 @@ export class World {
   unload(player: number, ids: number[], at: Vec2) {
     for (const u of this.own(ids, player)) {
       if (!u.isTransport || !u.cargo.length) continue;
-      const landing = this.landingNear(at);
+      const to = this.as(false, () => this.map.nearestPassable(at.tile, 3));
+      const meant = to ? this.as(false, () => this.map.reachable(to, (id) => this.building(id) !== null)) : undefined;
+      const landing = this.landingNear(at, meant);
       if (!landing) continue;
       u.waypoints = [];
       this.moveOne(u, landing.center, false);
       u.unloadAt = landing;
+      u.unloadTo = to;
     }
   }
 
-  /** The water tile beside land nearest to a point, where a transport can put in. */
-  landingNear(at: Vec2): Tile | null {
+  /** The water tile beside land nearest to a point, where a transport can put in; beside the land marked
+   *  in `on`, if given and there is such a place within reach. */
+  landingNear(at: Vec2, on?: Uint8Array): Tile | null {
+    return (on && this.landingSearch(at, on)) || this.landingSearch(at);
+  }
+
+  private landingSearch(at: Vec2, on?: Uint8Array): Tile | null {
     const c = at.tile;
     for (let r = 0; r <= 16; r++) {
       let best: Tile | null = null, bestD = Infinity;
@@ -645,7 +653,8 @@ export class World {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
         const t = new Tile(c.x + dx, c.y + dy);
         if (!this.as(true, () => this.map.passable(t))) continue;
-        const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([ox, oy]) => this.as(false, () => this.map.passableXY(t.x + ox, t.y + oy)));
+        const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([ox, oy]) => this.as(false, () => this.map.passableXY(t.x + ox, t.y + oy))
+          && (!on || on[(t.y + oy) * this.map.width + t.x + ox] === 1));
         if (!shore) continue;
         const d = t.center.distance(at);
         if (d < bestD) { bestD = d; best = t; }
@@ -672,13 +681,22 @@ export class World {
     const at = t.unloadAt!;
     t.unloadAt = null;
     t.order = IDLE;
+    // Onto the land the player pointed at: where a strait runs between two islands, the nearest ground
+    // may be the other one.
+    const to = t.unloadTo;
+    t.unloadTo = null;
+    const meant = to ? this.as(false, () => this.map.reachable(to, (id) => this.building(id) !== null)) : null;
     const land: Tile[] = [];
-    for (let r = 1; r <= 4 && land.length < t.cargo.length; r++) {
-      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-        const x = new Tile(at.x + dx, at.y + dy);
-        if (this.as(false, () => this.map.passable(x))) land.push(x);
+    for (const strict of meant ? [true, false] : [false]) {
+      for (let r = 1; r <= 4 && land.length < t.cargo.length; r++) {
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const x = new Tile(at.x + dx, at.y + dy);
+          if (strict && !meant![this.map.index(x)]) continue;
+          if (this.as(false, () => this.map.passable(x)) && !land.some((l) => l.equals(x))) land.push(x);
+        }
       }
+      if (land.length) break;
     }
     if (!land.length) return; // no shore here after all: they stay aboard
     t.cargo.forEach((id, i) => {

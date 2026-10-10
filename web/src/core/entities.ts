@@ -57,6 +57,8 @@ export class Unit extends Entity {
   cargo: number[] = [];
   /** Where a transport is sailing to put its passengers ashore. */
   unloadAt: Tile | null = null;
+  /** The land it means to put them on, if a player pointed at some. */
+  unloadTo: Tile | null = null;
   /** Stand Ground: hold this spot and strike only what comes in reach, until told otherwise. */
   standGround = false;
   path: Vec2[] = [];

@@ -1,6 +1,6 @@
 import { Building, Player, Unit } from "./entities";
 import { Footprint, Tile, Vec2 } from "./geom";
-import { walkable } from "./grid";
+import { Terrain, walkable } from "./grid";
 import { RES_ALL, Res, ResBag, Rules, UnitDef } from "./rules";
 import type { World } from "./world";
 
@@ -211,12 +211,13 @@ export class AIController {
     return p.pop + queued + 3 <= p.popCap || p.popCap < w.popMax - 2;
   }
   private seaCheck: { key: number; across: boolean; at: number } | null = null;
-  private land: { seen: Uint8Array; at: number } | null = null;
+  private land: { seen: Uint8Array; at: number; from: number } | null = null;
 
   /** Whether a point can be walked to from home (the walkable land is worked out now and then). */
   private byLand(w: World, home: Vec2, p: Vec2) {
-    if (!this.land || this.thinks - this.land.at >= 60) {
-      this.land = { seen: w.map.reachable(w.map.nearestPassable(home.tile, 4) ?? home.tile, (id) => w.building(id) !== null), at: this.thinks };
+    const from = w.map.nearestPassable(home.tile, 4) ?? home.tile, key = w.map.index(from);
+    if (!this.land || this.thinks - this.land.at >= 60 || (this.land.from !== key && !this.land.seen[key])) {
+      this.land = { seen: w.map.reachable(from, (id) => w.building(id) !== null), at: this.thinks, from: key };
     }
     const to = w.map.nearestPassable(p.tile, 2) ?? p.tile;
     return this.land.seen[w.map.index(to)] === 1;
@@ -256,21 +257,64 @@ export class AIController {
     const transports = w.unitsOf(this.player).filter((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle");
     this.needsFerry = !w.unitsOf(this.player).some((u) => u.isTransport);
     if (!transports.length) { this.trainTransport(w); return false; }
-    const beach = this.beachFor(w, home, target);
+    const beach = this.beachFor(w, home, target, transports[0].pos);
     if (!beach) return false;
     this.ferry = { ids, transports: transports.map((t) => t.id), beach, target, home, since: w.time, sailed: w.time };
     return true;
   }
 
+  /** The water a boat can sail to from where it is: not a lake inside an island. */
+  private seaFrom(w: World, boat: Vec2): Uint8Array {
+    const map = w.map, sea = new Uint8Array(map.width * map.height);
+    const start = boat.tile, stack = [start];
+    if (map.inside(start)) sea[map.index(start)] = 1;
+    while (stack.length) {
+      const t = stack.pop()!;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const o = new Tile(t.x + dx, t.y + dy);
+        if (!map.inside(o) || sea[map.index(o)]) continue;
+        const g = map.terrainAt(o);
+        if (g !== Terrain.water && g !== Terrain.shallows) continue;
+        sea[map.index(o)] = 1;
+        stack.push(o);
+      }
+    }
+    return sea;
+  }
+
+  /** Where transports take a wave on: water by the shore nearest home that home's soldiers can walk to.
+   *  The nearest water may lie by another island, where they would try to board for ever. */
+  private homeLanding(w: World, home: Vec2, boat: Vec2): Tile | null {
+    const c = home.tile, map = w.map;
+    const sea = this.seaFrom(w, boat);
+    for (let r = 1; r <= 40; r++) {
+      let best: Tile | null = null, bestD = Infinity;
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const t = new Tile(c.x + dx, c.y + dy);
+        if (!map.inside(t) || !sea[map.index(t)] || map.terrainAt(t) !== Terrain.water || map.solidAt(t)) continue;
+        const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([ox, oy]) => {
+          const o = new Tile(t.x + ox, t.y + oy);
+          return map.inside(o) && walkable(map.terrainAt(o)) && !map.solidAt(o) && this.byLand(w, home, o.center);
+        });
+        const d = t.center.distance(home);
+        if (shore && d < bestD) { bestD = d; best = t; }
+      }
+      if (best) return best;
+    }
+    return null;
+  }
+
   /** Where a wave lands: a shore of the enemy's land, near enough to walk to its base but not under its
    *  towers, on the side facing home. */
-  private beachFor(w: World, home: Vec2, target: Vec2): Vec2 | null {
-    const map = w.map;
+  private beachFor(w: World, home: Vec2, target: Vec2, boat: Vec2): Vec2 | null {
+    const map = w.map, sea = this.seaFrom(w, boat);
+    const onSea = (t: Tile) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const o = new Tile(t.x + dx, t.y + dy); return map.inside(o) && sea[map.index(o)] === 1; });
     const far = map.reachable(map.nearestPassable(target.tile, 4) ?? target.tile, (id) => w.building(id) !== null);
     let best: Tile | null = null, bestScore = Infinity;
     for (let y = 1; y < map.height - 1; y++) for (let x = 1; x < map.width - 1; x++) {
       const t = new Tile(x, y);
-      if (!far[map.index(t)] || !map.coastal(t)) continue;
+      if (!far[map.index(t)] || !map.coastal(t) || !onSea(t)) continue;
       const d = t.center.distance(target);
       const score = t.center.distance(home) + (d < 12 ? 40 : 0) + Math.max(0, d - 26);
       if (score < bestScore) { bestScore = score; best = t; }
@@ -300,7 +344,8 @@ export class AIController {
     // A second transport when the wave is big.
     const cap = (id: number) => w.unit(id)?.def.capacity ?? 5;
     if (waiting.length > cap(f.transports[0]) * 2) this.trainTransport(w, 2);
-    const homeShore = w.landingNear(f.home);
+    const first = f.transports.map((id) => w.unit(id)).find((t): t is Unit => !!t);
+    const homeShore = first ? this.homeLanding(w, f.home, first.pos) : null;
     for (const id of f.transports) {
       const t = w.unit(id)!;
       const coming = waiting.filter((u) => u.order.kind === "board" && u.order.id === t.id).length;
@@ -389,6 +434,19 @@ export class AIController {
       if (gold && !bs.some((b) => b.def.id === "storage_pit" && b.distance(gold.center) < 8)) this.placeNear(w, "storage_pit", gold.center, 2, 6, villagers, false);
     }
 
+    // Across the sea the wood is an island's rim of trees, far from the town: when most woodcutters walk
+    // more than eight tiles to drop their wood, a Storage Pit goes up by the trees they cut.
+    if (this.acrossSea && this.count(bs, "storage_pit") < 5 && this.thinks % 5 === 0) {
+      const drops = bs.filter((b) => b.complete && b.dropsOff(Res.wood));
+      const cutting = villagers.map((u) => (u.order.kind === "gather" ? w.node(u.order.id) : null)).filter((n): n is NonNullable<typeof n> => !!n && n.res === Res.wood);
+      const far = cutting.filter((n) => !drops.some((b) => b.distance(n.center) <= 8));
+      if (far.length >= 3 && far.length * 2 >= cutting.length && !bs.some((b) => !b.complete && b.def.id === "storage_pit")) {
+        const at = far[Math.floor(far.length / 2)].center;
+        const cost = w.buildingCost(this.player, "storage_pit");
+        if (p.res.covers(cost)) this.placeNear(w, "storage_pit", at, 2, 5, villagers, false);
+      }
+    }
+
     // What the next age needs, and the army buildings, one at a time.
     const building = bs.some((b) => !b.complete && !b.isFarm && b.def.id !== "house");
     if (!building) {
@@ -468,7 +526,11 @@ export class AIController {
       const game = this.huntNear(w, home);
       if (game) { w.attack(this.player, [u.id], game.id); return true; }
     }
-    const n = w.nearestNode(r, home, r === Res.gold || r === Res.stone ? FAR : 30);
+    // The nearest that can be walked to: on an island map the nearest mine may be on another island, and a
+    // villager sent there would only come back idle, again and again.
+    const radius = r === Res.gold || r === Res.stone ? FAR : 30;
+    const n = minBy(w.nodes.filter((x) => x.alive && x.res === r && !x.def.boats_only && x.amount > 0 && x.center.distance(home) <= radius
+      && (!this.acrossSea || this.byLand(w, home, x.center))), (x) => x.center.distance(home));
     if (n) { w.gather(this.player, [u.id], n.id); return true; }
     return false;
   }
@@ -707,7 +769,12 @@ export class AIController {
     // Those holding a beach across the sea wait there for the rest of their wave.
     const crossing = new Set(this.ferry?.ids ?? []);
     const raiders = away.filter((u) => this.sent.has(u.id)), strays = away.filter((u) => !this.sent.has(u.id) && !crossing.has(u.id));
-    if (raiders.length) this.attackNearest(w, raiders);
+    if (raiders.length && !this.attackNearest(w, raiders) && this.acrossSea && !this.ferry) {
+      // Nothing left to walk to where they stand (the last buildings are across the sea): the transports
+      // fetch them from that shore and carry them on.
+      const target = this.enemyHome(w);
+      if (target) this.startFerry(w, raiders[0].pos, target, raiders.map((u) => u.id));
+    }
     if (strays.length) w.move(this.player, strays.map((u) => u.id), home);
     // Priests near a fight convert the strongest enemy in reach.
     for (const pr of priests) {
@@ -768,13 +835,18 @@ export class AIController {
     if (this.sent.size > 400) for (const id of [...this.sent]) if (!w.unit(id)) this.sent.delete(id);
   }
 
-  private attackNearest(w: World, group: Unit[]) {
+  private attackNearest(w: World, group: Unit[]): boolean {
     const c = group[0]?.pos;
-    if (!c) return;
-    const t = minBy(w.buildings.filter((b) => b.alive && w.isEnemy(this.player, b.owner) && !b.isWall), (b) => b.distance(c));
-    if (t) { w.move(this.player, group.map((u) => u.id), t.center, true); return; }
-    const u = w.units.find((u) => u.alive && !u.isRelic && w.isEnemy(this.player, u.owner));
-    if (u) w.move(this.player, group.map((g) => g.id), u.pos, true);
+    if (!c) return false;
+    // Only what they can walk to: a Dock stands in the water, and on an island map the next building may
+    // be across the sea. Sent there, soldiers stop at the shore and are sent again, for ever.
+    const seen = this.acrossSea ? w.map.reachable(w.map.nearestPassable(c.tile, 3) ?? c.tile, (id) => w.building(id) !== null) : null;
+    const walkTo = (b: Building) => !seen || (!b.def.on_water && b.footprint.tiles().some((t) => seen[w.map.index(t)] === 1));
+    const t = minBy(w.buildings.filter((b) => b.alive && w.isEnemy(this.player, b.owner) && !b.isWall && walkTo(b)), (b) => b.distance(c));
+    if (t) { w.move(this.player, group.map((u) => u.id), t.center, true); return true; }
+    const u = w.units.find((u) => u.alive && !u.isRelic && w.isEnemy(this.player, u.owner) && (!seen || (!u.isBoat && u.aboard === null && seen[w.map.index(u.pos.tile)] === 1)));
+    if (u) { w.move(this.player, group.map((g) => g.id), u.pos, true); return true; }
+    return false;
   }
 
   /** The home of the nearest enemy still in the game: its Town Center, else any building, else where it began. */
