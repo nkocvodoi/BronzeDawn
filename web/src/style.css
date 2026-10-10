@@ -240,3 +240,44 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay .mainmenu .small { font-size: 12px; color: #c8b896; }
 #overlay #room-in { width: 12ch; box-sizing: content-box; font: 700 22px/1.2 ui-monospace, monospace; letter-spacing: 3px; text-align: center; padding: 4px 8px;
   background: #2a2218; color: #f3e4bd; border: 2px solid #c8a462; }
+
+/* The online lobby, after the original's multiplayer screen: seats and chat on the left, settings on the right. */
+#overlay .lobby-card { width: min(980px, 96vw); max-width: none; padding: 18px 22px; text-align: left; }
+#overlay .lobby-card h1 { text-align: center; margin-bottom: 4px; }
+#overlay .lobby-card > p { margin: 4px 0; }
+#overlay .lobby-head { text-align: center; font-size: 15px; min-height: 1.2em; }
+#overlay .lobby-head .room-code { font-size: 26px; margin-left: 8px; letter-spacing: 3px; }
+#overlay .lobby-main { display: grid; grid-template-columns: 1fr 260px; gap: 16px; margin-top: 8px; }
+#overlay .seats { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0; }
+#overlay .seats th { text-align: left; font-family: Cinzel, serif; font-weight: 400; color: #f3e4bd; padding: 2px 6px; border-bottom: 1px solid rgba(200, 164, 98, .5); }
+#overlay .seats td { padding: 3px 6px; border-bottom: 1px solid rgba(200, 164, 98, .18); vertical-align: middle; }
+#overlay .seats tr.me td { background: rgba(243, 200, 106, .10); }
+#overlay .seats select, #overlay .seats input { font-size: 13px; padding: 2px 4px; max-width: 170px; }
+#overlay .seats select.team { width: 46px; }
+#overlay .seats .swatch { display: inline-block; width: 22px; height: 18px; line-height: 18px; text-align: center; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 1px 1px 0 #000; border: 1px solid #000; }
+#overlay .seats .seat.open, #overlay .seats select.seat.open { color: #8fd46a; }
+#overlay .seats .seat.closed, #overlay .seats select.seat.closed { color: #9a8a72; }
+#overlay .seats .seat.computer, #overlay .seats select.seat.computer { color: #e8b86a; }
+#overlay .seats .tag { font-size: 11px; color: #c8b896; border: 1px solid #8a7350; padding: 0 4px; }
+#overlay .seats .ready.yes { color: #8fd46a; font-weight: 700; }
+#overlay .seats .ready.no { color: #c88a6a; }
+#overlay .lobby-chat { height: 120px; overflow-y: auto; margin-top: 10px; padding: 6px 8px; font-size: 13px; background: rgba(0, 0, 0, .35); border: 2px solid #8a7350; }
+#overlay .lobby-chat .quiet { color: #9a8a72; }
+#overlay #chat-in { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 5px 8px; font: inherit; font-size: 14px; background: #1e1810; color: #f3e4bd; border: 2px solid #8a7350; }
+#overlay .lobby-right #lobby-settings { width: 100%; margin-bottom: 6px; }
+#overlay .lobby-right #lobby-settings:disabled { opacity: .7; cursor: default; }
+#overlay .lobby-settings { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+#overlay .lobby-settings li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 2px; border-bottom: 1px solid rgba(200, 164, 98, .18); }
+#overlay .lobby-settings li span { color: #c8b896; }
+#overlay .lobby-settings li b { color: #f3e4bd; font-weight: 600; text-align: right; }
+#overlay .lobby-foot { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+#overlay .lobby-foot .ready-box, #overlay .lobby-foot .host-note { flex: 1; font-size: 17px; }
+#overlay .lobby-foot .ready-box input { width: 20px; height: 20px; vertical-align: -3px; }
+#overlay .lobby-foot button { min-width: 160px; }
+#overlay .lobby-foot button:disabled { opacity: .55; cursor: default; }
+#overlay .lobby-status { text-align: center; font-size: 13px; color: #d8c8a2; margin-top: 6px; min-height: 1.2em; }
+#overlay button.link { background: none; border: none; padding: 0; font-size: inherit; color: var(--gold); text-decoration: underline; cursor: pointer; text-shadow: none; }
+@media (max-width: 720px) { #overlay .lobby-main { grid-template-columns: 1fr; } }
+#overlay .lobby-card { animation: none; } /* redrawn at every change: no pop each time */
+#overlay .seats input#my-name { background: #2a2218; color: #f3e4bd; border: 2px solid #c8a462; font-weight: 700; }
+#overlay .lobby-chat .sys { color: #a8b88a; font-style: italic; }

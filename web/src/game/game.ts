@@ -12,6 +12,7 @@ import { loadWorld, SaveFile, saveWorld } from "../core/save";
 import { Command as Order, CommandResult, runCommand } from "../core/commands";
 import { DELAY, LockstepGuest, LockstepHost, TURN_TICKS } from "../core/net";
 import { Conn, HAS_RELAY, joinRoom, Peer, Room } from "./rtc";
+import { canStart, CHAT_MAX, cleanName, LobbySettings, LobbyState, lobbyHtml, Seat, seated, SEATS } from "./lobby";
 import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
 import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, forestFloorPic, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
@@ -192,10 +193,16 @@ export class Game {
   net: LockstepHost | LockstepGuest | null = null;
   /** The online lobby: as host, the friends connected; as a guest, the line to the host. */
   private online: {
-    role: "host"; friends: { peer: Conn; civ: string | null; slot: number }[];
+    role: "host"; friends: { peer: Conn; civ: string | null; slot: number; id: number }[];
     /** The six-digit room friends join by; or, with `longCodes`, an invitation made by hand. */
     room: Room | null; longCodes: boolean; invite: { peer: Peer; code: string; accept: (a: string) => Promise<void>; tried: boolean } | null;
   } | { role: "guest"; peer: Conn | null; civ: string | null; longCodes: boolean; code: string | null; joining?: { code: string; since: number } | null; room?: string; tried?: string } | null = null;
+  /** The lobby: kept by the host; a guest keeps the one it was last sent, and its seat. */
+  private lobby: LobbyState | null = null;
+  private guestLobby: { state: LobbyState; you: number } | null = null;
+  private nextFriendId = 1;
+  /** This player's name, remembered. */
+  private myName = cleanName(store.get("bd-name"), "Player");
   /** The host has paused an online game (F3). */
   private hostPaused = false;
   private desyncShown = false;
@@ -360,6 +367,10 @@ export class Game {
   /** A click on the main menu or the setup screen's Back. */
   private menuClick(t: HTMLElement): boolean {
     const id = t.closest("button")?.id ?? "";
+    if (id === "lobby-settings") { this.showLobbySettings(); return true; }
+    if (id === "lobby-settings-ok") { this.saveLobbySettings(); this.broadcastLobby(); this.showHostLobby(); return true; }
+    if (id === "lobby-settings-cancel") { this.showHostLobby(); return true; }
+    if (id === "lobby-start") { this.lobbyStart(); return true; }
     if (id === "mm-single") { if (this.online) this.leaveOnline(); this.showStart(); return true; }
     if (id === "mm-multi") { this.showOnline(); return true; }
     if (id === "mm-help") { this.showHelp(); return true; }
@@ -656,6 +667,7 @@ export class Game {
     if (this.online?.role === "host") { for (const f of this.online.friends) f.peer.close(); this.online.invite?.peer.close(); this.online.room?.close(); }
     if (this.online?.role === "guest") this.online.peer?.close();
     this.online = null; this.net = null; this.hostPaused = false; this.desyncShown = false; this.netFailed = false;
+    this.lobby = null; this.guestLobby = null;
   }
 
   /** Host or join. */
@@ -672,39 +684,230 @@ export class Game {
   private friendJoined(conn: Conn) {
     const o = this.online;
     if (o?.role !== "host") { conn.close(); return; }
-    if (o.friends.length + 1 >= 8 || this.started) { conn.close(); return; }
-    const friend = { peer: conn, civ: null as string | null, slot: 0 };
+    const lobby = this.lobby;
+    const seat = lobby ? lobby.seats.findIndex((x) => x.kind === "open") : -1;
+    if (this.started || !lobby || seat < 0) { conn.link.send({ t: "full" }); setTimeout(() => conn.close(), 500); return; }
+    const friend = { peer: conn, civ: null as string | null, slot: 0, id: this.nextFriendId++ };
     o.friends.push(friend);
+    lobby.seats[seat] = { kind: "friend", name: `Player ${seat + 1}`, civ: null, team: 0, ready: false, level: "normal", friend: friend.id };
+    const mySeat = () => lobby.seats.find((x) => x.kind === "friend" && x.friend === friend.id);
+    const isCiv = (c: unknown) => typeof c === "string" && this.rules.civs.some((x) => x.id === c);
     conn.link.onMessage((m) => {
-      const msg = m as { t?: string; civ?: string | null };
-      if (msg.t === "hello") { friend.civ = typeof msg.civ === "string" && this.rules.civs.some((c) => c.id === msg.civ) ? msg.civ : null; if (!this.started) this.showHostLobby(); }
+      const msg = m as { t?: string; civ?: unknown; name?: unknown; team?: unknown; ready?: unknown; text?: unknown };
+      const me = mySeat();
+      if (!me || this.started) return;
+      if (msg.t === "hello" || msg.t === "lobby-me") {
+        if ("name" in msg) me.name = cleanName(msg.name, me.name);
+        if ("civ" in msg) me.civ = isCiv(msg.civ) ? (msg.civ as string) : null;
+        if (typeof msg.team === "number" && [0, 1, 2, 3, 4].includes(msg.team)) me.team = msg.team;
+        if (typeof msg.ready === "boolean") me.ready = msg.ready;
+        friend.civ = me.civ;
+        this.broadcastLobby();
+      } else if (msg.t === "chat" && typeof msg.text === "string") this.lobbyChat(me.name, msg.text);
     });
-    conn.onClose = () => { if (!this.started) { o.friends = o.friends.filter((f) => f !== friend); this.showHostLobby("A friend left the lobby"); } };
+    conn.onClose = () => {
+      if (this.started) return;
+      o.friends = o.friends.filter((f) => f !== friend);
+      const i = lobby.seats.findIndex((x) => x.kind === "friend" && x.friend === friend.id);
+      if (i >= 0) { const name = lobby.seats[i].name; lobby.seats[i] = this.emptySeat("open"); this.lobbyChat("", `${name} left`); }
+      this.broadcastLobby();
+    };
+    this.broadcastLobby();
     this.sound.play("trained");
-    if (!this.started) this.showHostLobby("A friend joined");
+    this.lobbyChat("", "A friend joined");
+  }
+
+  // ---- the lobby
+
+  private emptySeat(kind: "open" | "closed"): Seat { return { kind, name: "", civ: null, team: 0, ready: false, level: "normal" }; }
+
+  /** A new lobby: you in the first seat, three open for friends, the rest closed. */
+  private newLobby(): LobbyState {
+    const seats: Seat[] = Array.from({ length: SEATS }, (_, i) => this.emptySeat(i <= 3 ? "open" : "closed"));
+    seats[0] = { kind: "host", name: this.myName, civ: null, team: 0, ready: true, level: "normal" };
+    return { code: null, seats, settings: this.lobbySettingsNow(), chat: [] };
+  }
+
+  /** The game's settings as the lobby shows them. */
+  private lobbySettingsNow(): LobbySettings {
+    return {
+      mapType: this.mapType, mapTypeName: MAP_TYPES.find(([id]) => id === this.mapType)?.[1] ?? this.mapType,
+      mapSize: this.mapSize, mapSizeName: `${MAP_SIZES.find(([, t]) => t === this.mapSize)?.[0] ?? ""} (${this.mapSize} x ${this.mapSize})`,
+      victory: this.victoryId, victoryName: VICTORIES.find(([id]) => id === this.victoryId)?.[1] ?? "",
+      startAge: String(this.startAge), resources: this.resources, popLimit: this.popLimit, reveal: this.exploredStart,
+      relics: this.relics, farmsBlock: this.farmsBlock, speed: this.speed,
+    };
+  }
+
+  /** Every change goes to every friend, each told which seat is theirs; and the host's screen redrawn. */
+  private broadcastLobby() {
+    const o = this.online, lobby = this.lobby;
+    if (o?.role !== "host" || !lobby) return;
+    lobby.settings = this.lobbySettingsNow();
+    for (const f of o.friends) {
+      const you = lobby.seats.findIndex((x) => x.kind === "friend" && x.friend === f.id);
+      if (you >= 0) f.peer.link.send({ t: "lobby", state: lobby, you });
+    }
+    if (!this.started && (document.querySelector(".lobby") || document.querySelector("#online-status"))) this.showHostLobby();
+  }
+
+  private lobbyChat(from: string, text: string) {
+    const lobby = this.lobby;
+    if (!lobby) return;
+    const t = text.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, CHAT_MAX);
+    if (!t) return;
+    lobby.chat.push({ from, text: t }); // no sender: a line from the game itself
+    if (lobby.chat.length > 50) lobby.chat.splice(0, lobby.chat.length - 50);
+    if (from) this.sound.play("click", 0.5);
+    this.broadcastLobby();
   }
 
   private showHostLobby(status = "") {
     if (this.online?.role !== "host") return;
     const o = this.online;
-    const list = o.friends.map((f, i) => `<li>Friend ${i + 1}: ${f.peer.open ? "connected" : "connecting…"} · ${f.civ ? this.rules.civs.find((c) => c.id === f.civ)?.name ?? "" : "random civilization"}</li>`).join("");
-    const room = o.room ? `Your room code: <span class="room-code">${o.room.code.slice(0, 3)} ${o.room.code.slice(3)}</span>Friends choose <b>Join a friend's game</b> and type this code.`
-      : o.longCodes ? "" : "Opening a room…";
+    const lobby = this.lobby ?? (this.lobby = this.newLobby());
     const long = o.longCodes
       ? (o.invite
-        ? `1. Send this invitation code to a friend:<textarea id="invite-code" readonly rows="3">${o.invite.code}</textarea><button id="copy-invite">Copy</button>`
-          + `<br>2. Paste their answer code here:<textarea id="answer-in" rows="3" placeholder="BD1-..."></textarea><button id="accept-btn"${o.invite.tried ? " disabled" : ""}>Connect</button>`
+        ? `1. Send this invitation code to a friend:<textarea id="invite-code" readonly rows="2">${o.invite.code}</textarea><button id="copy-invite">Copy</button>`
+          + `<br>2. Paste their answer code here:<textarea id="answer-in" rows="2" placeholder="BD1-..."></textarea><button id="accept-btn"${o.invite.tried ? " disabled" : ""}>Connect</button>`
         : `<span class="choices"><button id="invite-btn">Make an invitation code</button></span>`)
       : "";
-    this.hud.showOverlay("Host a game", [
-      room,
-      o.friends.length ? `<ul class="friends">${list}</ul>` : "No friends connected yet.",
+    const roomNote = o.room ? "" : o.longCodes ? "" : "Opening a room…";
+    this.keepTyping(() => this.hud.showOverlay("Multiplayer Game", [
+      ...lobbyHtml(lobby, 0, true, this.rules, playerColor, status || roomNote),
       long,
-      `<span id="online-status">${status}</span>`,
-      `<span class="choices"><button id="online-setup">${o.friends.length ? "Choose the settings and start" : "Back"}</button>`
-        + `${o.longCodes ? "" : `<button id="long-codes">Use long codes instead</button>`}<button id="online-leave">Stop hosting</button></span>`,
-      o.longCodes ? "" : `<span class="hint">The code is matched through PeerJS's free public service; the game then goes straight between your machines.${HAS_RELAY ? "" : " Some networks (mobile data especially) cannot reach each other straight: if a friend cannot join, try the same Wi-Fi."}</span>`,
+      o.longCodes ? "" : `<span class="hint">Friends choose <b>Multiplayer → Join a friend's game</b> and type the room code. <button id="long-codes" class="link">Use long codes instead</button>${HAS_RELAY ? "" : " Some networks (mobile data especially) cannot reach each other straight: if a friend cannot join, try the same Wi-Fi."}</span>`,
+    ], "lobby-card"));
+    this.scrollChat();
+  }
+
+  /** A guest's view of the lobby the host sent. */
+  private showGuestLobby(status = "") {
+    const g = this.guestLobby;
+    if (!g || this.started) return;
+    this.keepTyping(() => this.hud.showOverlay("Multiplayer Game", lobbyHtml(g.state, g.you, false, this.rules, playerColor, status), "lobby-card"));
+    this.scrollChat();
+  }
+
+  /** Redraws without losing what is being typed: the box in use keeps its text, its caret and the focus. */
+  private keepTyping(draw: () => void) {
+    const a = document.activeElement as HTMLInputElement | null;
+    const id = a && (a.id === "chat-in" || a.id === "my-name") ? a.id : null;
+    const value = id ? a!.value : "", from = id ? a!.selectionStart : null, to = id ? a!.selectionEnd : null;
+    draw();
+    if (!id) return;
+    const b = document.querySelector(`#${id}`) as HTMLInputElement | null;
+    if (!b) return;
+    b.value = value;
+    b.focus();
+    if (from !== null && to !== null) b.setSelectionRange(from, to);
+  }
+
+  private scrollChat() { const c = document.querySelector("#lobby-chat"); if (c) c.scrollTop = c.scrollHeight; }
+
+  /** Something of yours changed in the lobby: your name, civilization, team, ready; or a seat (host only). */
+  private lobbyChange(t: HTMLElement): boolean {
+    const id = t.id, val = (t as HTMLInputElement).value, checked = (t as HTMLInputElement).checked;
+    const o = this.online;
+    if (!o || !(id === "my-name" || id === "my-civ" || id === "my-team" || id === "my-ready" || /^(seat|civ|team)-\d$/.test(id))) return false;
+    const civ = val && this.rules.civs.some((c) => c.id === val) ? val : null;
+    if (id === "my-name") { this.myName = cleanName(val, this.myName); store.set("bd-name", this.myName); }
+    if (o.role === "guest") {
+      const me = this.guestLobby?.state.seats[this.guestLobby.you];
+      const msg: Record<string, unknown> = { t: "lobby-me" };
+      if (id === "my-name") msg.name = this.myName;
+      if (id === "my-civ") { msg.civ = civ; o.civ = civ; }
+      if (id === "my-team") msg.team = Number(val) || 0;
+      if (id === "my-ready") msg.ready = checked;
+      if (me) Object.assign(me, msg.name !== undefined ? { name: msg.name } : {}, "civ" in msg ? { civ: msg.civ } : {}, msg.team !== undefined ? { team: msg.team } : {}, msg.ready !== undefined ? { ready: msg.ready } : {});
+      o.peer?.link.send(msg);
+      return true;
+    }
+    const lobby = this.lobby;
+    if (!lobby) return true;
+    const seatOf = (x: string) => Number(x.split("-")[1]);
+    if (id === "my-name") lobby.seats[0].name = this.myName;
+    else if (id === "my-civ") lobby.seats[0].civ = civ;
+    else if (id === "my-team") lobby.seats[0].team = Number(val) || 0;
+    else if (id.startsWith("seat-")) {
+      const i = seatOf(id), was = lobby.seats[i];
+      if (was.kind === "friend") return true;
+      lobby.seats[i] = val.startsWith("computer:") ? { kind: "computer", name: `Computer ${i + 1}`, civ: was.civ, team: was.team, ready: true, level: val.slice(9) as Difficulty }
+        : this.emptySeat(val === "closed" ? "closed" : "open");
+    } else if (id.startsWith("civ-")) { const x = lobby.seats[seatOf(id)]; if (x.kind === "computer") x.civ = civ; }
+    else if (id.startsWith("team-")) { const x = lobby.seats[seatOf(id)]; if (x.kind === "computer" || x.kind === "friend") x.team = Number(val) || 0; }
+    this.broadcastLobby();
+    return true;
+  }
+
+  /** A line typed in the lobby's chat. */
+  private sendChat(box: HTMLInputElement) {
+    const text = box.value.trim().slice(0, CHAT_MAX);
+    box.value = "";
+    if (!text) return;
+    const o = this.online;
+    if (o?.role === "host") this.lobbyChat(this.myName, text);
+    else if (o?.role === "guest") o.peer?.link.send({ t: "chat", text });
+    (document.querySelector("#chat-in") as HTMLInputElement | null)?.focus();
+  }
+
+  /** The host's settings for everyone, from the lobby's Settings button. */
+  private showLobbySettings() {
+    const opts = (xs: [string, string][], on: string) => xs.map(([id, name]) => `<option value="${id}"${id === on ? " selected" : ""}>${name}</option>`).join("");
+    this.hud.showOverlay("Game Settings", [
+      `Map: <select id="map-type">${opts(MAP_TYPES.map(([id, n]) => [id, n]), this.mapType)}</select>`,
+      `Map size: <select id="map-size">${opts(MAP_SIZES.map(([n, t]) => [String(t), `${n} (${t} x ${t})`]), String(this.mapSize))}</select>`,
+      `Victory: <select id="victory">${opts(VICTORIES.map(([id, name]) => [id, name]), this.victoryId)}</select>`,
+      `Starting age: <select id="start-age">${opts(this.rules.ages.map((a, i) => [String(i), a.name]), String(this.startAge))}</select>`
+        + ` Resources: <select id="resources">${opts(RESOURCE_LEVELS, this.resources)}</select>`,
+      `Population limit: <select id="pop-limit">${opts((this.rules.economy.pop_limits ?? [this.rules.economy.pop_max]).map((k) => [String(k), String(k)]), String(this.popLimit))}</select>`
+        + ` Game speed: <select id="start-speed">${opts(SPEEDS.map((x) => [String(x), `${x}x`]), String(this.speed))}</select>`,
+      `<label><input type="checkbox" id="relics"${this.relics ? " checked" : ""}> Ruins and Artifacts</label>`,
+      `<label><input type="checkbox" id="reveal"${this.exploredStart ? " checked" : ""}> Reveal map</label>`,
+      `<label><input type="checkbox" id="farms-block"${this.farmsBlock ? " checked" : ""}> Farms block the way, as in the original</label>`,
+      `<span class="choices"><button id="lobby-settings-ok">OK</button><button id="lobby-settings-cancel">Cancel</button></span>`,
     ], "menu");
+  }
+
+  private saveLobbySettings() {
+    const v = (sel: string) => (document.querySelector(sel) as HTMLSelectElement | null)?.value;
+    const on = (sel: string) => (document.querySelector(sel) as HTMLInputElement | null)?.checked === true;
+    const mt = v("#map-type") as MapType | undefined;
+    if (mt && MAP_TYPES.some(([id]) => id === mt)) { this.mapType = mt; store.set("bd-map-type", mt); }
+    const size = Number(v("#map-size")); if (MAP_SIZES.some(([, t]) => t === size)) this.mapSize = size;
+    const vic = v("#victory"); if (vic && VICTORIES.some(([id]) => id === vic)) { this.victoryId = vic; store.set("bd-victory", vic); }
+    const age = v("#start-age"); if (age !== undefined) { this.startAge = Number(age) || 0; store.set("bd-start-age", age); }
+    const res = v("#resources"); if (res && RESOURCE_LEVELS.some(([id]) => id === res)) { this.resources = res; store.set("bd-resources", res); }
+    const pop = Number(v("#pop-limit")); if (pop) { this.popLimit = pop; store.set("bd-pop-limit", String(pop)); }
+    const sp = Number(v("#start-speed")); if (SPEEDS.includes(sp)) this.speed = sp;
+    this.relics = on("#relics"); store.set("bd-relics", this.relics ? "on" : "off");
+    this.exploredStart = on("#reveal"); store.set("bd-reveal", this.exploredStart ? "on" : "off");
+    this.farmsBlock = on("#farms-block"); store.set("bd-farms-block", this.farmsBlock ? "on" : "off");
+  }
+
+  /** The host starts the game from the lobby: everyone seated plays, in seat order. */
+  private lobbyStart() {
+    const o = this.online, lobby = this.lobby;
+    if (o?.role !== "host" || !lobby) return;
+    const why = canStart(lobby);
+    if (why) { this.showHostLobby(why); return; }
+    const players = seated(lobby);
+    const civs = this.rules.civs;
+    const names = players.map(({ seat, index }) => seat.kind === "computer" ? `Computer ${index + 1}` : seat.name);
+    const all = players.map(({ seat }, i) => seat.civ ?? (civs.length ? civs[(this.seed * 11 + i * 5) % civs.length].id : null));
+    const teams = players.map(({ seat }) => seat.team);
+    const ais = players.map(({ seat }, i) => [i, seat.level] as [number, Difficulty]).filter((_, i) => players[i].seat.kind === "computer");
+    const setup: OnlineSetup = {
+      seed: this.seed, names, size: Math.max(this.mapSize, minMapSize(names.length)), reseed: this.reseed, speed: this.speed, ais,
+      options: { civs: all, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, startAge: this.startAge, resources: this.resources,
+        popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2] },
+    };
+    for (const f of o.friends) {
+      const p = players.findIndex(({ seat }) => seat.kind === "friend" && seat.friend === f.id);
+      f.slot = p;
+      if (p >= 0) f.peer.link.send({ t: "start", setup, you: p });
+    }
+    this.beginOnline(setup, 0, null);
   }
 
   private showJoin(status = "") {
@@ -754,11 +957,15 @@ export class Game {
     if (o?.role !== "guest") { conn.close(); return; }
     o.peer = conn;
     conn.link.onMessage((m) => {
-      const msg = m as { t?: string; setup?: OnlineSetup; you?: number };
-      if (msg.t === "start" && msg.setup && typeof msg.you === "number") this.beginOnline(msg.setup, msg.you, conn);
+      const msg = m as { t?: string; setup?: OnlineSetup; you?: number; state?: LobbyState };
+      if (msg.t === "start" && msg.setup && typeof msg.you === "number") { this.guestLobby = null; this.beginOnline(msg.setup, msg.you, conn); }
+      else if (msg.t === "lobby" && msg.state && Array.isArray(msg.state.seats) && typeof msg.you === "number") {
+        this.guestLobby = { state: msg.state, you: msg.you };
+        if (!this.started) this.showGuestLobby();
+      } else if (msg.t === "full") this.showJoin("The room is full");
     });
-    conn.onClose = () => { if (!this.started) { o.peer = null; o.code = null; this.showJoin("The connection to the host closed"); } };
-    conn.link.send({ t: "hello", civ: o.civ });
+    conn.onClose = () => { if (!this.started) { o.peer = null; o.code = null; this.guestLobby = null; this.showJoin("The connection to the host closed"); } };
+    conn.link.send({ t: "hello", civ: o.civ, name: this.myName });
     this.showJoin();
   }
 
@@ -778,10 +985,12 @@ export class Game {
       case "host-btn": {
         const o: Extract<NonNullable<Game["online"]>, { role: "host" }> = { role: "host", friends: [], room: null, longCodes: false, invite: null };
         this.online = o;
+        this.lobby = this.newLobby();
         this.showHostLobby();
         Room.open().then((room) => {
           if (this.online !== o) { room.close(); return; }
           o.room = room;
+          if (this.lobby) { this.lobby.code = room.code; this.broadcastLobby(); }
           room.onFriend = (conn) => {
             if (conn.open) this.friendJoined(conn);
             else { conn.onOpen = () => this.friendJoined(conn); conn.onClose = () => { if (!this.started) this.showHostLobby("A friend could not connect: their network and yours found no way through"); }; }
@@ -1998,6 +2207,7 @@ export class Game {
     // The start screen describes the chosen civilization as you pick it.
     document.addEventListener("change", (e) => {
       const t = e.target as HTMLSelectElement;
+      if (this.lobbyChange(t)) return;
       if (t.id === "load-file") {
         const f = (t as unknown as HTMLInputElement).files?.[0];
         if (f) unpack(f).then((s) => this.loadGame(s), (err) => this.hud.message(`Could not read that file: ${err.message}`));
@@ -2358,6 +2568,8 @@ export class Game {
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) {
       if (key === "Enter" && t.id === "room-in") (document.querySelector("#join-room") as HTMLButtonElement | null)?.click();
+      if (key === "Enter" && t.id === "chat-in") this.sendChat(t as HTMLInputElement);
+      if (key === "Enter" && t.id === "my-name") (t as HTMLInputElement).blur(); // the change event sends it
       return;
     }
     if (key.startsWith("Arrow")) { this.keys.add(key); e.preventDefault(); return; }

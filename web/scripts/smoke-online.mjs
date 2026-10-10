@@ -71,21 +71,33 @@ if (room) {
   await host.fill("#answer-in", answer);
   await host.click("#accept-btn");
 }
-await host.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Friend 1: connected"), null, { timeout: 25000 });
-check(true, "the two browsers connect");
-await guest.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Waiting for the host"), null, { timeout: 5000 }).catch(() => {});
-check((await guest.textContent("#overlay")).includes("Waiting for the host"), "the friend waits for the host to start");
-await host.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Egyptian"), null, { timeout: 5000 }).catch(() => {});
-check((await host.textContent("#overlay")).includes("Egyptian"), "the host sees the friend's civilization");
-
-await host.click("#online-setup");
-await host.selectOption("#opponents", "0");
-check((await host.textContent("#start-choices")).trim() === "Start the game", "with a friend in, the host may have no computer players at all (one Start button then)");
-await host.selectOption("#opponents", "1");
-await host.click("[data-start=normal]");
+// The lobby: eight seats, the friend in the second.
+await host.waitForFunction(() => document.querySelector(".seats")?.textContent?.includes("Not ready"), null, { timeout: 25000 });
+check(true, "the two browsers connect, and the friend takes a seat in the host's lobby");
+await guest.waitForSelector(".lobby", { timeout: 5000 });
+check((await guest.$$(".seats tr")).length === 9, "the friend sees the lobby too: eight seats");
+await guest.fill("#my-name", "Friend");
+await guest.press("#my-name", "Enter");
+await host.waitForFunction(() => document.querySelector(".seats")?.textContent?.includes("Friend"), null, { timeout: 5000 }).catch(() => {});
+const seats = await host.textContent(".seats");
+check(seats.includes("Friend") && seats.includes("Egyptian"), "the host sees the friend's name and civilization");
+await guest.fill("#chat-in", "hello from the friend");
+await guest.press("#chat-in", "Enter");
+await host.waitForFunction(() => document.querySelector("#lobby-chat")?.textContent?.includes("hello from the friend"), null, { timeout: 5000 }).catch(() => {});
+check((await host.textContent("#lobby-chat")).includes("Friend: hello from the friend"), "chat in the lobby reaches the host");
+check(await host.isDisabled("#lobby-start"), "the host cannot start before the friend is ready");
+// The other seats: a computer in the third, the fourth closed (none at all is a choice too).
+await host.selectOption("#seat-2", "computer:normal");
+await host.selectOption("#seat-3", "closed");
+await guest.waitForFunction(() => document.querySelector(".seats")?.textContent?.includes("Computer (Moderate)"), null, { timeout: 5000 }).catch(() => {});
+check((await guest.textContent(".seats")).includes("Computer (Moderate)"), "the host's seats reach the friend");
+await guest.check("#my-ready");
+await host.waitForFunction(() => !document.querySelector("#lobby-start")?.disabled, null, { timeout: 5000 }).catch(() => {});
+check(!(await host.isDisabled("#lobby-start")), "once the friend is ready, the host can start");
+await host.click("#lobby-start");
 await guest.waitForFunction(() => window.game.started, null, { timeout: 10000 });
-const who = await guest.evaluate(() => ({ me: game.me, n: game.world.players.length, civ: game.world.players[game.me].civ?.id }));
-check(who.me === 1 && who.n === 3 && who.civ === "egyptian", "the friend plays as Player 2, an Egyptian, with a computer as the third player");
+const who = await guest.evaluate(() => ({ me: game.me, n: game.world.players.length, civ: game.world.players[game.me].civ?.id, name: game.world.players[game.me].name, ais: game.world.ais.length }));
+check(who.me === 1 && who.n === 3 && who.civ === "egyptian" && who.name === "Friend" && who.ais === 1, "the friend plays as Friend, an Egyptian, with a computer as the third player");
 
 // Each side trains a villager at its Town Center.
 for (const page of [host, guest]) {
@@ -125,7 +137,7 @@ check(await host.evaluate(() => game.net.desync === null), "and still no disagre
 // The friend leaves: the host is told, and goes on.
 await guest.close();
 await host.waitForFunction(() => document.querySelector("#messages")?.textContent?.includes("has left the game"), null, { timeout: 20000 }).catch(() => {});
-check((await host.textContent("#messages")).includes("Player 2 has left the game"), "when the friend leaves, the host is told");
+check((await host.textContent("#messages")).includes("Friend has left the game"), "when the friend leaves, the host is told");
 await host.keyboard.press("F3");
 const before = await host.evaluate(() => game.world.tick);
 await host.waitForTimeout(1500);
