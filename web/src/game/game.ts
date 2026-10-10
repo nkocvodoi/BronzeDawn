@@ -11,7 +11,7 @@ import { SmartResult, Stance, STANCES, Victory, WinHow, World, WorldOptions } fr
 import { loadWorld, SaveFile, saveWorld } from "../core/save";
 import { Command as Order, CommandResult, runCommand } from "../core/commands";
 import { DELAY, LockstepGuest, LockstepHost, TURN_TICKS } from "../core/net";
-import { Peer } from "./rtc";
+import { Conn, HAS_RELAY, joinRoom, Peer, Room } from "./rtc";
 import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
 import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
@@ -188,8 +188,11 @@ export class Game {
   /** Playing online: the lockstep that runs the world, as host or guest. Null when playing alone. */
   net: LockstepHost | LockstepGuest | null = null;
   /** The online lobby: as host, the friends connected; as a guest, the line to the host. */
-  private online: { role: "host"; friends: { peer: Peer; civ: string | null; slot: number }[]; invite: { peer: Peer; code: string; accept: (a: string) => Promise<void> } | null }
-    | { role: "guest"; peer: Peer | null; code: string | null; civ: string | null } | null = null;
+  private online: {
+    role: "host"; friends: { peer: Conn; civ: string | null; slot: number }[];
+    /** The six-digit room friends join by; or, with `longCodes`, an invitation made by hand. */
+    room: Room | null; longCodes: boolean; invite: { peer: Peer; code: string; accept: (a: string) => Promise<void>; tried: boolean } | null;
+  } | { role: "guest"; peer: Conn | null; civ: string | null; longCodes: boolean; code: string | null } | null = null;
   /** The host has paused an online game (F3). */
   private hostPaused = false;
   private desyncShown = false;
@@ -520,7 +523,7 @@ export class Game {
   }
 
   /** An online game begins on this machine: as the host (no link), or as a guest with its line to the host. */
-  private beginOnline(setup: OnlineSetup, me: number, host: Peer | null) {
+  private beginOnline(setup: OnlineSetup, me: number, host: Conn | null) {
     const w = this.worldFromSetup(setup);
     this.me = me; this.watching = false; this.watchAll = false; this.revealMap = false; this.ended = false;
     this.seed = setup.seed; this.mapSize = setup.size; this.hostPaused = false; this.desyncShown = false;
@@ -554,7 +557,7 @@ export class Game {
 
   /** Back to playing alone: every connection closed. */
   private leaveOnline() {
-    if (this.online?.role === "host") { for (const f of this.online.friends) f.peer.close(); this.online.invite?.peer.close(); }
+    if (this.online?.role === "host") { for (const f of this.online.friends) f.peer.close(); this.online.invite?.peer.close(); this.online.room?.close(); }
     if (this.online?.role === "guest") this.online.peer?.close();
     this.online = null; this.net = null; this.hostPaused = false; this.desyncShown = false;
   }
@@ -564,23 +567,47 @@ export class Game {
     if (this.online?.role === "host") { this.showHostLobby(); return; }
     if (this.online?.role === "guest") { this.showJoin(); return; }
     this.hud.showOverlay("Play with friends online", [
-      "Up to eight players in all, friends and computers. No account and no server: the host sends each friend an invitation code (by chat, mail, anything), and the friend sends an answer code back.",
+      "Up to eight players in all, friends and computers, on any networks. The host opens a room and gets a six-digit code; friends type it in. No account needed.",
       `<span class="choices"><button id="host-btn">Host a game</button><button id="join-btn">Join a friend's game</button><button id="online-back">Back</button></span>`,
     ], "menu");
+  }
+
+  /** A friend has connected (by room code or by long codes): they wait in the lobby until the host starts. */
+  private friendJoined(conn: Conn) {
+    const o = this.online;
+    if (o?.role !== "host") { conn.close(); return; }
+    if (o.friends.length + 1 >= 8 || this.started) { conn.close(); return; }
+    const friend = { peer: conn, civ: null as string | null, slot: 0 };
+    o.friends.push(friend);
+    conn.link.onMessage((m) => {
+      const msg = m as { t?: string; civ?: string | null };
+      if (msg.t === "hello") { friend.civ = typeof msg.civ === "string" && this.rules.civs.some((c) => c.id === msg.civ) ? msg.civ : null; if (!this.started) this.showHostLobby(); }
+    });
+    conn.onClose = () => { if (!this.started) { o.friends = o.friends.filter((f) => f !== friend); this.showHostLobby("A friend left the lobby"); } };
+    this.sound.play("trained");
+    if (!this.started) this.showHostLobby("A friend joined");
   }
 
   private showHostLobby(status = "") {
     if (this.online?.role !== "host") return;
     const o = this.online;
-    const list = o.friends.map((f, i) => `<li>Friend ${i + 1}: ${f.peer.open ? "connected" : "gone"}${f.civ ? ` · ${this.rules.civs.find((c) => c.id === f.civ)?.name ?? ""}` : " · random civilization"}</li>`).join("");
-    this.hud.showOverlay("Host a game", [
-      o.friends.length ? `<ul class="friends">${list}</ul>` : "No friends connected yet.",
-      o.invite
+    const list = o.friends.map((f, i) => `<li>Friend ${i + 1}: ${f.peer.open ? "connected" : "connecting…"} · ${f.civ ? this.rules.civs.find((c) => c.id === f.civ)?.name ?? "" : "random civilization"}</li>`).join("");
+    const room = o.room ? `Your room code: <span class="room-code">${o.room.code.slice(0, 3)} ${o.room.code.slice(3)}</span>Friends choose <b>Join a friend's game</b> and type this code.`
+      : o.longCodes ? "" : "Opening a room…";
+    const long = o.longCodes
+      ? (o.invite
         ? `1. Send this invitation code to a friend:<textarea id="invite-code" readonly rows="3">${o.invite.code}</textarea><button id="copy-invite">Copy</button>`
-          + `<br>2. Paste their answer code here:<textarea id="answer-in" rows="3" placeholder="BD1-..."></textarea><button id="accept-btn">Connect</button>`
-        : (o.friends.length + 1 < 8 ? `<span class="choices"><button id="invite-btn">Invite a friend</button></span>` : ""),
+          + `<br>2. Paste their answer code here:<textarea id="answer-in" rows="3" placeholder="BD1-..."></textarea><button id="accept-btn"${o.invite.tried ? " disabled" : ""}>Connect</button>`
+        : `<span class="choices"><button id="invite-btn">Make an invitation code</button></span>`)
+      : "";
+    this.hud.showOverlay("Host a game", [
+      room,
+      o.friends.length ? `<ul class="friends">${list}</ul>` : "No friends connected yet.",
+      long,
       `<span id="online-status">${status}</span>`,
-      `<span class="choices"><button id="online-setup">${o.friends.length ? "Choose the settings and start" : "Back"}</button><button id="online-leave">Stop hosting</button></span>`,
+      `<span class="choices"><button id="online-setup">${o.friends.length ? "Choose the settings and start" : "Back"}</button>`
+        + `${o.longCodes ? "" : `<button id="long-codes">Use long codes instead</button>`}<button id="online-leave">Stop hosting</button></span>`,
+      o.longCodes ? "" : `<span class="hint">The code is matched through PeerJS's free public service; the game then goes straight between your machines.${HAS_RELAY ? "" : " Some networks (mobile data especially) cannot reach each other straight: if a friend cannot join, try the same Wi-Fi."}</span>`,
     ], "menu");
   }
 
@@ -588,68 +615,113 @@ export class Game {
     if (this.online?.role !== "guest") return;
     const o = this.online;
     const civs = this.rules.civs.map((c) => `<option value="${c.id}"${c.id === o.civ ? " selected" : ""}>${c.name}</option>`).join("");
-    this.hud.showOverlay("Join a friend's game", [
-      `Your civilization: <select id="guest-civ"><option value="">Random</option>${civs}</select>`,
-      o.code
+    const connected = !!o.peer?.open;
+    const how = connected ? "" : o.longCodes
+      ? (o.code
         ? `Send this answer code back to the host:<textarea id="answer-code" readonly rows="3">${o.code}</textarea><button id="copy-answer">Copy</button>`
-        : `1. Paste the host's invitation code:<textarea id="invite-in" rows="3" placeholder="BD1-..."></textarea><button id="answer-btn">Make my answer code</button>`,
-      `<span id="online-status">${status || (o.peer?.open ? "Connected. Waiting for the host to start the game." : "")}</span>`,
-      `<span class="choices"><button id="online-leave">Leave</button></span>`,
+        : `Paste the host's invitation code:<textarea id="invite-in" rows="3" placeholder="BD1-..."></textarea><button id="answer-btn">Make my answer code</button>`)
+      : `Room code: <input id="room-in" inputmode="numeric" maxlength="7" placeholder="123 456" autocomplete="off"> <button id="join-room">Join</button>`;
+    this.hud.showOverlay("Join a friend's game", [
+      `Your civilization: <select id="guest-civ"${connected ? " disabled" : ""}><option value="">Random</option>${civs}</select>`,
+      how,
+      `<span id="online-status">${status || (connected ? "Connected. Waiting for the host to start the game." : "")}</span>`,
+      `<span class="choices">${connected || o.longCodes ? "" : `<button id="long-join">Use a long code instead</button>`}<button id="online-leave">Leave</button></span>`,
     ], "menu");
+    (document.querySelector("#room-in") as HTMLInputElement | null)?.focus();
+  }
+
+  /** The guest is connected to the host, however: say hello, and wait for the start. */
+  private joinedHost(conn: Conn) {
+    const o = this.online;
+    if (o?.role !== "guest") { conn.close(); return; }
+    o.peer = conn;
+    conn.link.onMessage((m) => {
+      const msg = m as { t?: string; setup?: OnlineSetup; you?: number };
+      if (msg.t === "start" && msg.setup && typeof msg.you === "number") this.beginOnline(msg.setup, msg.you, conn);
+    });
+    conn.onClose = () => { if (!this.started) { o.peer = null; o.code = null; this.showJoin("The connection to the host closed"); } };
+    conn.link.send({ t: "hello", civ: o.civ });
+    this.showJoin();
   }
 
   /** A click in the online screens. */
   private onlineClick(t: HTMLElement): boolean {
     const id = t.closest("button")?.id ?? "";
-    const text = (sel: string) => ((document.querySelector(sel) as HTMLTextAreaElement | null)?.value ?? "").trim();
+    const text = (sel: string) => ((document.querySelector(sel) as HTMLTextAreaElement | HTMLInputElement | null)?.value ?? "").trim();
     const copy = (sel: string) => { const v = text(sel); navigator.clipboard?.writeText(v).then(() => this.hud.message("Copied"), () => { (document.querySelector(sel) as HTMLTextAreaElement | null)?.select(); }); };
+    const civ = () => (document.querySelector("#guest-civ") as HTMLSelectElement | null)?.value || null;
     switch (id) {
       case "online-open": this.showOnline(); return true;
       case "online-back": this.showStart(); return true;
       case "online-setup": this.showStart(); return true; // the friends stay connected; Lobby on the start screen goes back
       case "online-leave": this.leaveOnline(); this.showStart(); return true;
-      case "host-btn": this.online = { role: "host", friends: [], invite: null }; this.showHostLobby(); return true;
-      case "join-btn": this.online = { role: "guest", peer: null, code: null, civ: null }; this.showJoin(); return true;
+      case "host-btn": {
+        const o: Extract<NonNullable<Game["online"]>, { role: "host" }> = { role: "host", friends: [], room: null, longCodes: false, invite: null };
+        this.online = o;
+        this.showHostLobby();
+        Room.open().then((room) => {
+          if (this.online !== o) { room.close(); return; }
+          o.room = room;
+          room.onFriend = (conn) => {
+            if (conn.open) this.friendJoined(conn);
+            else { conn.onOpen = () => this.friendJoined(conn); conn.onClose = () => { if (!this.started) this.showHostLobby("A friend could not connect: their network and yours found no way through"); }; }
+          };
+          room.onLost = (why) => { if (!this.started) this.showHostLobby(why); };
+          this.showHostLobby();
+        }, (e) => { if (this.online === o) { o.longCodes = true; this.showHostLobby(`${e.message}. You can still invite with long codes:`); } });
+        return true;
+      }
+      case "long-codes": if (this.online?.role === "host") { this.online.longCodes = true; this.showHostLobby(); } return true;
+      case "join-btn": this.online = { role: "guest", peer: null, civ: null, longCodes: false, code: null }; this.showJoin(); return true;
+      case "long-join": if (this.online?.role === "guest") { this.online.civ = civ(); this.online.longCodes = true; this.showJoin(); } return true;
       case "copy-invite": copy("#invite-code"); return true;
       case "copy-answer": copy("#answer-code"); return true;
+      case "join-room": {
+        const o = this.online;
+        if (o?.role !== "guest") return true;
+        o.civ = civ();
+        const code = text("#room-in");
+        this.showJoin("Connecting…");
+        joinRoom(code).then((conn) => { if (this.online === o) this.joinedHost(conn); else conn.close(); }, (e) => { if (this.online === o) this.showJoin(e.message); });
+        return true;
+      }
       case "invite-btn": {
         const o = this.online;
         if (o?.role !== "host") return true;
+        o.invite?.peer.close();
+        o.invite = null;
         this.showHostLobby("Making an invitation…");
-        Peer.invite().then((inv) => { o.invite = inv; this.showHostLobby(); }, (e) => this.showHostLobby(`Could not make an invitation: ${e.message}`));
+        Peer.invite().then((inv) => { o.invite = { ...inv, tried: false }; this.showHostLobby(); }, (e) => this.showHostLobby(`Could not make an invitation: ${e.message}`));
         return true;
       }
       case "accept-btn": {
         const o = this.online;
-        if (o?.role !== "host" || !o.invite) return true;
+        if (o?.role !== "host" || !o.invite || o.invite.tried) return true;
         const inv = o.invite, answer = text("#answer-in");
+        inv.tried = true; // an invitation takes one answer; a second press would only fail
         this.showHostLobby("Connecting…");
         inv.accept(answer).then(() => {
-          const friend = { peer: inv.peer, civ: null as string | null, slot: 0 };
-          inv.peer.onOpen = () => { o.friends.push(friend); o.invite = null; this.showHostLobby("Connected"); };
-          inv.peer.link.onMessage((m) => {
-            const msg = m as { t?: string; civ?: string | null };
-            if (msg.t === "hello") { friend.civ = typeof msg.civ === "string" && this.rules.civs.some((c) => c.id === msg.civ) ? msg.civ : null; if (!this.started) this.showHostLobby(); }
-          });
-          inv.peer.onClose = () => { if (!this.started) this.showHostLobby("A friend's connection closed"); };
+          const gone = setTimeout(() => {
+            if (inv.peer.open) return;
+            inv.peer.close();
+            if (o.invite === inv) o.invite = null;
+            this.showHostLobby("No way was found between your network and your friend's. Make a new invitation and try again, or use a room code instead.");
+          }, 15000);
+          inv.peer.onOpen = () => { clearTimeout(gone); if (o.invite === inv) o.invite = null; this.friendJoined(inv.peer); };
           if (inv.peer.open) inv.peer.onOpen();
-        }, (e) => this.showHostLobby(`That answer did not work: ${e.message}`));
+        }, (e) => { inv.tried = false; this.showHostLobby(`That answer did not work: ${e.message}`); });
         return true;
       }
       case "answer-btn": {
         const o = this.online;
         if (o?.role !== "guest") return true;
-        o.civ = (document.querySelector("#guest-civ") as HTMLSelectElement | null)?.value || null;
+        o.civ = civ();
         const invitation = text("#invite-in");
         this.showJoin("Making your answer…");
         Peer.answer(invitation).then(({ peer, code }) => {
-          o.peer = peer; o.code = code;
-          peer.onOpen = () => { peer.link.send({ t: "hello", civ: o.civ }); if (!this.started) this.showJoin(); };
-          peer.onClose = () => { if (!this.started) this.showJoin("The connection to the host closed"); };
-          peer.link.onMessage((m) => {
-            const msg = m as { t?: string; setup?: OnlineSetup; you?: number };
-            if (msg.t === "start" && msg.setup && typeof msg.you === "number") this.beginOnline(msg.setup, msg.you, peer);
-          });
+          o.code = code;
+          peer.onOpen = () => this.joinedHost(peer);
+          peer.onClose = () => { if (!this.started) { o.code = null; this.showJoin("The connection to the host closed"); } };
           this.showJoin();
         }, (e) => this.showJoin(`That invitation did not work: ${e.message}`));
         return true;

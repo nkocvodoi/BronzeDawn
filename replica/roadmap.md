@@ -80,7 +80,8 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [x] 5 mức AI: Easiest (dừng ở Tool Age, tối đa 8 lính), Easy, Moderate, Hard (thu nhanh hơn 20%), Hardest (như Hard, thêm 2000 mỗi loại lúc đầu, như bản gốc ăn gian); AI không xuất quân khi ít hơn 80% quân địch
 - [x] Lưu và tải trận: lưu toàn bộ trạng thái (cả AI) trong trình duyệt hoặc ra file .bdsave (nén gzip, khoảng 0,1 MB cho bản đồ nhỏ); trận tải lại chạy tiếp y hệt trận đã lưu
 - [x] Chơi online với bạn bè: lockstep qua WebRTC, không cần máy chủ (host gửi mã mời, bạn bè gửi lại mã trả lời); tới 8 người kể cả máy; host tạm dừng và đặt tốc độ cho mọi người; hai bên so dấu vân tay của trận để phát hiện lệch
-- [ ] Online: một số mạng chặt (NAT đối xứng) không nối thẳng được, cần thêm máy chủ TURN; chưa có chat; người rời trận thì quân đứng yên (máy chưa chơi thay)
+- [x] Online: mã phòng 6 số (ghép qua máy chủ công cộng miễn phí của PeerJS); báo rõ khi không nối được; mã dài vẫn giữ làm dự phòng
+- [ ] Online: một số mạng chặt (NAT đối xứng, CGNAT, 4G) không nối thẳng được, cần máy chủ TURN (máy chủ TURN miễn phí của PeerJS đã ngừng; game đã có chỗ cho TURN riêng lúc build); chưa có chat; người rời trận thì quân đứng yên (máy chưa chơi thay)
 
 ## Chỗ đang khác bản gốc (đã chọn, có thể đổi)
 

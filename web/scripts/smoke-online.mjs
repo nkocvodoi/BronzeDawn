@@ -38,24 +38,41 @@ const host = await open("host"), guest = await open("guest");
 
 await host.click("#online-open");
 await host.click("#host-btn");
-await host.click("#invite-btn");
-await host.waitForSelector("#invite-code");
-const invitation = await host.inputValue("#invite-code");
-check(invitation.startsWith("BD1-") && invitation.length < 4000, `the host gets an invitation code (${invitation.length} characters)`);
-
+// The usual way: a six-digit room code, matched by PeerJS's public service. Without internet (or if the
+// service is down) the test says so and connects with the long codes instead, which need no server.
+const room = await host.waitForSelector(".room-code", { timeout: 15000 }).then(() => host.textContent(".room-code"), () => null);
 await guest.click("#online-open");
 await guest.click("#join-btn");
 await guest.selectOption("#guest-civ", "egyptian");
-await guest.fill("#invite-in", invitation);
-await guest.click("#answer-btn");
-await guest.waitForSelector("#answer-code");
-const answer = await guest.inputValue("#answer-code");
-check(answer.startsWith("BD1-"), "the friend gets an answer code");
-
-await host.fill("#answer-in", answer);
-await host.click("#accept-btn");
-await host.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Friend 1: connected"), null, { timeout: 15000 });
+if (room) {
+  const code = room.replace(/\D/g, "");
+  check(code.length === 6, `the host gets a six-digit room code (${room.trim()})`);
+  await guest.fill("#room-in", code);
+  await guest.click("#join-room");
+} else {
+  console.log("note  the public matching service could not be reached: connecting with long codes instead");
+  await host.click("#online-leave");
+  await host.click("#online-open");
+  await host.click("#host-btn");
+  await host.click("#long-codes");
+  await host.click("#invite-btn");
+  await host.waitForSelector("#invite-code");
+  const invitation = await host.inputValue("#invite-code");
+  check(invitation.startsWith("BD1-") && invitation.length < 4000, `the host gets an invitation code (${invitation.length} characters)`);
+  await guest.click("#long-join");
+  await guest.selectOption("#guest-civ", "egyptian");
+  await guest.fill("#invite-in", invitation);
+  await guest.click("#answer-btn");
+  await guest.waitForSelector("#answer-code");
+  const answer = await guest.inputValue("#answer-code");
+  check(answer.startsWith("BD1-"), "the friend gets an answer code");
+  await host.fill("#answer-in", answer);
+  await host.click("#accept-btn");
+}
+await host.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Friend 1: connected"), null, { timeout: 25000 });
 check(true, "the two browsers connect");
+await guest.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Waiting for the host"), null, { timeout: 5000 }).catch(() => {});
+check((await guest.textContent("#overlay")).includes("Waiting for the host"), "the friend waits for the host to start");
 await host.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Egyptian"), null, { timeout: 5000 }).catch(() => {});
 check((await host.textContent("#overlay")).includes("Egyptian"), "the host sees the friend's civilization");
 
