@@ -215,3 +215,28 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay .room-code { display: block; font-size: 40px; font-weight: 700; letter-spacing: 6px; color: var(--gold); margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
 #overlay .hint { display: block; font-size: 11px; color: #c8b896; max-width: 520px; margin: 0 auto; }
 #overlay #room-in { font: 700 22px/1 ui-monospace, monospace; width: 9ch; text-align: center; letter-spacing: 3px; padding: 6px; background: #2a2218; color: #f3e4bd; border: 2px solid #c8a462; }
+
+/* Joining a room: a panel that says what is happening, a spinner while it looks. */
+#overlay .join-state { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 14px auto; padding: 18px 26px;
+  border: 2px solid #c8a462; background: rgba(0, 0, 0, .25); min-width: 320px; }
+#overlay .join-state b { font-size: 20px; color: #f3e4bd; }
+#overlay .join-state span { font-size: 14px; color: #d8c8a2; }
+#overlay .join-state.ok { border-color: #7fbf5a; }
+#overlay .join-tick { font-size: 34px !important; color: #8fd46a !important; line-height: 1; }
+#overlay .spinner { width: 34px; height: 34px; border: 4px solid rgba(243, 228, 189, .25); border-top-color: #f3c86a; border-radius: 50%;
+  animation: bd-spin .8s linear infinite; }
+@keyframes bd-spin { to { transform: rotate(360deg); } }
+#overlay .dots::after { content: ""; animation: bd-dots 1.5s steps(4) infinite; }
+@keyframes bd-dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+
+/* The main menu, after the original's: a column of framed choices. */
+#overlay .mainmenu { min-width: 420px; text-align: center; }
+#overlay .mainmenu h1 { font-size: 52px; letter-spacing: 2px; margin-bottom: 4px; }
+#overlay .mainmenu .tagline { font-family: Cinzel, serif; font-size: 15px; letter-spacing: 6px; text-transform: uppercase; color: #e8dcc0; }
+#overlay .mainmenu-list { display: flex; flex-direction: column; gap: 12px; margin: 22px auto 10px; width: min(380px, 80vw); }
+#overlay .mainmenu-list button { font-family: Cinzel, serif; font-size: 20px; letter-spacing: 2px; padding: 14px 20px;
+  border: 3px solid #d8b870; border-color: #f0d898 #6a4a20 #6a4a20 #f0d898; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .35); }
+#overlay .mainmenu-list button:hover { color: #fff2c0; text-shadow: 0 0 6px rgba(255, 220, 120, .7), 1px 1px 0 #000; }
+#overlay .mainmenu .small { font-size: 12px; color: #c8b896; }
+#overlay #room-in { width: 12ch; box-sizing: content-box; font: 700 22px/1.2 ui-monospace, monospace; letter-spacing: 3px; text-align: center; padding: 4px 8px;
+  background: #2a2218; color: #f3e4bd; border: 2px solid #c8a462; }

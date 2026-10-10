@@ -36,23 +36,25 @@ const open = async (who) => {
 };
 const host = await open("host"), guest = await open("guest");
 
-await host.click("#online-open");
+await host.click("#mm-multi");
 await host.click("#host-btn");
 // The usual way: a six-digit room code, matched by PeerJS's public service. Without internet (or if the
 // service is down) the test says so and connects with the long codes instead, which need no server.
 const room = await host.waitForSelector(".room-code", { timeout: 15000 }).then(() => host.textContent(".room-code"), () => null);
-await guest.click("#online-open");
+await guest.click("#mm-multi");
 await guest.click("#join-btn");
 await guest.selectOption("#guest-civ", "egyptian");
 if (room) {
   const code = room.replace(/\D/g, "");
   check(code.length === 6, `the host gets a six-digit room code (${room.trim()})`);
-  await guest.fill("#room-in", code);
+  await guest.type("#room-in", code); // typed key by key, as a player does
+  check(!(await guest.evaluate(() => game.started)), "typing the room code does not start a game");
   await guest.click("#join-room");
+  check(await guest.isVisible(".join-state"), "joining shows a panel that says what is happening");
 } else {
   console.log("note  the public matching service could not be reached: connecting with long codes instead");
   await host.click("#online-leave");
-  await host.click("#online-open");
+  await host.click("#mm-multi");
   await host.click("#host-btn");
   await host.click("#long-codes");
   await host.click("#invite-btn");

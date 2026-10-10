@@ -227,7 +227,7 @@ export type GameEvent =
   | { kind: "projectile"; from: Vec2; to: Vec2; flight: number; projectile: string }
   | { kind: "hit"; at: Vec2; melee: boolean; building: boolean }
   | { kind: "splash"; at: Vec2; radius: number }
-  | { kind: "died"; id: number; owner: number; at: Vec2; wasBuilding: boolean }
+  | { kind: "died"; id: number; owner: number; at: Vec2; wasBuilding: boolean; deleted?: boolean }
   | { kind: "completed"; id: number; owner: number }
   | { kind: "trained"; id: number; owner: number }
   | { kind: "researched"; player: number; tech: string }
