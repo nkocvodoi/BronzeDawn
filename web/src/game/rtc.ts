@@ -17,12 +17,21 @@ export interface Conn { readonly link: Link; readonly open: boolean; onOpen: (()
 
 /** The STUN servers that tell each machine its address, and a TURN relay if this build was given one. */
 const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {};
+/** The relay's addresses as given, keeping only well-formed ones: a browser refuses the whole list, and with
+ *  it every connection, over one mistyped address. */
+export function relayUrls(given: string | undefined): string[] {
+  const urls = (given ?? "").split(",").map((u) => u.trim()).filter(Boolean);
+  const good = urls.filter((u) => /^(stun|stuns|turn|turns):[^\s,]+$/.test(u));
+  if (good.length < urls.length) console.warn(`TURN: left out ${urls.length - good.length} address(es) that are not stun:, turn: or turns: URLs`);
+  return good;
+}
+const RELAY = relayUrls(env.VITE_TURN_URLS);
 const ICE: RTCIceServer[] = [
   { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
-  ...(env.VITE_TURN_URLS ? [{ urls: env.VITE_TURN_URLS.split(",").map((u) => u.trim()), username: env.VITE_TURN_USERNAME, credential: env.VITE_TURN_CREDENTIAL }] : []),
+  ...(RELAY.length ? [{ urls: RELAY, username: env.VITE_TURN_USERNAME, credential: env.VITE_TURN_CREDENTIAL }] : []),
 ];
 /** Whether this build can relay a game between networks that cannot reach each other straight. */
-export const HAS_RELAY = !!env.VITE_TURN_URLS;
+export const HAS_RELAY = RELAY.some((u) => u.startsWith("turn"));
 /** Codes start with this, so a code for another version is recognised as such. */
 const PREFIX = "BD1-";
 
