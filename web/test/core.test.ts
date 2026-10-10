@@ -9,6 +9,9 @@ import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
 import { Victory, World, WorldOptions } from "../src/core/world";
 import { loadWorld, saveWorld } from "../src/core/save";
+import { LockstepGuest, LockstepHost, MAX_LAG } from "../src/core/net";
+import { Command } from "../src/core/commands";
+import { RNG } from "../src/core/geom";
 
 /** An empty grass map, for tests that set up their own scene. */
 const blank = (size = 24) => new World(RULES, 1, ["A", "B"], size, false);
@@ -906,6 +909,89 @@ describe("game settings and other victories", () => {
     expect(w.players[0].wonderAt).toBeNull();
     run(w, (RULES.economy.wonder_seconds ?? 900) + 2);
     expect(w.winner).toBeNull();
+  });
+});
+
+describe("playing online, in lockstep", () => {
+  /** A pair of links that deliver in order, each message some steps late (a network's lag, made up). */
+  const pipe = (rng: RNG, maxLate: number) => {
+    let clock = 0;
+    const make = () => {
+      const queue: { at: number; msg: unknown }[] = [];
+      let handler: ((m: unknown) => void) | null = null, last = 0;
+      return {
+        link: { send: (m: unknown) => { last = Math.max(last, clock + rng.int(0, maxLate)); queue.push({ at: last, msg: JSON.parse(JSON.stringify(m)) }); }, onMessage: (h: (m: unknown) => void) => { handler = h; } },
+        deliver: () => { while (queue.length && queue[0].at <= clock) handler?.(queue.shift()!.msg); },
+      };
+    };
+    const a = make(), b = make();
+    // a.link is one end's sender; it delivers to whoever listens on b's side, and the other way round.
+    const end1 = { send: a.link.send, onMessage: b.link.onMessage };
+    const end2 = { send: b.link.send, onMessage: a.link.onMessage };
+    return { end1, end2, tick: () => { clock++; a.deliver(); b.deliver(); } };
+  };
+  const makeWorld = () => {
+    const w = new World(RULES, 8, ["Host", "Guest 1", "Guest 2", "Computer"], 96, true, { teams: [1, 1, 2, 2] });
+    w.ais = [new AIController(3, "normal")];
+    for (const ai of w.ais) ai.attach(w);
+    return w;
+  };
+  /** A made-up player: now and then trains a villager, sends idle villagers to work, or moves a few about. */
+  const play = (w: World, me: number, rng: RNG, issue: (c: Command) => void) => {
+    const mine = w.unitsOf(me);
+    const tc = w.buildingsOf(me).find((b) => b.def.id === "town_center");
+    const roll = rng.int(0, 9);
+    if (roll === 0 && tc) issue({ k: "train", building: tc.id, type: "villager" });
+    else if (roll <= 3) {
+      const idle = mine.filter((u) => u.isVillager && u.order.kind === "idle").map((u) => u.id);
+      const node = w.nearestNode(rng.int(0, 1) ? Res.food : Res.wood, w.startTiles[me].center, 20);
+      if (idle.length && node) issue({ k: "smart", ids: idle, target: node.id, x: node.center.x, y: node.center.y });
+    } else if (roll === 4 && mine.length) {
+      const u = mine[rng.int(0, mine.length - 1)];
+      issue({ k: "move", ids: [u.id], x: u.pos.x + rng.int(-3, 3), y: u.pos.y + rng.int(-3, 3) });
+    } else if (roll === 5 && tc && w.players[me].res.wood >= 30) {
+      issue({ k: "place", type: "house", x: tc.footprint.origin.x + rng.int(-8, 8), y: tc.footprint.origin.y + rng.int(-8, 8), builders: mine.filter((u) => u.isVillager).slice(0, 1).map((u) => u.id) });
+    }
+  };
+
+  it("three machines, commands from each and a computer, a laggy network: the worlds stay the same", () => {
+    const rng = new RNG(99);
+    const host = new LockstepHost(makeWorld(), 0);
+    const pipes = [pipe(rng, 6), pipe(rng, 3)];
+    const guests = pipes.map((p, i) => { host.addGuest(i + 1, p.end1); return new LockstepGuest(makeWorld(), i + 1, p.end2); });
+    const peers = [host, ...guests];
+    let ran = 0;
+    host.onCommand = () => { ran++; };
+    for (let step = 0; step < 1500; step++) {
+      for (const p of pipes) p.tick();
+      for (const p of peers) if (rng.int(0, 3) === 0) play(p.world, p.me, rng, (c) => p.issue(c));
+      for (const p of peers) p.advance(p === host ? 1 : 3);
+    }
+    // Let the guests catch up with the host, then compare all three.
+    for (let i = 0; i < 100; i++) { for (const p of pipes) p.tick(); for (const g of guests) g.advance(50); }
+    expect(host.turn).toBeGreaterThan(1000);
+    for (const g of guests) expect(g.turn).toBe(host.turn);
+    expect(ran).toBeGreaterThan(100);
+    const state = (w: World) => JSON.stringify(saveWorld(w).world);
+    for (const g of guests) expect(state(g.world)).toBe(state(host.world));
+    expect(host.desync).toBeNull();
+    for (const id of [0, 1, 2]) expect(host.world.unitsOf(id).filter((u) => u.isVillager).length).toBeGreaterThan(RULES.economy.start_villagers);
+  }, 120_000);
+
+  it("the host waits for a guest that falls behind, and finds out when the worlds come apart", () => {
+    const rng = new RNG(5);
+    const host = new LockstepHost(makeWorld(), 0);
+    const p = pipe(rng, 0);
+    host.addGuest(1, p.end1);
+    const guest = new LockstepGuest(makeWorld(), 1, p.end2);
+    // The guest does not play: the host stops MAX_LAG turns on.
+    for (let i = 0; i < 40; i++) { p.tick(); host.advance(1); }
+    expect(host.turn).toBe(MAX_LAG);
+    // Now one world is changed behind the game's back.
+    guest.world.players[1].res.set(Res.gold, guest.world.players[1].res.gold + 500);
+    for (let i = 0; i < 400; i++) { p.tick(); host.advance(1); guest.advance(5); }
+    expect(host.desync).not.toBeNull();
+    expect(guest.desync).toBe(host.desync);
   });
 });
 

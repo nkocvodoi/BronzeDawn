@@ -73,12 +73,13 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [x] Thắng theo điểm (300 / 500 / 800) hoặc hết giờ (15 đến 90 phút); đội tính điểm trung bình như bản gốc; chế độ chỉ thắng bằng chinh phục
 - [x] Tùy chọn khi bắt đầu: mở toàn bản đồ, thời đại khởi đầu, tài nguyên khởi đầu (Low đến Death Match), giới hạn dân số (25 đến 200)
 
-### Giai đoạn 5: nhiều người chơi (lớn)
+### Giai đoạn 5: nhiều người chơi (xong)
 - [x] Tới 8 người chơi (1 đến 7 máy), máy đánh riêng hoặc liên minh chống bạn
 - [x] Chia đội tùy ý (tới 4 đội), đồng minh với máy, trạng thái ngoại giao (đồng minh / trung lập / kẻ thù) trong màn hình Diplomacy, cống nạp 100 mỗi lần (phí 25%, miễn phí khi có Coinage hoặc là người Palmyran); máy trung lập được cống đủ 2600 sẽ thành đồng minh
 - [x] 5 mức AI: Easiest (dừng ở Tool Age, tối đa 8 lính), Easy, Moderate, Hard (thu nhanh hơn 20%), Hardest (như Hard, thêm 2000 mỗi loại lúc đầu, như bản gốc ăn gian); AI không xuất quân khi ít hơn 80% quân địch
 - [x] Lưu và tải trận: lưu toàn bộ trạng thái (cả AI) trong trình duyệt hoặc ra file .bdsave (nén gzip, khoảng 0,1 MB cho bản đồ nhỏ); trận tải lại chạy tiếp y hệt trận đã lưu
-- [ ] Chơi online với bạn bè: lockstep qua WebRTC. Phần mô phỏng đã tất định sẵn cho việc này.
+- [x] Chơi online với bạn bè: lockstep qua WebRTC, không cần máy chủ (host gửi mã mời, bạn bè gửi lại mã trả lời); tới 8 người kể cả máy; host tạm dừng và đặt tốc độ cho mọi người; hai bên so dấu vân tay của trận để phát hiện lệch
+- [ ] Online: một số mạng chặt (NAT đối xứng) không nối thẳng được, cần thêm máy chủ TURN; chưa có chat; người rời trận thì quân đứng yên (máy chưa chơi thay)
 
 ## Chỗ đang khác bản gốc (đã chọn, có thể đổi)
 

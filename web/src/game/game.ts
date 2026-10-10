@@ -7,8 +7,11 @@ import { Res, RES_KEY as RES_NAME, ResBag, Rules } from "../core/rules";
 import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import { MAP_TYPES, MapType } from "../core/mapgen";
-import { Stance, STANCES, Victory, WinHow, World } from "../core/world";
+import { SmartResult, Stance, STANCES, Victory, WinHow, World, WorldOptions } from "../core/world";
 import { loadWorld, SaveFile, saveWorld } from "../core/save";
+import { Command as Order, CommandResult, runCommand } from "../core/commands";
+import { DELAY, LockstepGuest, LockstepHost, TURN_TICKS } from "../core/net";
+import { Peer } from "./rtc";
 import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
 import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
@@ -74,6 +77,9 @@ const VICTORIES: [string, string, Victory][] = [
 /** What the end screen says about how the game was won. */
 const HOW_TEXT: Record<WinHow, string> = { conquest: "", wonder: "A Wonder stood its time. ", score: "The target score was reached. ", time: "Time ran out: the best score wins. ",
   ruins: "All the Ruins were held for their time. ", artifacts: "All the Artifacts were held for their time. " };
+/** What the host sends every machine when an online game starts, to build the same world from. */
+interface OnlineSetup { seed: number; names: string[]; size: number; options: WorldOptions; ais: [number, Difficulty][]; reseed: boolean; speed: number }
+
 /** Starting resources: Low is the original's default. */
 const RESOURCE_LEVELS: [string, string][] = [["low", "Low"], ["medium", "Medium"], ["high", "High"], ["deathmatch", "Death Match"]];
 /** A remembered choice, if it is still one of the choices. */
@@ -179,6 +185,14 @@ export class Game {
   private mouse = { x: -1, y: -1, inside: false };
   private keys = new Set<string>();
   private accumulator = 0;
+  /** Playing online: the lockstep that runs the world, as host or guest. Null when playing alone. */
+  net: LockstepHost | LockstepGuest | null = null;
+  /** The online lobby: as host, the friends connected; as a guest, the line to the host. */
+  private online: { role: "host"; friends: { peer: Peer; civ: string | null; slot: number }[]; invite: { peer: Peer; code: string; accept: (a: string) => Promise<void> } | null }
+    | { role: "guest"; peer: Peer | null; code: string | null; civ: string | null } | null = null;
+  /** The host has paused an online game (F3). */
+  private hostPaused = false;
+  private desyncShown = false;
   private fogStamp = -1;
   private minimapStamp = -1;
   private idleIndex = 0;
@@ -341,7 +355,10 @@ export class Game {
       `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
       `<span class="choices">${DIFFICULTIES.map((d, i) => `<button data-start="${d}">${i + 1} · ${DIFFICULTY_NAME[d]}</button>`).join("")}</span>`,
       "Hard and Hardest: the computer gathers 20% faster. Hardest also starts with 2,000 more of each resource, as the original's Hardest cheats.",
-      `<span class="choices"><button id="saves-open">Load a saved game</button></span>`,
+      this.online?.role === "host" && this.online.friends.length
+        ? `<span class="online-note">Online: ${this.online.friends.length} friend${this.online.friends.length > 1 ? "s" : ""} connected, playing as Player 2${this.online.friends.length > 1 ? ` to ${this.online.friends.length + 1}` : ""}. The computer players come after them. <button id="online-open">Lobby</button></span>`
+        : "",
+      `<span class="choices"><button id="saves-open">Load a saved game</button><button id="online-open">Play with friends online</button></span>`,
       "Press ? at any time for the controls",
     ]);
   }
@@ -386,6 +403,7 @@ export class Game {
     if (mt && MAP_TYPES.some(([id]) => id === mt)) { this.mapType = mt; store.set("bd-map-type", mt); }
     const size = Math.max(chosenSize, minMapSize(opp + 1));
     // Allied computers share team 1; you are on your own.
+    if (this.online?.role === "host" && this.online.friends.length) { this.hostStart(d, mine, theirs, size); return; }
     const teams = this.teamMode === "team" ? [0, ...theirs.map(() => 1)] : this.teamMode === "custom" ? this.teamList.slice(0, opp + 1) : [];
     this.newGame(this.seed, [mine, ...theirs], size, teams);
     // The speed chosen on the start screen; + and - still change it during the game.
@@ -423,6 +441,223 @@ export class Game {
     this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules) : [], others.join(", ") || null);
   }
 
+  // ---- orders
+
+  /** One of your orders. Played alone it runs at once and says how it went. Online it goes to every
+   *  machine for a turn a moment ahead, and what it will say is told from the world as it stands now. */
+  issue(c: Order): CommandResult {
+    if (!this.net) return runCommand(this.world, this.me, c);
+    const why = this.preview(c);
+    const blocked = typeof why === "string" && c.k !== "smart" || (typeof why === "object" && why !== null && "error" in why) || why === false;
+    if (!blocked) this.net.issue(c);
+    return why;
+  }
+
+  /** What an order will say, without running it (for playing online). */
+  private preview(c: Order): CommandResult {
+    const w = this.world, me = this.me;
+    switch (c.k) {
+      case "train": return w.blockerUnit(c.type, me);
+      case "research": return w.blockerTech(c.tech, me);
+      case "age": return w.blockerForNextAge(me);
+      case "place": {
+        const why = w.blockerBuilding(c.type, me) ?? (w.canPlace(c.type, new Tile(c.x, c.y), me) ? null : "Cannot build there");
+        return why ? { error: why } : { id: 0 };
+      }
+      case "wall": { const why = w.blockerBuilding(c.type, me); return why ? { error: why } : { placed: 1 }; }
+      case "sacrifice": {
+        const t = w.entity(c.target);
+        return !!t && w.players[me].mods.flags.has("martyrdom") && w.isEnemy(me, t.owner) && !(t instanceof Unit && (t.isPriest || t.isRelic));
+      }
+      case "tribute": {
+        const fee = w.players[me].mods.flags.has("free_tribute") ? 0 : w.rules.economy.tribute_fee ?? 0.25;
+        return w.players[me].res.get(c.res) < Math.ceil(c.amount * (1 + fee)) ? "Not enough resources" : null;
+      }
+      case "smart": {
+        const e = c.target !== null ? w.entity(c.target) : null;
+        const units = c.ids.map((id) => w.unit(id)).filter((u): u is Unit => !!u && u.owner === me);
+        if (!units.length) return "nothing";
+        if (!e) return "moved";
+        if (w.hostile(me, e)) return units.every((u) => u.isPriest) ? "converted" : "attacked";
+        if (e instanceof ResourceNode) return units.some((u) => u.isGatherer) ? "gathered" : "moved";
+        if (e instanceof Building && e.owner === me && !e.complete && units.some((u) => u.isVillager)) return "built";
+        if (e instanceof Unit && e.owner === me && e.isTransport) return "boarded";
+        return "moved";
+      }
+      default: return null;
+    }
+  }
+
+  // ---- playing online
+
+  /** Everything every machine needs to build the same world: sent by the host when the game starts. */
+  private worldFromSetup(st: OnlineSetup): World {
+    const w = new World(this.rules, st.seed, st.names, st.size, true, st.options);
+    w.ais = st.ais.map(([p, d]) => new AIController(p, d));
+    for (const ai of w.ais) ai.attach(w);
+    for (const p of w.players) w.setAutoReseed(p.id, st.reseed);
+    return w;
+  }
+
+  /** The host starts: the friends, then the computers, on the start screen's settings. */
+  private hostStart(d: Difficulty, mine: string | null, theirs: (string | null)[], size: number) {
+    if (this.online?.role !== "host") return;
+    const friends = this.online.friends.filter((f) => f.peer.open);
+    const civs = this.rules.civs;
+    const names = ["Player 1", ...friends.map((_, i) => `Player ${i + 2}`), ...theirs.map((_, i) => `Computer ${i + 1}`)];
+    const people = 1 + friends.length;
+    const all = [mine, ...friends.map((f, i) => f.civ ?? (civs.length ? civs[(this.seed * 11 + i * 3) % civs.length].id : null)), ...theirs];
+    const teams = this.teamMode === "team" ? names.map((_, i) => (i < people ? 0 : 1))
+      : this.teamMode === "custom" ? this.teamList.slice(0, names.length) : [];
+    const setup: OnlineSetup = {
+      seed: this.seed, names, size: Math.max(size, minMapSize(names.length)), reseed: this.reseed, speed: this.speed,
+      ais: theirs.map((_, i) => [people + i, d] as [number, Difficulty]),
+      options: { civs: all, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, startAge: this.startAge, resources: this.resources,
+        popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2] },
+    };
+    friends.forEach((f, i) => { f.slot = i + 1; f.peer.link.send({ t: "start", setup, you: f.slot }); });
+    this.beginOnline(setup, 0, null);
+  }
+
+  /** An online game begins on this machine: as the host (no link), or as a guest with its line to the host. */
+  private beginOnline(setup: OnlineSetup, me: number, host: Peer | null) {
+    const w = this.worldFromSetup(setup);
+    this.me = me; this.watching = false; this.watchAll = false; this.revealMap = false; this.ended = false;
+    this.seed = setup.seed; this.mapSize = setup.size; this.hostPaused = false; this.desyncShown = false;
+    this.useWorld(w);
+    let net: LockstepHost | LockstepGuest;
+    if (!host && this.online?.role === "host") {
+      const h = new LockstepHost(w, me);
+      for (const f of this.online.friends.filter((x) => x.slot > 0)) {
+        h.addGuest(f.slot, f.peer.link);
+        f.peer.onClose = () => { h.dropGuest(f.slot); this.hud.message(`${w.players[f.slot].name} has left the game; their people stay where they are`, "warn"); };
+      }
+      net = h;
+    } else {
+      const g = new LockstepGuest(w, me, host!.link);
+      host!.onClose = () => this.hud.message("The host has left: the game cannot go on", "warn");
+      net = g;
+    }
+    net.onOther = (m) => {
+      const msg = m as { t?: string; v?: number; on?: boolean };
+      if (msg.t === "speed" && typeof msg.v === "number") { this.speed = msg.v; this.hud.speed(msg.v); this.hud.message(`The host set the speed to ${msg.v}x`); }
+      if (msg.t === "paused") this.hud.message(msg.on ? "The host has paused the game" : "The host has resumed the game");
+    };
+    this.net = net;
+    this.speed = setup.speed; this.hud.speed(setup.speed);
+    const u = Math.min(window.innerWidth / 800, window.innerHeight / 600);
+    this.cam.zoom = ZOOMS.reduce((a, b) => (Math.abs(b - 1 / u) < Math.abs(a - 1 / u) ? b : a));
+    this.enterGame();
+    this.hud.message(`Online: you are ${w.players[me].name}${w.players[me].civ ? ` (${w.players[me].civ!.name})` : ""}. Gather food and wood. Good luck.`);
+    this.selectTownCenter();
+  }
+
+  /** Back to playing alone: every connection closed. */
+  private leaveOnline() {
+    if (this.online?.role === "host") { for (const f of this.online.friends) f.peer.close(); this.online.invite?.peer.close(); }
+    if (this.online?.role === "guest") this.online.peer?.close();
+    this.online = null; this.net = null; this.hostPaused = false; this.desyncShown = false;
+  }
+
+  /** Host or join. */
+  private showOnline() {
+    if (this.online?.role === "host") { this.showHostLobby(); return; }
+    if (this.online?.role === "guest") { this.showJoin(); return; }
+    this.hud.showOverlay("Play with friends online", [
+      "Up to eight players in all, friends and computers. No account and no server: the host sends each friend an invitation code (by chat, mail, anything), and the friend sends an answer code back.",
+      `<span class="choices"><button id="host-btn">Host a game</button><button id="join-btn">Join a friend's game</button><button id="online-back">Back</button></span>`,
+    ], "menu");
+  }
+
+  private showHostLobby(status = "") {
+    if (this.online?.role !== "host") return;
+    const o = this.online;
+    const list = o.friends.map((f, i) => `<li>Friend ${i + 1}: ${f.peer.open ? "connected" : "gone"}${f.civ ? ` · ${this.rules.civs.find((c) => c.id === f.civ)?.name ?? ""}` : " · random civilization"}</li>`).join("");
+    this.hud.showOverlay("Host a game", [
+      o.friends.length ? `<ul class="friends">${list}</ul>` : "No friends connected yet.",
+      o.invite
+        ? `1. Send this invitation code to a friend:<textarea id="invite-code" readonly rows="3">${o.invite.code}</textarea><button id="copy-invite">Copy</button>`
+          + `<br>2. Paste their answer code here:<textarea id="answer-in" rows="3" placeholder="BD1-..."></textarea><button id="accept-btn">Connect</button>`
+        : (o.friends.length + 1 < 8 ? `<span class="choices"><button id="invite-btn">Invite a friend</button></span>` : ""),
+      `<span id="online-status">${status}</span>`,
+      `<span class="choices"><button id="online-setup">${o.friends.length ? "Choose the settings and start" : "Back"}</button><button id="online-leave">Stop hosting</button></span>`,
+    ], "menu");
+  }
+
+  private showJoin(status = "") {
+    if (this.online?.role !== "guest") return;
+    const o = this.online;
+    const civs = this.rules.civs.map((c) => `<option value="${c.id}"${c.id === o.civ ? " selected" : ""}>${c.name}</option>`).join("");
+    this.hud.showOverlay("Join a friend's game", [
+      `Your civilization: <select id="guest-civ"><option value="">Random</option>${civs}</select>`,
+      o.code
+        ? `Send this answer code back to the host:<textarea id="answer-code" readonly rows="3">${o.code}</textarea><button id="copy-answer">Copy</button>`
+        : `1. Paste the host's invitation code:<textarea id="invite-in" rows="3" placeholder="BD1-..."></textarea><button id="answer-btn">Make my answer code</button>`,
+      `<span id="online-status">${status || (o.peer?.open ? "Connected. Waiting for the host to start the game." : "")}</span>`,
+      `<span class="choices"><button id="online-leave">Leave</button></span>`,
+    ], "menu");
+  }
+
+  /** A click in the online screens. */
+  private onlineClick(t: HTMLElement): boolean {
+    const id = t.closest("button")?.id ?? "";
+    const text = (sel: string) => ((document.querySelector(sel) as HTMLTextAreaElement | null)?.value ?? "").trim();
+    const copy = (sel: string) => { const v = text(sel); navigator.clipboard?.writeText(v).then(() => this.hud.message("Copied"), () => { (document.querySelector(sel) as HTMLTextAreaElement | null)?.select(); }); };
+    switch (id) {
+      case "online-open": this.showOnline(); return true;
+      case "online-back": this.showStart(); return true;
+      case "online-setup": this.showStart(); return true; // the friends stay connected; Lobby on the start screen goes back
+      case "online-leave": this.leaveOnline(); this.showStart(); return true;
+      case "host-btn": this.online = { role: "host", friends: [], invite: null }; this.showHostLobby(); return true;
+      case "join-btn": this.online = { role: "guest", peer: null, code: null, civ: null }; this.showJoin(); return true;
+      case "copy-invite": copy("#invite-code"); return true;
+      case "copy-answer": copy("#answer-code"); return true;
+      case "invite-btn": {
+        const o = this.online;
+        if (o?.role !== "host") return true;
+        this.showHostLobby("Making an invitation…");
+        Peer.invite().then((inv) => { o.invite = inv; this.showHostLobby(); }, (e) => this.showHostLobby(`Could not make an invitation: ${e.message}`));
+        return true;
+      }
+      case "accept-btn": {
+        const o = this.online;
+        if (o?.role !== "host" || !o.invite) return true;
+        const inv = o.invite, answer = text("#answer-in");
+        this.showHostLobby("Connecting…");
+        inv.accept(answer).then(() => {
+          const friend = { peer: inv.peer, civ: null as string | null, slot: 0 };
+          inv.peer.onOpen = () => { o.friends.push(friend); o.invite = null; this.showHostLobby("Connected"); };
+          inv.peer.link.onMessage((m) => {
+            const msg = m as { t?: string; civ?: string | null };
+            if (msg.t === "hello") { friend.civ = typeof msg.civ === "string" && this.rules.civs.some((c) => c.id === msg.civ) ? msg.civ : null; if (!this.started) this.showHostLobby(); }
+          });
+          inv.peer.onClose = () => { if (!this.started) this.showHostLobby("A friend's connection closed"); };
+          if (inv.peer.open) inv.peer.onOpen();
+        }, (e) => this.showHostLobby(`That answer did not work: ${e.message}`));
+        return true;
+      }
+      case "answer-btn": {
+        const o = this.online;
+        if (o?.role !== "guest") return true;
+        o.civ = (document.querySelector("#guest-civ") as HTMLSelectElement | null)?.value || null;
+        const invitation = text("#invite-in");
+        this.showJoin("Making your answer…");
+        Peer.answer(invitation).then(({ peer, code }) => {
+          o.peer = peer; o.code = code;
+          peer.onOpen = () => { peer.link.send({ t: "hello", civ: o.civ }); if (!this.started) this.showJoin(); };
+          peer.onClose = () => { if (!this.started) this.showJoin("The connection to the host closed"); };
+          peer.link.onMessage((m) => {
+            const msg = m as { t?: string; setup?: OnlineSetup; you?: number };
+            if (msg.t === "start" && msg.setup && typeof msg.you === "number") this.beginOnline(msg.setup, msg.you, peer);
+          });
+          this.showJoin();
+        }, (e) => this.showJoin(`That invitation did not work: ${e.message}`));
+        return true;
+      }
+    }
+    return false;
+  }
+
   // ---- saving and loading
 
   /** What the interface keeps beside the world in a save. */
@@ -441,6 +676,7 @@ export class Game {
   /** Saves the game in the browser. */
   async saveGame() {
     if (!this.started || this.ended) { this.hud.message("There is no game to save"); return; }
+    if (this.net) { this.hud.message("An online game cannot be saved"); return; }
     try {
       await storeSave(this.saveName(), saveWorld(this.world, this.uiState()));
       this.hud.message("Game saved");
@@ -603,7 +839,8 @@ export class Game {
   /** One team choice for you and for each computer, for "teams of my choosing". */
   private teamRows(opp: number) {
     const sel = (i: number) => `<select id="team-${i}">${[0, 1, 2, 3, 4].map((t) => `<option value="${t}"${t === this.teamList[i] ? " selected" : ""}>${t ? `Team ${t}` : "no team"}</option>`).join("")}</select>`;
-    return Array.from({ length: opp + 1 }, (_, i) => `${i === 0 ? "You" : `Computer ${i}`}: ${sel(i)}`).join(" · ");
+    const friends = this.online?.role === "host" ? this.online.friends.length : 0;
+    return Array.from({ length: opp + 1 + friends }, (_, i) => `${i === 0 ? "You" : i <= friends ? `Friend ${i}` : `Computer ${i - friends}`}: ${sel(i)}`).join(" · ");
   }
 
   /** What the start screen says about the players chosen. */
@@ -640,11 +877,11 @@ export class Game {
     if (!st && !tr) return false;
     if (st) {
       const [pid, s] = st.dataset.stance!.split(":");
-      this.world.setStance(this.me, Number(pid), s as Stance);
+      this.issue({ k: "stance", to: Number(pid), stance: s as Stance });
     } else {
       const [pid, r] = tr!.dataset.tribute!.split(":").map(Number);
-      const why = this.world.tribute(this.me, pid, r as Res, 100);
-      if (why) this.hud.message(why);
+      const why = this.issue({ k: "tribute", to: pid, res: r as Res, amount: 100 });
+      if (typeof why === "string") this.hud.message(why);
     }
     this.showDiplomacy();
     return true;
@@ -694,7 +931,23 @@ export class Game {
     dt = Math.min(dt, 0.25);
     this.scrollCamera(dt);
     const w = this.world;
-    if (this.started && !this.paused && w.winner === null) {
+    if (this.started && this.net && w.winner === null) {
+      // Online the world moves in lockstep: as fast as the clock says, but only as far as the turns allow.
+      // Menus do not pause it; only the host can (F3). A guest that has fallen behind catches up.
+      this.accumulator += dt * this.speed;
+      const behind = this.net instanceof LockstepGuest ? Math.max(0, this.net.buffered - DELAY) * TURN_TICKS : 0;
+      const maxSteps = Math.ceil(6 * this.speed) + behind;
+      let steps = 0;
+      while ((this.accumulator >= World.dt || steps < behind) && steps < maxSteps && this.net.stepTick()) {
+        this.accumulator = Math.max(0, this.accumulator - World.dt); steps++;
+      }
+      if (this.accumulator > World.dt * 2) this.accumulator = World.dt; // waiting for a turn: do not race when it comes
+      if (this.net.desync !== null && !this.desyncShown) {
+        this.desyncShown = true;
+        this.hud.message(`The games on the two machines no longer agree (turn ${this.net.desync}). Please start a new one.`, "warn");
+      }
+      this.handleEvents();
+    } else if (this.started && !this.paused && w.winner === null) {
       this.accumulator += dt * this.speed;
       let steps = 0;
       const maxSteps = Math.ceil(6 * this.speed);
@@ -1310,7 +1563,7 @@ export class Game {
     const selKey = mine.map((e) => e.id).join(",");
     if (selKey !== this.menuFor) { this.menuFor = selKey; this.menu = "main"; }
     const del: Command = { key: "Delete", title: "Delete", detail: "Del", blocker: null, icon: "delete", pin: true,
-      action: () => { for (const id of this.selection) w.destroy(me, id); } };
+      action: () => { this.issue({ k: "destroy", ids: [...this.selection] }); } };
     const units = mine.filter((e): e is Unit => e instanceof Unit);
     if (units.some((u) => u.isVillager)) {
       if (this.menu === "main") {
@@ -1318,7 +1571,7 @@ export class Game {
           { key: "B", title: "Build", detail: "open the build menu", blocker: null, icon: "build", action: () => { this.menu = "build"; } },
           { key: "R", title: "Repair", detail: "click a damaged building; costs resources", blocker: null, icon: "repair",
             action: () => { this.repairPending = true; this.hud.message("Click a damaged building to repair"); } },
-          { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
+          { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => this.issue({ k: "stop", ids: [...this.selection] }) },
           del,
         ];
       }      const out: Command[] = [];
@@ -1336,7 +1589,7 @@ export class Game {
     }
     if (units.length) {
       const out: Command[] = [
-        { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => w.stop(me, this.selection) },
+        { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => this.issue({ k: "stop", ids: [...this.selection] }) },
       ];
       const soldiers = units.filter((u) => u.isSoldier);
       // Attack-move is for those who fight (and priests, who go along); boats that fish or carry have no use for it.
@@ -1346,12 +1599,12 @@ export class Game {
       if (soldiers.length) {
         const on = soldiers.every((u) => u.standGround);
         out.push({ key: "D", title: on ? "Stand ground: on" : "Stand ground", detail: on ? "press again to let them chase" : "hold this spot, strike only what comes in reach",
-          blocker: null, icon: "stand_ground", action: () => { w.setStandGround(me, this.selection, !on); this.hud.message(on ? "Units will chase enemies again" : "Standing ground"); } });
+          blocker: null, icon: "stand_ground", action: () => { this.issue({ k: "standGround", ids: [...this.selection], on: !on }); this.hud.message(on ? "Units will chase enemies again" : "Standing ground"); } });
       }
       const loaded = units.filter((u) => u.isTransport && u.cargo.length);
       if (loaded.length) {
         out.push({ key: "U", title: "Unload", detail: "put everyone ashore at the nearest landing (or right-click the land)", blocker: null, icon: "unload",
-          action: () => { for (const t of loaded) w.unload(me, [t.id], t.pos); } });
+          action: () => { this.issue({ k: "unload", ids: loaded.map((t) => t.id) }); } });
       }
       if (units.some((u) => w.canAttackGround(u))) {
         out.push({ key: "T", title: "Attack ground", detail: "click a spot to bombard", blocker: null, icon: "attack_ground",
@@ -1378,8 +1631,8 @@ export class Game {
       if (!key || used.has(key)) key = spare();
       used.add(key);
       out.push({ key, title: def.name, detail: `${w.unitCost(me, t).text} · ${duration(w.unitStats(me, t).train_time)}`, blocker: w.blockerUnit(t, me), icon: t, action: () => {
-        const why = w.train(me, b.id, t);
-        if (why) this.hud.message(why, "warn");
+        const why = this.issue({ k: "train", building: b.id, type: t });
+        if (typeof why === "string") this.hud.message(why, "warn");
       } });
     }
     const p = w.players[me];
@@ -1387,17 +1640,17 @@ export class Game {
       const next = this.rules.ages[p.age + 1];
       used.add("A");
       out.push({ key: "A", title: `Advance to the ${next.name}`, detail: `${ResBag.of(next.cost).text} · ${duration(next.research_time ?? 60)}`, blocker: w.blockerForNextAge(me), icon: "age", row: 1, action: () => {
-        const why = w.advanceAge(me, b.id);
-        if (why) this.hud.message(why, "warn");
+        const why = this.issue({ k: "age", building: b.id });
+        if (typeof why === "string") this.hud.message(why, "warn");
       } });
     }
     for (const t of w.techsAt(b, me)) {
       out.push({ key: spare(), title: t.name, detail: `${ResBag.of(t.cost).text} · ${duration(t.time ?? 30)}`, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), row: 1, action: () => {
-        const why = w.research(me, b.id, t.id);
-        if (why) this.hud.message(why, "warn");
+        const why = this.issue({ k: "research", building: b.id, tech: t.id });
+        if (typeof why === "string") this.hud.message(why, "warn");
       } });
     }
-    if (b.queue.length) out.push({ key: "Escape", title: "Cancel", detail: "the last in the queue", blocker: null, icon: "back", pin: true, action: () => w.cancel(me, b.id) });
+    if (b.queue.length) out.push({ key: "Escape", title: "Cancel", detail: "the last in the queue", blocker: null, icon: "back", pin: true, action: () => this.issue({ k: "cancel", building: b.id }) });
     out.push(del);
     return out;
   }
@@ -1587,6 +1840,7 @@ export class Game {
       }
       if (t.closest("#speed")) { this.setSpeed(0, (this.speeds.indexOf(this.speed) + 1) % this.speeds.length); return; }
       if (this.savesClick(t)) return;
+      if (this.onlineClick(t)) return;
       // Menu, Diplomacy and ? open their screens and pause, as the original's did.
       if (this.started) {
         const open = (show: () => void) => {
@@ -1623,8 +1877,8 @@ export class Game {
       if (!p) return;
       if (e.button === 2) {
         const sel = this.selectedEntities().filter((x) => x.owner === this.me);
-        if (sel.length === 1 && sel[0] instanceof Building) this.world.setRally(this.me, sel[0].id, p);
-        else this.world.smart(this.me, this.selection, null, p);
+        if (sel.length === 1 && sel[0] instanceof Building) this.issue({ k: "rally", building: sel[0].id, x: p.x, y: p.y });
+        else this.issue({ k: "smart", ids: [...this.selection], target: null, x: p.x, y: p.y });
       }
       else this.centerOn(p);
     };
@@ -1682,6 +1936,7 @@ export class Game {
   }
 
   private restart() {
+    this.leaveOnline();
     this.watching = false;
     this.me = 0;
     this.revealMap = false;
@@ -1699,8 +1954,8 @@ export class Game {
       const o = this.placementOrigin(this.placing, e.clientX, e.clientY);
       if (WALL_TIER[this.placing] !== undefined) { this.wallStart = o; return; } // drag to lay a wall
       const builders = this.selectedEntities().filter((x): x is Unit => x instanceof Unit && x.isVillager && x.owner === this.me).map((u) => u.id);
-      const r = this.world.place(this.me, this.placing, o, builders);
-      if ("error" in r) this.hud.message(r.error, "warn");
+      const r = this.issue({ k: "place", type: this.placing, x: o.x, y: o.y, builders }) as { error?: string } | undefined;
+      if (r?.error) this.hud.message(r.error, "warn");
       else if (!e.shiftKey) this.cancelPlacing();
       return;
     }
@@ -1708,13 +1963,14 @@ export class Game {
       this.sacrificePending = false;
       const t = this.pick(e.clientX, e.clientY);
       const priest = this.selectedEntities().find((x): x is Unit => x instanceof Unit && x.isPriest && x.owner === this.me);
-      if (t && priest && this.world.sacrifice(this.me, priest.id, t.id)) { this.sound.play("convert", 0.9, 0, 1.5); this.flash(t, 0xffd659); }
+      if (t && priest && this.issue({ k: "sacrifice", priest: priest.id, target: t.id })) { this.sound.play("convert", 0.9, 0, 1.5); this.flash(t, 0xffd659); }
       else this.hud.message("Choose an enemy that is not a priest", "warn");
       return;
     }
     if (this.groundPending) {
       this.groundPending = false;
-      this.world.attackGround(this.me, this.selection, this.toWorld(e.clientX, e.clientY));
+      const g = this.toWorld(e.clientX, e.clientY);
+      this.issue({ k: "attackGround", ids: [...this.selection], x: g.x, y: g.y });
       this.selectSound(true);
       this.marker(e.clientX, e.clientY, 0xff3333);
       return;
@@ -1723,7 +1979,7 @@ export class Game {
       this.repairPending = false;
       const t = this.pick(e.clientX, e.clientY);
       if (t instanceof Building && t.owner === this.me && t.complete && t.hp < t.maxHp) {
-        this.world.repair(this.me, this.selection, t.id);
+        this.issue({ k: "repair", ids: [...this.selection], target: t.id });
         this.selectSound(true);
         this.flash(t, 0x33ff66);
       } else this.hud.message("Choose a damaged building of yours", "warn");
@@ -1731,7 +1987,8 @@ export class Game {
     }
     if (this.attackMovePending) {
       this.attackMovePending = false;
-      this.world.move(this.me, this.selection, this.toWorld(e.clientX, e.clientY), true);
+      const m = this.toWorld(e.clientX, e.clientY);
+      this.issue({ k: "move", ids: [...this.selection], x: m.x, y: m.y, attackMove: true });
       this.marker(e.clientX, e.clientY, 0xff3333);
       return;
     }
@@ -1741,8 +1998,9 @@ export class Game {
   private mouseUp(e: MouseEvent) {
     if (this.placing && this.wallStart && e.button === 0) {
       const builders = this.selectedEntities().filter((x): x is Unit => x instanceof Unit && x.isVillager && x.owner === this.me).map((u) => u.id);
-      const r = this.world.placeWall(this.me, this.placing, this.wallStart, this.placementOrigin(this.placing, e.clientX, e.clientY), builders);
-      if ("error" in r) this.hud.message(r.error, "warn");
+      const to = this.placementOrigin(this.placing, e.clientX, e.clientY);
+      const r = this.issue({ k: "wall", type: this.placing, ax: this.wallStart.x, ay: this.wallStart.y, bx: to.x, by: to.y, builders }) as { error?: string } | undefined;
+      if (r?.error) this.hud.message(r.error, "warn");
       this.wallStart = null;
       this.clearWallGhosts();
       if (!e.shiftKey) this.cancelPlacing();
@@ -1791,13 +2049,13 @@ export class Game {
     const at = this.toWorld(e.clientX, e.clientY);
     const sel = this.selectedEntities().filter((x) => x.owner === this.me);
     if (sel.length === 1 && sel[0] instanceof Building) {
-      this.world.setRally(this.me, sel[0].id, at);
+      this.issue({ k: "rally", building: sel[0].id, x: at.x, y: at.y });
       this.marker(e.clientX, e.clientY, playerColor(this.me));
       return;
     }
     // Shift + right-click on the ground: a waypoint, walked to after the ones before it.
     if (e.shiftKey && sel.some((x) => x instanceof Unit)) {
-      this.world.waypoint(this.me, this.selection, at);
+      this.issue({ k: "waypoint", ids: [...this.selection], x: at.x, y: at.y });
       this.selectSound(true);
       this.marker(e.clientX, e.clientY, 0x33ff66);
       return;
@@ -1809,7 +2067,7 @@ export class Game {
       const foundation = this.world.buildingsOf(this.me).find((b) => !b.complete && b.footprint.distance(at) === 0);
       if (foundation) target = foundation;
     }
-    const r = this.world.smart(this.me, this.selection, target?.id ?? null, at);
+    const r = this.issue({ k: "smart", ids: [...this.selection], target: target?.id ?? null, x: at.x, y: at.y }) as SmartResult;
     if (r === "converted") this.sound.play("convert", 0.9, 0, 1.5);
     else if (r !== "nothing") this.selectSound(true);
     const color = r === "attacked" ? 0xff3333 : r === "converted" || r === "healed" ? 0xffd659 : 0x33ff66;
@@ -1913,7 +2171,7 @@ export class Game {
       return;
     }
     if (this.hud.overlayShown) return;
-    if (key === "Delete" || key === "Backspace") { for (const id of this.selection) this.world.destroy(this.me, id); return; }
+    if (key === "Delete" || key === "Backspace") { this.issue({ k: "destroy", ids: [...this.selection] }); return; }
     const digit = /^Digit([1-9])$/.exec(e.code);
     if (digit) {
       const d = Number(digit[1]);
@@ -1940,7 +2198,16 @@ export class Game {
     switch (ch) {
       case "H": this.selectTownCenter(); return;
       case ".": this.selectIdleVillager(); return;
-      case "F3": case "Pause": this.paused = !this.paused; this.hud.message(this.paused ? "Paused (F3 to resume)" : "Resumed"); return;
+      case "F3": case "Pause":
+        if (this.net instanceof LockstepGuest) { this.hud.message("Only the host can pause an online game"); return; }
+        if (this.net instanceof LockstepHost) {
+          this.hostPaused = !this.hostPaused;
+          this.net.paused = this.hostPaused; // stops at the end of the turn being played, on every machine alike
+          this.net.broadcast({ t: "paused", on: this.hostPaused });
+          this.hud.message(this.hostPaused ? "Paused for everyone (F3 to resume)" : "Resumed");
+          return;
+        }
+        this.paused = !this.paused; this.hud.message(this.paused ? "Paused (F3 to resume)" : "Resumed"); return;
       case "+": case "=": this.setSpeed(1); return;   // game speed, as in the original
       case "-": case "_": this.setSpeed(-1); return;
       case "PageUp": this.zoom(0.85); return;
@@ -1954,11 +2221,13 @@ export class Game {
 
   /** Steps the game speed up or down, or to a given index. */
   setSpeed(step: number, to?: number) {
+    if (this.net instanceof LockstepGuest) { this.hud.message("Only the host sets the speed of an online game"); return; }
     const sp = this.speeds, i = Math.max(0, sp.indexOf(this.speed));
     const next = to !== undefined ? to : Math.min(sp.length - 1, Math.max(0, i + step));
     this.speed = sp[next];
     this.hud.speed(this.speed);
     this.hud.message(`Game speed ${this.speed}x`);
+    if (this.net instanceof LockstepHost) this.net.broadcast({ t: "speed", v: this.speed });
   }
 
   private selectIdleVillager() {
