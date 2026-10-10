@@ -687,20 +687,42 @@ describe("the original's rules", () => {
     expect(riders.every((u) => !u.alive)).toBe(true);
   });
 
-  it("on an island map the AI builds a Dock on its own shore and has a transport within fifteen minutes", () => {
+  it("on an island map the AI builds a Dock on its own shore and a transport within fifteen minutes", () => {
     for (const mapType of ["small_islands", "large_islands"] as const) {
       for (const seed of [1, 2]) {
         const w = new World(RULES, seed, ["A", "B"], 72, true, { mapType });
         w.ais = [new AIController(0, "hard"), new AIController(1, "normal")];
         for (const ai of w.ais) ai.attach(w);
-        run(w, 15 * 60);
+        // A transport may well be sunk by then: what counts is that each built one.
+        const built = new Set<number>();
+        for (let i = 0; i < (15 * 60) / World.dt; i++) {
+          w.step();
+          for (const e of w.events) if (e.kind === "trained" && w.unit(e.id)?.isTransport) built.add(e.owner);
+          w.events.length = 0;
+        }
         for (const p of w.players) {
           expect(w.buildingsOf(p.id).some((b) => b.def.on_water && b.complete), `${mapType} ${seed} player ${p.id} Dock`).toBe(true);
-          expect(w.unitsOf(p.id).some((u) => u.isTransport), `${mapType} ${seed} player ${p.id} transport`).toBe(true);
+          expect(built.has(p.id), `${mapType} ${seed} player ${p.id} transport`).toBe(true);
         }
       }
     }
   }, 120_000);
+
+  it("a transport in a strait puts its passengers on the land pointed at, not the island across", () => {
+    const w = blank(30);
+    // Island A (x < 14), a strait one tile wide, island B (x > 14); open sea all along the bottom. The
+    // transport stops in the strait, beside both islands (before the fix one rider stepped onto B).
+    for (let y = 0; y < 30; y++) w.map.terrain[w.map.index(new Tile(14, y))] = Terrain.water;
+    for (let y = 22; y < 30; y++) for (let x = 0; x < 30; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    const boat = w.spawnUnit("light_transport", 0, new Tile(14, 24).center);
+    const riders = [0, 1, 2].map((i) => w.spawnUnit("clubman", 0, new Tile(17 + i, 10).center));
+    for (const r of riders) { r.aboard = boat.id; boat.cargo.push(r.id); }
+    // Pointing at island A, from a strait whose nearer shore is island B's.
+    w.unload(0, [boat.id], new Vec2(13.2, 8.5));
+    run(w, 30);
+    expect(boat.cargo.length).toBe(0);
+    for (const r of riders) expect(r.pos.x, `rider at ${r.pos.x.toFixed(1)}`).toBeLessThan(14);
+  });
 
   it("island maps: every base on its own island, no way across but by sea", () => {
     for (const mapType of ["large_islands", "small_islands"] as const) {
