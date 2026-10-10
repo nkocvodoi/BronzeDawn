@@ -16,7 +16,7 @@ swift run -c release BronzeDawn          # chơi ngay
 open "build/Bronze Dawn.app"
 ```
 
-Khi vào game, bấm 1, 2 hoặc 3 để chọn độ khó Dễ, Thường hoặc Khó.
+Khi vào game, bấm 1, 2 hoặc 3 để chọn độ khó Dễ, Thường hoặc Khó. Bản web có 5 mức như bản gốc: bấm 1 đến 5 (Easiest, Easy, Moderate, Hard, Hardest).
 
 ## Chơi trên trình duyệt
 

@@ -36,6 +36,7 @@ const at = async (id) => g((id) => { const e = game.world.entity(id); game.look(
 await page.goto(`http://localhost:${port}/?seed=5`);
 await page.waitForFunction(() => window.game);
 check(await page.isVisible("#overlay [data-start]"), "start screen offers the difficulty choice");
+check((await page.$$eval("[data-start]", (b) => b.map((x) => x.textContent))).join("|") === "1 · Easiest|2 · Easy|3 · Moderate|4 · Hard|5 · Hardest", "the five levels of the original, Easiest to Hardest");
 
 check((await page.$$eval("#map-type option", (o) => o.length)) === 9, "the start screen offers nine kinds of map");
 check((await page.$$eval("#map-size option", (o) => o.map((x) => x.textContent))).some((t) => t.startsWith("Gigantic")), "and five sizes, up to Gigantic");
