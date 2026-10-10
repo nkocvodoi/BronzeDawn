@@ -3,19 +3,22 @@
 // the same commands on the same turns give the same world everywhere.
 //
 // Time goes in turns of TURN_TICKS steps. The host decides what happens on each turn: a command it gets,
-// its own or a guest's, is put DELAY turns ahead of where the host is, and once the host reaches a turn
-// it sends the turn's commands to every guest, then plays it. A guest plays a turn only when it has the
-// host's word for it, so it can never run ahead. The host waits when a guest falls too far behind.
+// its own or a guest's, goes into the next turn not yet settled, and once the host reaches a turn it sends
+// the turn's commands to every guest, then plays it. No more delay is needed: a guest plays a turn only
+// when it has the host's word for it, so it can never run ahead and never miss a command. (Commands used
+// to wait three turns more, which every player felt, a guest twice over.) The host waits when a guest
+// falls too far behind.
 // Every so often each machine sends a fingerprint of its world for the same turn: if one differs, the
 // game has come apart and everyone is told.
 import { Command, isCommand, runCommand } from "./commands";
 import type { World } from "./world";
 
-export const TURN_TICKS = 4;
-/** How many turns ahead a command is put: its time to reach every guest before it is played. */
-export const DELAY = 3;
-/** How far a guest may fall behind before the host waits for it. */
-export const MAX_LAG = 12;
+/** Two steps, a tenth of a second: the finest a command's timing can be. */
+export const TURN_TICKS = 2;
+/** Turns a guest keeps in hand before it plays faster to catch up: one, against a network's unevenness. */
+export const GUEST_BUFFER = 1;
+/** How far a guest may fall behind before the host waits for it (about a second and a quarter). */
+export const MAX_LAG = 25;
 /** A fingerprint of the world goes with every this many turns. */
 export const CHECK_EVERY = 25;
 
@@ -111,7 +114,8 @@ export class LockstepHost extends Lockstep {
   }
 
   private schedule(player: number, c: Command) {
-    const at = this.turn + DELAY;
+    // The current turn if it has not begun (its commands not yet sent), else the next.
+    const at = this.turn + (this.tickInTurn > 0 ? 1 : 0);
     const list = this.pending.get(at) ?? [];
     list.push([player, c]);
     this.pending.set(at, list);
