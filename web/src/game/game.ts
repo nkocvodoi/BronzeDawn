@@ -10,7 +10,7 @@ import { MAP_TYPES, MapType } from "../core/mapgen";
 import { SmartResult, Stance, STANCES, Victory, WinHow, World, WorldOptions } from "../core/world";
 import { loadWorld, SaveFile, saveWorld } from "../core/save";
 import { Command as Order, CommandResult, runCommand } from "../core/commands";
-import { DELAY, LockstepGuest, LockstepHost, TURN_TICKS } from "../core/net";
+import { GUEST_BUFFER, LockstepGuest, LockstepHost, TURN_TICKS } from "../core/net";
 import { Conn, HAS_RELAY, joinRoom, Peer, Room } from "./rtc";
 import { canStart, CHAT_MAX, cleanName, LobbySettings, LobbyState, lobbyHtml, Seat, seated, SEATS } from "./lobby";
 import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
@@ -556,7 +556,7 @@ export class Game {
     if (!net || this.netFailed) return;
     try {
       this.accumulator += dt * this.speed;
-      const behind = net instanceof LockstepGuest ? Math.max(0, net.buffered - (hidden ? 0 : DELAY)) * TURN_TICKS : 0;
+      const behind = net instanceof LockstepGuest ? Math.max(0, net.buffered - (hidden ? 0 : GUEST_BUFFER)) * TURN_TICKS : 0;
       const maxSteps = Math.ceil((hidden ? 120 : 6) * this.speed) + behind;
       let steps = 0;
       while ((this.accumulator >= World.dt || steps < behind) && steps < maxSteps && net.stepTick()) {

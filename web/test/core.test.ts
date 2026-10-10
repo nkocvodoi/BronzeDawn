@@ -9,7 +9,7 @@ import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
 import { Victory, World, WorldOptions } from "../src/core/world";
 import { loadWorld, saveWorld } from "../src/core/save";
-import { LockstepGuest, LockstepHost, MAX_LAG } from "../src/core/net";
+import { LockstepGuest, LockstepHost, MAX_LAG, TURN_TICKS } from "../src/core/net";
 import { Command } from "../src/core/commands";
 import { RNG } from "../src/core/geom";
 
@@ -999,6 +999,34 @@ describe("playing online, in lockstep", () => {
     expect(host.desync).toBeNull();
     for (const id of [0, 1, 2]) expect(host.world.unitsOf(id).filter((u) => u.isVillager).length).toBeGreaterThan(RULES.economy.start_villagers);
   }, 120_000);
+
+  it("orders wait no longer than they must: the host's at once, a guest's one round trip", () => {
+    // A network that takes three steps each way; each machine plays one step per step, the guest catching up.
+    const late = 3;
+    const pipeAt = () => {
+      const q: { at: number; m: unknown }[] = []; let h: ((m: unknown) => void) | null = null;
+      return { send: (m: unknown) => q.push({ at: now + late, m: JSON.parse(JSON.stringify(m)) }), on: (f: (m: unknown) => void) => { h = f; }, flush: () => { while (q.length && q[0].at <= now) h?.(q.shift()!.m); } };
+    };
+    let now = 0;
+    const toGuest = pipeAt(), toHost = pipeAt();
+    const host = new LockstepHost(new World(RULES, 3, ["H", "G"], 40, true), 0);
+    host.addGuest(1, { send: toGuest.send, onMessage: toHost.on });
+    const guest = new LockstepGuest(new World(RULES, 3, ["H", "G"], 40, true), 1, { send: toHost.send, onMessage: toGuest.on });
+    const ran: Record<string, number> = {};
+    host.onCommand = (p) => { ran[`host${p}`] ??= now; };
+    guest.onCommand = (p) => { ran[`guest${p}`] ??= now; };
+    let hostAt = 0, guestAt = 0;
+    for (let i = 0; i < 200; i++) {
+      now++; toGuest.flush(); toHost.flush();
+      if (i === 100) { hostAt = now; host.issue({ k: "stop", ids: [host.world.unitsOf(0)[0].id] }); }
+      if (i === 140) { guestAt = now; guest.issue({ k: "stop", ids: [guest.world.unitsOf(1)[0].id] }); }
+      host.stepTick();
+      const behind = Math.max(0, guest.buffered - 1) * TURN_TICKS;
+      for (let n = 0; n < 1 + behind && guest.stepTick(); n++) { /* catch up */ }
+    }
+    expect(ran.host0 - hostAt).toBeLessThanOrEqual(TURN_TICKS); // the host sees its own order within a turn
+    expect(ran.guest1 - guestAt).toBeLessThanOrEqual(2 * late + 2 * TURN_TICKS); // a guest: a round trip, a turn or two
+  });
 
   it("the host waits for a guest that falls behind, and finds out when the worlds come apart", () => {
     const rng = new RNG(5);
