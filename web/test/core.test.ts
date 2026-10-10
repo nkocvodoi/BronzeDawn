@@ -9,7 +9,7 @@ import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
 import { Victory, World, WorldOptions } from "../src/core/world";
 import { loadWorld, saveWorld } from "../src/core/save";
-import { LockstepGuest, LockstepHost, MAX_LAG, TURN_TICKS } from "../src/core/net";
+import { delayFor, LockstepGuest, LockstepHost, MIN_DELAY, START_DELAY, TURN_TICKS } from "../src/core/net";
 import { Command } from "../src/core/commands";
 import { RNG } from "../src/core/geom";
 
@@ -978,21 +978,26 @@ describe("playing online, in lockstep", () => {
 
   it("three machines, commands from each and a computer, a laggy network: the worlds stay the same", () => {
     const rng = new RNG(99);
-    const host = new LockstepHost(makeWorld(), 0);
+    let clock = 0; // a step of the test is 50 ms
+    const host = new LockstepHost(makeWorld(), 0, () => clock * 50);
     const pipes = [pipe(rng, 6), pipe(rng, 3)];
-    const guests = pipes.map((p, i) => { host.addGuest(i + 1, p.end1); return new LockstepGuest(makeWorld(), i + 1, p.end2); });
+    const guests = pipes.map((p, i) => { host.addGuest(i + 1, p.end1); return new LockstepGuest(makeWorld(), i + 1, p.end2, [0, 1, 2]); });
     const peers = [host, ...guests];
     let ran = 0;
     host.onCommand = () => { ran++; };
+    const delays = new Set<number>();
     for (let step = 0; step < 1500; step++) {
+      clock++; delays.add(host.delay);
       for (const p of pipes) p.tick();
       for (const p of peers) if (rng.int(0, 3) === 0) play(p.world, p.me, rng, (c) => p.issue(c));
-      for (const p of peers) p.advance(p === host ? 1 : 3);
+      for (const p of peers) p.advance(p === guests[1] ? 1 : 2); // one machine slower than the others
     }
-    // Let the guests catch up with the host, then compare all three.
-    for (let i = 0; i < 100; i++) { for (const p of pipes) p.tick(); for (const g of guests) g.advance(50); }
-    expect(host.turn).toBeGreaterThan(1000);
-    for (const g of guests) expect(g.turn).toBe(host.turn);
+    // Every machine on to the same turn, then all three compared.
+    const end = host.turn + 20;
+    for (let i = 0; i < 200; i++) { for (const p of pipes) p.tick(); for (const p of peers) while (p.turn < end && p.stepTick()) { /* on */ } }
+    expect(end).toBeGreaterThan(500);
+    for (const p of peers) expect(p.turn).toBe(end);
+    expect([...delays].length).toBeGreaterThan(1); // the delay was measured and changed as it went
     expect(ran).toBeGreaterThan(100);
     const state = (w: World) => JSON.stringify(saveWorld(w).world);
     for (const g of guests) expect(state(g.world)).toBe(state(host.world));
@@ -1000,32 +1005,60 @@ describe("playing online, in lockstep", () => {
     for (const id of [0, 1, 2]) expect(host.world.unitsOf(id).filter((u) => u.isVillager).length).toBeGreaterThan(RULES.economy.start_villagers);
   }, 120_000);
 
-  it("orders wait no longer than they must: the host's at once, a guest's one round trip", () => {
-    // A network that takes three steps each way; each machine plays one step per step, the guest catching up.
+  it("every player waits the same short delay: the host no less than a friend, a friend no more", () => {
+    // A network that takes three steps (150 ms) each way; each machine plays one step per step and catches up.
     const late = 3;
+    let now = 0;
     const pipeAt = () => {
       const q: { at: number; m: unknown }[] = []; let h: ((m: unknown) => void) | null = null;
       return { send: (m: unknown) => q.push({ at: now + late, m: JSON.parse(JSON.stringify(m)) }), on: (f: (m: unknown) => void) => { h = f; }, flush: () => { while (q.length && q[0].at <= now) h?.(q.shift()!.m); } };
     };
-    let now = 0;
     const toGuest = pipeAt(), toHost = pipeAt();
-    const host = new LockstepHost(new World(RULES, 3, ["H", "G"], 40, true), 0);
+    const host = new LockstepHost(new World(RULES, 3, ["H", "G"], 40, true), 0, () => now * 50);
     host.addGuest(1, { send: toGuest.send, onMessage: toHost.on });
-    const guest = new LockstepGuest(new World(RULES, 3, ["H", "G"], 40, true), 1, { send: toHost.send, onMessage: toGuest.on });
+    const guest = new LockstepGuest(new World(RULES, 3, ["H", "G"], 40, true), 1, { send: toHost.send, onMessage: toGuest.on }, [0, 1]);
     const ran: Record<string, number> = {};
     host.onCommand = (p) => { ran[`host${p}`] ??= now; };
     guest.onCommand = (p) => { ran[`guest${p}`] ??= now; };
-    let hostAt = 0, guestAt = 0;
-    for (let i = 0; i < 200; i++) {
+    let hostAt = 0, guestAt = 0, stalls = 0;
+    for (let i = 0; i < 300; i++) {
       now++; toGuest.flush(); toHost.flush();
-      if (i === 100) { hostAt = now; host.issue({ k: "stop", ids: [host.world.unitsOf(0)[0].id] }); }
-      if (i === 140) { guestAt = now; guest.issue({ k: "stop", ids: [guest.world.unitsOf(1)[0].id] }); }
-      host.stepTick();
-      const behind = Math.max(0, guest.buffered - 1) * TURN_TICKS;
-      for (let n = 0; n < 1 + behind && guest.stepTick(); n++) { /* catch up */ }
+      if (i === 200) { hostAt = now; host.issue({ k: "stop", ids: [host.world.unitsOf(0)[0].id] }); }
+      if (i === 240) { guestAt = now; guest.issue({ k: "stop", ids: [guest.world.unitsOf(1)[0].id] }); }
+      for (const p of [host, guest]) {
+        const ok = p.stepTick();
+        if (!ok && i > 100) stalls++;
+        for (let n = 0; n < p.behind * TURN_TICKS && p.stepTick(); n++) { /* catch up */ }
+      }
     }
-    expect(ran.host0 - hostAt).toBeLessThanOrEqual(TURN_TICKS); // the host sees its own order within a turn
-    expect(ran.guest1 - guestAt).toBeLessThanOrEqual(2 * late + 2 * TURN_TICKS); // a guest: a round trip, a turn or two
+    // Measured: 150 ms one way, turns of 100 ms: the delay the connection needs, the same on both.
+    expect(host.delay).toBe(delayFor([150], 100));
+    expect(guest.delay).toBe(host.delay);
+    const hostWait = ran.host0 - hostAt, guestWait = ran.guest1 - guestAt;
+    // Each sees its own order after the delay, a turn or so: about one way, not a round trip.
+    for (const w of [hostWait, guestWait]) expect(w).toBeLessThanOrEqual(host.delay * TURN_TICKS + 1);
+    expect(guestWait).toBeLessThan(2 * late + 2 * TURN_TICKS); // the old way: a round trip and more
+    expect(Math.abs(hostWait - guestWait)).toBeLessThanOrEqual(TURN_TICKS);
+    // And at that delay nobody waits for anybody once the game is under way.
+    expect(stalls).toBe(0);
+    expect(delayFor([], 100)).toBe(MIN_DELAY);
+  });
+
+  it("a friend who leaves is not waited for, by the host or the other friends", () => {
+    const rng = new RNG(7);
+    const host = new LockstepHost(makeWorld(), 0, () => 0);
+    const pipes = [pipe(rng, 2), pipe(rng, 2)];
+    const guests = pipes.map((p, i) => { host.addGuest(i + 1, p.end1); return new LockstepGuest(makeWorld(), i + 1, p.end2, [0, 1, 2]); });
+    const run = (n: number, who: (LockstepHost | LockstepGuest)[]) => { for (let i = 0; i < n; i++) { for (const p of pipes) p.tick(); for (const p of who) p.advance(1); } };
+    run(100, [host, ...guests]);
+    const at = host.turn;
+    // The second friend stops playing (their window closed); then the host hears they have gone.
+    run(30, [host, guests[0]]);
+    expect(host.turn - at).toBeLessThan(10);
+    host.dropGuest(2);
+    run(100, [host, guests[0]]);
+    expect(host.turn - at).toBeGreaterThan(80);
+    expect(Math.abs(guests[0].turn - host.turn)).toBeLessThanOrEqual(host.delay + 1);
   });
 
   it("the host waits for a guest that falls behind, and finds out when the worlds come apart", () => {
@@ -1033,10 +1066,10 @@ describe("playing online, in lockstep", () => {
     const host = new LockstepHost(makeWorld(), 0);
     const p = pipe(rng, 0);
     host.addGuest(1, p.end1);
-    const guest = new LockstepGuest(makeWorld(), 1, p.end2);
-    // The guest does not play: the host stops MAX_LAG turns on.
+    const guest = new LockstepGuest(makeWorld(), 1, p.end2, [0, 1]);
+    // The guest does not play, so sends no commands: the host stops when it runs out of the guest's.
     for (let i = 0; i < 40; i++) { p.tick(); host.advance(1); }
-    expect(host.turn).toBe(MAX_LAG);
+    expect(host.turn).toBe(START_DELAY);
     // Now one world is changed behind the game's back.
     guest.world.players[1].res.set(Res.gold, guest.world.players[1].res.gold + 500);
     for (let i = 0; i < 400; i++) { p.tick(); host.advance(1); guest.advance(5); }
