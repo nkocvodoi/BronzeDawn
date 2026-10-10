@@ -75,7 +75,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 
 ### Giai đoạn 5: nhiều người chơi (lớn)
 - [x] Tới 8 người chơi (1 đến 7 máy), máy đánh riêng hoặc liên minh chống bạn
-- [ ] Chia đội tùy ý, đồng minh với máy, trạng thái ngoại giao, cống nạp
+- [x] Chia đội tùy ý (tới 4 đội), đồng minh với máy, trạng thái ngoại giao (đồng minh / trung lập / kẻ thù) trong màn hình Diplomacy, cống nạp 100 mỗi lần (phí 25%, miễn phí khi có Coinage hoặc là người Palmyran); máy trung lập được cống đủ 2600 sẽ thành đồng minh
 - [ ] 5 mức AI (Easiest đến Hardest)
 - [ ] Lưu và tải trận
 - [ ] Chơi online với bạn bè: lockstep qua WebRTC. Phần mô phỏng đã tất định sẵn cho việc này.
