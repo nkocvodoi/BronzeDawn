@@ -36,7 +36,7 @@ const wait = (ms) => page.waitForTimeout(ms);
 const at = async (id) => g((id) => { const e = game.world.entity(id); game.look(e.center); return game.screenOf(e.center); }, id);
 
 await page.goto(`http://localhost:${port}/?seed=5`);
-await page.waitForFunction(() => window.game);
+await page.waitForFunction(() => window.game, null, { timeout: 120000 }); // a CI runner with three browsers open is slow to start one
 const menu = await page.$$eval(".mainmenu-list button", (b) => b.map((x) => x.textContent));
 check(menu.join("|") === "Single Player|Multiplayer|Saved Games|Help", `the main menu offers ${menu.join(", ")}`);
 await page.keyboard.press("3");

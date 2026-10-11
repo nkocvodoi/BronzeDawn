@@ -33,7 +33,7 @@ const open = async (who) => {
   page.on("pageerror", (e) => errors.push(`${who}: ${e}`));
   page.on("console", (m) => { if (m.type() === "error") errors.push(`${who}: ${m.text()}`); });
   await page.goto(`http://localhost:${port}/?seed=7`);
-  await page.waitForFunction(() => window.game);
+  await page.waitForFunction(() => window.game, null, { timeout: 120000 }); // a CI runner with three browsers open is slow to start one
   return page;
 };
 const host = await open("host"), guest = await open("guest");

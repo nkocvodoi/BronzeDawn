@@ -821,6 +821,20 @@ describe("the original's rules", () => {
     expect(w.map.terrainAt(t)).toBe(Terrain.water);
   });
 
+  it("no wild animal starts walled in by trees: it has room to roam, and so do the hunters after it", () => {
+    for (const mapType of ["inland", "small_islands", "coastal"] as const) {
+      for (const seed of [1, 2, 3]) {
+        const w = new World(RULES, seed, ["A", "B", "C", "D"], 120, true, { mapType });
+        for (const u of w.units) {
+          if (!u.isAnimal || u.def.id === "alligator") continue;
+          let n = 0;
+          for (const v of w.map.reachable(u.pos.tile, () => false)) { n += v; if (n >= 80) break; }
+          expect(n, `${mapType} ${seed} ${u.def.id} at ${u.pos.tile.x},${u.pos.tile.y}`).toBeGreaterThanOrEqual(80);
+        }
+      }
+    }
+  });
+
   it("every base can walk to a shore where a Dock could stand: woods never wall it in", () => {
     for (const mapType of ["small_islands", "large_islands", "coastal", "continental"] as const) {
       for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
