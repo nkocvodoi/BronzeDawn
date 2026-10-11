@@ -383,6 +383,34 @@ function islandWoods(w: World, starts: Tile[]) {
       forest(w, c, 2 + w.rng.int(0, 15) / 10, 0.92);
     }
   }
+  // The islands nobody starts on are there to be settled: each grows woods of its own, about 18 wood a
+  // tile of ground (an islet of 100 tiles, some 1,800), with room left on its shore for a Storage Pit.
+  const seen = new Uint8Array(map.width * map.height);
+  for (const s of starts) { const r = map.reachable(s, () => true); for (let i = 0; i < r.length; i++) if (r[i]) seen[i] = 1; }
+  for (let i = 0; i < seen.length; i++) {
+    const t0 = new Tile(i % map.width, Math.floor(i / map.width));
+    if (seen[i] || map.terrainAt(t0) === Terrain.water) continue;
+    const isle: Tile[] = [], stack = [t0];
+    seen[i] = 1;
+    while (stack.length) {
+      const t = stack.pop()!;
+      isle.push(t);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const o = new Tile(t.x + dx, t.y + dy);
+        if (!map.inside(o) || seen[map.index(o)] || map.terrainAt(o) === Terrain.water) continue;
+        seen[map.index(o)] = 1;
+        stack.push(o);
+      }
+    }
+    if (isle.length < 40) continue;
+    const on = new Set(isle.map((t) => map.index(t)));
+    const wood = () => w.nodes.reduce((a, n) => a + (n.alive && n.def.resource === "wood" && on.has(map.index(n.tile)) ? n.amount : 0), 0);
+    for (let tries = 0; tries < 20 && wood() < isle.length * 18; tries++) {
+      const c = isle[w.rng.int(0, isle.length - 1)];
+      if (map.coastal(c)) continue;
+      forest(w, c, 1.5 + w.rng.int(0, 10) / 10, 0.85);
+    }
+  }
 }
 
 /** A depth from the edge for each tile along it: a slow random walk between lo and hi. */
@@ -427,7 +455,7 @@ function sea(w: World, type: MapType) {
     for (let k = 0; k < Math.round((big ? 1 : 4) * scale); k++) {
       for (let tries = 0; tries < 30; tries++) {
         const c = new Tile(w.rng.int(8, n - 9), w.rng.int(8, n - 9));
-        if (w.startTiles.every((s) => s.center.distance(c.center) > n * 0.35)) { blob(w, c, n * 0.07, land); break; }
+        if (w.startTiles.every((s) => s.center.distance(c.center) > n * 0.35)) { blob(w, c, n * (big ? 0.07 : 0.085), land); break; }
       }
     }
   } else if (type === "highland") {

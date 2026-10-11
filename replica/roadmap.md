@@ -62,7 +62,8 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [x] AI trên bản đồ đảo: xây Dock trên bờ đảo mình (trước đây chọn nhầm bờ đảo khác nên không bao giờ có Dock), để dành gỗ cho thuyền chở quân, chở cả đợt (ít nhất 10 lính) qua nhiều chuyến, tập trung ở bãi đổ bộ rồi mới đánh, tàu chiến giữ bãi; đảo nhà rộng hơn và có khoảng 10.000 gỗ
 - [x] AI trên bản đồ đảo, phần 2: chỉ giao dân làng tài nguyên đi bộ tới được (trước đây đi đào mỏ vàng ở đảo khác rồi đứng không); đón quân ở vùng nước thuyền tới được, cạnh đất của đảo nhà (trước đây có lúc chờ ở một hồ trong đảo); đổ bộ ở bờ biển mở; thuyền thả quân lên đúng vùng đất được chỉ (ở eo biển hẹp có lính lên nhầm đảo bên cạnh, lỗi này cũng có khi người chơi điều khiển); lính đánh phá chỉ nhắm thứ đi bộ tới được (không đứng mãi trước một Dock), hết mục tiêu thì được thuyền đón đi tiếp; thêm Storage Pit cạnh rừng ở xa
 - [x] AI trên bản đồ đảo: 20 trận thử (Small và Large Islands, Khó đấu Dễ và Thường, 5 seed mỗi cặp) thì Khó thắng 17, thua 2 (cả hai ở cùng một bản đồ, Greek đấu Shang), 1 trận hết 90 phút; trước đó 13 thắng, 1 thua, 6 trận hết giờ vì không dứt điểm được bên thua (chỉ còn một Dock, hoặc vài lính trên đảo khác)
-- [ ] AI trên đảo nhỏ: hết tài nguyên trên đảo nhà thì kinh tế cạn (không đủ gỗ đóng thuyền), cần biết khai thác đảo khác
+- [x] AI trên đảo nhỏ khai thác đảo khác: khi gỗ trên đảo nhà sắp hết, máy chở dân sang đảo phụ có rừng, dựng Storage Pit và đốn; hết rừng thì sang đảo tiếp theo hoặc về nhà. Đảo phụ của Small Islands giờ có rừng (2.000-4.000 gỗ mỗi đảo, trước gần như không có cây)
+- [ ] AI trên đảo: vẫn còn khoảng 1/5 số trận Khó đấu Dễ/Thường hết 90 phút; các trận này kẹt ở khâu đánh nhau (đợt đổ bộ nhỏ, giới hạn dân số 50), không còn do cạn kinh tế
 - Mọi bonus tàu của các dân tộc đã có tác dụng, kể cả thuyền chở quân nhanh hơn 30% của Carthaginian.
 
 ### Giai đoạn 4: bản đồ và luật còn lại (xong)
