@@ -547,3 +547,80 @@ export function drawBushHD(p: PixelCanvas) {
   }
   selout(p, 0.38);
 }
+
+// ---- animals on four legs
+
+interface Beast { coat: RGB; belly: RGB; bodyRx: number; bodyRy: number; leg: number; legR: number; neck: number; headR: number; mane?: RGB; horns?: boolean; tuft?: boolean; trunk?: boolean }
+const GAZELLE: Beast = { coat: rgb(0xc89a5a), belly: rgb(0xf0e4cc), bodyRx: 11, bodyRy: 5.5, leg: 11, legR: 1.1, neck: 8, headR: 2.6, horns: true };
+const ELEPHANT: Beast = { coat: rgb(0x6e6c68), belly: rgb(0x625f5a), bodyRx: 25, bodyRy: 15, leg: 18, legR: 4.4, neck: 1, headR: 8.5, tuft: true, trunk: true };
+const LION: Beast = { coat: rgb(0xc8984c), belly: rgb(0xe4c48c), bodyRx: 14, bodyRy: 6.5, leg: 10, legR: 2, neck: 4, headR: 4.4, mane: rgb(0x8a5a24), tuft: true };
+
+/** A beast walking, standing, grazing (or springing, for a lion), side on, facing right; or lying dead. */
+function drawBeast(p: PixelCanvas, b: Beast, f: Figure, dead: boolean, cx: number, fy: number) {
+  const k = dead ? 0.72 : 1;
+  const coat = ramp(darken(b.coat, k)), coatD = ramp(darken(b.coat, k * 0.78)), belly = ramp(darken(b.belly, k)), dark = ramp(rgb(0x3a2a1c));
+  if (dead) {
+    groundShadow(p, cx, fy, b.bodyRx + 4, 3.5);
+    ellipsoid(p, cx, fy - b.bodyRy * 0.7, b.bodyRx, b.bodyRy * 0.7, coat);
+    for (const dx of [-6, -2, 4, 8]) capsule(p, cx + dx, fy - 2, cx + dx + 6, fy + 1, b.legR, coatD);
+    ellipsoid(p, cx + b.bodyRx + 2, fy - 3, b.headR, b.headR * 0.8, coat);
+    if (b.mane) ellipsoid(p, cx + b.bodyRx, fy - 4, b.headR + 1.5, b.headR + 0.5, ramp(darken(b.mane, k)));
+    ellipsoid(p, cx - 2, fy - b.bodyRy * 0.5, 2, 1.2, ramp(rgb(0x6a1a1a)));
+    selout(p, 0.38);
+    return;
+  }
+  groundShadow(p, cx, fy + 0.5, b.bodyRx + 3, 3);
+  const walk = f.pose === "walk", work = f.pose === "work", g = f.frame % 4;
+  const lift = walk ? (g === 1 ? 2 : g === 3 ? 1 : 0) : 0;
+  const by = fy - b.leg - b.bodyRy * 0.5 - lift;
+  // Legs, the far pair first: hips under the body's ends, feet swinging with the gait.
+  const swing = walk ? Math.sin((g * Math.PI) / 2) * 4 : 0;
+  const leg = (hx: number, phase: number, far: boolean) => {
+    const fx = hx + swing * phase, up = walk && phase * Math.cos((g * Math.PI) / 2) > 0 ? 1.5 : 0;
+    const kx = (hx + fx) / 2 + (phase > 0 ? 1 : -1) * 0.8, ky = by + (fy - by) * 0.5;
+    capsule(p, hx, by + 1, kx, ky, b.legR * 1.3, far ? coatD : coat);
+    capsule(p, kx, ky, fx, fy - 1 - up, b.legR, far ? coatD : coat);
+    capsule(p, fx, fy - 1 - up, fx + 0.8, fy - 0.5 - up, b.legR * 0.9, dark);
+  };
+  const hind = cx - b.bodyRx * 0.62, fore = cx + b.bodyRx * 0.6;
+  leg(hind + 1.5, -1, true); leg(fore + 1.5, 1, true);
+  // The tail, then the body: belly pale below, the back in the coat.
+  const tx = cx - b.bodyRx - 1;
+  capsule(p, cx - b.bodyRx + 2, by - 1, tx - (b.tuft ? 4 : 1), by + (b.tuft ? 6 : 2), b.tuft ? 0.9 : 1.2, coatD);
+  if (b.tuft) ellipsoid(p, tx - 4, by + 7, 1.6, 1.8, dark);
+  for (let y = Math.floor(by - b.bodyRy); y <= Math.ceil(by + b.bodyRy); y++) for (let x = Math.floor(cx - b.bodyRx); x <= Math.ceil(cx + b.bodyRx); x++) {
+    const dx = (x + 0.5 - cx) / b.bodyRx, dy = (y + 0.5 - by) / b.bodyRy, d2 = dx * dx + dy * dy;
+    if (d2 > 1) continue;
+    p.set(x, y, shade(dy > 0.35 ? belly : coat, dx, dy, Math.sqrt(1 - d2), x, y));
+  }
+  leg(hind, 1, false); leg(fore, -1, false);
+  // Neck and head: up, down to the grass when grazing, or out level as a lion springs.
+  const nx0 = cx + b.bodyRx * 0.7, ny0 = by - b.bodyRy * 0.4;
+  const graze = work && !b.mane, pounce = work && !!b.mane;
+  const hx = nx0 + (graze ? 7 : pounce ? 8 : 5), hy = graze ? fy - 4 : pounce ? by - 2 : ny0 - b.neck;
+  if (b.trunk) {
+    // An elephant: the head low on the shoulders, a great ear, the trunk hanging (raised in a charge), tusks.
+    const ex = nx0 + 2, ey = ny0 - 3;
+    ellipsoid(p, ex + 6, ey + 1, b.headR, b.headR * 0.95, coat);
+    ellipsoid(p, ex + 1, ey + 3, 7.5, 10, coatD); // the ear
+    const raise = work ? -14 : 0;
+    capsule(p, ex + 12, ey + 4, ex + 16, ey + 13 + raise * 0.4, 3, coat);
+    capsule(p, ex + 16, ey + 13 + raise * 0.4, ex + 15 + (work ? 5 : 0), ey + 22 + raise, 2.2, coat);
+    capsule(p, ex + 11, ey + 8, ex + 19, ey + 11, 1.4, ramp(rgb(0xf0e6d0)));
+    p.set(ex + 9, ey - 1, rgb(0x1a120a));
+    selout(p, 0.38);
+    return;
+  }
+  capsule(p, nx0, ny0, hx, hy + 1, b.mane ? 3.6 : 2.2, coat);
+  if (b.mane) ellipsoid(p, hx - 1.5, hy, b.headR + 2.4, b.headR + 2, ramp(b.mane));
+  ellipsoid(p, hx + 1, hy, b.headR, b.headR * 0.85, coat);
+  capsule(p, hx + 1, hy + 0.5, hx + b.headR + 2, hy + 1.5, b.headR * 0.5, b.mane ? coat : belly); // muzzle
+  p.set(hx + 1.5, hy - 1, rgb(0x1a120a)); // the eye
+  if (b.horns) { capsule(p, hx, hy - 2, hx - 2, hy - 8, 0.7, dark); capsule(p, hx + 1.5, hy - 2, hx + 0.5, hy - 8, 0.7, dark); }
+  else { ellipsoid(p, hx - 1, hy - b.headR, 1.4, 1.4, coatD); } // a lion's ear
+  selout(p, 0.38);
+}
+
+export function drawGazelleHD(p: PixelCanvas, f: Figure, dead: boolean) { drawBeast(p, GAZELLE, f, dead, 22, 38); }
+export function drawLionHD(p: PixelCanvas, f: Figure, dead: boolean) { drawBeast(p, LION, f, dead, 26, 42); }
+export function drawElephantHD(p: PixelCanvas, f: Figure, dead: boolean) { drawBeast(p, ELEPHANT, f, dead, 38, 84); }

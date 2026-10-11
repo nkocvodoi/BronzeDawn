@@ -5,7 +5,7 @@ import { Texture } from "pixi.js";
 import type { BuildingDef } from "../core/rules";
 import { GridMap, Terrain } from "../core/grid";
 import { HALF_H, HALF_W, fromIso } from "./iso";
-import { drawBushHD, drawMineHD, drawPersonHD, drawTreeHD } from "./hd";
+import { drawBushHD, drawElephantHD, drawGazelleHD, drawLionHD, drawMineHD, drawPersonHD, drawTreeHD } from "./hd";
 import { bayer, darken, hash, HiCanvas, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
 import { AGE_KEYS, ASSETS, ImageSpec } from "./assets";
 
@@ -388,6 +388,7 @@ export function unitPic(look: UnitLook): Pic {
   if (RIDERS.has(type)) return pic(key, 34, 37, 16 / 34, 34 / 37, (p) => drawRider(p, look));
   if (type === "camel_rider") return pic(key, 34, 42, 16 / 34, 39 / 42, (p) => drawCamelRider(p, look));
   if (CHARIOTS.has(type)) return pic(key, 50, 36, 22 / 50, 32 / 36, (p) => drawChariot(p, look));
+  if (type === "elephant") return picHD(key, 92, 92, 21 / 46, 42 / 46, (p) => drawElephantHD(p, look, false)); // the wild one
   if (ELEPHANTS.has(type)) {
     const tall = type === "elephant_archer";
     const H = tall ? 54 : 46, fy = H - 4;
@@ -398,8 +399,8 @@ export function unitPic(look: UnitLook): Pic {
   if (BOATS.has(type)) return pic(key, 56, 38, 28 / 56, 31 / 38, (p) => drawBoat(p, look));
   if (type === "ruins") return pic(`ruins-${owner}`, 44, 40, 22 / 44, 33 / 40, (p) => drawRuins(p, owner));
   if (type === "artifact") return pic(`artifact-${owner}-${pose === "walk" ? frame % 2 : 0}`, 20, 26, 10 / 20, 23 / 26, (p) => drawArtifact(p, owner, pose === "walk" ? frame % 2 : 0));
-  if (type === "gazelle") return pic(key, 24, 22, 12 / 24, 19 / 22, (p) => drawGazelle(p, look, false));
-  if (type === "lion") return pic(key, 30, 24, 14 / 30, 21 / 24, (p) => drawLion(p, look, false));
+  if (type === "gazelle") return picHD(key, 48, 44, 12 / 24, 19 / 22, (p) => drawGazelleHD(p, look, false));
+  if (type === "lion") return picHD(key, 60, 48, 14 / 30, 21 / 24, (p) => drawLionHD(p, look, false));
   if (type === "alligator") return pic(key, 36, 18, 17 / 36, 14 / 18, (p) => drawAlligator(p, look, false));
   const kit = KITS[type] ?? KITS.clubman;
   return pic(key, 26, 28, 11 / 26, 25 / 28, (p) => {
@@ -1116,64 +1117,6 @@ function drawHelepolis(p: PixelCanvas, look: UnitLook) {
 
 // ---- animals
 
-function drawGazelle(p: PixelCanvas, look: UnitLook, dead: boolean) {
-  const k = dead ? 0.7 : 1;
-  const coat = darken(rgb(0xc89a5a), k), coatD = darken(coat, 0.75), belly = darken(rgb(0xf0e4cc), k);
-  const fy = 19, ox = 11;
-  if (dead) {
-    p.shadow(ox, fy, 9, 2);
-    p.ellipse(ox, fy - 3, 7, 2.6, (x, y) => (y > fy - 3 ? belly : coat));
-    p.line(ox - 4, fy - 2, ox - 8, fy, coatD); p.line(ox + 2, fy - 2, ox + 6, fy, coatD); p.line(ox - 2, fy - 2, ox - 5, fy + 1, coatD);
-    p.rect(ox + 7, fy - 5, 3, 2, coat); p.line(ox + 8, fy - 6, ox + 11, fy - 8, C.dark);
-    p.set(ox - 1, fy - 3, darken(C.berry, 0.6)); p.set(ox, fy - 3, darken(C.berry, 0.6));
-    p.outline(C.outline, 0.25);
-    return;
-  }
-  p.shadow(ox, fy + 0.5, 7, 1.8);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const by = fy - 9 - (gait === 1 ? 2 : gait === 3 ? 1 : 0);
-  const legs: [number, number][] = gait < 0 ? [[-4, 0], [-2, 0], [3, 0], [5, 0]] : ([[[-6, 0], [-5, 0], [6, 0], [7, 0]], [[-3, 2], [-2, 2], [2, 2], [3, 2]], [[-5, 0], [-4, 0], [4, 0], [5, 0]], [[-2, 1], [-1, 1], [1, 1], [2, 1]]] as [number, number][][])[gait];
-  legs.forEach(([dx, lift], i) => p.line(ox + (i < 2 ? -3 : 3), by + 2, ox + dx, fy - 1 - lift, i % 2 ? coatD : coat));
-  p.ellipse(ox, by, 6, 3, (x, y) => (y > by + 1 ? belly : x > ox + 3 ? coatD : coat));
-  p.line(ox - 5, by, ox + 5, by, darken(coat, 0.55));
-  const graze = look.pose === "work";
-  const hx = ox + 7, hy = graze ? fy - 3 : by - 5;
-  p.line(ox + 4, by - 1, hx, hy + 1, coat); p.line(ox + 5, by - 1, hx + 1, hy + 1, coat);
-  p.rect(hx, hy, 3, 2, coat); p.set(hx + 3, hy + 1, coatD); p.set(hx + 1, hy, C.dark);
-  p.line(hx, hy - 1, hx - 1, hy - 4, rgb(0x4a3a2a)); p.set(hx - 2, hy - 5, rgb(0x4a3a2a)); p.set(hx + 2, hy, coatD);
-  p.set(ox - 6, by - 1, C.white);
-  p.outline(C.outline, 0.25);
-}
-
-function drawLion(p: PixelCanvas, look: UnitLook, dead: boolean) {
-  const k = dead ? 0.7 : 1;
-  const coat = darken(rgb(0xc8903e), k), coatD = darken(coat, 0.72), mane = darken(rgb(0x6a3a18), k);
-  const fy = 21, ox = 13;
-  if (dead) {
-    p.shadow(ox, fy, 11, 2);
-    p.ellipse(ox, fy - 3, 9, 3, (x, y) => (y > fy - 2 ? coatD : coat));
-    p.ellipse(ox + 9, fy - 4, 4, 3.5, mane); p.rect(ox + 10, fy - 4, 3, 2, coat);
-    p.line(ox - 5, fy - 1, ox - 9, fy + 1, coatD); p.line(ox + 3, fy - 1, ox + 6, fy + 1, coatD);
-    p.line(ox - 9, fy - 4, ox - 13, fy - 2, coatD);
-    p.outline(C.outline, 0.25);
-    return;
-  }
-  p.shadow(ox, fy + 0.5, 10, 2);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const st = look.pose === "work" ? look.frame % 3 : -1;
-  const by = fy - 8 - (st === 1 ? 2 : 0);
-  const legs = gait < 0 ? [[-6, 0], [-4, 0], [5, 0], [7, 0]] : [[[-8, 0], [-6, 0], [7, 0], [8, 0]], [[-5, 2], [-4, 1], [4, 2], [5, 1]], [[-6, 0], [-5, 0], [6, 0], [7, 0]], [[-4, 1], [-3, 2], [3, 1], [4, 2]]][gait];
-  if (st >= 1) { legs[2] = [9, 4]; legs[3] = [10, 3]; }
-  legs.forEach(([dx, lift], i) => p.thick(ox + (i < 2 ? -6 : 5), by + 2, ox + dx, fy - 1 - lift, i % 2 ? coatD : coat, 2));
-  p.line(ox - 9, by - 1, ox - 13, by - 4, coat); p.rect(ox - 14, by - 6, 2, 2, mane);
-  p.ellipse(ox, by, 9, 3.6, (x, y) => (y < by - 1 ? lighten(coat, 0.12) : x > ox + 5 || y > by + 1 ? coatD : coat));
-  const hx = ox + 9, hy = by - 2 - (st === 1 ? 1 : 0);
-  p.ellipse(hx, hy, 4.5, 4.6, (x) => (x < hx ? mane : darken(mane, 0.85)));
-  p.rect(hx + 1, hy - 1, 4, 3, coat); p.set(hx + 5, hy, C.dark); p.set(hx + 3, hy - 1, C.dark);
-  if (st >= 1) { p.rect(hx + 2, hy + 2, 3, 1, C.berry); p.set(hx + 4, hy + 3, C.ivory); }
-  p.outline(C.outline, 0.25);
-}
-
 function drawAlligator(p: PixelCanvas, look: UnitLook, dead: boolean) {
   const k = dead ? 0.7 : 1;
   const g = darken(rgb(0x4e6a34), k), gD = darken(g, 0.7), belly = darken(rgb(0x9aa462), k);
@@ -1325,9 +1268,9 @@ export function nodePic(type: string, variant: number): Pic {
         p.outline(C.outline, 0.25);
       });
     }
-    if (animal === "lion") return pic(type, 30, 24, 0.5, 21 / 24, (p) => drawLion(p, dead, true));
+    if (animal === "lion") return picHD(type, 60, 48, 0.5, 21 / 24, (p) => drawLionHD(p, dead, true));
     if (animal === "alligator") return pic(type, 36, 18, 0.5, 14 / 18, (p) => drawAlligator(p, dead, true));
-    return pic(type, 24, 22, 0.5, 19 / 22, (p) => drawGazelle(p, dead, true));
+    return picHD(type, 48, 44, 0.5, 19 / 22, (p) => drawGazelleHD(p, dead, true));
   }
   const gold = type === "gold_mine";
   if (type === "gold_mine" || type === "stone_mine") return picHD(type, 56, 36, 0.5, 0.85, (p) => drawMineHD(p, gold));
