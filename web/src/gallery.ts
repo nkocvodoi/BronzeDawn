@@ -10,6 +10,8 @@ const main = document.getElementById("main")!;
 const INFANTRY = ["villager", "clubman", "axeman", "slinger", "short_swordsman", "broad_swordsman", "long_swordsman", "legion", "hoplite", "phalanx", "centurion", "bowman", "improved_bowman", "composite_bowman", "priest"];
 const MOUNTED = ["scout", "cavalry", "heavy_cavalry", "cataphract", "horse_archer", "heavy_horse_archer", "camel_rider", "chariot", "scythe_chariot", "chariot_archer", "war_elephant", "armored_elephant", "elephant_archer"];
 const SIEGE = ["stone_thrower", "catapult", "heavy_catapult", "ballista", "helepolis"];
+const BOATS = ["fishing_boat", "fishing_ship", "trade_boat", "merchant_ship", "light_transport", "heavy_transport", "scout_ship", "war_galley",
+  "trireme", "catapult_trireme", "juggernaught", "fire_galley"];
 const ANIMALS = ["gazelle", "elephant", "lion", "alligator"];
 const BUILDINGS: [string, number][] = [
   ["town_center", 3], ["house", 2], ["granary", 3], ["storage_pit", 3], ["barracks", 3], ["archery_range", 3], ["stable", 3], ["market", 3], ["farm", 3],
@@ -17,7 +19,7 @@ const BUILDINGS: [string, number][] = [
 ];
 const def = (id: string, size: number) => ({ id, size }) as BuildingDef;
 
-const SECTIONS = ["infantry", "villager", "mounted", "siege", "animals", "nodes", "walls", "scene", "icons", ...ARCHES.map((a) => `b-${a}`), ...ARCHES.map((a) => `stages-${a}`)];
+const SECTIONS = ["infantry", "villager", "mounted", "siege", "boats", "animals", "nodes", "walls", "scene", "icons", ...ARCHES.map((a) => `b-${a}`), ...ARCHES.map((a) => `stages-${a}`)];
 const nav = document.getElementById("nav")!;
 for (const s of SECTIONS) {
   const a = document.createElement("a");
@@ -91,6 +93,7 @@ switch (section) {
   case "infantry": unitRows(INFANTRY); break;
   case "mounted": unitRows(MOUNTED); break;
   case "siege": unitRows(SIEGE); break;
+  case "boats": unitRows(BOATS); break;
   case "animals": unitRows(ANIMALS, [-1]); break;
   case "villager": {
     const tools: Tool[] = ["none", "axe", "pick", "basket", "hoe", "hammer", "spear", "net"];
