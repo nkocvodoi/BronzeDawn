@@ -75,6 +75,7 @@ jobs:
         with: { name: dist, path: web/dist }
       - run: npm run smoke
       - run: npm run smoke:art
+        if: success() || failure()  # whatever the smoke said
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: art-diff, path: web/art-diff, if-no-files-found: ignore }
@@ -95,6 +96,7 @@ jobs:
         with: { name: dist, path: web/dist }
       - run: npm run smoke:online
       - run: npm run smoke:host-leaves
+        if: success() || failure()
 
   pages:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
