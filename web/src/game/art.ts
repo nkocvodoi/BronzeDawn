@@ -5,7 +5,8 @@ import { Texture } from "pixi.js";
 import type { BuildingDef } from "../core/rules";
 import { GridMap, Terrain } from "../core/grid";
 import { HALF_H, HALF_W, fromIso } from "./iso";
-import { bayer, darken, hash, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
+import { drawBushHD, drawCamelRiderHD, drawChariotHD, drawElephantHD, drawGazelleHD, drawLionHD, drawMineHD, drawPersonHD, drawRiderHD, drawTreeHD, drawWarElephantHD } from "./hd";
+import { bayer, darken, hash, HiCanvas, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
 import { AGE_KEYS, ASSETS, ImageSpec } from "./assets";
 
 export const PLAYER_COLORS = ["#2f6be6", "#d8322c", "#f0c530", "#3daf4a", "#33b5c4", "#9a4ad8", "#888888", "#e87a28"];
@@ -43,19 +44,39 @@ function assetPic(key: string, spec: ImageSpec, owner: number | null, defaultAnc
   return out;
 }
 
-function finish(p: PixelCanvas, ax: number, ay: number): Pic {
+function finish(p: PixelCanvas, ax: number, ay: number, px = PX): Pic {
   const canvas = p.toCanvas();
   const texture = Texture.from(canvas);
   texture.source.scaleMode = "nearest";
-  return { texture, canvas, w: p.w * PX, h: p.h * PX, ax, ay };
+  return { texture, canvas, w: p.w * px, h: p.h * px, ax, ay };
+}
+
+/** Like pic, at the screen's own resolution: one picture pixel to one world unit (see hd.ts). */
+function picHD(key: string, w: number, h: number, ax: number, ay: number, draw: (p: PixelCanvas) => void): Pic {
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const p = new PixelCanvas(w, h);
+  draw(p);
+  const out = finish(p, ax, ay, 1);
+  cache.set(key, out);
+  return out;
+}
+
+/** A picture drawn by the old drawing code, now filled at the screen's own resolution (HiCanvas): the code
+ *  works in old pixels, and edges, lines and the outline come out twice as fine. The same size on the map. */
+function finishHi(p: HiCanvas, ax: number, ay: number, cropTop = false): Pic {
+  const canvas = p.toCanvas(cropTop);
+  const texture = Texture.from(canvas);
+  texture.source.scaleMode = "nearest";
+  return { texture, canvas, w: canvas.width * (PX / p.k), h: canvas.height * (PX / p.k), ax, ay };
 }
 
 function pic(key: string, w: number, h: number, ax: number, ay: number, draw: (p: PixelCanvas) => void): Pic {
   const hit = cache.get(key);
   if (hit) return hit;
-  const p = new PixelCanvas(w, h);
-  draw(p);
-  const out = finish(p, ax, ay);
+  const p = new HiCanvas(w, h);
+  draw(p as unknown as PixelCanvas);
+  const out = finishHi(p, ax, ay);
   cache.set(key, out);
   return out;
 }
@@ -64,14 +85,9 @@ function pic(key: string, w: number, h: number, ax: number, ay: number, draw: (p
 function tallPic(key: string, w: number, h: number, ax: number, draw: (p: PixelCanvas) => void): Pic {
   const hit = cache.get(key);
   if (hit) return hit;
-  const p = new PixelCanvas(w, h);
-  draw(p);
-  let top = 0;
-  find: for (; top < h - 1; top++) for (let x = 0; x < w; x++) if (p.alphaAt(x, top)) break find;
-  top = Math.max(0, top - 1);
-  const q = new PixelCanvas(w, h - top);
-  q.data.set(p.data.subarray(top * w * 4));
-  const out = finish(q, ax, 1);
+  const p = new HiCanvas(w, h);
+  draw(p as unknown as PixelCanvas);
+  const out = finishHi(p, ax, 1, true);
   cache.set(key, out);
   return out;
 }
@@ -353,6 +369,10 @@ const KITS: Record<string, Kit> = {
   elephant_archer: K("turban", "leather", "none", "composite", { quiver: true }),
 };
 
+/** Those on foot, drawn by hd.ts at the screen's own resolution. */
+const FOOT = new Set(["villager", "clubman", "axeman", "slinger", "short_swordsman", "broad_swordsman", "long_swordsman", "legion", "hoplite",
+  "phalanx", "centurion", "bowman", "improved_bowman", "composite_bowman", "priest"]);
+
 const RIDERS = new Set(["scout", "cavalry", "heavy_cavalry", "cataphract", "horse_archer", "heavy_horse_archer"]);
 const CHARIOTS = new Set(["chariot", "scythe_chariot", "chariot_archer"]);
 const ELEPHANTS = new Set(["war_elephant", "armored_elephant", "elephant_archer", "elephant"]);
@@ -363,21 +383,25 @@ export function unitPic(look: UnitLook): Pic {
   if (fromFile) return fromFile;
   const { type, owner, facing, pose, frame, tool, carry } = look;
   const key = `u-${type}-${owner}-${facing}-${pose}-${frame}-${tool}-${carry}`;
-  if (RIDERS.has(type)) return pic(key, 34, 37, 16 / 34, 34 / 37, (p) => drawRider(p, look));
-  if (type === "camel_rider") return pic(key, 34, 42, 16 / 34, 39 / 42, (p) => drawCamelRider(p, look));
-  if (CHARIOTS.has(type)) return pic(key, 50, 36, 22 / 50, 32 / 36, (p) => drawChariot(p, look));
+  // Drawn anew at the screen's own resolution (the first of the pictures to be): the same size on the map.
+  if (FOOT.has(type)) return picHD(key, 52, 56, 22 / 52, 50 / 56, (p) => drawPersonHD(p, look, KITS[type] ?? KITS.clubman, playerRGB(owner)));
+  const pc = playerRGB(owner);
+  if (RIDERS.has(type)) return picHD(key, 68, 74, 16 / 34, 34 / 37, (p) => drawRiderHD(p, look, KITS[type], pc, type));
+  if (type === "camel_rider") return picHD(key, 68, 84, 16 / 34, 39 / 42, (p) => drawCamelRiderHD(p, look, KITS.camel_rider, pc));
+  if (CHARIOTS.has(type)) return picHD(key, 100, 72, 22 / 50, 32 / 36, (p) => drawChariotHD(p, look, KITS.chariot_driver, type === "chariot_archer" ? KITS.chariot_archer : null, pc, type === "scythe_chariot"));
+  if (type === "elephant") return picHD(key, 92, 92, 21 / 46, 42 / 46, (p) => drawElephantHD(p, look, false)); // the wild one
   if (ELEPHANTS.has(type)) {
     const tall = type === "elephant_archer";
     const H = tall ? 54 : 46, fy = H - 4;
-    return pic(key, 46, H, 21 / 46, fy / H, (p) => drawWarElephant(p, look, fy));
+    return picHD(key, 92, H * 2, 21 / 46, fy / H, (p) => drawWarElephantHD(p, look, KITS.mahout, tall ? KITS.elephant_archer : null, pc, type === "armored_elephant", fy * 2));
   }
   if (type === "helepolis") return pic(key, 38, 54, 19 / 38, 50 / 54, (p) => drawHelepolis(p, look));
   if (SIEGE.has(type)) return pic(key, 40, 34, 20 / 40, 30 / 34, (p) => drawSiege(p, look));
   if (BOATS.has(type)) return pic(key, 56, 38, 28 / 56, 31 / 38, (p) => drawBoat(p, look));
   if (type === "ruins") return pic(`ruins-${owner}`, 44, 40, 22 / 44, 33 / 40, (p) => drawRuins(p, owner));
   if (type === "artifact") return pic(`artifact-${owner}-${pose === "walk" ? frame % 2 : 0}`, 20, 26, 10 / 20, 23 / 26, (p) => drawArtifact(p, owner, pose === "walk" ? frame % 2 : 0));
-  if (type === "gazelle") return pic(key, 24, 22, 12 / 24, 19 / 22, (p) => drawGazelle(p, look, false));
-  if (type === "lion") return pic(key, 30, 24, 14 / 30, 21 / 24, (p) => drawLion(p, look, false));
+  if (type === "gazelle") return picHD(key, 48, 44, 12 / 24, 19 / 22, (p) => drawGazelleHD(p, look, false));
+  if (type === "lion") return picHD(key, 60, 48, 14 / 30, 21 / 24, (p) => drawLionHD(p, look, false));
   if (type === "alligator") return pic(key, 36, 18, 17 / 36, 14 / 18, (p) => drawAlligator(p, look, false));
   const kit = KITS[type] ?? KITS.clubman;
   return pic(key, 26, 28, 11 / 26, 25 / 28, (p) => {
@@ -830,86 +854,6 @@ function drawGlow(p: PixelCanvas, x: number, y: number, st: number) {
 
 // ---- mounts
 
-function drawHorse(p: PixelCanvas, ox: number, fy: number, look: UnitLook, coat: RGB, barding: "none" | "cloth" | "scale", pc: RGB) {
-  const coatD = darken(coat, 0.72), coatL = lighten(coat, 0.14), mane = darken(coat, 0.45);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const bob = gait === 1 || gait === 3 ? -1 : 0;
-  const by = fy - 11 + bob;
-  const cyc = [[-2, 0], [0, 2], [2, 0], [1, 1]];
-  const leg = (x: number, phase: number, far: boolean) => {
-    const [dx, lift] = gait < 0 ? [0, 0] : cyc[(gait + phase) % 4];
-    const c = far ? coatD : coat;
-    p.line(x, by + 2, x + dx, fy - 1 - lift, c); p.line(x + 1, by + 2, x + 1 + dx, fy - 1 - lift, darken(c, 0.9));
-    p.rect(x + dx, fy - 1 - lift, 2, 1, C.dark);
-  };
-  leg(ox - 7, 1, true); leg(ox + 6, 3, true);
-  // Tail.
-  p.line(ox - 9, by - 2, ox - 11, by + 3 + (gait >= 0 ? gait % 2 : 0), mane); p.line(ox - 10, by - 2, ox - 12, by + 4, mane);
-  p.ellipse(ox, by, 9.5, 4.6, (x, y) => (y < by - 2 ? coatL : y > by + 2 ? coatD : x > ox + 4 ? coatD : coat));
-  leg(ox - 5, 0, false); leg(ox + 8, 2, false);
-  // Neck and head, toward screen right.
-  const hb = gait === 0 ? 1 : 0;
-  p.poly([[ox + 4, by - 1], [ox + 8, by - 8 + hb], [ox + 12, by - 8 + hb], [ox + 10, by + 2]], (x) => (x < ox + 8 ? coat : coatD));
-  p.poly([[ox + 9, by - 10 + hb], [ox + 13, by - 10 + hb], [ox + 16, by - 5 + hb], [ox + 15, by - 3 + hb], [ox + 12, by - 5 + hb]], coat);
-  p.set(ox + 15, by - 4 + hb, C.dark);
-  p.set(ox + 10, by - 11 + hb, coatD); p.set(ox + 11, by - 11 + hb, coat);
-  p.set(ox + 12, by - 8 + hb, C.dark);
-  p.line(ox + 5, by - 3, ox + 9, by - 10 + hb, mane); p.line(ox + 6, by - 3, ox + 10, by - 10 + hb, mane);
-  if (barding === "cloth") {
-    p.poly([[ox - 5, by - 4], [ox + 4, by - 4], [ox + 5, by + 3], [ox - 6, by + 3]], (x) => (x > ox + 1 ? darken(pc, 0.7) : pc));
-    p.line(ox - 6, by + 3, ox + 5, by + 3, C.gold);
-  } else if (barding === "scale") {
-    p.ellipse(ox, by, 9, 4.3, (x, y) => { const b = y > by + 1 || x > ox + 4 ? C.ironDark : C.iron; return (x + y) % 2 ? b : darken(b, 0.8); });
-    p.poly([[ox + 9, by - 10 + hb], [ox + 13, by - 10 + hb], [ox + 15, by - 6 + hb], [ox + 12, by - 6 + hb]], C.iron);
-    p.poly([[ox + 4, by - 1], [ox + 8, by - 8 + hb], [ox + 10, by - 8 + hb], [ox + 8, by]], C.ironDark);
-    p.line(ox - 8, by + 4, ox + 8, by + 4, pc);
-  }
-  p.rect(ox - 3, by - 5, 6, 2, C.leatherDark); // saddle
-}
-
-function drawRider(p: PixelCanvas, look: UnitLook) {
-  const pc = playerRGB(look.owner);
-  const ox = 16, fy = 34;
-  const t = look.type;
-  p.shadow(ox, fy + 0.5, 13, 2.4);
-  const coat = t === "scout" || t === "horse_archer" ? rgb(0xa8743c) : t === "cataphract" ? rgb(0x3a2c24) : rgb(0x6a4226);
-  drawHorse(p, ox, fy, look, coat, t === "cataphract" || t === "heavy_horse_archer" ? "scale" : t === "scout" ? "none" : "cloth", pc);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const ty = fy - 21 + (gait === 1 || gait === 3 ? -1 : 0);
-  drawPerson(p, KITS[t], look, ox - 3, ty, true);
-  p.outline(C.outline, 0.25);
-}
-
-function drawCamelRider(p: PixelCanvas, look: UnitLook) {
-  const pc = playerRGB(look.owner);
-  const ox = 15, fy = 39;
-  const coat = rgb(0xc8a066), coatD = darken(coat, 0.75), coatL = lighten(coat, 0.15);
-  p.shadow(ox, fy + 0.5, 12, 2.3);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const by = fy - 15;
-  const cyc = [[-2, 0], [0, 2], [2, 0], [1, 1]];
-  const leg = (x: number, phase: number, far: boolean) => {
-    const [dx, lift] = gait < 0 ? [0, 0] : cyc[(gait + phase) % 4];
-    const c = far ? coatD : coat;
-    p.line(x, by + 2, x + dx, fy - 1 - lift, c); p.line(x + 1, by + 2, x + 1 + dx, fy - 1 - lift, c);
-    p.rect(x + dx - 1, fy - 1 - lift, 3, 1, darken(coat, 0.5));
-  };
-  leg(ox - 7, 1, true); leg(ox + 5, 3, true);
-  p.line(ox - 9, by - 1, ox - 10, by + 5, coatD);
-  p.ellipse(ox, by, 9, 4.2, (x, y) => (y < by - 1 ? coatL : x > ox + 4 || y > by + 2 ? coatD : coat));
-  p.ellipse(ox - 1, by - 4, 5, 4, (x) => (x < ox - 2 ? coatL : coat)); // hump
-  leg(ox - 5, 0, false); leg(ox + 7, 2, false);
-  // Long curved neck and a small head.
-  p.poly([[ox + 5, by - 1], [ox + 9, by + 1], [ox + 12, by - 7], [ox + 10, by - 9]], coat);
-  p.poly([[ox + 10, by - 9], [ox + 12, by - 7], [ox + 13, by - 12], [ox + 11, by - 13]], coat);
-  p.rect(ox + 11, by - 15, 4, 3, coat); p.rect(ox + 15, by - 14, 2, 2, coatD);
-  p.set(ox + 13, by - 14, C.dark); p.set(ox + 11, by - 16, coatD);
-  p.poly([[ox - 6, by - 5], [ox + 3, by - 5], [ox + 4, by + 2], [ox - 7, by + 2]], (x) => (x > ox ? darken(pc, 0.7) : pc));
-  p.line(ox - 7, by + 2, ox + 4, by + 2, C.gold);
-  drawPerson(p, KITS.camel_rider, look, ox - 1, by - 15, true);
-  p.outline(C.outline, 0.25);
-}
-
 function drawWheel(p: PixelCanvas, x: number, y: number, r: number, spin: number, rim: RGB, spoke: RGB, blades = false) {
   p.ellipse(x, y, r * 0.55 + 0.4, r + 0.4, rim);
   p.ellipse(x, y, r * 0.55 - 0.7, r - 1, darken(rim, 0.55));
@@ -919,99 +863,6 @@ function drawWheel(p: PixelCanvas, x: number, y: number, r: number, spin: number
   }
   p.set(x, y, C.ironDark);
   if (blades) { p.line(x, y, x - 6, y + 1, C.iron); p.line(x - 6, y + 1, x - 8, y - 1, C.ironLight); p.line(x, y, x + 2, y + 1, C.iron); }
-}
-
-function drawChariot(p: PixelCanvas, look: UnitLook) {
-  const pc = playerRGB(look.owner), pcD = darken(pc, 0.68);
-  const fy = 32, t = look.type;
-  p.shadow(24, fy + 0.5, 20, 2.5);
-  const spin = look.pose === "walk" ? look.frame % 4 : 0;
-  // Two horses: the far one first, a little up and back.
-  drawHorse(p, 30, fy - 3, look, rgb(0x5a3a22), "none", pc);
-  drawHorse(p, 32, fy, look, rgb(0x9a6a38), t === "scythe_chariot" ? "cloth" : "none", pc);
-  // Pole from the car to the yoke.
-  p.line(15, fy - 8, 34, fy - 13, C.woodDark);
-  // Crew stands in the car, drawn before its front panel.
-  if (t === "chariot_archer") drawPerson(p, KITS.chariot_archer, look, 11, fy - 25, true, true);
-  else drawPerson(p, KITS.chariot_driver, { ...look, pose: look.pose === "work" ? "idle" : look.pose }, 11, fy - 25, true, true);
-  if (t !== "chariot_archer") {
-    // The driver lashes out with a spear when attacking.
-    const st = look.pose === "work" ? look.frame % 3 : -1;
-    const a = st < 0 ? -80 : [-30, -10, 5][st];
-    shaft(p, 15, fy - 20, a, -4, 9, C.wood); shaft(p, 15, fy - 20, a, 9, 11, C.iron);
-  }
-  // The car.
-  p.poly([[5, fy - 16], [17, fy - 16], [18, fy - 7], [4, fy - 7]], (x, y) => (y < fy - 14 ? C.bronze : x > 13 ? pcD : pc));
-  p.line(5, fy - 16, 17, fy - 16, C.goldDark);
-  p.rect(7, fy - 13, 6, 1, lighten(pc, 0.3));
-  drawWheel(p, 10, fy - 5, 6, spin, C.woodDark, C.wood, t === "scythe_chariot");
-  p.outline(C.outline, 0.25);
-}
-
-function drawElephant(p: PixelCanvas, ox: number, fy: number, look: UnitLook, wild: boolean, armor: boolean) {
-  const g = wild ? rgb(0x8c8a84) : rgb(0x84827e), gD = darken(g, 0.72), gL = lighten(g, 0.16);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const by = fy - 16;
-  const lift = (ph: number) => (gait < 0 ? 0 : [0, 2, 0, 0][(gait + ph) % 4]);
-  const shift = (ph: number) => (gait < 0 ? 0 : [-1, 0, 1, 0][(gait + ph) % 4]);
-  const leg = (x: number, ph: number, far: boolean) => {
-    const c = far ? gD : g;
-    p.rect(x + shift(ph), by + 4, 4, fy - by - 4 - lift(ph), c);
-    p.rect(x + shift(ph) + 3, by + 4, 1, fy - by - 4 - lift(ph), darken(c, 0.85));
-    p.rect(x + shift(ph), fy - 1 - lift(ph), 4, 1, C.ivory);
-  };
-  leg(ox - 10, 1, true); leg(ox + 5, 3, true);
-  p.line(ox - 13, by - 3, ox - 15, by + 6, gD); p.rect(ox - 16, by + 6, 2, 2, C.dark); // tail
-  p.ellipse(ox, by, 13.5, 9.5, (x, y) => (y < by - 5 && x < ox + 6 ? gL : y > by + 4 || x > ox + 8 ? gD : g));
-  for (const [x, y] of [[ox - 4, by + 2], [ox + 2, by - 3], [ox - 8, by - 2]]) p.set(x, y, gD);
-  leg(ox - 7, 0, false); leg(ox + 8, 2, false);
-  // Head, ear, trunk and tusks.
-  const st = look.pose === "work" ? look.frame % 3 : -1;
-  const hx = ox + 13, hy = by - 4 - (st === 1 ? 1 : 0);
-  p.ellipse(hx, hy, 6, 6.5, (x, y) => (y < hy - 3 ? gL : x > hx + 3 ? gD : g));
-  if (st < 0 || st === 2) {
-    const sw = gait >= 0 ? [0, 1, 0, -1][gait] : 0;
-    p.thick(hx + 4, hy + 2, hx + 5 + sw, hy + 10, g, 3);
-    p.thick(hx + 5 + sw, hy + 10, hx + 7 + sw, hy + 14, g, 2);
-    p.set(hx + 8 + sw, hy + 14, gD);
-  } else {
-    p.thick(hx + 4, hy + 1, hx + 9, hy - 6, g, 3);
-    p.thick(hx + 9, hy - 6, hx + 8, hy - 11, g, 2);
-  }
-  p.line(hx + 3, hy + 4, hx + 7, hy + 6, C.ivory); p.set(hx + 8, hy + 5, C.ivory);
-  if (armor) { p.line(hx + 7, hy + 6, hx + 10, hy + 6, C.ironLight); p.set(hx + 10, hy + 5, C.ironLight); }
-  p.ellipse(hx - 3, hy + 1, 3.6, 5.6, (x) => (x < hx - 4 ? g : gD));
-  p.line(hx - 6, hy - 3, hx - 6, hy + 5, gL);
-  p.set(hx + 2, hy - 2, C.dark);
-  if (armor) {
-    p.poly([[hx - 2, hy - 6], [hx + 4, hy - 6], [hx + 6, hy + 1], [hx + 1, hy + 2]], (x, y) => ((x + y) % 2 ? C.iron : C.ironDark));
-  }
-}
-
-function drawWarElephant(p: PixelCanvas, look: UnitLook, fy: number) {
-  const t = look.type, wild = t === "elephant";
-  const ox = 19;
-  p.shadow(ox + 2, fy + 0.5, 17, 3);
-  if (look.owner < 0 || wild) { drawElephant(p, ox, fy, look, true, false); p.outline(C.outline, 0.25); return; }
-  const pc = playerRGB(look.owner), pcD = darken(pc, 0.68);
-  const armor = t === "armored_elephant";
-  drawElephant(p, ox, fy, look, false, armor);
-  const by = fy - 16;
-  if (armor) p.ellipse(ox, by - 1, 12, 7, (x, y) => { const b = y > by + 2 || x > ox + 6 ? C.ironDark : C.iron; return (x + 2 * y) % 3 ? b : darken(b, 0.8); });
-  // Saddle cloth in the player's colour with a gold fringe.
-  p.poly([[ox - 7, by - 9], [ox + 4, by - 9], [ox + 6, by + 1], [ox - 9, by + 1]], (x) => (x > ox + 1 ? pcD : pc));
-  for (let x = ox - 9; x <= ox + 6; x += 2) p.set(x, by + 2, C.gold);
-  p.line(ox - 7, by - 9, ox + 4, by - 9, C.gold);
-  if (t === "elephant_archer") {
-    // A howdah with an archer in it.
-    drawPerson(p, KITS.elephant_archer, look, ox - 1, by - 20, true, true);
-    p.rect(ox - 8, by - 15, 15, 6, C.wood); p.rect(ox - 8, by - 15, 15, 1, C.woodLight); p.rect(ox + 3, by - 14, 4, 5, C.woodDark);
-    p.rect(ox - 6, by - 13, 3, 3, pc); p.rect(ox - 1, by - 13, 3, 3, pc);
-    p.rect(ox - 8, by - 21, 1, 6, C.woodDark); p.rect(ox + 6, by - 21, 1, 6, C.woodDark);
-  } else {
-    drawPerson(p, KITS.mahout, look, ox + 7, by - 17, true);
-  }
-  p.outline(C.outline, 0.25);
 }
 
 // ---- siege
@@ -1093,64 +944,6 @@ function drawHelepolis(p: PixelCanvas, look: UnitLook) {
 }
 
 // ---- animals
-
-function drawGazelle(p: PixelCanvas, look: UnitLook, dead: boolean) {
-  const k = dead ? 0.7 : 1;
-  const coat = darken(rgb(0xc89a5a), k), coatD = darken(coat, 0.75), belly = darken(rgb(0xf0e4cc), k);
-  const fy = 19, ox = 11;
-  if (dead) {
-    p.shadow(ox, fy, 9, 2);
-    p.ellipse(ox, fy - 3, 7, 2.6, (x, y) => (y > fy - 3 ? belly : coat));
-    p.line(ox - 4, fy - 2, ox - 8, fy, coatD); p.line(ox + 2, fy - 2, ox + 6, fy, coatD); p.line(ox - 2, fy - 2, ox - 5, fy + 1, coatD);
-    p.rect(ox + 7, fy - 5, 3, 2, coat); p.line(ox + 8, fy - 6, ox + 11, fy - 8, C.dark);
-    p.set(ox - 1, fy - 3, darken(C.berry, 0.6)); p.set(ox, fy - 3, darken(C.berry, 0.6));
-    p.outline(C.outline, 0.25);
-    return;
-  }
-  p.shadow(ox, fy + 0.5, 7, 1.8);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const by = fy - 9 - (gait === 1 ? 2 : gait === 3 ? 1 : 0);
-  const legs: [number, number][] = gait < 0 ? [[-4, 0], [-2, 0], [3, 0], [5, 0]] : ([[[-6, 0], [-5, 0], [6, 0], [7, 0]], [[-3, 2], [-2, 2], [2, 2], [3, 2]], [[-5, 0], [-4, 0], [4, 0], [5, 0]], [[-2, 1], [-1, 1], [1, 1], [2, 1]]] as [number, number][][])[gait];
-  legs.forEach(([dx, lift], i) => p.line(ox + (i < 2 ? -3 : 3), by + 2, ox + dx, fy - 1 - lift, i % 2 ? coatD : coat));
-  p.ellipse(ox, by, 6, 3, (x, y) => (y > by + 1 ? belly : x > ox + 3 ? coatD : coat));
-  p.line(ox - 5, by, ox + 5, by, darken(coat, 0.55));
-  const graze = look.pose === "work";
-  const hx = ox + 7, hy = graze ? fy - 3 : by - 5;
-  p.line(ox + 4, by - 1, hx, hy + 1, coat); p.line(ox + 5, by - 1, hx + 1, hy + 1, coat);
-  p.rect(hx, hy, 3, 2, coat); p.set(hx + 3, hy + 1, coatD); p.set(hx + 1, hy, C.dark);
-  p.line(hx, hy - 1, hx - 1, hy - 4, rgb(0x4a3a2a)); p.set(hx - 2, hy - 5, rgb(0x4a3a2a)); p.set(hx + 2, hy, coatD);
-  p.set(ox - 6, by - 1, C.white);
-  p.outline(C.outline, 0.25);
-}
-
-function drawLion(p: PixelCanvas, look: UnitLook, dead: boolean) {
-  const k = dead ? 0.7 : 1;
-  const coat = darken(rgb(0xc8903e), k), coatD = darken(coat, 0.72), mane = darken(rgb(0x6a3a18), k);
-  const fy = 21, ox = 13;
-  if (dead) {
-    p.shadow(ox, fy, 11, 2);
-    p.ellipse(ox, fy - 3, 9, 3, (x, y) => (y > fy - 2 ? coatD : coat));
-    p.ellipse(ox + 9, fy - 4, 4, 3.5, mane); p.rect(ox + 10, fy - 4, 3, 2, coat);
-    p.line(ox - 5, fy - 1, ox - 9, fy + 1, coatD); p.line(ox + 3, fy - 1, ox + 6, fy + 1, coatD);
-    p.line(ox - 9, fy - 4, ox - 13, fy - 2, coatD);
-    p.outline(C.outline, 0.25);
-    return;
-  }
-  p.shadow(ox, fy + 0.5, 10, 2);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const st = look.pose === "work" ? look.frame % 3 : -1;
-  const by = fy - 8 - (st === 1 ? 2 : 0);
-  const legs = gait < 0 ? [[-6, 0], [-4, 0], [5, 0], [7, 0]] : [[[-8, 0], [-6, 0], [7, 0], [8, 0]], [[-5, 2], [-4, 1], [4, 2], [5, 1]], [[-6, 0], [-5, 0], [6, 0], [7, 0]], [[-4, 1], [-3, 2], [3, 1], [4, 2]]][gait];
-  if (st >= 1) { legs[2] = [9, 4]; legs[3] = [10, 3]; }
-  legs.forEach(([dx, lift], i) => p.thick(ox + (i < 2 ? -6 : 5), by + 2, ox + dx, fy - 1 - lift, i % 2 ? coatD : coat, 2));
-  p.line(ox - 9, by - 1, ox - 13, by - 4, coat); p.rect(ox - 14, by - 6, 2, 2, mane);
-  p.ellipse(ox, by, 9, 3.6, (x, y) => (y < by - 1 ? lighten(coat, 0.12) : x > ox + 5 || y > by + 1 ? coatD : coat));
-  const hx = ox + 9, hy = by - 2 - (st === 1 ? 1 : 0);
-  p.ellipse(hx, hy, 4.5, 4.6, (x) => (x < hx ? mane : darken(mane, 0.85)));
-  p.rect(hx + 1, hy - 1, 4, 3, coat); p.set(hx + 5, hy, C.dark); p.set(hx + 3, hy - 1, C.dark);
-  if (st >= 1) { p.rect(hx + 2, hy + 2, 3, 1, C.berry); p.set(hx + 4, hy + 3, C.ivory); }
-  p.outline(C.outline, 0.25);
-}
 
 function drawAlligator(p: PixelCanvas, look: UnitLook, dead: boolean) {
   const k = dead ? 0.7 : 1;
@@ -1281,18 +1074,11 @@ export function nodePic(type: string, variant: number): Pic {
   }
   if (type === "tree" || type === "palm") {
     const v = type === "palm" ? 4 : variant % 4;
-    return pic(`tree${v}`, 26, 38, 0.5, 0.92, (p) => drawTree(p, v, 13, 35, 1));
+    return picHD(`tree${v}`, 52, 76, 0.5, 0.92, (p) => drawTreeHD(p, v, 26, 70, 1));
   }
-  if (type === "lone_tree") return pic("lone_tree", 44, 58, 0.5, 54 / 58, (p) => drawTree(p, 5, 22, 54, 1.7));
+  if (type === "lone_tree") return picHD("lone_tree", 88, 116, 0.5, 54 / 58, (p) => drawTreeHD(p, 5, 44, 108, 1.7));
   if (type === "berry_bush") {
-    return pic("berry", 20, 15, 0.5, 0.85, (p) => {
-      p.shadow(10, 12.5, 8, 2);
-      for (const [x, y, r] of [[6, 8, 4.5], [13, 8, 4.5], [10, 6, 5]] as [number, number, number][]) {
-        p.ellipse(x, y, r, r * 0.85, (px, py) => (hash(px, py, 2) < 0.2 ? C.leafLight : px + py < x + y - 1 ? C.leaf : C.leafDark));
-      }
-      for (const [x, y] of [[5, 6], [8, 4], [11, 7], [14, 5], [7, 9], [10, 10], [4, 9], [15, 9], [12, 4]]) { p.set(x, y, C.berry); p.set(x + 1, y, darken(C.berry, 0.7)); p.set(x, y - 1, rgb(0xf06070)); }
-      p.outline(C.outline, 0.3);
-    });
+    return picHD("berry", 40, 30, 0.5, 0.85, (p) => drawBushHD(p));
   }
   if (type === "fish") return pic(`fish${variant % 2}`, 26, 14, 0.5, 0.6, (p) => drawFish(p, variant % 2));
   if (type === "deep_fish") return pic(`deepfish${variant % 2}`, 30, 16, 0.5, 0.6, (p) => drawFish(p, variant % 2, true));
@@ -1310,11 +1096,12 @@ export function nodePic(type: string, variant: number): Pic {
         p.outline(C.outline, 0.25);
       });
     }
-    if (animal === "lion") return pic(type, 30, 24, 0.5, 21 / 24, (p) => drawLion(p, dead, true));
+    if (animal === "lion") return picHD(type, 60, 48, 0.5, 21 / 24, (p) => drawLionHD(p, dead, true));
     if (animal === "alligator") return pic(type, 36, 18, 0.5, 14 / 18, (p) => drawAlligator(p, dead, true));
-    return pic(type, 24, 22, 0.5, 19 / 22, (p) => drawGazelle(p, dead, true));
+    return picHD(type, 48, 44, 0.5, 19 / 22, (p) => drawGazelleHD(p, dead, true));
   }
   const gold = type === "gold_mine";
+  if (type === "gold_mine" || type === "stone_mine") return picHD(type, 56, 36, 0.5, 0.85, (p) => drawMineHD(p, gold));
   return pic(type, 28, 18, 0.5, 0.85, (p) => {
     p.shadow(14, 15, 12, 2.4);
     const base = gold ? rgb(0x8a7454) : C.stone, light = lighten(base, 0.18), dark = gold ? rgb(0x5e4c34) : C.stoneDark;
@@ -1330,59 +1117,6 @@ export function nodePic(type: string, variant: number): Pic {
 }
 
 /** Trees: 0 round broadleaf, 1 conifer, 2 tall poplar-ish, 3 oak, 4 palm, 5 the big lone tree. */
-function drawTree(p: PixelCanvas, v: number, cx: number, base: number, k: number) {
-  p.shadow(cx + 1, base - 1, 8 * k, 2.4 * k);
-  const leaf = (x: number, y: number, ccx: number, ccy: number) => {
-    const n = hash(x, y, v + 7);
-    const lit = (x - ccx) + (y - ccy) * 1.2 < -1;
-    if (n < 0.1) return lit ? lighten(C.leafLight, 0.15) : C.leaf;
-    return lit ? (n < 0.45 ? C.leafLight : C.leaf) : n < 0.25 ? C.leaf : C.leafDark;
-  };
-  const trunk = (x: number, top: number, w: number) => { p.rect(x, top, w, base - 2 - top, C.wood); p.rect(x + w - 1, top, 1, base - 2 - top, C.woodDark); };
-  if (v === 4) {
-    // Palm: a leaning ringed trunk and drooping fronds.
-    for (let y = base - 3, i = 0; y > base - 26; y--, i++) {
-      const x = cx + Math.round(Math.sin(i / 9) * 3);
-      p.rect(x, y, 2, 1, i % 3 === 0 ? C.woodDark : rgb(0x9a7046));
-    }
-    const tx = cx + 3, ty = base - 27;
-    for (const [dx, dy] of [[-10, 4], [-7, -3], [0, -6], [7, -3], [10, 4], [-4, 7], [5, 7]]) {
-      const n = 10;
-      for (let i = 0; i <= n; i++) {
-        const t = i / n;
-        const x = Math.round(tx + dx * t), y = Math.round(ty + dy * t + Math.abs(dx) * 0.5 * t * t);
-        p.set(x, y, t < 0.5 ? C.leaf : C.leafDark); p.set(x, y + 1, C.leafDark);
-        if (i % 2) p.set(x, y - 1, C.leafLight);
-      }
-    }
-    p.rect(tx - 1, ty, 3, 2, rgb(0x6a4a24));
-    p.outline(C.outline, 0.3);
-    return;
-  }
-  if (v === 1) {
-    trunk(cx - 1, base - 10, 3);
-    for (const [top, half, bot] of [[2, 4, 13], [8, 6, 20], [14, 8, 28]]) {
-      const ccx = cx, ccy = (top + bot) / 2;
-      p.poly([[cx, top], [cx + half + 1, bot], [cx - half - 1, bot]], (x, y) => leaf(x, y, ccx, ccy));
-      p.line(cx - half, bot - 1, cx + half, bot - 1, C.leafDark);
-    }
-    p.outline(C.outline, 0.3);
-    return;
-  }
-  const blobs: [number, number, number][] = v === 0 ? [[-4, 18, 6], [4, 18, 6], [0, 11, 7], [0, 20, 6]]
-    : v === 2 ? [[0, 8, 4.5], [-2, 14, 5], [2, 18, 5], [0, 23, 4.5]]
-    : v === 3 ? [[-6, 17, 5.5], [6, 16, 6], [-2, 10, 6], [3, 9, 5], [0, 19, 6]]
-    : [[-11, 22, 9], [11, 21, 9], [-5, 12, 10], [6, 10, 9], [0, 22, 10], [0, 5, 7]];
-  trunk(cx - Math.round(1.5 * k), base - Math.round(16 * k), Math.round(3 * k));
-  if (v === 5) { p.line(cx - 1, base - 18, cx - 8, base - 28, C.woodDark); p.line(cx + 2, base - 20, cx + 8, base - 30, C.woodDark); }
-  const yk = v === 5 ? 1 : 1;
-  for (const [dx, dy, r] of blobs) {
-    const bx = cx + dx, by = (v === 5 ? 2 : 0) + dy * yk;
-    p.ellipse(bx, by, r, r * 0.88, (x, y) => leaf(x, y, bx, by));
-  }
-  p.outline(C.outline, 0.3);
-}
-
 function drawFish(p: PixelCanvas, v: number, sea = false) {
   // Out at sea: a darker shoal under a wider ripple, for boats only.
   const ring = rgb(sea ? 0x6a9cc8 : 0x8ab8e0), deep = rgb(sea ? 0x123458 : 0x1e4a7e), fish = rgb(sea ? 0x2a5070 : 0x3a6a8a);
@@ -1674,7 +1408,12 @@ class Bld {
     const [b0, b1] = s;
     const dx = b1[0] - b0[0];
     const slope = Math.abs(dx) < 0.01 ? 0 : (b1[1] - b0[1]) / dx;
-    this.p.poly(s, (x, y) => tex(m, x, Math.floor(b0[1] + (x + 0.5 - b0[0]) * slope - y), x, y, f));
+    this.p.poly(s, (x, y) => {
+      const row = Math.floor(b0[1] + (x + 0.5 - b0[0]) * slope - y);
+      // Light falls off toward the ground, as on a rendered wall: the foot of every wall a little darker.
+      const c = tex(m, x, row, x, y, f);
+      return row < 5 ? darken(c, 0.74 + row * 0.052) : c;
+    });
   }
 
   box(u0: number, v0: number, u1: number, v1: number, h: number, m: Mat, o: BOpts = {}) {
