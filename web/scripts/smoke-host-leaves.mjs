@@ -27,6 +27,8 @@ const errors = [];
 const open = async (who) => {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
+  // SLOW=6 runs the page six times slower, as a CI runner does: to try the tests there before pushing.
+  if (process.env.SLOW) await (await ctx.newCDPSession(page)).send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.SLOW) });
   await page.addInitScript(() => { try { localStorage.setItem("bd-mouselock", "off"); } catch {} });
   page.on("pageerror", (e) => errors.push(`${who}: ${e}`));
   page.on("console", (m) => { if (m.type() === "error") errors.push(`${who}: ${m.text()}`); });

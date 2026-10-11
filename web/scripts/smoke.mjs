@@ -20,6 +20,8 @@ const port = server.address().port;
 const executablePath = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const browser = await chromium.launch({ executablePath, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+// SLOW=6 runs the page six times slower, as a CI runner does: to try the tests there before pushing.
+if (process.env.SLOW) await (await page.context().newCDPSession(page)).send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.SLOW) });
 // Pointer lock would swallow the test's mouse: keep the mouse free, as a player can in the menu.
 await page.addInitScript(() => { try { localStorage.setItem("bd-mouselock", "off"); } catch {} });
 const errors = [];

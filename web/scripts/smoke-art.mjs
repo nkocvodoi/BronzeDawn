@@ -34,6 +34,10 @@ page.on("pageerror", (e) => errors.push(String(e)));
 await page.goto(`http://localhost:${port}/gallery.html`);
 const sections = await page.evaluate(() => [...document.querySelectorAll("#nav a")].map((a) => new URL(a.href).searchParams.get("section")));
 const found = {}, pictures = {};
+// The gallery's own compositions are left out: the scenes, and a sprite laid on a painted background. They
+// blend half-clear pixels and draw smoothed grid lines, which machines round differently (a Linux runner
+// differed from a Mac on exactly these); every sprite in them is checked on its own.
+const composed = (section, key) => section === "scene" || key.includes("(on water)");
 for (const section of sections) {
   await page.goto(`http://localhost:${port}/gallery.html?section=${section}&scale=1`);
   const got = await page.evaluate(() => {
@@ -57,7 +61,7 @@ for (const section of sections) {
     }
     return out;
   });
-  for (const g of got) { found[`${section}/${g.key}`] = g.print; pictures[`${section}/${g.key}`] = g.png; }
+  for (const g of got) { if (composed(section, g.key)) continue; found[`${section}/${g.key}`] = g.print; pictures[`${section}/${g.key}`] = g.png; }
 }
 
 const total = Object.keys(found).length;

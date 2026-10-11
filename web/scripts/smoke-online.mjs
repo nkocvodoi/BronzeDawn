@@ -27,6 +27,8 @@ const errors = [];
 const open = async (who) => {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
+  // SLOW=6 runs the page six times slower, as a CI runner does: to try the tests there before pushing.
+  if (process.env.SLOW) await (await ctx.newCDPSession(page)).send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.SLOW) });
   await page.addInitScript(() => { try { localStorage.setItem("bd-mouselock", "off"); } catch {} });
   page.on("pageerror", (e) => errors.push(`${who}: ${e}`));
   page.on("console", (m) => { if (m.type() === "error") errors.push(`${who}: ${m.text()}`); });
@@ -119,9 +121,20 @@ const at = await Promise.all([host, guest].map((p) => p.evaluate(() => ({ turn: 
 check(at[0].q[0] === 4 && at[0].q[1] === 4, `on the host, both players' villagers were ordered (${at[0].q.join(", ")})`);
 check(at[1].q[0] === 4 && at[1].q[1] === 4, `and the same on the friend's machine (${at[1].q.join(", ")})`);
 
-// Pause both, and compare the worlds at the same turn.
+// Pause both, and compare the worlds at the same turn. Both play on to the last turn the host sent and stop
+// there; a slow machine (a CI runner) takes a while to get there, so wait until both stand still, together.
+const settled = async () => {
+  let last = "";
+  for (let i = 0; i < 40; i++) {
+    await host.waitForTimeout(500);
+    const now = (await Promise.all([host, guest].map((p) => p.evaluate(() => game.world.tick)))).join(",");
+    const [x, y] = now.split(",");
+    if (now === last && x === y) return;
+    last = now;
+  }
+};
 await host.keyboard.press("F3");
-await host.waitForTimeout(1500);
+await settled();
 const sum = (p) => p.evaluate(() => ({ tick: game.world.tick, units: game.world.units.map((u) => `${u.id}:${u.pos.x.toFixed(3)},${u.pos.y.toFixed(3)}`).join(";"), res: game.world.players.map((x) => x.res.values.join()).join("|") }));
 const [a, b] = [await sum(host), await sum(guest)];
 // The two must agree exactly; how far they got depends on the machine (a CI runner draws on its processor).
@@ -140,7 +153,7 @@ for (const page of [host, guest]) await page.evaluate(() => {
 });
 await host.waitForTimeout(20000);
 await host.keyboard.press("F3");
-await host.waitForTimeout(1500);
+await settled();
 const [c, d] = [await sum(host), await sum(guest)];
 check(c.tick > a.tick + 100, `the game went on at 3x (${Math.round((c.tick - a.tick) / 20)} game seconds in 20 s)`);
 check(c.tick === d.tick && c.units === d.units && c.res === d.res, `still the same world on both (step ${c.tick})`);
@@ -174,7 +187,7 @@ check((await host.textContent("#messages")).includes("Friend is back in the game
 await guest.evaluate(() => { const vs = game.world.unitsOf(game.me).filter((u) => u.isVillager).map((u) => u.id); const v = game.world.unit(vs[0]); game.issue({ k: "move", ids: vs, x: v.pos.x + 3, y: v.pos.y + 2 }); });
 await host.waitForTimeout(6000);
 await host.keyboard.press("F3"); // paused
-await host.waitForTimeout(2000);
+await settled();
 const [e, f] = [await sum(host), await sum(guest)];
 check(e.tick === f.tick && e.units === f.units && e.res === f.res && e.tick > d.tick, `after coming back, the same world on both (step ${e.tick})`);
 check(await host.evaluate(() => game.net.desync === null), "and no disagreement");
