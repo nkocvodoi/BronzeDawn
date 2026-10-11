@@ -260,6 +260,15 @@ export class World {
     return u;
   }
 
+  /** Open land, for animals to graze on: most of the 5 x 5 tiles around it are land. A narrow strip or a
+   *  spit out into the sea is drawn with a smooth coast, so it looks like an islet; animals there looked
+   *  as if they stood on a speck of sand. */
+  openLand(t: Tile) {
+    let land = 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (walkable(this.map.terrainAt(new Tile(t.x + dx, t.y + dy))) && this.map.terrainAt(new Tile(t.x + dx, t.y + dy)) !== Terrain.shallows) land++;
+    return land >= 15;
+  }
+
   /** A new herd, grazing at `at`; its number, for its members. */
   newHerd(at: Vec2) {
     this.herdGoals ??= new Map(); // a save from before herds
@@ -1607,7 +1616,7 @@ export class World {
     const herd = this.herdGoals;
     if (this.rng.unit() < 0.01) {
       const t = new Vec2(goal.x + this.rng.int(-4, 4), goal.y + this.rng.int(-4, 4));
-      if (this.map.inside(t.tile) && this.map.passable(t.tile)) { herd.set(u.herd, t); goal = t; }
+      if (this.map.inside(t.tile) && this.map.passable(t.tile) && this.openLand(t.tile)) { herd.set(u.herd, t); goal = t; }
     }
     const far = u.pos.distance(goal) > 2.5;
     if (!far && this.rng.unit() >= 0.08) return;

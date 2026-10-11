@@ -754,6 +754,23 @@ describe("the original's rules", () => {
     }
   });
 
+  it("wild animals start, and herds graze, on open land: not on a narrow strip that is drawn like an islet", () => {
+    // Most of the 5 x 5 tiles around are land: the smooth coast draws a strip or a spit as a speck of sand.
+    const open = (w: World, t: Tile) => { let n = 0; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (w.map.terrainAt(new Tile(t.x + dx, t.y + dy)) !== Terrain.water) n++; return n; };
+    for (const mapType of ["small_islands", "large_islands", "mediterranean", "coastal"] as const) {
+      for (const seed of [1, 2, 3]) {
+        const w = new World(RULES, seed, ["A", "B"], 96, true, { mapType });
+        for (const u of w.units) if (u.isAnimal && u.def.id !== "alligator") expect(open(w, u.pos.tile), `${mapType} ${seed} ${u.def.id} at ${u.pos.tile.x},${u.pos.tile.y}`).toBeGreaterThanOrEqual(13);
+      }
+    }
+    // Left alone for five minutes, the herds of an island map stay on open land.
+    const w = new World(RULES, 1, ["A", "B"], 96, true, { mapType: "small_islands" });
+    const gazelles = w.units.filter((u) => u.animal?.id === "gazelle");
+    expect(gazelles.length).toBeGreaterThan(20);
+    run(w, 300);
+    expect(gazelles.filter((g) => g.alive && open(w, g.pos.tile) < 10).length).toBeLessThanOrEqual(1);
+  });
+
   it("every base can walk to a shore where a Dock could stand: woods never wall it in", () => {
     for (const mapType of ["small_islands", "large_islands", "coastal", "continental"] as const) {
       for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {

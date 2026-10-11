@@ -118,7 +118,9 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
         const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
         const t = farFromStarts(c, away) ? map.nearestPassable(c, 3) : null;
         if (!t) break;
-        if (roomy(w, t)) { herd(w, kind, t, size()); break; }
+        // On a narrow strip of a big island: the open land nearest it, if near.
+        const at = roomy(w, t) ? (w.openLand(t) ? t : openNear(w, t, 6)) : null;
+        if (at) { herd(w, kind, at, size()); break; }
       }
     }
   };
@@ -452,10 +454,28 @@ export function startTiles(count: number, n: number, seed = 0): Tile[] {
 function herd(w: World, kind: string, c: Tile, count: number) {
   const id = kind === "gazelle" ? w.newHerd(c.center) : 0;
   for (let i = 0; i < count; i++) {
-    const t = w.map.nearestPassable(new Tile(c.x + w.rng.int(-1, 1), c.y + w.rng.int(-1, 1)), 3);
-    const u = t && roomy(w, t) ? w.spawnAnimal(kind, t.center.add(new Vec2(w.rng.unit() * 0.4 - 0.2, w.rng.unit() * 0.4 - 0.2))) : null;
-    if (u) u.herd = id;
+    // Beside the others, on open land: a few tries, wider each time.
+    for (let tries = 0; tries < 6; tries++) {
+      const r = 1 + (tries >> 1);
+      const t = w.map.nearestPassable(new Tile(c.x + w.rng.int(-r, r), c.y + w.rng.int(-r, r)), 3);
+      if (!t || !roomy(w, t) || !w.openLand(t)) continue;
+      const u = w.spawnAnimal(kind, t.center.add(new Vec2(w.rng.unit() * 0.4 - 0.2, w.rng.unit() * 0.4 - 0.2)));
+      if (u) u.herd = id;
+      break;
+    }
   }
+}
+
+/** The nearest open land to a tile, within r, on land with room to roam; nearest first, ring by ring. */
+function openNear(w: World, t: Tile, r: number): Tile | null {
+  for (let d = 1; d <= r; d++) {
+    for (let dy = -d; dy <= d; dy++) for (let dx = -d; dx <= d; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== d) continue;
+      const c = new Tile(t.x + dx, t.y + dy);
+      if (w.map.inside(c) && w.map.passable(c) && roomy(w, c) && w.openLand(c)) return c;
+    }
+  }
+  return null;
 }
 
 /** Land enough for wild animals to live on: this many tiles joined by land at least. */
