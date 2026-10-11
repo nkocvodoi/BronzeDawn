@@ -468,6 +468,24 @@ describe("the original's rules", () => {
     expect(pit.dropsOff(Res.food, "meat")).toBe(true);
   });
 
+  it("kills piled on one spot keep their meat until a villager begins on each", () => {
+    const w = blank();
+    w.addBuilding("storage_pit", 0, new Tile(6, 9), true);
+    const v = w.spawnUnit("villager", 0, new Tile(7, 5).center);
+    const herd = [0, 1, 2].map((i) => w.spawnAnimal("gazelle", new Vec2(9.5 + i * 0.05, 6.5))!);
+    for (const g of herd) { w.attack(0, [v.id], g.id); for (let t = 0; t < 120 && g.alive; t++) run(w, 0.5); }
+    const meat = () => w.nodes.filter((n) => n.alive && n.def.id === "carcass_gazelle");
+    expect(meat().length).toBe(3);
+    run(w, 60);
+    // One is being cut up and rots; the other two wait whole.
+    expect(meat().filter((n) => n.amount === 150).length).toBe(2);
+    run(w, 1200);
+    expect(meat().length).toBe(0);
+    // All three were eaten, not just the first. The one being cut up still rots, so a lone hunter gets about
+    // half; when all three rotted at once he got about a quarter.
+    expect(w.players[0].stats.gathered.food).toBeGreaterThan(200);
+  });
+
   it("a soldier's kill leaves no meat", () => {
     const w = blank();
     const g = w.spawnAnimal("gazelle", new Tile(9, 6).center)!;
@@ -476,6 +494,24 @@ describe("the original's rules", () => {
     run(w, 20);
     expect(g.alive).toBe(false);
     expect(w.nodes.filter((n) => n.def.id.startsWith("carcass")).length).toBe(0);
+  });
+
+  it("a player's only Town Center cannot be deleted; with a second one it can", () => {
+    const w = blank();
+    const tc = w.addBuilding("town_center", 0, new Tile(3, 3), true);
+    w.destroy(0, tc.id);
+    expect(tc.alive).toBe(true);
+    expect(w.blockerDestroy(0, tc)).toMatch(/only Town Center/);
+    // A foundation is no Town Center yet: it does not make the first one spare, and can itself be deleted.
+    const site = w.addBuilding("town_center", 0, new Tile(20, 20), false);
+    w.destroy(0, tc.id);
+    expect(tc.alive).toBe(true);
+    w.destroy(0, site.id);
+    expect(site.alive).toBe(false);
+    const second = w.addBuilding("town_center", 0, new Tile(20, 20), true);
+    w.destroy(0, tc.id);
+    expect(tc.alive).toBe(false);
+    expect(w.blockerDestroy(0, second)).not.toBeNull();
   });
 
   it("lions attack villagers who wander close", () => {
@@ -1441,7 +1477,7 @@ describe("diplomacy and tribute", () => {
     expect(w.allied(0, 1)).toBe(false);
     w.setStance(1, 0, "ally");
     expect(w.allied(0, 1)).toBe(true);
-    for (const b of w.buildingsOf(2)) w.destroy(2, b.id);
+    for (const b of w.buildingsOf(2)) w.applyDamage(b, 1e6, 0); // razed: a player may not delete the last Town Center
     run(w, 2);
     expect(w.winner === 0 || w.winner === 1).toBe(true);
   });

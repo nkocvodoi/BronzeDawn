@@ -2401,8 +2401,9 @@ export class Game {
     // A new selection starts at its main menu, as in the original.
     const selKey = mine.map((e) => e.id).join(",");
     if (selKey !== this.menuFor) { this.menuFor = selKey; this.menu = "main"; }
-    const del: Command = { key: "Delete", title: "Delete", detail: "Del", blocker: null, icon: "delete", pin: true,
-      action: () => { this.issue({ k: "destroy", ids: [...this.selection] }); } };
+    const blocked = mine.map((e) => w.blockerDestroy(me, e));
+    const del: Command = { key: "Delete", title: "Delete", detail: "Del", blocker: blocked.every((b) => b) ? blocked[0] : null, icon: "delete", pin: true,
+      action: () => this.deleteSelection() };
     const units = mine.filter((e): e is Unit => e instanceof Unit);
     if (units.some((u) => u.isVillager)) {
       if (this.menu === "main") {
@@ -2515,6 +2516,31 @@ export class Game {
     g.zIndex = 100000;
     this.entities.addChild(g);
     this.ghost = g;
+  }
+
+  /** When the Delete button was last pressed on a finished building, and on which selection. */
+  private deleteArmed: { sel: string; at: number } | null = null;
+
+  /** Delete what is selected. A finished building asks for a second press within a few seconds: the
+   *  button sits next to Cancel in a building's panel, and one slip should not cost a building. */
+  private deleteSelection() {
+    const w = this.world, me = this.me;
+    const mine = this.selectedEntities().filter((e) => e.owner === me && !w.blockerDestroy(me, e));
+    if (!mine.length) {
+      const why = this.selectedEntities().map((e) => w.blockerDestroy(me, e)).find((b) => b);
+      if (why) this.hud.message(why, "warn");
+      return;
+    }
+    const built = mine.find((e): e is Building => e instanceof Building && e.complete);
+    const sel = mine.map((e) => e.id).join(",");
+    const now = performance.now();
+    if (built && !(this.deleteArmed?.sel === sel && now - this.deleteArmed.at < 3000)) {
+      this.deleteArmed = { sel, at: now };
+      this.hud.message(`Press Delete again to destroy ${mine.length > 1 ? "these" : `the ${built.def.name}`}`, "warn");
+      return;
+    }
+    this.deleteArmed = null;
+    this.issue({ k: "destroy", ids: mine.map((e) => e.id) });
   }
 
   private cancelPlacing() {
@@ -3030,7 +3056,7 @@ export class Game {
       return;
     }
     if (this.hud.overlayShown) return;
-    if (key === "Delete" || key === "Backspace") { this.issue({ k: "destroy", ids: [...this.selection] }); return; }
+    if (key === "Delete" || key === "Backspace") { this.deleteSelection(); return; }
     const digit = /^Digit([1-9])$/.exec(e.code);
     if (digit) {
       const d = Number(digit[1]);

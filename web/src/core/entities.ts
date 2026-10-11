@@ -169,6 +169,9 @@ export class ResourceNode extends Entity {
   /** Carcasses lie on the ground without blocking anyone, and rot. */
   readonly solid: boolean;
   readonly decay: number;
+  /** A carcass rots only once someone has begun to cut it up, so a pile of kills is not lost while the
+   *  hunters work through it one at a time. */
+  opened = false;
   readonly foodKind: "plant" | "meat" | null;
   /** Where a carcass lies; for everything else the tile centre. */
   readonly at: Vec2;
