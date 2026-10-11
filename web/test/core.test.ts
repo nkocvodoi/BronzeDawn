@@ -743,6 +743,17 @@ describe("the original's rules", () => {
     expect(riders.every((u) => !u.alive)).toBe(true);
   });
 
+  it("no wild animal, mine or berry bush is put on a sandbank out at sea", () => {
+    const land = (w: World, t: Tile) => { let n = 0; for (const v of w.map.reachable(t, () => true)) n += v; return n; };
+    for (const mapType of ["small_islands", "large_islands", "mediterranean", "coastal"] as const) {
+      for (const seed of [1, 2, 3, 4]) {
+        const w = new World(RULES, seed, ["A", "B"], 96, true, { mapType });
+        for (const u of w.units) if (u.isAnimal && u.def.id !== "alligator") expect(land(w, u.pos.tile), `${mapType} ${seed} ${u.def.id}`).toBeGreaterThanOrEqual(80);
+        for (const n of w.nodes) if (["gold_mine", "stone_mine", "berry_bush"].includes(n.def.id)) expect(land(w, n.tile), `${mapType} ${seed} ${n.def.id}`).toBeGreaterThanOrEqual(80);
+      }
+    }
+  });
+
   it("every base can walk to a shore where a Dock could stand: woods never wall it in", () => {
     for (const mapType of ["small_islands", "large_islands", "coastal", "continental"] as const) {
       for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {

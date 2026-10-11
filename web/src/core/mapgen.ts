@@ -110,18 +110,21 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
     if (farFromStarts(c, 8)) w.addNode("lone_tree", c);
   }
   // Wild animals across the map: gazelles and elephants to hunt, lions to fear, alligators by the water.
-  for (let k = 0; k < Math.round(6 * scale); k++) {
-    const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
-    if (farFromStarts(c, 16)) herd(w, "gazelle", c, w.rng.int(4, 7)); // herds of 4 to 7, as in the original
-  }
-  for (let k = 0; k < Math.round(3 * scale); k++) {
-    const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
-    if (farFromStarts(c, 16)) herd(w, "elephant", c, w.rng.int(1, 2));
-  }
-  for (let k = 0; k < Math.round(3 * scale); k++) {
-    const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
-    if (farFromStarts(c, 20)) herd(w, "lion", c, w.rng.int(1, 2));
-  }
+  // Each on land with room to roam. A spot too near a base, or out at sea, has none (as ever: the map's
+  // share of animals goes with its land); one on a sandbank is tried again elsewhere.
+  const wild = (kind: string, count: number, away: number, size: () => number) => {
+    for (let k = 0; k < count; k++) {
+      for (let tries = 0; tries < 8; tries++) {
+        const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
+        const t = farFromStarts(c, away) ? map.nearestPassable(c, 3) : null;
+        if (!t) break;
+        if (roomy(w, t)) { herd(w, kind, t, size()); break; }
+      }
+    }
+  };
+  wild("gazelle", Math.round(6 * scale), 16, () => w.rng.int(4, 7)); // herds of 4 to 7, as in the original
+  wild("elephant", Math.round(3 * scale), 16, () => w.rng.int(1, 2));
+  wild("lion", Math.round(3 * scale), 20, () => w.rng.int(1, 2));
   // Shore fish, and alligators, along the lakes.
   let gators = 0;
   for (let y = 1; y < n - 1; y++) {
@@ -141,7 +144,12 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
   for (const kind of Array.from({ length: Math.round(scale) }, () => extras).flat()) {
     for (let tries = 0; tries < 30; tries++) {
       const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
-      if (farFromStarts(c, 15)) { cluster(w, kind, c, kind === "berry_bush" ? 5 : 4); break; }
+      if (!farFromStarts(c, 15)) continue;
+      // As the animals: by the nearest land, if any (far out at sea, none: the map's share goes with its
+      // land); on a sandbank, elsewhere.
+      const t = map.nearestPassable(c, 3);
+      if (!t) break;
+      if (roomy(w, t)) { cluster(w, kind, t, kind === "berry_bush" ? 5 : 4); break; }
     }
   }
 
@@ -440,14 +448,49 @@ export function startTiles(count: number, n: number, seed = 0): Tile[] {
   return [...shuffle(corners), ...shuffle(edges)].slice(0, k);
 }
 
-/** A few animals of one kind standing near a point. Gazelles keep together as a herd. */
+/** A few animals of one kind standing near a point, none on a sandbank. Gazelles keep together as a herd. */
 function herd(w: World, kind: string, c: Tile, count: number) {
   const id = kind === "gazelle" ? w.newHerd(c.center) : 0;
   for (let i = 0; i < count; i++) {
     const t = w.map.nearestPassable(new Tile(c.x + w.rng.int(-1, 1), c.y + w.rng.int(-1, 1)), 3);
-    const u = t ? w.spawnAnimal(kind, t.center.add(new Vec2(w.rng.unit() * 0.4 - 0.2, w.rng.unit() * 0.4 - 0.2))) : null;
+    const u = t && roomy(w, t) ? w.spawnAnimal(kind, t.center.add(new Vec2(w.rng.unit() * 0.4 - 0.2, w.rng.unit() * 0.4 - 0.2))) : null;
     if (u) u.herd = id;
   }
+}
+
+/** Land enough for wild animals to live on: this many tiles joined by land at least. */
+const ROOMY = 80;
+/** Each map's pieces of land, numbered, with their sizes: worked out once, when the animals are placed. */
+const LAND = new WeakMap<World, { piece: Int32Array; size: number[] }>();
+
+/** Whether a tile is on a piece of land with room to roam (not a sandbank out at sea). */
+function roomy(w: World, t: Tile) {
+  const map = w.map;
+  let land = LAND.get(w);
+  if (!land) {
+    const piece = new Int32Array(map.width * map.height).fill(-1), size: number[] = [];
+    for (let i = 0; i < piece.length; i++) {
+      if (piece[i] >= 0 || !walkable(map.terrain[i])) continue;
+      const id = size.length, stack = [i];
+      piece[i] = id;
+      let n = 0;
+      while (stack.length) {
+        const j = stack.pop()!, x = j % map.width, y = Math.floor(j / map.width);
+        n++;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height) continue;
+          const k = ny * map.width + nx;
+          if (piece[k] < 0 && walkable(map.terrain[k])) { piece[k] = id; stack.push(k); }
+        }
+      }
+      size.push(n);
+    }
+    land = { piece, size };
+    LAND.set(w, land);
+  }
+  const p = land.piece[map.index(t)];
+  return p >= 0 && land.size[p] >= ROOMY;
 }
 
 function blob(w: World, c: Tile, r: number, body: (t: Tile) => void) {
@@ -472,7 +515,8 @@ function cluster(w: World, kind: string, c: Tile, count: number) {
     for (let dy = -ring; dy <= ring; dy++) {
       for (let dx = -ring; dx <= ring; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring || placed >= count) continue;
-        if (w.addNode(kind, new Tile(c.x + dx, c.y + dy))) placed++;
+        const t = new Tile(c.x + dx, c.y + dy);
+        if (w.map.inside(t) && roomy(w, t) && w.addNode(kind, t)) placed++; // none spilling onto a sandbank
       }
     }
   }
