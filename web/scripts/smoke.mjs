@@ -92,7 +92,8 @@ const food = await g(() => game.world.players[0].res.food);
 await page.keyboard.press("c");
 check(await g(() => game.world.buildingsOf(0).find((b) => b.def.id === "town_center").queue.length === 1), "C on the town center queues a villager");
 check((await g(() => game.world.players[0].res.food)) === food - 50, "training cost 50 food");
-await wait(400);
+// Up to 5 s for the panel to draw it: a CI runner draws a few frames a second.
+await page.waitForFunction(() => /\d+:\d\d left/.test(document.querySelector("#progress-text")?.textContent ?? ""), null, { timeout: 5000 }).catch(() => {});
 check(/\d+:\d\d left/.test(await page.textContent("#progress-text")) && await page.isVisible("#progress"), "the progress bar says how long the villager has left");
 
 // Click a villager to select it. The game holds still while the test aims at moving villagers, as a
