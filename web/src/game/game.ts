@@ -101,6 +101,14 @@ interface OnlineSetup { seed: number; names: string[]; size: number; options: Wo
 /** Starting resources: Low is the original's default. */
 const RESOURCE_LEVELS: [string, string][] = [["low", "Low"], ["medium", "Medium"], ["high", "High"], ["deathmatch", "Death Match"]];
 /** A remembered choice, if it is still one of the choices. */
+// The settings forms: labels in a column on the left, the choices lined up beside them. A `half` field
+// shares its row with the next one on a wide screen; on a phone every field has a row of its own.
+const field = (label: string, id: string, control: string, half = false) =>
+  `<label for="${id}"${half ? ' class="half"' : ""}>${label}</label><span class="ctl${half ? " half" : ""}">${control}</span>`;
+const form = (rows: string[]) => `<div class="form">${rows.join("")}</div>`;
+const check = (id: string, on: boolean, label: string, note = "") =>
+  `<label class="check"><input type="checkbox" id="${id}"${on ? " checked" : ""}><span>${label}${note ? `<small>${note}</small>` : ""}</span></label>`;
+const checks = (rows: string[]) => `<div class="checks">${rows.join("")}</div>`;
 const remembered = (key: string, ids: string[], fallback: string) => { const v = store.get(key); return v && ids.includes(v) ? v : fallback; };
 
 /** The original's build keys: B opens the build menu, then a letter places the building.
@@ -422,23 +430,27 @@ export class Game {
     const hosting = this.online?.role === "host" && this.online.friends.length > 0;
     this.hud.showOverlay(hosting ? "Multiplayer" : "Single Player", [
       hosting ? "Choose the settings for everyone, then start at a level for the computer players." : "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
-      `Your civilization: <select id="civ"><option value="">Random</option>${civs}</select>`,
-      `<span id="civ-info">A civilization picked at random. Its bonuses show at the top of the screen.</span>`,
-      `Map: <select id="map-type">${MAP_TYPES.map(([id, name]) => `<option value="${id}"${id === this.mapType ? " selected" : ""}>${name}</option>`).join("")}</select>`,
-      `Map size: <select id="map-size">${MAP_SIZES.map(([n, t]) => `<option value="${t}"${t === this.mapSize ? " selected" : ""}>${n} (${t} x ${t})</option>`).join("")}</select>`,
-      `Computer players: <select id="opponents">${this.computerChoices().map((k) => `<option value="${k}"${k === this.computersShown() ? " selected" : ""}>${k}</option>`).join("")}</select>`
-        + ` <select id="teams">${opts([["ffa", "each on its own"], ["team", "allied against you"], ["custom", "teams of my choosing"]], this.teamMode)}</select>`,
-      `<span id="team-rows"${this.teamMode === "custom" ? "" : " hidden"}>${this.teamRows(this.computersShown())}</span>`,
-      `<span id="players-info">${this.playersNote(this.computersShown())}</span>`,
-      `Game speed: <select id="start-speed">${SPEEDS.map((x) => `<option value="${x}"${x === this.speed ? " selected" : ""}>${x}x</option>`).join("")}</select>`,
-      `Victory: <select id="victory">${opts(VICTORIES.map(([id, name]) => [id, name]), this.victoryId)}</select>`,
-      `Starting age: <select id="start-age">${opts(this.rules.ages.map((a, i) => [String(i), a.name]), String(this.startAge))}</select>`
-        + ` Resources: <select id="resources">${opts(RESOURCE_LEVELS, this.resources)}</select>`
-        + ` Population limit: <select id="pop-limit">${opts((this.rules.economy.pop_limits ?? [this.rules.economy.pop_max]).map((k) => [String(k), String(k)]), String(this.popLimit))}</select>`,
-      `<label><input type="checkbox" id="relics"${this.relics ? " checked" : ""}> Ruins and Artifacts (five of each; hold all of either for 15 minutes to win)</label>`,
-      `<label><input type="checkbox" id="reveal"${this.exploredStart ? " checked" : ""}> Reveal map: the land is known from the start (units are still hidden by the fog)</label>`,
-      `<label><input type="checkbox" id="farms-block"${this.farmsBlock ? " checked" : ""}> Farms block the way, as in the original (off: walk over them, as in the remaster)</label>`,
-      hosting ? "" : `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
+      form([
+        field("Your civilization", "civ", `<select id="civ"><option value="">Random</option>${civs}</select>`),
+        `<span id="civ-info" class="wide note">A civilization picked at random. Its bonuses show at the top of the screen.</span>`,
+        field("Map", "map-type", `<select id="map-type">${opts(MAP_TYPES.map(([id, n]) => [id, n]), this.mapType)}</select>`),
+        field("Map size", "map-size", `<select id="map-size">${opts(MAP_SIZES.map(([n, t]) => [String(t), `${n} (${t} x ${t})`]), String(this.mapSize))}</select>`, true),
+        field("Game speed", "start-speed", `<select id="start-speed">${opts(SPEEDS.map((x) => [String(x), `${x}x`]), String(this.speed))}</select>`, true),
+        field("Computer players", "opponents", `<span class="pair"><select id="opponents">${this.computerChoices().map((k) => `<option value="${k}"${k === this.computersShown() ? " selected" : ""}>${k}</option>`).join("")}</select>`
+          + `<select id="teams" aria-label="Teams">${opts([["ffa", "each on its own"], ["team", "allied against you"], ["custom", "teams of my choosing"]], this.teamMode)}</select></span>`),
+        `<span id="team-rows" class="wide"${this.teamMode === "custom" ? "" : " hidden"}>${this.teamRows(this.computersShown())}</span>`,
+        `<span id="players-info" class="wide note">${this.playersNote(this.computersShown())}</span>`,
+        field("Victory", "victory", `<select id="victory">${opts(VICTORIES.map(([id, name]) => [id, name]), this.victoryId)}</select>`),
+        field("Starting age", "start-age", `<select id="start-age">${opts(this.rules.ages.map((a, i) => [String(i), a.name]), String(this.startAge))}</select>`, true),
+        field("Resources", "resources", `<select id="resources">${opts(RESOURCE_LEVELS, this.resources)}</select>`, true),
+        field("Population limit", "pop-limit", `<select id="pop-limit">${opts((this.rules.economy.pop_limits ?? [this.rules.economy.pop_max]).map((k) => [String(k), String(k)]), String(this.popLimit))}</select>`, true),
+      ]),
+      checks([
+        check("relics", this.relics, "Ruins and Artifacts", "five of each; hold all of either for 15 minutes to win"),
+        check("reveal", this.exploredStart, "Reveal map", "the land is known from the start; units are still hidden by the fog"),
+        check("farms-block", this.farmsBlock, "Farms block the way, as in the original", "off: walk over them, as in the remaster"),
+        hosting ? "" : check("watch", false, "Only watch", "every player is a computer"),
+      ]),
       `<span class="choices" id="start-choices">${this.startButtons(this.computersShown())}</span>`,
       "Hard and Hardest: the computer gathers 20% faster. Hardest also starts with 2,000 more of each resource, as the original's Hardest cheats.",
       this.online?.role === "host" && this.online.friends.length
@@ -1209,16 +1221,20 @@ export class Game {
   private showLobbySettings() {
     const opts = (xs: [string, string][], on: string) => xs.map(([id, name]) => `<option value="${id}"${id === on ? " selected" : ""}>${name}</option>`).join("");
     this.hud.showOverlay("Game Settings", [
-      `Map: <select id="map-type">${opts(MAP_TYPES.map(([id, n]) => [id, n]), this.mapType)}</select>`,
-      `Map size: <select id="map-size">${opts(MAP_SIZES.map(([n, t]) => [String(t), `${n} (${t} x ${t})`]), String(this.mapSize))}</select>`,
-      `Victory: <select id="victory">${opts(VICTORIES.map(([id, name]) => [id, name]), this.victoryId)}</select>`,
-      `Starting age: <select id="start-age">${opts(this.rules.ages.map((a, i) => [String(i), a.name]), String(this.startAge))}</select>`
-        + ` Resources: <select id="resources">${opts(RESOURCE_LEVELS, this.resources)}</select>`,
-      `Population limit: <select id="pop-limit">${opts((this.rules.economy.pop_limits ?? [this.rules.economy.pop_max]).map((k) => [String(k), String(k)]), String(this.popLimit))}</select>`
-        + ` Game speed: <select id="start-speed">${opts(SPEEDS.map((x) => [String(x), `${x}x`]), String(this.speed))}</select>`,
-      `<label><input type="checkbox" id="relics"${this.relics ? " checked" : ""}> Ruins and Artifacts</label>`,
-      `<label><input type="checkbox" id="reveal"${this.exploredStart ? " checked" : ""}> Reveal map</label>`,
-      `<label><input type="checkbox" id="farms-block"${this.farmsBlock ? " checked" : ""}> Farms block the way, as in the original</label>`,
+      form([
+        field("Map", "map-type", `<select id="map-type">${opts(MAP_TYPES.map(([id, n]) => [id, n]), this.mapType)}</select>`),
+        field("Map size", "map-size", `<select id="map-size">${opts(MAP_SIZES.map(([n, t]) => [String(t), `${n} (${t} x ${t})`]), String(this.mapSize))}</select>`, true),
+        field("Game speed", "start-speed", `<select id="start-speed">${opts(SPEEDS.map((x) => [String(x), `${x}x`]), String(this.speed))}</select>`, true),
+        field("Victory", "victory", `<select id="victory">${opts(VICTORIES.map(([id, name]) => [id, name]), this.victoryId)}</select>`),
+        field("Starting age", "start-age", `<select id="start-age">${opts(this.rules.ages.map((a, i) => [String(i), a.name]), String(this.startAge))}</select>`, true),
+        field("Resources", "resources", `<select id="resources">${opts(RESOURCE_LEVELS, this.resources)}</select>`, true),
+        field("Population limit", "pop-limit", `<select id="pop-limit">${opts((this.rules.economy.pop_limits ?? [this.rules.economy.pop_max]).map((k) => [String(k), String(k)]), String(this.popLimit))}</select>`, true),
+      ]),
+      checks([
+        check("relics", this.relics, "Ruins and Artifacts"),
+        check("reveal", this.exploredStart, "Reveal map"),
+        check("farms-block", this.farmsBlock, "Farms block the way, as in the original"),
+      ]),
       `<span class="choices"><button id="lobby-settings-ok">OK</button><button id="lobby-settings-cancel">Cancel</button></span>`,
     ], "menu");
   }
@@ -1609,7 +1625,7 @@ export class Game {
   private teamRows(opp: number) {
     const sel = (i: number) => `<select id="team-${i}">${[0, 1, 2, 3, 4].map((t) => `<option value="${t}"${t === this.teamList[i] ? " selected" : ""}>${t ? `Team ${t}` : "no team"}</option>`).join("")}</select>`;
     const friends = this.online?.role === "host" ? this.online.friends.length : 0;
-    return Array.from({ length: opp + 1 + friends }, (_, i) => `${i === 0 ? "You" : i <= friends ? `Friend ${i}` : `Computer ${i - friends}`}: ${sel(i)}`).join(" · ");
+    return Array.from({ length: opp + 1 + friends }, (_, i) => `<span class="team"><span>${i === 0 ? "You" : i <= friends ? `Friend ${i}` : `Computer ${i - friends}`}</span>${sel(i)}</span>`).join("");
   }
 
   /** What the start screen says about the players chosen. */

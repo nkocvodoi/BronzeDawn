@@ -184,7 +184,33 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay button.toggle.off::after { content: " · off"; }
 #overlay button.toggle:not(.off)::after { content: " · on"; }
 #overlay select { font: inherit; padding: 4px 8px; background: #2a2218; color: #f3e4bd; border: 2px solid #c8a462; }
-#civ-info { display: inline-block; max-width: 560px; font-size: 14px; color: var(--gold); min-height: 2.4em; }
+/* Settings forms: a column of labels, the choices lined up beside them; two short fields share a row. */
+#overlay .form {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr); gap: 8px 12px;
+  align-items: center; max-width: 600px; margin: 14px auto 10px; text-align: left; font-size: 16px; text-shadow: 1px 1px 0 #000;
+}
+#overlay .form > label { text-align: right; color: #e8dcc0; white-space: nowrap; }
+#overlay .form > .ctl { grid-column: 2 / -1; min-width: 0; }
+#overlay .form > .ctl.half { grid-column: auto; }
+#overlay .form select { width: 100%; min-width: 0; }
+#overlay .form .pair { display: flex; gap: 8px; }
+#overlay .form .pair select:first-child { width: 5em; flex: none; }
+#overlay .form > .wide { grid-column: 2 / -1; }
+#overlay .form > .wide[hidden] { display: none; }
+#overlay .form > .note { font-size: 14px; color: var(--gold); margin-top: -4px; }
+#overlay .form #team-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 14px; font-size: 14px; }
+#overlay .form #team-rows[hidden] { display: none; }
+#overlay .form .team { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+#overlay .form .team select { width: auto; font-size: 14px; padding: 2px 4px; }
+#overlay .checks { display: grid; gap: 6px; width: fit-content; max-width: 600px; margin: 6px auto 12px; text-align: left; text-shadow: 1px 1px 0 #000; }
+#overlay .check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 16px; }
+#overlay .check input { margin: 3px 0 0; width: 16px; height: 16px; accent-color: #c8a462; flex: none; }
+#overlay .check small { display: block; font-size: 13px; color: #c8b896; }
+@media (max-width: 620px) {
+  #overlay .form { grid-template-columns: max-content minmax(0, 1fr); }
+  #overlay .form > .ctl.half { grid-column: 2 / -1; }
+}
+#civ-info { display: block; font-size: 14px; color: var(--gold); min-height: 2.4em; }
 #overlay table { margin: 6px auto; border-collapse: collapse; text-align: left; font-size: 15px; }
 #overlay td { padding: 4px 12px; border-bottom: 1px solid rgba(200, 164, 98, .35); vertical-align: top; }
 /* Diplomacy: small buttons in a row, the chosen stance lit; the civilization's bonuses in small print. */
