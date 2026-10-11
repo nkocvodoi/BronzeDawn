@@ -5,6 +5,7 @@ import { Texture } from "pixi.js";
 import type { BuildingDef } from "../core/rules";
 import { GridMap, Terrain } from "../core/grid";
 import { HALF_H, HALF_W, fromIso } from "./iso";
+import { drawVillagerHD } from "./hd";
 import { bayer, darken, hash, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
 import { AGE_KEYS, ASSETS, ImageSpec } from "./assets";
 
@@ -43,11 +44,22 @@ function assetPic(key: string, spec: ImageSpec, owner: number | null, defaultAnc
   return out;
 }
 
-function finish(p: PixelCanvas, ax: number, ay: number): Pic {
+function finish(p: PixelCanvas, ax: number, ay: number, px = PX): Pic {
   const canvas = p.toCanvas();
   const texture = Texture.from(canvas);
   texture.source.scaleMode = "nearest";
-  return { texture, canvas, w: p.w * PX, h: p.h * PX, ax, ay };
+  return { texture, canvas, w: p.w * px, h: p.h * px, ax, ay };
+}
+
+/** Like pic, at the screen's own resolution: one picture pixel to one world unit (see hd.ts). */
+function picHD(key: string, w: number, h: number, ax: number, ay: number, draw: (p: PixelCanvas) => void): Pic {
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const p = new PixelCanvas(w, h);
+  draw(p);
+  const out = finish(p, ax, ay, 1);
+  cache.set(key, out);
+  return out;
 }
 
 function pic(key: string, w: number, h: number, ax: number, ay: number, draw: (p: PixelCanvas) => void): Pic {
@@ -363,6 +375,8 @@ export function unitPic(look: UnitLook): Pic {
   if (fromFile) return fromFile;
   const { type, owner, facing, pose, frame, tool, carry } = look;
   const key = `u-${type}-${owner}-${facing}-${pose}-${frame}-${tool}-${carry}`;
+  // Drawn anew at the screen's own resolution (the first of the pictures to be): the same size on the map.
+  if (type === "villager") return picHD(key, 52, 56, 22 / 52, 50 / 56, (p) => drawVillagerHD(p, look, playerRGB(owner)));
   if (RIDERS.has(type)) return pic(key, 34, 37, 16 / 34, 34 / 37, (p) => drawRider(p, look));
   if (type === "camel_rider") return pic(key, 34, 42, 16 / 34, 39 / 42, (p) => drawCamelRider(p, look));
   if (CHARIOTS.has(type)) return pic(key, 50, 36, 22 / 50, 32 / 36, (p) => drawChariot(p, look));
