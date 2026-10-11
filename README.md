@@ -29,12 +29,17 @@ trong `data/rules-mac.json`. Toàn bộ hình là pixel art vẽ bằng code; xe
 cd web
 npm install
 npm run dev          # mở http://localhost:5173
-npm test             # 16 test của phần mô phỏng, gồm 2 trận AI đấu AI
+npm test             # toàn bộ unit test: mô phỏng, lệnh (cả lệnh từ máy khác), lockstep online, lưu/tải, 12 trận AI
+npm run coverage     # độ phủ của phần lõi (src/core)
 npm run sim          # AI đấu AI không cần trình duyệt
-npm run build && npm run smoke   # chơi thử tự động bằng chuột và phím thật trên Chrome
+npm run bench        # thời gian mỗi bước mô phỏng khi trận 8 máy đông dần
+npm run build && npm run smoke              # chơi thử bằng chuột và phím thật trên Chrome
+npm run build && npm run smoke:art          # so từng hình với dấu vân tay trong test/art.json (--update khi cố ý đổi hình)
+npm run build && npm run smoke:online       # hai trình duyệt chơi online qua PeerJS
+npm run build && npm run smoke:host-leaves  # ba trình duyệt: host rời, người khác làm host thay
 ```
 
-Mỗi lần push lên `main`, workflow `.github/workflows/web.yml` sẽ test, build rồi đăng lên GitHub Pages.
+Mỗi lần push lên `main`, workflow `.github/workflows/web.yml` chạy unit test, 12 trận AI và các bài test trên Chrome (một người chơi và so hình là bắt buộc trước khi đăng; hai bài online chạy riêng vì dùng máy chủ PeerJS công cộng), rồi đăng lên GitHub Pages.
 Chủ repo cần bật một lần: **Settings → Pages → Source: GitHub Actions**. Thêm `?seed=42` vào URL để chơi lại đúng một bản đồ.
 
 ## Cách chơi

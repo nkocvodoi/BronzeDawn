@@ -118,6 +118,7 @@ switch (section) {
     heading("berry bush, gold, stone, fish");
     r = row();
     for (const t of ["berry_bush", "gold_mine", "stone_mine"]) cell(r, nodePic(t, 0).canvas, t);
+    for (let v = 0; v < 2; v++) cell(r, nodePic("fish", v).canvas, `fish ${v}`);
     for (let v = 0; v < 2; v++) {
       const f = nodePic("fish", v).canvas;
       const c = document.createElement("canvas"); c.width = f.width; c.height = f.height;

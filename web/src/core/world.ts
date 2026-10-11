@@ -182,8 +182,11 @@ export class World {
     return true;
   }
 
+  /** Whether a number names a player in this game (a command from another machine can name anything). */
+  isPlayer(p: number) { return Number.isInteger(p) && p >= 0 && p < this.players.length; }
+
   setStance(a: number, b: number, s: Stance) {
-    if (a === b || a < 0 || b < 0 || this.stance[a][b] === s) return;
+    if (a === b || !this.isPlayer(a) || !this.isPlayer(b) || this.stance[a][b] === s) return;
     this.stance[a][b] = s;
     const word = s === "ally" ? "an ally of" : s === "neutral" ? "neutral toward" : "an enemy of";
     this.events.push({ kind: "message", player: -1, text: `${this.players[a].name} is now ${word} ${this.players[b].name}` });
@@ -193,7 +196,8 @@ export class World {
   /** Sends resources to another player. The sender pays a fee on top (none with Coinage, or for the
    *  Palmyrans). A computer that is neutral toward the sender turns ally once it has had enough. */
   tribute(from: number, to: number, r: Res, amount: number): string | null {
-    if (from === to || from < 0 || to < 0 || amount <= 0) return "Nobody to send to";
+    if (from === to || !this.isPlayer(from) || !this.isPlayer(to) || !(amount > 0)) return "Nobody to send to";
+    if (!RES_ALL.includes(r)) return "Not a resource";
     if (this.players[to].defeated) return `${this.players[to].name} is out of the game`;
     const p = this.players[from];
     const fee = p.mods.flags.has("free_tribute") ? 0 : this.rules.economy.tribute_fee ?? 0.25;

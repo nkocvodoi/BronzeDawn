@@ -20,6 +20,8 @@ const port = server.address().port;
 const executablePath = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const browser = await chromium.launch({ executablePath, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+// SLOW=6 runs the page six times slower, as a CI runner does: to try the tests there before pushing.
+if (process.env.SLOW) await (await page.context().newCDPSession(page)).send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.SLOW) });
 // Pointer lock would swallow the test's mouse: keep the mouse free, as a player can in the menu.
 await page.addInitScript(() => { try { localStorage.setItem("bd-mouselock", "off"); } catch {} });
 const errors = [];
@@ -149,6 +151,8 @@ await page.mouse.click(p.x, p.y, { button: "right" });
 check(await g(([b, h]) => { const o = game.world.unit(b).order; return o.kind === "build" && o.id === h; }, [builder, house]), "right-clicking a half-built house sends the villager back to finish it");
 
 // Drag a box around the start villagers.
+// Paused while the mouse drags, so no one walks out of the box on a slow machine.
+await g(() => { game.paused = true; });
 const box = await g(() => {
   const us = game.world.unitsOf(0);
   game.look(us[0].pos);
@@ -160,6 +164,7 @@ await page.mouse.down();
 await page.mouse.move(box.x1, box.y1, { steps: 5 });
 await page.mouse.up();
 check((await g(() => game.selection.length)) === box.n, `drag selects all ${box.n} villagers`);
+await g(() => { game.paused = false; });
 
 // Arrow keys scroll, H comes home, ? opens help and pauses.
 const cam0 = await g(() => game.screenOf(game.world.startTiles[0].center).x);
@@ -172,10 +177,15 @@ check(await page.isVisible("#overlay .help") && (await g(() => game.paused)), "?
 await page.keyboard.press("Escape");
 check(!(await page.isVisible("#overlay")) && !(await g(() => game.paused)), "Esc closes it and resumes");
 
-// Time passes and the economy runs.
+// Time passes and the economy runs. A machine that draws few frames (a CI runner, drawing on its processor)
+// falls behind by design rather than freezing: real time is only judged where the frames keep up.
+const fps = async (ms) => g((ms) => new Promise((done) => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < ms) requestAnimationFrame(f); else done(n * 1000 / (performance.now() - t0)); }; requestAnimationFrame(f); }), ms);
+const timed = (ok, what, rate) => rate >= 20 ? check(ok, what) : console.log(`skip  ${what} (only ${rate.toFixed(0)} frames a second here)`);
 const t0 = await g(() => game.world.time);
-await wait(3000);
-check((await g(() => game.world.time)) > t0 + 2, "the simulation runs in real time");
+const rate1 = await fps(3000);
+const t1 = await g(() => game.world.time);
+check(t1 > t0, "the simulation runs");
+timed(t1 > t0 + 2, "the simulation runs in real time", rate1);
 const mm = await page.locator("#minimap").boundingBox();
 await page.mouse.click(mm.x + mm.width * 0.75, mm.y + mm.height * 0.5);
 check((await g(() => game.screenOf(game.world.startTiles[1].center).x)) < 1000, "clicking the minimap moves the camera");
@@ -184,9 +194,9 @@ check((await g(() => game.screenOf(game.world.startTiles[1].center).x)) < 1000, 
 await page.keyboard.press("+");
 check((await g(() => game.speed)) === 2, "+ raises the game speed to 2x");
 const g0 = await g(() => game.world.time), r0 = Date.now();
-await wait(2000);
+const rate2 = await fps(2000);
 const ratio = ((await g(() => game.world.time)) - g0) / ((Date.now() - r0) / 1000);
-check(ratio > 1.6, `game time runs ${ratio.toFixed(1)}x real time at 2x`);
+timed(ratio > 1.6, `game time runs ${ratio.toFixed(1)}x real time at 2x`, rate2);
 await page.click("#menu-btn");
 check(await page.isVisible("#overlay .menu") && (await g(() => game.paused)), "Menu opens the game menu and pauses");
 await page.click("#speed");
@@ -239,6 +249,36 @@ await page.click("[data-load]");
 await wait(500);
 const loaded = await g(() => ({ t: game.world.time, n: game.world.units.length, food: game.world.players[0].res.food, started: game.started, paused: game.paused }));
 check(loaded.started && !loaded.paused && Math.abs(loaded.t - savedAt.t) < 1 && loaded.n === savedAt.n, `loading puts the game back where it was saved (${savedAt.t.toFixed(1)}s, ${loaded.t.toFixed(1)}s)`);
+
+// Control groups: Ctrl + a digit keeps the selection, the digit picks it again.
+const crew = await g(() => { const vs = game.world.unitsOf(0).filter((u) => u.isVillager).slice(0, 2).map((u) => u.id); game.selection = vs; return vs; });
+await page.keyboard.press("Control+Digit1");
+await g(() => { game.selection = []; });
+await page.keyboard.press("Digit1");
+check(await g((c) => game.selection.join() === c.join(), crew), "Ctrl + 1 keeps a group, and 1 selects it again");
+
+// Delete removes what is selected.
+const doomed = await g(() => { const v = game.world.unitsOf(0).find((u) => u.isVillager); game.selection = [v.id]; return v.id; });
+await page.keyboard.press("Delete");
+await wait(400);
+check(await g((id) => !game.world.unit(id), doomed), "Delete removes the selected unit");
+
+// Save to a file, then load that file: the game is back as it was.
+await page.click("#menu-btn");
+await page.click("#saves-open");
+await page.waitForSelector("#save-file-btn");
+const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save-file-btn")]);
+const file = await download.path();
+check(download.suggestedFilename().endsWith(".bdsave") && !!file, `the game saves to a file (${download.suggestedFilename()})`);
+const atSave = await g(() => ({ t: game.world.time, n: game.world.units.length }));
+await page.keyboard.press("Escape");
+await wait(1500);
+await page.click("#menu-btn");
+await page.click("#saves-open");
+await page.setInputFiles("#load-file", file);
+await page.waitForFunction((t) => Math.abs(game.world.time - t) < 1.5 && game.started, atSave.t, { timeout: 5000 }).catch(() => {});
+const fromFile = await g(() => ({ t: game.world.time, n: game.world.units.length, started: game.started }));
+check(fromFile.started && Math.abs(fromFile.t - atSave.t) < 1.5 && fromFile.n === atSave.n, `loading the file puts the game back as it was saved (${atSave.t.toFixed(1)}s, ${fromFile.t.toFixed(1)}s)`);
 
 await page.screenshot({ path: process.env.SHOT ?? "smoke.png" });
 
