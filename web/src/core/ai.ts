@@ -557,7 +557,8 @@ export class AIController {
     if (!docks.length) {
       if (villagers.length < 8 || w.blockerBuilding("dock", this.player) !== null) return;
       if (!this.affordable(w, w.buildingCost(this.player, "dock"))) return;
-      if (this.dockAt === undefined || (this.dockAt === null && this.thinks % 20 === 0)) this.dockAt = this.findDockSpot(w, home);
+      // Across the sea a Dock is the way out, fish near it or not.
+      if (this.dockAt === undefined || (this.dockAt === null && this.thinks % 20 === 0)) this.dockAt = this.findDockSpot(w, home) ?? (this.acrossSea ? this.findDockSpot(w, home, false) : null);
       if (!this.dockAt) return;
       if (!w.canPlace("dock", this.dockAt, this.player)) {
         if (!w.canPlace("dock", this.dockAt)) { this.dockAt = null; return; } // someone built there
@@ -606,11 +607,12 @@ export class AIController {
     return null;
   }
 
-  /** The nearest place for a Dock to home, on its own shore, with deep-sea fish not far from it. */
-  private findDockSpot(w: World, home: Vec2): Tile | null {
+  /** The nearest place for a Dock to home, on its own shore, with deep-sea fish not far from it (unless
+   *  `forFish` is false: a Dock for transports). */
+  private findDockSpot(w: World, home: Vec2, forFish = true): Tile | null {
     // Deep-sea fish only: by a lake's shore fish, villagers fishing from the bank do better than boats.
     const fish = w.nodes.filter((n) => n.alive && n.def.boats_only);
-    if (!fish.length) return null;
+    if (forFish && !fish.length) return null;
     const c = home.tile;
     let best: Tile | null = null, bestD = Infinity;
     // Out to 30 tiles: a Large Islands base can be that far from its own coast.
@@ -619,7 +621,7 @@ export class AIController {
         const t = new Tile(x, y);
         const d = t.center.distance(home);
         if (d >= bestD || d > 30 || !w.canPlace("dock", t)) continue;
-        if (!fish.some((f) => f.center.distance(t.center) < 20)) continue;
+        if (forFish && !fish.some((f) => f.center.distance(t.center) < 20)) continue;
         if (!this.dockShore(w, home, t)) continue;
         best = t; bestD = d;
       }

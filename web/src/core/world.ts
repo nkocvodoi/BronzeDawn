@@ -69,6 +69,9 @@ export class World {
   winner: number | null = null;
   events: GameEvent[] = [];
   ais: AIController[] = [];
+  /** Where each herd of gazelles is grazing, by herd: its members keep near it, and it moves now and then. */
+  herdGoals = new Map<number, Vec2>();
+  private nextHerd = 1;
   /** Start tile of each player's town center. */
   startTiles: Tile[] = [];
   /** The game's history for the Timeline: every player's score every 30 game seconds, and what happened when. */
@@ -210,7 +213,7 @@ export class World {
   /** May something owned by `owner` attack `t`? Players hunt animals; animals fight players. */
   hostile(owner: number, t: Entity) {
     if (t instanceof Unit && (t.aboard !== null || t.isRelic)) return false; // inside its transport, or a Ruin or Artifact
-    if (t instanceof Unit && t.isAnimal) return owner !== GAIA;
+    if (t instanceof Unit && t.isAnimal) return owner !== GAIA || t.animal!.behavior === "flee"; // lions hunt gazelles
     if (owner === GAIA) return t.owner !== GAIA && !(t instanceof ResourceNode);
     return this.isEnemy(owner, t.owner);
   }
@@ -255,6 +258,15 @@ export class World {
     this.units.push(u);
     this.byId.set(u.id, u);
     return u;
+  }
+
+  /** A new herd, grazing at `at`; its number, for its members. */
+  newHerd(at: Vec2) {
+    this.herdGoals ??= new Map(); // a save from before herds
+    this.nextHerd ??= 1;
+    const id = this.nextHerd++;
+    this.herdGoals.set(id, at);
+    return id;
   }
 
   spawnAnimal(type: string, at: Vec2): Unit | null {
@@ -1555,7 +1567,8 @@ export class World {
 
   // ---- animals
 
-  /** Gazelles run, elephants defend themselves, lions and alligators hunt whatever comes near. */
+  /** Gazelles run, and keep with their herd; elephants defend themselves; lions and alligators hunt
+   *  whatever comes near, lions gazelles too. */
   private updateAnimal(u: Unit, dt: number) {
     const a = u.animal!;
     if (u.order.kind === "attack") {
@@ -1570,9 +1583,17 @@ export class World {
     }
     if (u.scanTimer > 0) return;
     u.scanTimer = 0.5 + (u.id % 5) * 0.05;
-    const near = this.nearestPlayerUnit(u.pos, a.behavior === "flee" ? 3 : a.los);
+    const flees = a.behavior === "flee";
+    // Gazelles run from people and from lions; lions hunt people, and gazelles when no one is near.
+    const near = this.nearestPlayerUnit(u.pos, flees ? 3 : a.los) ?? (flees ? this.nearestAnimal(u.pos, 3, "aggressive") : null);
     if (near && a.behavior === "aggressive") { u.order = { kind: "attack", id: near.id }; return; }
-    if (near && a.behavior === "flee") { this.flee(u, near.pos); return; }
+    if (near && flees) { this.flee(u, near.pos); return; }
+    if (a.behavior === "aggressive" && a.id === "lion") {
+      const prey = this.nearestAnimal(u.pos, a.los + 2, "flee"); // a lion spots a herd before it is seen
+      if (prey) { u.order = { kind: "attack", id: prey.id }; return; }
+    }
+    const goal = u.herd ? this.herdGoals?.get(u.herd) : undefined;
+    if (goal) { this.graze(u, goal); return; }
     // Wander a little, now and then.
     if (this.rng.unit() < 0.08) {
       const t = new Vec2(u.pos.x + this.rng.int(-3, 3), u.pos.y + this.rng.int(-3, 3));
@@ -1580,6 +1601,23 @@ export class World {
     }
   }
 
+  /** A gazelle with its herd: it strays back if it is far from where the herd grazes, and wanders about
+   *  there now and then; once in a while the herd moves on a few tiles, all of it. */
+  private graze(u: Unit, goal: Vec2) {
+    const herd = this.herdGoals;
+    if (this.rng.unit() < 0.01) {
+      const t = new Vec2(goal.x + this.rng.int(-4, 4), goal.y + this.rng.int(-4, 4));
+      if (this.map.inside(t.tile) && this.map.passable(t.tile)) { herd.set(u.herd, t); goal = t; }
+    }
+    const far = u.pos.distance(goal) > 2.5;
+    if (!far && this.rng.unit() >= 0.08) return;
+    const t = new Vec2(goal.x + (this.rng.unit() * 3 - 1.5), goal.y + (this.rng.unit() * 3 - 1.5));
+    if (this.map.passable(t.tile)) this.move(GAIA, [u.id], t);
+  }
+
+  /** A gazelle runs from a threat: the one struck or come near, as in the original, not the whole herd
+   *  (a stampede at every spear made hunting a chase, and the hard AI lost half its games); it goes back to
+   *  its herd once the threat is gone. */
   private flee(u: Unit, from: Vec2) {
     const d = u.pos.sub(from);
     const len = Math.max(0.1, d.length);
@@ -1587,6 +1625,17 @@ export class World {
     if (!this.map.passable(to.tile)) { const t = this.map.nearestPassable(to.tile, 3); if (!t) return; to = t.center; }
     this.move(GAIA, [u.id], to);
     u.fleeTimer = 2;
+  }
+
+  /** The nearest wild animal of a behavior within r, if any. */
+  private nearestAnimal(p: Vec2, r: number, behavior: string): Unit | null {
+    let best: Unit | null = null, bestD = r;
+    for (const o of this.units) {
+      if (!o.alive || o.owner >= 0 || o.animal?.behavior !== behavior || o.aboard !== null) continue;
+      const d = o.pos.distance(p);
+      if (d <= bestD) { bestD = d; best = o; }
+    }
+    return best;
   }
 
   private nearestPlayerUnit(p: Vec2, r: number): Unit | null {
@@ -1843,6 +1892,21 @@ export class World {
     }
     p.wonderAt = this.time + (this.rules.economy.wonder_seconds ?? 900);
     this.events.push({ kind: "message", player: -1, text: `${p.name} has built a Wonder. Destroy it or lose.` });
+  }
+
+  /** Whether a tree stands on a tile. */
+  treeAt(t: Tile) {
+    const n = this.entity(this.map.occupantAt(t));
+    return n instanceof ResourceNode && n.alive && n.def.id === "tree";
+  }
+
+  /** Making the map: the tree on a tile, if there is one, is not there after all. */
+  clearTree(t: Tile) {
+    const n = this.entity(this.map.occupantAt(t));
+    if (!(n instanceof ResourceNode) || n.def.id !== "tree") return;
+    n.alive = false;
+    n.amount = 0;
+    this.map.setOccupant(new Footprint(n.tile, 1), 0);
   }
 
   private removeNode(n: ResourceNode) {

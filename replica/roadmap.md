@@ -19,7 +19,7 @@ rồi chấm lại.
 | Nhóm | Đã có |
 | --- | --- |
 | Bản đồ | Isometric, sinh ngẫu nhiên theo seed, 4 cỡ (72 / 96 / 120 / 144), hồ, rừng, sương mù, vị trí xuất phát ngẫu nhiên theo seed |
-| Kinh tế | 4 tài nguyên, hái dâu, săn thú (thịt thối dần, chỉ villager giết mới có thịt), đánh cá ven bờ, farm sau Market, kho thịt và kho lúa riêng |
+| Kinh tế | 4 tài nguyên, hái dâu, săn thú (thịt thối dần, chỉ villager giết mới có thịt; hươu đi theo bầy 4 đến 7 con, sư tử săn hươu), đánh cá ven bờ, farm sau Market, kho thịt và kho lúa riêng |
 | Thời đại | Stone, Tool, Bronze, Iron, mỗi lần lên cần 2 loại công trình của thời đó |
 | Nội dung | 33 unit với các dòng nâng cấp, 21 công trình, 65 công nghệ, 17 dân tộc (5 kiểu kiến trúc; Lạc Việt của Return of Rome có khung giao diện trống đồng riêng) |
 | Chiến đấu | Công thức sát thương gốc, giáp xuyên, công trình nhận 1/5 sát thương, đá văng và né được, voi giẫm, tháp canh 4 cấp, tường kéo dài |

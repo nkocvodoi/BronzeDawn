@@ -87,6 +87,8 @@ export class Unit extends Entity {
   /** Animals: what they are and how long they keep running. */
   readonly animal: AnimalDef | null;
   fleeTimer = 0;
+  /** Gazelles: the herd it keeps with (0: none). */
+  herd = 0;
 
   constructor(id: number, owner: number, public def: UnitDef, pos: Vec2, animal: AnimalDef | null = null) {
     super(id, owner, def.hp);
