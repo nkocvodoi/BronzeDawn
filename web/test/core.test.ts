@@ -771,6 +771,20 @@ describe("the original's rules", () => {
     expect(gazelles.filter((g) => g.alive && open(w, g.pos.tile) < 10).length).toBeLessThanOrEqual(1);
   });
 
+  it("a boat comes out of a Dock on the open sea, not into a pond beside it", () => {
+    const w = blank(24);
+    // The sea to the west, a Dock in it by the shore, and a pond of one tile just behind the Dock on land,
+    // where a boat used to come out (the corner a Dock's units head for when there is no rally point).
+    for (let y = 0; y < 24; y++) for (let x = 0; x <= 5; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    for (let y = 10; y <= 12; y++) for (let x = 6; x <= 8; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    w.map.terrain[w.map.index(new Tile(9, 13))] = Terrain.water;
+    const dock = w.addBuilding("dock", 0, new Tile(6, 10), true);
+    const exit = (w as unknown as { as: <T>(n: boolean, f: () => T) => T; exitTile: (b: unknown, t: null) => Tile });
+    const t = exit.as(true, () => exit.exitTile(dock, null));
+    expect(t.x).toBeLessThanOrEqual(5); // in the sea, not the pond at 9,13
+    expect(w.map.terrainAt(t)).toBe(Terrain.water);
+  });
+
   it("every base can walk to a shore where a Dock could stand: woods never wall it in", () => {
     for (const mapType of ["small_islands", "large_islands", "coastal", "continental"] as const) {
       for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {

@@ -2,7 +2,7 @@ import { AIController, Difficulty } from "./ai";
 import { Building, Entity, GAIA, GameEvent, IDLE, Order, Player, QueueItem, ResourceNode, Unit } from "./entities";
 import { Fog } from "./fog";
 import { Footprint, RNG, Tile, Vec2 } from "./geom";
-import { buildable, GridMap, Terrain, walkable } from "./grid";
+import { buildable, GridMap, sailable, Terrain, walkable } from "./grid";
 import { generateMap, MapType } from "./mapgen";
 import { Pathfinder } from "./path";
 import { hasTag, NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
@@ -1297,17 +1297,43 @@ export class World {
 
   private exitTile(b: Building, toward: Vec2 | null): Tile {
     const fp = b.footprint;
-    let best: Tile | null = null, bestD = Infinity;
+    let best: Tile | null = null, bestScore = -Infinity;
     const aim = toward ?? new Vec2(fp.maxX + 1, fp.maxY + 1);
+    // A boat comes out on the open water: a Dock can stand beside a pond or a pool of shallows cut off
+    // from the sea, and a boat put there could never leave it.
+    const naval = this.map.naval, sizes = new Map<number, number>();
     for (let y = fp.origin.y - 1; y <= fp.origin.y + fp.size; y++) {
       for (let x = fp.origin.x - 1; x <= fp.origin.x + fp.size; x++) {
         const t = new Tile(x, y);
         if (fp.contains(t) || !this.map.passable(t)) continue;
-        const d = t.center.distance(aim);
-        if (d < bestD) { bestD = d; best = t; }
+        let score = -t.center.distance(aim);
+        if (naval) score += this.waterAround(t, sizes) * 1000 + (this.map.terrainAt(t) === Terrain.water ? 100 : 0);
+        if (score > bestScore) { bestScore = score; best = t; }
       }
     }
     return best ?? this.map.nearestPassable(fp.origin, 8) ?? fp.origin;
+  }
+
+  /** How much water a boat could sail from a tile, counted up to a sea's worth (300 tiles): the same for
+   *  every tile of one body of water, worked out once for it. */
+  private waterAround(t: Tile, sizes: Map<number, number>) {
+    const known = sizes.get(this.map.index(t));
+    if (known !== undefined) return known;
+    const seen: number[] = [this.map.index(t)], stack = [t];
+    const mark = new Set(seen);
+    while (stack.length && seen.length < 300) {
+      const c = stack.pop()!;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const n = new Tile(c.x + dx, c.y + dy);
+        if (!this.map.inside(n) || !sailable(this.map.terrainAt(n)) || !this.map.passable(n)) continue; // not through the Dock itself
+        const k = this.map.index(n);
+        if (mark.has(k)) continue;
+        mark.add(k); seen.push(k); stack.push(n);
+      }
+    }
+    const n = Math.min(300, seen.length);
+    for (const k of seen) sizes.set(k, n);
+    return n;
   }
 
   // ---- units
