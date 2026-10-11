@@ -20,10 +20,10 @@ export const LEVEL: Record<Difficulty, {
   easy: { firstAttack: 1200, firstWave: 5, villagers: [12, 16, 18, 18], producers: 1, counters: false, gather: 1, maxAge: 2, guard: [1, 3, 4, 4], slow: true, bonus: 0 },
   normal: { firstAttack: 720, firstWave: 8, villagers: [20, 26, 30, 32], producers: 2, counters: true, gather: 1, maxAge: 3, guard: [3, 6, 9, 12], slow: false, bonus: 0 },
   // Hard plays like Moderate with a bigger army and an open economic bonus.
-  hard: { firstAttack: 900, firstWave: 12, villagers: [22, 28, 32, 34], producers: 3, counters: true, gather: 1.2, maxAge: 3, guard: [4, 8, 10, 12], slow: false, bonus: 0 },
+  hard: { firstAttack: 900, firstWave: 12, villagers: [22, 28, 32, 34], producers: 3, counters: true, gather: 1.15, maxAge: 3, guard: [4, 8, 10, 12], slow: false, bonus: 0 },
   // Hardest is Hard with extra resources at the start, as the original's Hardest cheats with (players put it
   // at about 2,000 of each; there is no official figure).
-  hardest: { firstAttack: 900, firstWave: 12, villagers: [22, 28, 32, 34], producers: 3, counters: true, gather: 1.2, maxAge: 3, guard: [4, 8, 10, 12], slow: false, bonus: 2000 },
+  hardest: { firstAttack: 900, firstWave: 12, villagers: [22, 28, 32, 34], producers: 3, counters: true, gather: 1.15, maxAge: 3, guard: [4, 8, 10, 12], slow: false, bonus: 2000 },
 };
 
 /** Buildings the AI puts up in each age, in order: what the next age needs, then the army. */
@@ -380,9 +380,15 @@ export class AIController {
     return keep;
   }
 
+  /** When enemy soldiers at home last outnumbered the army. */
+  private outnumberedAt = -1e9;
+
   private ageReserve(w: World): ResBag {
     const p = w.players[this.player];
     if (p.age >= this.level.maxAge) return new ResBag();
+    // Under attack by more than it has: the savings for the next age go on soldiers for a minute. Saving
+    // through a siege lost the town with a thousand gold in the bank.
+    if (w.time - this.outnumberedAt < 60) return new ResBag();
     const next = w.rules.ages[p.age + 1];
     if (!next || w.ageRequirementCount(this.player) < (next.requires_buildings ?? 0)) return new ResBag();
     return ResBag.of(next.cost);
@@ -483,7 +489,7 @@ export class AIController {
 
     this.assignIdle(w, home, villagers);
     this.finishAbandoned(w, villagers, bs);
-    if (this.thinks % 3 === 0) this.rebalance(w, villagers, home);
+    this.rebalance(w, villagers, home, this.thinks % 3 === 0 ? 1.5 : 3);
   }
 
   private huntNear(w: World, home: Vec2): Unit | null {
@@ -507,7 +513,9 @@ export class AIController {
   }
 
   /** Every so often move one worker from the most over-staffed resource to the most under-staffed. */
-  private rebalance(w: World, villagers: Unit[], home: Vec2) {
+  /** `slack`: how far off a share may be before a worker moves; far off (out of food, say, with gold piling
+   *  up), one moves at every think. */
+  private rebalance(w: World, villagers: Unit[], home: Vec2, slack = 1.5) {
     const want = this.shares(w.players[this.player], this.reserve(w));
     const on: Unit[][] = [[], [], [], []];
     for (const u of villagers) if (u.order.kind === "gather" && u.lastGather !== null && u.carry < 1) on[u.lastGather].push(u);
@@ -515,7 +523,7 @@ export class AIController {
     const gap = (r: Res) => want[r] * total - on[r].length;
     let need = Res.food, spare = Res.food;
     for (const r of RES_ALL) { if (gap(r) > gap(need)) need = r; if (gap(r) < gap(spare)) spare = r; }
-    if (gap(need) < 1.5 || gap(spare) > -1.5 || !on[spare].length) return;
+    if (gap(need) < slack || gap(spare) > -slack || !on[spare].length) return;
     this.sendTo(w, on[spare][0], need, home);
   }
 
@@ -760,6 +768,7 @@ export class AIController {
     // Outnumbered at home: villagers next to the fight join in.
     const soldiers = threats.filter((t) => !t.isVillager && !t.isAnimal).length;
     if (soldiers > army.length) {
+      this.outnumberedAt = w.time;
       for (const v of villagers) {
         const t = minBy(threats, (t) => dist(t, v.pos));
         if (t && dist(t, v.pos) < 5) w.attack(this.player, [v.id], t.id);

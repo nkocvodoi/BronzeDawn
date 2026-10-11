@@ -440,7 +440,7 @@ export class Game {
       `<label><input type="checkbox" id="farms-block"${this.farmsBlock ? " checked" : ""}> Farms block the way, as in the original (off: walk over them, as in the remaster)</label>`,
       hosting ? "" : `<label><input type="checkbox" id="watch"> Only watch: every player is a computer</label>`,
       `<span class="choices" id="start-choices">${this.startButtons(this.computersShown())}</span>`,
-      "Hard and Hardest: the computer gathers 20% faster. Hardest also starts with 2,000 more of each resource, as the original's Hardest cheats.",
+      "Hard and Hardest: the computer gathers 15% faster. Hardest also starts with 2,000 more of each resource, as the original's Hardest cheats.",
       this.online?.role === "host" && this.online.friends.length
         ? `<span class="online-note">Online: ${this.online.friends.length} friend${this.online.friends.length > 1 ? "s" : ""} connected, playing as Player 2${this.online.friends.length > 1 ? ` to ${this.online.friends.length + 1}` : ""}. The computer players come after them. <button id="online-open">Lobby</button></span>`
         : "",
