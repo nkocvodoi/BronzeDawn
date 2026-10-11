@@ -725,3 +725,176 @@ export function drawChariotHD(p: PixelCanvas, f: Figure, driver: Gear, archer: G
   if (scythe) flat(p, [[wx + 1, wy - 1], [wx + 14, wy + 1], [wx + 1, wy + 2]], IRON);
   selout(p, 0.38);
 }
+
+// ---- boats, siege engines, the alligator
+
+const HULL = ramp(rgb(0x7a4e26)), HULL_WAR = ramp(rgb(0x6a4220)), ROPE = rgb(0xd8ccb0), STONE = ramp(rgb(0xa8a49c));
+
+/** A wheel seen side on: a rim, turning spokes, a hub. */
+function wheel(p: PixelCanvas, x: number, y: number, r: number, spin: number, wood: Ramp) {
+  for (let a = 0; a < 28; a++) { const t = (a / 28) * Math.PI * 2; const px = x + Math.cos(t) * r, py = y + Math.sin(t) * r; capsule(p, px, py, px, py, 1.5, wood); }
+  for (let a = 0; a < 4; a++) { const t = (a / 4) * Math.PI * 2 + spin * 0.4; capsule(p, x, y, x + Math.cos(t) * r, y + Math.sin(t) * r, 0.8, wood); }
+  ellipsoid(p, x, y, 1.8, 1.8, IRON);
+}
+
+/** A hull on the water, facing right: rounded along its side (lit along the top strake), planked, its
+ *  bow rising. L is half its length; depth how deep it sits; wy the waterline. */
+function hull(p: PixelCanvas, cx: number, wy: number, L: number, depth: number, r: Ramp, war: boolean, pc: Ramp) {
+  for (let x = Math.floor(-L); x <= L; x++) {
+    // The side: a near-straight gunwale with a little sheer, cut away toward the stern and the bow.
+    const t = x / L, a = Math.abs(t), end = war ? 0.86 : 0.78;
+    const d = depth * (a < end ? 1 - 0.12 * (1 - a / end) : Math.max(0.15, 1 - (a - end) / (1 - end) * 0.85));
+    const rise = x > L - 8 ? (x - (L - 8)) * (war ? 1.2 : 0.8) : 0;
+    const top = wy - d - rise, bot = wy;
+    for (let y = Math.floor(top); y <= bot; y++) {
+      const v = (y + 0.5 - top) / Math.max(1, bot - top); // 0 at the top strake, 1 at the waterline
+      const ny = -0.7 + v * 1.2, nz = Math.sqrt(Math.max(0, 1 - ny * ny * 0.6));
+      let c = shade(r, t * 0.35, ny, nz, cx + x, y);
+      if (Math.floor(y - top) % 4 === 3) c = darken(c, 0.82); // the planks
+      p.set(cx + x, y, c);
+    }
+  }
+  if (war) for (let x = -L + 6; x <= L - 6; x++) p.set(cx + x, Math.floor(wy - depth * 0.62), pc[3]); // a band of the owner's colour
+}
+
+/** A sail, billowing: lit where it bellies out to the left, in the shade where it falls away. */
+function sail(p: PixelCanvas, x0: number, y0: number, w: number, h: number, pc: Ramp, square: boolean) {
+  for (let y = 0; y < h; y++) {
+    const ww = square ? w : Math.round(6 + y * (w - 6) / h);
+    for (let x = 0; x < ww; x++) {
+      const nx = (x / ww) * 2 - 1, belly = Math.sin((y / h) * Math.PI) * 0.5;
+      let c = shade(pc, nx * 0.8 - belly * 0.4, -0.2, Math.sqrt(Math.max(0, 1 - nx * nx * 0.6)), x0 + x, y0 + y);
+      if (y % 10 === 9 && square) c = darken(c, 0.85); // seams
+      p.set(x0 + x - (square ? w / 2 : 0) + (square && y > h / 2 ? 1 : 0), y0 + y, c);
+    }
+  }
+}
+
+/** A boat or a ship, 112 x 76, the waterline at 62: fishing boats with their net, trade boats and
+ *  transports with cargo, war ships with rows of oars, archers, a catapult or a fire pot on deck. */
+export function drawBoatHD(p: PixelCanvas, f: Figure, pcBase: RGB, kind: { L: number; oars: number; deck: string; tall: number } | null, fishingShip: boolean) {
+  const pc = ramp(pcBase), cx = 56, wy = 62, work = f.pose === "work", st = f.frame % 3;
+  const L = (kind ? kind.L : fishingShip ? 18 : 14) * 2;
+  if (f.pose === "walk") for (let k = 0; k < 6; k++) p.set(cx - L - 3 - k * 3, wy + 1 + (k % 2), rgb(0xd8ecf8), 200 - k * 30);
+  const mx = cx - (kind ? 6 : 4), mh = (kind ? kind.tall : fishingShip ? 24 : 19) * 2;
+  // Mast and sail behind the near side of the hull.
+  capsule(p, mx, wy - 8, mx, wy - 10 - mh, 1.3, WOOD);
+  if (kind) { capsule(p, mx - 13, wy - 8 - mh, mx + 13, wy - 8 - mh, 1, WOOD); sail(p, mx, wy - 6 - mh, 26, mh - 18, pc, true); }
+  else sail(p, mx + 2, wy - 4 - mh, fishingShip ? 22 : 18, mh - 12, pc, false);
+  hull(p, cx, wy, L, kind ? 16 : fishingShip ? 15 : 13, kind ? HULL_WAR : HULL, !!kind && kind.deck !== "cargo", pc);
+  if (kind && kind.deck !== "cargo") capsule(p, cx + L, wy - 2, cx + L + 6, wy, 1.4, IRON); // the ram
+  if (kind) for (let r = 0; r < kind.oars; r++) for (let x = -L + 8; x <= L - 10; x += 8) {
+    const y0 = wy - 6 + r * 2, dx = f.pose === "walk" && f.frame % 2 ? 2 : -2;
+    capsule(p, cx + x, y0, cx + x + dx * 2, wy + 4 + r * 2, 0.6, ramp(rgb(0xc0905a)));
+  }
+  if (!kind) {
+    // A fishing boat: its net over the side at work; the catch on deck when full.
+    if (work) { for (let k = 0; k < 12; k++) p.set(cx + L - 12 + k, wy + 2 + ((k + st) % 2), ROPE); p.line(cx + 8, wy - 12, cx + L - 8, wy + 2, ROPE); }
+    if (f.carry !== null) ellipsoid(p, cx + 10, wy - 12, 6, 2.4, ramp(rgb(0x5a7a8a)));
+    selout(p, 0.38);
+    return;
+  }
+  const hit = work && st === 2;
+  switch (kind.deck) {
+    case "archer":
+      for (const ax of [cx - 10, cx + 8]) {
+        capsule(p, ax, wy - 22, ax, wy - 14, 2.6, pc);
+        ellipsoid(p, ax, wy - 26, 2.8, 3, SKIN);
+        capsule(p, ax + 4, wy - 28, ax + 6, wy - 16, 0.8, WOOD); // a bow
+      }
+      break;
+    case "catapult": {
+      capsule(p, cx + 6, wy - 16, cx + 22, wy - 16, 2.4, WOOD);
+      const a = hit ? -0.4 : 1.2, ex = cx + 10 + Math.cos(-Math.PI / 2 - a) * 12, ey = wy - 18 + Math.sin(-Math.PI / 2 - a) * 12;
+      capsule(p, cx + 10, wy - 18, ex, ey, 1.4, WOOD);
+      if (!hit) ellipsoid(p, ex, ey - 1, 2.6, 2.6, STONE);
+      break;
+    }
+    case "cargo":
+      torso(p, cx - 3, wy - 22, wy - 10, 18, 18, WOOD); // a deckhouse
+      for (const bx of [cx + 12, cx - 22]) ellipsoid(p, bx, wy - 14, 3.5, 3, ramp(rgb(0xb89a68)));
+      break;
+    default: {
+      capsule(p, cx + L - 12, wy - 16, cx + L - 4, wy - 16, 2.4, IRON); // the fire pot
+      for (let i = 0; i < 4; i++) ellipsoid(p, cx + L - 9 + (i % 2) * 2, wy - 20 - i * 2 - (hit ? 2 : 0), 2.2 - i * 0.3, 2, ramp([rgb(0xd8401c), rgb(0xf08a1c), rgb(0xf8c040), rgb(0xfff0a0)][i]));
+    }
+  }
+  selout(p, 0.38);
+}
+
+/** A siege engine, 80 x 68 with the wheels on the ground at 60: a stone thrower, catapult or heavy
+ *  catapult (a frame on wheels, an A-frame, a throwing arm with a cup), or a ballista (a great crossbow). */
+export function drawSiegeHD(p: PixelCanvas, f: Figure, pcBase: RGB) {
+  const pc = ramp(pcBase), t = f.type, fy = 60, heavy = t === "heavy_catapult";
+  const wood = ramp(heavy ? rgb(0x7a4c26) : rgb(0x8e5c30)), woodD = ramp(darken(heavy ? rgb(0x7a4c26) : rgb(0x8e5c30), 0.75));
+  const spin = f.pose === "walk" ? f.frame % 4 : 0, st = f.pose === "work" ? f.frame % 3 : -1;
+  const wr = t === "stone_thrower" ? 7 : heavy ? 11 : 9;
+  groundShadow(p, 40, fy + 1, 32, 5);
+  wheel(p, 24, fy - wr - 6, wr, spin, woodD); wheel(p, 58, fy - wr - 6, wr, spin, woodD);
+  // The bed of the frame.
+  capsule(p, 14, fy - 20, 66, fy - 20, 3, wood);
+  if (t === "ballista") {
+    capsule(p, 16, fy - 30, 64, fy - 38, 2, woodD); // the stock, tilted up
+    capsule(p, 54, fy - 48, 54, fy - 26, 3, woodD); // the torsion frame
+    const back = st < 0 || st === 0 ? 20 : st === 1 ? 30 : 48, tip = st === 2 ? 50 : 42;
+    capsule(p, 56, fy - 48, tip, fy - 58, 1.1, wood); capsule(p, 56, fy - 28, tip, fy - 18, 1.1, wood);
+    p.line(tip, fy - 58, back, fy - 34, ROPE); p.line(tip, fy - 18, back, fy - 34, ROPE);
+    if (st !== 2) { capsule(p, back, fy - 36, 70, fy - 40, 0.8, ramp(rgb(0xc0905a))); flat(p, [[70, fy - 42], [75, fy - 40], [70, fy - 38]], IRON); }
+  } else {
+    const big = heavy ? 1.2 : t === "stone_thrower" ? 0.8 : 1;
+    const ax = 54, top = fy - 22 - 24 * big;
+    capsule(p, 46, fy - 22, ax, top, 1.8, woodD); capsule(p, 62, fy - 22, ax, top, 1.8, woodD);
+    capsule(p, ax - 4, top, ax + 4, top, 2, heavy ? IRON : LEATHER); // the padded stop bar
+    const px = 36, py = fy - 22, ang = ((st < 0 || st === 0 ? 192 : st === 1 ? 250 : 296) * Math.PI) / 180, len = 28 * big;
+    const ex = px + Math.cos(ang) * len, ey = py + Math.sin(ang) * len;
+    capsule(p, px, py, ex, ey, 2, woodD);
+    ellipsoid(p, ex, ey, 4, 3, LEATHER);
+    if (st <= 0) ellipsoid(p, ex, ey - 2, 3.2, 3.2, STONE);
+    ellipsoid(p, px, py, 3.5, 3.5, ramp(rgb(0x5a4a3a))); // the twisted rope skein
+    if (heavy) capsule(p, 14, fy - 22, 66, fy - 22, 0.8, IRON);
+  }
+  capsule(p, 15, fy - 42, 15, fy - 22, 1, woodD); sail(p, 16, fy - 42, 9, 6, pc, false); // a banner at the back
+  wheel(p, 20, fy - wr, wr, spin, wood); wheel(p, 54, fy - wr, wr, spin, wood);
+  selout(p, 0.38);
+}
+
+/** A helepolis, 76 x 108 with the wheels on the ground at 100: a timber tower on wheels, hides in the
+ *  owner's colour on its face, two ports shooting bolts. */
+export function drawHelepolisHD(p: PixelCanvas, f: Figure, pcBase: RGB) {
+  const pc = ramp(pcBase), fy = 100, spin = f.pose === "walk" ? f.frame % 4 : 0, st = f.pose === "work" ? f.frame % 3 : -1;
+  const woodL = ramp(rgb(0xb07a44)), wood = ramp(rgb(0x8a5a2e)), woodD = ramp(rgb(0x5c3a1c));
+  groundShadow(p, 38, fy + 1, 32, 6);
+  wheel(p, 20, fy - 12, 9, spin, woodD); wheel(p, 60, fy - 12, 9, spin, woodD);
+  // The lit face and the shaded side, planked.
+  p.poly([[10, fy - 12], [48, fy - 12], [44, fy - 88], [16, fy - 88]], (x, y) => { const c = shade(woodL, -0.3, 0, 0.9, x, y); return y % 12 === 0 ? woodD[2] : x % 8 === 0 ? darken(c, 0.88) : c; });
+  p.poly([[48, fy - 12], [68, fy - 20], [62, fy - 92], [44, fy - 88]], (x, y) => { const c = shade(wood, 0.7, 0, 0.5, x, y); return (y + Math.floor((x - 48) / 2)) % 12 === 0 ? woodD[1] : c; });
+  p.poly([[14, fy - 24], [44, fy - 24], [42, fy - 40], [16, fy - 40]], (x, y) => shade(pc, -0.2, (y - (fy - 32)) / 10, 0.9, x, y));
+  for (const y of [fy - 56, fy - 76]) {
+    p.rect(24, y, 12, 8, rgb(0x1a120c));
+    if (st !== 2) { capsule(p, 26, y + 4, 52, y + 4, 0.8, ramp(rgb(0xc0905a))); flat(p, [[52, y + 2], [56, y + 4], [52, y + 6]], IRON); }
+  }
+  torso(p, 30, fy - 94, fy - 88, 34, 34, woodD); // the roof
+  capsule(p, 30, fy - 106, 30, fy - 94, 0.9, woodD); sail(p, 31, fy - 106, 10, 6, pc, false);
+  wheel(p, 16, fy - 9, 9, spin, wood); wheel(p, 52, fy - 9, 9, spin, wood);
+  selout(p, 0.38);
+}
+
+/** An alligator, 72 x 36 with the belly on the ground at 28: a long low body with ridged scutes, a
+ *  tapering tail swinging as it crawls, jaws that open to bite; on its back when dead. */
+export function drawAlligatorHD(p: PixelCanvas, f: Figure, dead: boolean) {
+  const k = dead ? 0.7 : 1, g = ramp(darken(rgb(0x4e6a34), k)), gD = ramp(darken(rgb(0x4e6a34), k * 0.72)), belly = ramp(darken(rgb(0x9aa462), k));
+  const fy = 28, ox = 34, walk = f.pose === "walk", gait = f.frame % 4, sway = walk ? [0, 2, 0, -2][gait] : 0, st = f.pose === "work" ? f.frame % 3 : -1;
+  groundShadow(p, ox, fy, 30, 3.5);
+  if (dead) { capsule(p, 6, fy - 4, ox + 28, fy - 4, 4, belly); for (const x of [ox - 8, ox + 8]) capsule(p, x, fy - 6, x - 3, fy - 12, 1.5, gD); selout(p, 0.38); return; }
+  for (const [x, ph] of [[ox - 12, 0], [ox + 10, 1]] as [number, number][]) { const off = walk ? ((gait + ph * 2) % 4 < 2 ? 2 : -2) : 0; capsule(p, x, fy - 6, x + off - 2, fy - 1, 1.8, gD); }
+  capsule(p, 2, fy - 6 + sway, ox - 14, fy - 9, 2.2, g); // the tail
+  capsule(p, ox - 16, fy - 9, ox + 16, fy - 8, 5.5, g); // the body
+  for (let x = ox - 15; x < ox + 15; x++) for (let y = fy - 6; y <= fy - 3; y++) if (p.alphaAt(x, y)) p.set(x, y, shade(belly, 0, 0.6, 0.6, x, y));
+  for (let x = ox - 24; x < ox + 14; x += 4) ellipsoid(p, x, x < ox - 14 ? fy - 9 + sway * 0.5 : fy - 14, 1.4, 1, gD); // the scutes
+  const open = st >= 1 ? (st === 1 ? 6 : 4) : 0;
+  capsule(p, ox + 16, fy - 11, ox + 34, fy - 9 - open, 2.6, g); // the upper jaw
+  capsule(p, ox + 16, fy - 6, ox + 34, fy - 5, 1.8, belly);
+  if (open) { p.line(ox + 20, fy - 8, ox + 32, fy - 7 - open / 2, rgb(0xc8243a)); p.set(ox + 26, fy - 9 - open / 2, rgb(0xf4ecd4)); }
+  p.set(ox + 20, fy - 15 - open / 2, rgb(0xd8c040));
+  selout(p, 0.38);
+}

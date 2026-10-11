@@ -168,7 +168,10 @@ await g(() => { game.paused = false; });
 
 // Arrow keys scroll, H comes home, ? opens help and pauses.
 const cam0 = await g(() => game.screenOf(game.world.startTiles[0].center).x);
-await page.keyboard.down("ArrowRight"); await wait(300); await page.keyboard.up("ArrowRight");
+// Held until the view has moved, up to 3 s: a slow machine (a CI runner) draws only a few frames in 300 ms.
+await page.keyboard.down("ArrowRight");
+await page.waitForFunction((x0) => game.screenOf(game.world.startTiles[0].center).x < x0 - 50, cam0, { timeout: 3000 }).catch(() => {});
+await page.keyboard.up("ArrowRight");
 check((await g(() => game.screenOf(game.world.startTiles[0].center).x)) < cam0 - 50, "arrow keys scroll the map");
 await page.keyboard.press("h");
 check(await g(() => game.world.building(game.selection[0])?.def.id === "town_center"), "H selects the town center");
