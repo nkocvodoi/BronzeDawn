@@ -2,7 +2,7 @@
 // sent to every machine and run on all of them on the same turn, which keeps their worlds the same.
 // Positions travel as numbers, ids as numbers: nothing in a command points into one machine's memory.
 import { Vec2, Tile } from "./geom";
-import { Res } from "./rules";
+import { RES_ALL, Res } from "./rules";
 import type { SmartResult, Stance, World } from "./world";
 
 export type Command =
@@ -69,24 +69,28 @@ export function isCommand(x: unknown): x is Command {
   if (!x || typeof x !== "object") return false;
   const c = x as Record<string, unknown>;
   const num = (k: string) => typeof c[k] === "number" && Number.isFinite(c[k]);
+  // An id, a player (eight at most) or a resource: a whole number in its range.
+  const id = (k: string) => typeof c[k] === "number" && Number.isInteger(c[k]) && (c[k] as number) >= 0;
+  const player = (k: string) => id(k) && (c[k] as number) < 8;
+  const res = (k: string) => id(k) && RES_ALL.includes(c[k] as Res);
   const ids = (k: string) => Array.isArray(c[k]) && (c[k] as unknown[]).length <= 200 && (c[k] as unknown[]).every((v) => typeof v === "number" && Number.isInteger(v));
   const str = (k: string) => typeof c[k] === "string" && (c[k] as string).length < 64;
   switch (c.k) {
     case "move": case "waypoint": case "attackGround": return ids("ids") && num("x") && num("y");
-    case "smart": return ids("ids") && (c.target === null || num("target")) && num("x") && num("y");
-    case "rally": return num("building") && num("x") && num("y");
+    case "smart": return ids("ids") && (c.target === null || id("target")) && num("x") && num("y");
+    case "rally": return id("building") && num("x") && num("y");
     case "place": return str("type") && num("x") && num("y") && ids("builders");
     case "wall": return str("type") && num("ax") && num("ay") && num("bx") && num("by") && ids("builders");
-    case "train": return num("building") && str("type");
-    case "research": return num("building") && str("tech");
-    case "age": case "cancel": return num("building");
+    case "train": return id("building") && str("type");
+    case "research": return id("building") && str("tech");
+    case "age": case "cancel": return id("building");
     case "destroy": case "stop": case "unload": return ids("ids");
     case "standGround": return ids("ids") && typeof c.on === "boolean";
-    case "repair": return ids("ids") && num("target");
-    case "sacrifice": return num("priest") && num("target");
-    case "stance": return num("to") && (c.stance === "ally" || c.stance === "neutral" || c.stance === "enemy");
-    case "tribute": return num("to") && num("res") && num("amount") && (c.amount as number) > 0 && (c.amount as number) <= 10000;
-    case "takeover": case "rejoin": return num("player");
+    case "repair": return ids("ids") && id("target");
+    case "sacrifice": return id("priest") && id("target");
+    case "stance": return player("to") && (c.stance === "ally" || c.stance === "neutral" || c.stance === "enemy");
+    case "tribute": return player("to") && res("res") && num("amount") && (c.amount as number) > 0 && (c.amount as number) <= 10000;
+    case "takeover": case "rejoin": return player("player");
     default: return false;
   }
 }
