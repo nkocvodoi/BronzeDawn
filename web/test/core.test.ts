@@ -771,6 +771,27 @@ describe("the original's rules", () => {
     expect(gazelles.filter((g) => g.alive && open(w, g.pos.tile) < 10).length).toBeLessThanOrEqual(1);
   });
 
+  it("a villager sent to trees it cannot reach does not search for a way every step", () => {
+    // Trees across a channel of water, within ten tiles: none can be reached. A villager sent to one used
+    // to turn to the next nearest, and back, a whole search every step (a big game slowed to 20 ms a step).
+    const w = blank(24);
+    for (let y = 0; y < 24; y++) for (let x = 8; x <= 9; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    w.addBuilding("storage_pit", 0, new Tile(2, 10), true);
+    for (let y = 9; y <= 13; y++) for (let x = 11; x <= 12; x++) w.addNode("tree", new Tile(x, y));
+    const v = w.spawnUnit("villager", 0, new Tile(6, 11).center);
+    const pf = (w as unknown as { pathfinder: { find: (...a: unknown[]) => unknown } }).pathfinder;
+    const find = pf.find.bind(pf);
+    let searches = 0;
+    pf.find = (...a: unknown[]) => { searches++; return find(...a); };
+    w.gather(0, [v.id], w.nodes.find((n) => n.tile.x === 11 && n.tile.y === 11)!.id);
+    run(w, 20);
+    // None of them is offered to this player's villagers for a while (half a minute).
+    expect(w.nodes.filter((n) => n.def.id === "tree").every((n) => !w.mayTry(0, n))).toBe(true);
+    expect(v.order.kind).toBe("idle");
+    run(w, 40);
+    expect(searches).toBeLessThan(30); // each tree tried once, then rest: it used to go on, about twice a second (120)
+  });
+
   it("a boat comes out of a Dock on the open sea, not into a pond beside it", () => {
     const w = blank(24);
     // The sea to the west, a Dock in it by the shore, and a pond of one tile just behind the Dock on land,
