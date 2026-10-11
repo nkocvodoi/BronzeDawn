@@ -1188,6 +1188,8 @@ class Bld {
   readonly rough: boolean;
   readonly done: boolean;
   readonly frames: [number, number, number, number, number][] = [];
+  /** What casts a shadow on the ground: the wall blocks, and round huts. */
+  readonly shades: [number, number, number, number, number][] = [];
   constructor(readonly p: PixelCanvas, readonly n: number, size: number, readonly kit: BKit, readonly pc: RGB, readonly stage: number, readonly age: number, readonly arch: Arch) {
     this.sc = size / n;
     this.y0 = p.h - size * 16;
@@ -1204,10 +1206,11 @@ class Bld {
     const dx = b1[0] - b0[0];
     const slope = Math.abs(dx) < 0.01 ? 0 : (b1[1] - b0[1]) / dx;
     this.p.poly(s, (x, y) => {
-      const row = Math.floor(b0[1] + (x + 0.5 - b0[0]) * slope - y);
-      // Light falls off toward the ground, as on a rendered wall: the foot of every wall a little darker.
-      const c = tex(m, x, row, x, y, f);
-      return row < 5 ? darken(c, 0.74 + row * 0.052) : c;
+      const height = b0[1] + (x + 0.5 - b0[0]) * slope - y; // above the wall's foot, in fine steps
+      const c = tex(m, x, Math.floor(height), x, y, f);
+      // As on a rendered wall: darker at the foot, where the ground takes the light, a little brighter up high.
+      const k = height < 6 ? 0.72 + Math.max(0, height) * 0.047 : Math.min(1.06, 1 + (height - 6) * 0.003);
+      return darken(c, k);
     });
   }
 
@@ -1229,7 +1232,7 @@ class Bld {
       this.p.poly(top, (x, y) => tex(tm, x, y * 2, x, y, 2));
       this.p.line(top[3][0], top[3][1], top[2][0], top[2][1], lighten(tm.c, 0.25));
     }
-    if (o.record !== false && z <= 4 && !o.upper) this.frames.push([u0, v0, u1, v1, full + z]);
+    if (o.record !== false && z <= 4 && !o.upper) { this.frames.push([u0, v0, u1, v1, full + z]); this.shades.push([u0, v0, u1, v1, full + z]); }
   }
 
   hip(u0: number, v0: number, u1: number, v1: number, z: number, rh: number, r: RMat, o = 0.12) {
@@ -1596,6 +1599,7 @@ function propStall(b: Bld, u: number, v: number, w: number, goods: number) {
 
 /** A Stone Age round hut: mud walls under a thatched cone. */
 function hut(b: Bld, u: number, v: number, R: number, wall: number, roof: number) {
+  b.shades.push([u - R * 0.8, v - R * 0.8, u + R * 0.8, v + R * 0.8, wall + roof * 0.5]); // for its shadow on the ground
   b.cyl(u, v, 0, R, wall, b.kit.wall);
   if (!b.done) return;
   const [x, y] = b.pt(u, v, 0);
@@ -2264,10 +2268,44 @@ export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3,
     const b = new Bld(p, n, s, kitFor(ar, kitAge), playerRGB(owner), st, kitAge, ar);
     if (!def.on_water) apron(p, W, p.h - D, D); // a Dock stands in the water
     if (st === 0) { drawFoundation(b, def.id); p.outline(C.outline, 0.3); return; }
+    const ground = (p as unknown as HiCanvas).data.slice();
     (PLANS[def.id] ?? PLANS.house)(b);
     if (st < 3) b.scaffold();
+    if (!def.on_water) castShadows(p as unknown as HiCanvas, b, ground);
     p.outline(C.outline, 0.3);
   });
+}
+
+/** The building's shadow on the ground, cast to the lower right by a light from the upper left: each wall
+ *  block throws a shadow as long as it is high. It falls only on what is still ground (the apron as it was
+ *  before the walls went up, or the grass beyond), never on the building. */
+function castShadows(p: HiCanvas, b: Bld, ground: Uint8ClampedArray) {
+  const k = p.k, w = p.pw, h = p.ph;
+  const shade = new Uint8Array(w * h);
+  for (const [u0, v0, u1, v1, ht] of b.shades) {
+    const len = Math.min(2.2, ht * 0.045) * b.sc; // tiles along +u
+    const q = b.pts([[u0, v0, 0], [u1 + len, v0, 0], [u1 + len, v1 + len * 0.15, 0], [u0, v1 + len * 0.15, 0]]).map(([x, y]) => [x * k, y * k] as const);
+    const ys = q.map((v) => v[1]);
+    for (let y = Math.max(0, Math.floor(Math.min(...ys))); y <= Math.min(h - 1, Math.ceil(Math.max(...ys))); y++) {
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < 4; i++) {
+        const [ax, ay] = q[i], [bx, by] = q[(i + 1) % 4];
+        if ((y + 0.5 < ay) === (y + 0.5 < by)) continue;
+        const x = ax + ((y + 0.5 - ay) / (by - ay)) * (bx - ax);
+        lo = Math.min(lo, x); hi = Math.max(hi, x);
+      }
+      for (let x = Math.max(0, Math.round(lo)); x < Math.min(w, Math.round(hi)); x++) shade[y * w + x] = 1;
+    }
+  }
+  const d = p.data;
+  for (let i = 0; i < w * h; i++) {
+    if (!shade[i]) continue;
+    const j = i * 4;
+    const unchanged = d[j] === ground[j] && d[j + 1] === ground[j + 1] && d[j + 2] === ground[j + 2] && d[j + 3] === ground[j + 3];
+    if (!unchanged) continue;
+    if (d[j + 3] === 0) { d[j] = 6; d[j + 1] = 10; d[j + 2] = 4; d[j + 3] = 92; } // on the grass beyond
+    else { d[j] *= 0.66; d[j + 1] *= 0.66; d[j + 2] *= 0.7; }
+  }
 }
 
 /** Stage 0: the plot is levelled and staked out, with material piled up. */
