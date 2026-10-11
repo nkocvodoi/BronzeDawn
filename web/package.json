@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "sim": "tsx scripts/sim.ts",
+    "bench": "tsx scripts/bench.ts",
     "smoke": "node scripts/smoke.mjs",
     "smoke:online": "node scripts/smoke-online.mjs",
     "smoke:host-leaves": "node scripts/smoke-host-leaves.mjs"

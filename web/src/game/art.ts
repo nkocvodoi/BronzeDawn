@@ -22,6 +22,14 @@ export const ARCHES: Arch[] = ["egyptian", "greek", "babylonian", "asian", "roma
 
 const cache = new Map<string, Pic>();
 
+/** How many pictures are drawn and kept, by kind (the start of their key), and their pixels: for finding
+ *  what fills the memory. */
+export function picStats() {
+  const by: Record<string, { n: number; px: number }> = {};
+  for (const [k, p] of cache) { const kind = k.split("-")[0]; const e = (by[kind] ??= { n: 0, px: 0 }); e.n++; e.px += p.canvas.width * p.canvas.height; }
+  return by;
+}
+
 /** A picture from an asset file, recoloured for its owner, anchored where it stands on the ground. */
 function assetPic(key: string, spec: ImageSpec, owner: number | null, defaultAnchorY = 1): Pic | null {
   const hit = cache.get(key);

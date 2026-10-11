@@ -31,7 +31,7 @@ const TYPED = { Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int
 const CONSTANTS: Record<string, object> = { IDLE };
 const CONSTANT_OF = new Map<object, string>(Object.entries(CONSTANTS).map(([k, v]) => [v, k]));
 /** Fields rebuilt on loading instead of saved: the pathfinder is only scratch space. */
-const SKIP: Record<string, string[]> = { World: ["pathfinder"] };
+const SKIP: Record<string, string[]> = { World: ["pathfinder", "grid"] }; // made again as needed
 
 /** What a save file holds: the world, and whatever the interface wants to keep beside it. */
 export interface SaveFile { format: number; saved: string; time: number; world: unknown; ui?: unknown }

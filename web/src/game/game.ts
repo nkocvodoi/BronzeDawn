@@ -26,9 +26,13 @@ import { MouseLock } from "./mouselock";
 import { Sfx, Sound, VoiceKind } from "./sound";
 
 /** The drawable side of one entity. `workFrame` is the last work-animation frame, so a swing makes one sound. */
-interface View { root: Container; sprite: Sprite; ring: Graphics; bar: Graphics; pic: Pic; isUnit: boolean; key: string; barW: number; tiles: Tile[]; workFrame: number;
+interface View { root: Container; sprite: Sprite; pic: Pic;
+  /** The selection mark and the health bar: made the first time the thing is selected (most never are). */
+  ring: Graphics | null; bar: Graphics | null; makeRing: () => Graphics; barY: number; isUnit: boolean; key: string; barW: number; tiles: Tile[]; workFrame: number;
   /** Flames on a damaged building, one more at each quarter of its hit points lost. */
-  fire?: Container; farm?: boolean }
+  fire?: Container; farm?: boolean;
+  /** A resource's place, set once: trees, mines and bushes never move. */
+  placed?: boolean }
 
 /** The original's limit on how many units one selection holds. */
 const MAX_SELECTION = 25;
@@ -247,6 +251,8 @@ export class Game {
     this.buildWorld();
     this.bindInput();
     app.ticker.add((t) => this.frame(t.deltaMS / 1000));
+    // The ground lives only in the graphics card's memory: drawn again if the card's context was lost.
+    app.canvas.addEventListener("webglcontextrestored", () => setTimeout(() => { if (this.world) this.buildTerrain(); }));
     setInterval(() => this.keepOnlineGameGoing(), 250);
     this.showMainMenu();
   }
@@ -281,8 +287,28 @@ export class Game {
     this.buildWorld();
   }
 
-  private buildWorld() {
+  /** The ground, in a few big pictures. They are copied into the graphics card's memory and the copies
+   *  drawn here let go: kept twice, they took 40 MB on a Large map and 80 MB on a Gigantic one. A lost
+   *  graphics context takes the card's copies with it, so then the ground is drawn again. */
+  private buildTerrain() {
     this.terrain.removeChildren().forEach((c) => c.destroy({ texture: true }));
+    this.staticRect = null;
+    for (const t of terrainChunks(this.world.map)) {
+      const drawn = new Sprite(t.texture);
+      const texture = this.app.renderer.generateTexture({ target: drawn, resolution: 1 });
+      texture.source.scaleMode = "nearest";
+      drawn.destroy();
+      t.texture.destroy(true);
+      const ground = new Sprite(texture);
+      ground.position.set(t.x, t.y);
+      ground.width = t.w;
+      ground.height = t.h;
+      this.terrain.addChild(ground);
+    }
+  }
+
+  private buildWorld() {
+    this.staticRect = null;
     // The ground under a forest is dark: a floor picture under each tree, which goes when the tree is cut.
     const map = this.world.map;
     this.floors.removeChildren().forEach((c) => c.destroy());
@@ -314,13 +340,7 @@ export class Game {
       this.entities.addChild(sp);
       this.cliffs.push(sp);
     }
-    for (const t of terrainChunks(this.world.map)) {
-      const ground = new Sprite(t.texture);
-      ground.position.set(t.x, t.y);
-      ground.width = t.w;
-      ground.height = t.h;
-      this.terrain.addChild(ground);
-    }
+    this.buildTerrain();
     const n = this.world.map.width;
     // One extra tile of black on every side so the terrain's edge never peeks out. A fresh canvas and
     // texture for each map: resizing the old canvas leaves the GPU copy at the first map's size, and
@@ -1885,8 +1905,8 @@ export class Game {
           if (v && e.wasBuilding && e.owner !== this.me && this.seen.has(e.id) && !this.anyVisible(this.footprintTiles(v))) {
             // Destroyed where the player cannot see: they find out when they look.
             this.ghosts.set(e.id, { view: v, tiles: this.footprintTiles(v) });
-            v.bar.visible = false;
-            v.ring.visible = false;
+            if (v.bar) v.bar.visible = false;
+            if (v.ring) v.ring.visible = false;
             this.views.delete(e.id);
             this.seen.delete(e.id);
             break;
@@ -2024,24 +2044,24 @@ export class Game {
   }
 
   private makeView(e: Entity): View {
-    let pic: Pic, ring: Graphics, barY: number, barW: number;
+    let pic: Pic, makeRing: () => Graphics, barY: number, barW: number;
     const own = e.owner === this.me;
     const ringColor = own ? 0xffffff : e.owner >= 0 ? playerColor(e.owner) : 0xffee55;
     if (e instanceof Unit) {
       pic = unitPic(this.unitLook(e, 0));
       // A flat diamond on the ground under the unit, as the original marks what you picked.
       const big = pic.w > 48, rw = big ? 20 : 12, rh = rw / 2;
-      ring = new Graphics().poly([-rw, 0, 0, -rh, rw, 0, 0, rh]).stroke({ width: 1.5, color: ringColor });
+      makeRing = () => new Graphics().poly([-rw, 0, 0, -rh, rw, 0, 0, rh]).stroke({ width: 1.5, color: ringColor });
       barY = -pic.h * pic.ay - 6; barW = 26;
     } else if (e instanceof Building) {
       pic = this.buildingLook(e);
       const s = e.def.size, w = s * HALF_W, h = s * HALF_H;
-      ring = new Graphics().poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 2, color: ringColor });
+      makeRing = () => new Graphics().poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 2, color: ringColor });
       barY = -pic.h + 34; barW = s * 22;
     } else {
       const r = e as ResourceNode;
       pic = nodePic(r.def.id, this.world.map.shade[this.world.map.index(r.tile)]);
-      ring = new Graphics().ellipse(0, 0, 15, 7.5).stroke({ width: 1.5, color: ringColor });
+      makeRing = () => new Graphics().ellipse(0, 0, 15, 7.5).stroke({ width: 1.5, color: ringColor });
       barY = -pic.h; barW = 0;
     }
     const root = new Container();
@@ -2049,13 +2069,9 @@ export class Game {
     sprite.width = pic.w;
     sprite.height = pic.h;
     sprite.anchor.set(pic.ax, pic.ay);
-    const bar = new Graphics();
-    bar.position.set(-barW / 2, barY);
-    ring.visible = false;
-    bar.visible = false;
-    root.addChild(ring, sprite, bar);
+    root.addChild(sprite);
     this.entities.addChild(root);
-    const v: View = { root, sprite, ring, bar, pic, isUnit: e instanceof Unit, key: "", barW, tiles: e instanceof Building ? e.footprint.tiles() : [], workFrame: -1,
+    const v: View = { root, sprite, ring: null, bar: null, makeRing, barY, pic, isUnit: e instanceof Unit, key: "", barW, tiles: e instanceof Building ? e.footprint.tiles() : [], workFrame: -1,
       farm: e instanceof Building && e.isFarm };
     this.views.set(e.id, v);
     return v;
@@ -2186,19 +2202,62 @@ export class Game {
     this.app.ticker.add(tick);
   }
 
+  /** The part of the scene on the screen, with room for what stands up out of it: a sprite stands above
+   *  its foot, so a tall building whose foot is below the screen's bottom edge still shows. */
+  private visibleRect(extra = 0) {
+    const z = this.cam.zoom, wl = this.worldLayer;
+    return {
+      x0: -wl.x * z - 200 - extra, x1: (this.app.screen.width - wl.x) * z + 200 + extra,
+      y0: -wl.y * z - 120 - extra, y1: (this.app.screen.height - wl.y) * z + 380 + extra,
+    };
+  }
+
+  /** Where the still things were last shown or hidden for: redone when the view has moved well past it. */
+  private staticRect: { x0: number; x1: number; y0: number; y1: number } | null = null;
+
+  /** The ground, the forest floors and the cliffs: only those near the screen are drawn. */
+  private cullStatic() {
+    const r = this.visibleRect(), s = this.staticRect;
+    if (s && r.x0 >= s.x0 && r.x1 <= s.x1 && r.y0 >= s.y0 && r.y1 <= s.y1) return;
+    const b = this.visibleRect(400);
+    this.staticRect = b;
+    const near = (x: number, y: number) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1;
+    for (const f of this.floors.children) f.visible = near(f.x, f.y);
+    for (const c of this.cliffs) {
+      c.visible = near(c.x, c.y);
+      if (c.visible !== !!c.parent) { if (c.visible) this.entities.addChild(c); else this.entities.removeChild(c); }
+    }
+    for (const t of this.terrain.children) t.visible = t.x <= b.x1 && t.x + t.width >= b.x0 && t.y <= b.y1 && t.y + t.height >= b.y0;
+  }
+
   private sync(alpha: number) {
     const selected = new Set(this.selection);
+    // Only what is on the screen is placed and drawn: a big game has thousands of trees, mines and
+    // buildings, and walking through all of them every frame, in the game and in the renderer, was the
+    // most of a frame's time.
+    this.cullStatic();
+    const r = this.visibleRect();
+    const onScreen = (p: Vec2) => {
+      const x = (p.x - p.y) * HALF_W, y = (p.x + p.y) * HALF_H;
+      return x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1;
+    };
+    // Off the screen, out of the scene altogether: the renderer neither walks nor sorts what is not in it.
+    const off = (e: Entity) => { const v = this.views.get(e.id); if (v) { v.root.visible = false; if (v.root.parent) this.entities.removeChild(v.root); } };
     const show = (e: Entity, vis: boolean, frozen = false) => {
       let v = this.views.get(e.id);
       if (!vis) { if (v) v.root.visible = false; return; }
       if (!v) v = this.makeView(e);
       v.root.visible = true;
-      if (!frozen) this.place(v, e, alpha);
+      if (!v.root.parent) this.entities.addChild(v.root);
+      if (!frozen && !v.placed) this.place(v, e, alpha);
+      if (e instanceof ResourceNode) v.placed = true;
       const sel = selected.has(e.id);
-      v.ring.visible = sel;
-      const bw = v.barW;
-      v.bar.visible = sel && bw > 0 && !frozen;
-      if (v.bar.visible) {
+      if (sel && !v.ring) { v.ring = v.makeRing(); v.root.addChildAt(v.ring, 0); }
+      if (v.ring) v.ring.visible = sel;
+      const bw = v.barW, barOn = sel && bw > 0 && !frozen;
+      if (barOn && !v.bar) { v.bar = new Graphics(); v.bar.position.set(-bw / 2, v.barY); v.root.addChild(v.bar); }
+      if (v.bar) v.bar.visible = barOn;
+      if (v.bar && barOn) {
         const f = Math.max(0, e.hp / e.maxHp);
         v.bar.clear().rect(0, 0, bw, 4).fill(0x000000).rect(0, 0, bw * f, 4).fill(f > 0.5 ? 0x33cc33 : f > 0.25 ? 0xdddd33 : 0xdd3333);
       }
@@ -2206,17 +2265,25 @@ export class Game {
     const w = this.world;
     // Passengers are inside their transport, off the map.
     // Ruins never move, so like buildings they stay drawn once found.
-    for (const u of w.units) show(u, u.aboard === null && (u.owner === this.me || this.visible(u.pos.tile) || (u.isRelic && u.def.speed === 0 && this.explored(u.pos.tile))));
+    for (const u of w.units) {
+      if (!onScreen(u.pos)) { off(u); continue; }
+      show(u, u.aboard === null && (u.owner === this.me || this.visible(u.pos.tile) || (u.isRelic && u.def.speed === 0 && this.explored(u.pos.tile))));
+    }
     for (const b of w.buildings) {
-      if (b.owner === this.me || this.revealMap) { show(b, true); continue; }
+      if (b.owner === this.me || this.revealMap) { if (onScreen(b.footprint.center)) show(b, true); else off(b); continue; }
+      // Seen is kept for every building, on the screen or not: it is drawn where it was last seen.
       const now = this.anyVisible(b.footprint.tiles());
       if (now) this.seen.add(b.id);
+      if (!onScreen(b.footprint.center)) { off(b); continue; }
       show(b, now || this.seen.has(b.id), !now);
     }
     for (const [id, g] of this.ghosts) {
       if (this.anyVisible(g.tiles)) { g.view.root.destroy({ children: true }); this.ghosts.delete(id); }
     }
-    for (const n of w.nodes) show(n, this.explored(n.tile));
+    for (const n of w.nodes) {
+      if (!onScreen(n.center)) { off(n); continue; }
+      show(n, this.explored(n.tile));
+    }
   }
 
   // ---- fog and minimap
