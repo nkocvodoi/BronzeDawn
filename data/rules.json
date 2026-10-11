@@ -122,7 +122,9 @@
   "tribute_fee": 0.25,
   "tribute_to_ally": 2600,
   "repair_rate": 0.5,
-  "repair_cost": 0.5
+  "repair_cost": 0.5,
+  "gather_speed": 1.3333,
+  "build_speed": 1.3333
  },
  "nodes": [
   {

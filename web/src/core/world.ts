@@ -1743,7 +1743,7 @@ export class World {
       u.busy = true;
       // Boats gather at their own pace; villagers at the node's or the resource's.
       const base = u.def.gather_rate ?? (src instanceof ResourceNode ? src.def.rate ?? this.rules.gatherRate(res) : this.rules.gatherRate(res));
-      const rate = base * mods.gather(res, kind) * this.players[u.owner].gatherBonus;
+      const rate = base * mods.gather(res, kind) * this.players[u.owner].gatherBonus * (this.rules.economy.gather_speed ?? 1);
       const yieldK = mods.yieldOf(res);
       if (src instanceof ResourceNode) {
         const take = Math.min(rate * dt, src.amount, (capacity - u.carry) / yieldK);
@@ -1879,7 +1879,7 @@ export class World {
     if (a === "arrived") {
       this.face(u, b.center);
       const eco = this.rules.economy;
-      const gain = Math.min(b.maxHp - b.hp, (b.maxHp / this.bstats(b).build_time) * (eco.repair_rate ?? 0.5) * dt);
+      const gain = Math.min(b.maxHp - b.hp, (b.maxHp / (this.bstats(b).build_time * (eco.build_speed ?? 1))) * (eco.repair_rate ?? 0.5) * dt);
       const cost = this.bstats(b).cost, k = (gain / b.maxHp) * (eco.repair_cost ?? 0.5), price = new ResBag();
       for (const r of RES_ALL) price.values[r] = cost.values[r] * k;
       const p = this.players[u.owner];
