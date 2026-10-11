@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-11
 
+- [#63](https://github.com/nkocvodoi/BronzeDawn/pull/63) Xác thú chồng nhau không còn thối mất: xác chỉ thối khi bắt đầu được xẻ; không xoá được Town Center cuối cùng, xoá nhà đã xây phải bấm Delete hai lần
 - [#62](https://github.com/nkocvodoi/BronzeDawn/pull/62) Nhà đổ bóng xuống đất về phía dưới bên phải, tường sáng tối mượt dần thay cho các dải pixel
 - [#61](https://github.com/nkocvodoi/BronzeDawn/pull/61) Không còn đàn thú bị rừng bao kín: chỉ thả và cho gặm cỏ ở đất không có cây, con nào vẫn bị kẹt thì cả đàn được dời ra bãi trống gần nhất
 - [#60](https://github.com/nkocvodoi/BronzeDawn/pull/60) Thuyền, máy bắn đá, tháp công thành và cá sấu vẽ lại thành khối có ánh sáng ở độ phân giải gốc: toàn bộ quân và thú giờ đều theo hình mới

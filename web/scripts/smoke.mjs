@@ -175,6 +175,10 @@ await page.keyboard.up("ArrowRight");
 check((await g(() => game.screenOf(game.world.startTiles[0].center).x)) < cam0 - 50, "arrow keys scroll the map");
 await page.keyboard.press("h");
 check(await g(() => game.world.building(game.selection[0])?.def.id === "town_center"), "H selects the town center");
+await page.keyboard.press("Delete");
+await page.keyboard.press("Delete");
+check(await g(() => game.world.building(game.selection[0])?.alive) && (await page.textContent("#messages")).includes("only Town Center"),
+  "Delete leaves the only town center standing, and says why");
 await page.keyboard.press("?");
 check(await page.isVisible("#overlay .help") && (await g(() => game.paused)), "? shows the controls and pauses");
 await page.keyboard.press("Escape");

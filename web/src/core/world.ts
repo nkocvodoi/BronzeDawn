@@ -1045,10 +1045,19 @@ export class World {
     if (b && b.owner === player) b.rally = to;
   }
 
+  /** Why a player may not delete this, or null. A player's last standing Town Center stays: deleting it
+   *  by mistake ends any hope of more villagers. */
+  blockerDestroy(player: number, e: Entity): string | null {
+    if (e.owner !== player || (e instanceof Unit && e.isRelic)) return "Not yours to delete";
+    if (e instanceof Building && e.complete && e.def.id === "town_center" &&
+        !this.buildingsOf(player).some((b) => b !== e && b.complete && b.def.id === "town_center")) return "Your only Town Center cannot be deleted";
+    return null;
+  }
+
   /** The Delete key. An unfinished foundation gives back half of the part not yet built, as in the original. */
   destroy(player: number, id: number) {
     const e = this.entity(id);
-    if (!e || e.owner !== player || (e instanceof Unit && e.isRelic)) return;
+    if (!e || this.blockerDestroy(player, e)) return;
     if (e instanceof Building && !e.complete) {
       const back = this.buildingCost(player, e.def.id);
       const out = new ResBag();
@@ -1104,7 +1113,7 @@ export class World {
     for (const b of this.buildings) if (b.alive) this.updateBuilding(b, dt);
     for (const u of this.units) if (u.alive && u.aboard === null) this.updateUnit(u, dt);
     for (const n of this.nodes) {
-      if (n.alive && n.decay > 0) { n.amount -= n.decay * dt; if (n.amount <= 0) this.removeNode(n); }
+      if (n.alive && n.decay > 0 && n.opened) { n.amount -= n.decay * dt; if (n.amount <= 0) this.removeNode(n); }
     }
     this.updateMissiles(dt);
     this.separate();
@@ -1739,6 +1748,7 @@ export class World {
       if (src instanceof ResourceNode) {
         const take = Math.min(rate * dt, src.amount, (capacity - u.carry) / yieldK);
         src.amount -= take;
+        src.opened = true;
         u.carry += take * yieldK;
         if (src.amount <= 0.0001) this.removeNode(src);
       } else if (src instanceof Building) {
@@ -1777,7 +1787,9 @@ export class World {
     const type = u.lastNodeType;
     if (type?.startsWith("carcass_")) {
       const animal = type.slice("carcass_".length);
-      const meat = this.nodes.find((n) => n.alive && n.def.id === type && n.at.distance(u.pos) < 8);
+      // One already begun first: it is the one rotting.
+      const near = (n: ResourceNode) => n.alive && n.def.id === type && n.at.distance(u.pos) < 8;
+      const meat = this.nodes.find((n) => near(n) && n.opened) ?? this.nodes.find(near);
       if (meat) return { kind: "gather", id: meat.id };
       let best: Unit | null = null, bestD = 10;
       for (const o of this.units) {
