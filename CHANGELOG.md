@@ -6,6 +6,10 @@ liệu đo, cách kiểm tra) nằm trong mô tả của từng PR. Danh sách t
 
 Mỗi PR mới thêm một dòng vào đầu danh sách.
 
+## 2026-10-12
+
+- [#66](https://github.com/nkocvodoi/BronzeDawn/pull/66) Đảo phụ của Small Islands có rừng; máy biết chở dân sang đảo khác đốn gỗ khi đảo nhà sắp hết cây, hết rừng thì sang đảo tiếp hoặc về nhà
+
 ## 2026-10-11
 
 - [#65](https://github.com/nkocvodoi/BronzeDawn/pull/65) Thu hoạch và xây dựng nhanh hơn: chỉ còn 3/4 thời gian cho mọi người; máy Hard/Hardest thu hoạch nhanh hơn 15% (trước là 20%) và biết đóng lính phòng thủ thay vì giữ tiền lên đời

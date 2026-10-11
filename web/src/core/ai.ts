@@ -199,6 +199,18 @@ export class AIController {
   /** A wave on its way by sea: everyone who is to go, the transports shuttling them, the beach on the far
    *  shore where they gather until all are over, and when the last transport sailed. */
   private ferry: { ids: number[]; transports: number[]; beach: Vec2; target: Vec2; home: Vec2; since: number; sailed: number } | null = null;
+  /** Villagers on their way to cut wood on another island, once home's trees run low: who goes, the
+   *  transport, the land they leave (and where it picks them up, if not at home), the beach they land on
+   *  and the woods they settle by (none when they go home). */
+  private colony: { ids: number[]; transport: number; beach: Vec2; site: Vec2; from: Uint8Array; pickup: Vec2 | null; woods: Vec2 | null; since: number; sailed: number } | null = null;
+  /** Whether wood is being kept for a Storage Pit on another island (home's trees low, none settled). */
+  private colonyWood = false;
+  /** The woods on another island villagers were last taken to. */
+  private colonySite: Vec2 | null = null;
+  /** Home's island, by its ground alone (trees and buildings not counted): it does not change. */
+  private island: { seen: Uint8Array; from: number } | null = null;
+  /** The land a villager away from home stands on (worked out now and then). */
+  private awayLand: { seen: Uint8Array; at: number } | null = null;
   /** Across the sea from the enemy, with no transport yet. */
   private needsFerry = false;
   /** Across the sea from the enemy at all: then the bigger transports are worth researching. */
@@ -259,6 +271,7 @@ export class AIController {
 
   /** Starts a wave by sea. The whole wave goes, in as many trips as it takes. */
   private startFerry(w: World, home: Vec2, target: Vec2, ids: number[]): boolean {
+    if (this.colony) return false; // the transport is taking villagers to the woods
     const transports = w.unitsOf(this.player).filter((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle");
     this.needsFerry = !w.unitsOf(this.player).some((u) => u.isTransport);
     if (!transports.length) { this.trainTransport(w); return false; }
@@ -312,7 +325,7 @@ export class AIController {
 
   /** Where a wave lands: a shore of the enemy's land, near enough to walk to its base but not under its
    *  towers, on the side facing home. */
-  private beachFor(w: World, home: Vec2, target: Vec2, boat: Vec2): Vec2 | null {
+  private beachFor(w: World, home: Vec2, target: Vec2, boat: Vec2, keepOff = true): Vec2 | null {
     const map = w.map, sea = this.seaFrom(w, boat);
     const onSea = (t: Tile) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const o = new Tile(t.x + dx, t.y + dy); return map.inside(o) && sea[map.index(o)] === 1; });
     const far = map.reachable(map.nearestPassable(target.tile, 4) ?? target.tile, (id) => w.building(id) !== null);
@@ -321,7 +334,7 @@ export class AIController {
       const t = new Tile(x, y);
       if (!far[map.index(t)] || !map.coastal(t) || !onSea(t)) continue;
       const d = t.center.distance(target);
-      const score = t.center.distance(home) + (d < 12 ? 40 : 0) + Math.max(0, d - 26);
+      const score = keepOff ? t.center.distance(home) + (d < 12 ? 40 : 0) + Math.max(0, d - 26) : d;
       if (score < bestScore) { bestScore = score; best = t; }
     }
     return best?.center ?? null;
@@ -369,6 +382,155 @@ export class AIController {
     }
   }
 
+  /** Whether a point is on home's island. Unlike byLand, the trees deep in a wood count as home too. */
+  private onIsland(w: World, home: Vec2, p: Vec2) {
+    const from = w.map.nearestPassable(home.tile, 4) ?? home.tile, key = w.map.index(from);
+    if (!this.island || this.island.from !== key) this.island = { seen: w.map.reachable(from, () => true), from: key };
+    return this.island.seen[w.map.index(p.tile)] === 1;
+  }
+
+  /** Whether two points away from home lie on the same land. */
+  private sameLand(w: World, from: Vec2, p: Vec2) {
+    const a = w.map.nearestPassable(from.tile, 2) ?? from.tile;
+    if (!this.awayLand || this.thinks - this.awayLand.at >= 60 || !this.awayLand.seen[w.map.index(a)]) {
+      this.awayLand = { seen: w.map.reachable(a, (id) => w.building(id) !== null), at: this.thinks };
+    }
+    const b = w.map.nearestPassable(p.tile, 2) ?? p.tile;
+    return this.awayLand.seen[w.map.index(b)] === 1;
+  }
+
+  /** On an island map, when the trees at home run low (an island's are soon cut, and the town stands idle
+   *  with nothing left to gather), a transport takes villagers to woods on another island, away from the
+   *  enemy, where they put up a Storage Pit and cut. More follow while there are idle hands at home; and
+   *  when those woods are cut too, the idle there go on to the next, or home. */
+  private settle(w: World, home: Vec2, villagers: Unit[]) {
+    if (this.colony) { this.runColony(w, home); return; }
+    if (this.ferry || this.thinks % 10 !== 0 || w.players[this.player].age < 1) return;
+    const free = villagers.filter((u) => u.aboard === null);
+    const atHome = free.filter((u) => this.onIsland(w, home, u.pos) && this.byLand(w, home, u.pos));
+    const away = free.filter((u) => !this.onIsland(w, home, u.pos));
+    const woodHome = w.nodes.reduce((s, n) => s + (n.alive && n.res === Res.wood && !n.def.on_water && this.onIsland(w, home, n.center) ? n.amount : 0), 0);
+    this.colonyWood = woodHome < 1500;
+    const transport = () => w.unitsOf(this.player).find((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle");
+    const pitCost = w.buildingCost(this.player, "storage_pit");
+
+    // Over there with nowhere to take what they cut (the Storage Pit could not be paid for, or was
+    // destroyed): one goes up by them if it can be paid for now.
+    const drops = w.buildingsOf(this.player).filter((b) => b.dropsOff(Res.wood));
+    // Wood for a Storage Pit over there (unless one stands by those woods), or they would cut and have
+    // nowhere to take it.
+    const pitThere = (at: Vec2) => drops.some((b) => b.center.distance(at) < 10);
+    const stuck = away.filter((u) => u.order.kind === "return" && !drops.some((b) => b.center.distance(u.pos) < 25 && this.sameLand(w, u.pos, b.center)));
+    if (stuck.length && w.players[this.player].res.covers(pitCost)) {
+      const spot = this.findSpot(w, "storage_pit", stuck[0].pos, 1, 6, false);
+      if (spot) { w.place(this.player, "storage_pit", spot, stuck.map((u) => u.id)); return; }
+    }
+    // Idle over there, the woods cut (or stuck with no pit): on to the next, or home.
+    const idleAway = away.filter((u) => u.order.kind === "idle" || stuck.includes(u));
+    if (idleAway.length >= 3) {
+      const t = transport();
+      if (!t) { this.trainTransport(w); return; }
+      const from = w.map.reachable(w.map.nearestPassable(idleAway[0].pos.tile, 2) ?? idleAway[0].pos.tile, () => true);
+      const woods = this.findWoods(w, home, from);
+      const site = woods && (pitThere(woods) || w.players[this.player].res.wood >= pitCost.wood + 10) ? woods : home;
+      const go = idleAway.filter((u) => from[w.map.index(u.pos.tile)]);
+      this.sail(w, home, t, go, site, from, site === home ? null : site);
+      return;
+    }
+
+    const idle = atHome.filter((u) => u.order.kind === "idle");
+    if (!(woodHome < 1500 && away.length < 6) && idle.length < 3) return;
+    const t = transport();
+    if (!t) { this.trainTransport(w); return; }
+    const island = this.island!.seen;
+    const site = this.colonySite && this.woodNear(w, this.colonySite) >= 300 ? this.colonySite : this.findWoods(w, home, island);
+    if (!site || (!pitThere(site) && w.players[this.player].res.wood < pitCost.wood + 10)) return;
+    // The idle first, then woodcutters, then anyone gathering; builders stay.
+    const rank = (u: Unit) => (u.order.kind === "idle" ? 0 : u.lastGather === Res.wood ? 1 : u.order.kind === "gather" || u.order.kind === "return" ? 2 : 9);
+    this.sail(w, home, t, atHome.filter((u) => rank(u) < 9).sort((a, b) => rank(a) - rank(b)), site, island, site);
+  }
+
+  /** Sets a trip going: up to a load of `who`, from the land `from`, to `site` (woods, or home). */
+  private sail(w: World, home: Vec2, t: Unit, who: Unit[], site: Vec2, from: Uint8Array, woods: Vec2 | null) {
+    const go = who.slice(0, t.def.capacity ?? 5);
+    if (go.length < 3) return;
+    const beach = this.beachFor(w, site, site, t.pos, false);
+    if (!beach) return;
+    // Where the transport waits for them: by home's shore, or the water nearest them on their island.
+    const pickup = this.onIsland(w, home, go[0].pos) ? null : this.waterBeside(w, go[0].pos, t.pos);
+    if (!this.onIsland(w, home, go[0].pos) && !pickup) return;
+    this.colony = { ids: go.map((u) => u.id), transport: t.id, beach, site, from, pickup, woods, since: w.time, sailed: w.time };
+    if (woods) this.colonySite = woods;
+  }
+
+  /** Open water a boat can reach, nearest a point on land. */
+  private waterBeside(w: World, p: Vec2, boat: Vec2): Vec2 | null {
+    const sea = this.seaFrom(w, boat);
+    let best: Tile | null = null, bestD = Infinity;
+    for (let y = 0; y < w.map.height; y++) for (let x = 0; x < w.map.width; x++) {
+      const t = new Tile(x, y);
+      if (!sea[w.map.index(t)] || w.map.terrainAt(t) !== Terrain.water || w.map.solidAt(t)) continue;
+      const d = t.center.distance(p);
+      if (d < bestD) { bestD = d; best = t; }
+    }
+    return best?.center ?? null;
+  }
+
+  private woodNear(w: World, at: Vec2) {
+    return w.nodes.reduce((s, n) => s + (n.alive && n.res === Res.wood && n.center.distance(at) <= 8 ? n.amount : 0), 0);
+  }
+
+  /** Woods on another island (not home's, nor the land `not`): the nearest stand of trees well away from
+   *  enemy buildings. */
+  private findWoods(w: World, home: Vec2, not: Uint8Array): Vec2 | null {
+    const trees = w.nodes.filter((n) => n.alive && n.res === Res.wood && !n.def.on_water && !this.onIsland(w, home, n.center) && !not[w.map.index(n.tile)]);
+    const enemy = w.buildings.filter((b) => b.alive && w.isEnemy(this.player, b.owner));
+    const ok = trees.filter((n) => !enemy.some((b) => b.distance(n.center) < 18)).sort((a, b) => a.center.distance(home) - b.center.distance(home));
+    // Enough trees, and open ground beside them for a Storage Pit (it need not have been seen yet: the
+    // villagers see it when they land).
+    const open = (c: Tile) => { let k = 0; for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) if (w.map.passable(new Tile(c.x + dx, c.y + dy))) k++; return k; };
+    for (const n of ok.slice(0, 60)) if (this.woodNear(w, n.center) >= 600 && open(n.tile) >= 16) return n.center;
+    return null;
+  }
+
+  /** Each think while villagers cross: board, sail when all are on (or after a while), land; then, at
+   *  woods, a Storage Pit by the trees, built by all of them, and to work. */
+  private runColony(w: World, home: Vec2) {
+    const c = this.colony!;
+    const t = w.unit(c.transport);
+    const alive = c.ids.map((id) => w.unit(id)).filter((u): u is Unit => !!u);
+    const over = (u: Unit) => u.aboard === null && !c.from[w.map.index(u.pos.tile)];
+    const landed = alive.filter(over), aboard = alive.filter((u) => u.aboard !== null);
+    const waiting = alive.filter((u) => u.aboard === null && !over(u));
+    if (!t || !alive.length || w.time - c.since > 300) {
+      // Sunk, or taking far too long: whoever is over stays and works; the rest go back to work.
+      this.colony = null;
+      if (t && t.cargo.length && t.unloadAt === null) w.unload(this.player, [t.id], c.beach);
+      return;
+    }
+    if (!waiting.length && !aboard.length) {
+      this.colony = null;
+      if (!c.woods) return; // home: back to work there
+      const pits = () => w.buildingsOf(this.player).filter((b) => b.dropsOff(Res.wood) && b.center.distance(c.woods!) < 10);
+      // All of them build it (they still carry what they cut before, so the usual pick of a builder with
+      // empty hands would find none).
+      const spot = pits().length || !landed.length ? null : this.findSpot(w, "storage_pit", c.woods, 2, 7, false);
+      if (spot) w.place(this.player, "storage_pit", spot, landed.map((u) => u.id));
+      const pit = pits().find((b) => !b.complete);
+      if (pit) w.build(this.player, landed.map((u) => u.id), pit.id);
+      return;
+    }
+    if (t.cargo.length) {
+      if (t.unloadAt === null && t.order.kind === "idle" && (!waiting.length || w.time - c.sailed > 40)) { w.unload(this.player, [t.id], c.beach); c.sailed = w.time; }
+      return;
+    }
+    if (t.unloadAt !== null) return;
+    const shore = c.pickup ?? this.homeLanding(w, home, t.pos)?.center ?? null;
+    if (t.order.kind === "idle" && shore && t.pos.distance(shore) > 3) w.move(this.player, [t.id], shore);
+    const take = waiting.filter((u) => u.order.kind !== "board");
+    if (take.length) { w.board(this.player, take.map((u) => u.id), t.id); c.sailed = w.time; }
+  }
+
   private count(bs: Building[], type: string) { return bs.filter((b) => b.def.id === type).length; }
 
   /** Food and gold held back for the next age once its buildings stand, so other spending does not eat it. */
@@ -377,6 +539,8 @@ export class AIController {
     // Across the sea, a transport comes before everything else once the first attack draws near: without
     // one the army never leaves home, and an island's wood is soon spent on other things.
     if (this.wantsTransport(w)) keep.add(w.unitCost(this.player, w.current(this.player, "light_transport")));
+    // Home's trees running out and no woods settled yet: the wood for a Storage Pit over the sea is kept.
+    if (this.colonyWood) keep.add(w.buildingCost(this.player, "storage_pit"));
     return keep;
   }
 
@@ -487,6 +651,7 @@ export class AIController {
       this.placeNear(w, "farm", granary, 3, 10, villagers, false);
     }
 
+    if (this.acrossSea) this.settle(w, home, villagers);
     this.assignIdle(w, home, villagers);
     this.finishAbandoned(w, villagers, bs);
     this.rebalance(w, villagers, home, this.thinks % 3 === 0 ? 1.5 : 3);
@@ -529,6 +694,13 @@ export class AIController {
 
   /** Puts a villager on a resource: a free farm, meat on the ground, berries, game to hunt, or the nearest node. */
   private sendTo(w: World, u: Unit, r: Res, home: Vec2): boolean {
+    // A villager taken to another island works there: what its own island has, near where it stands.
+    if (this.acrossSea && u.aboard === null && !this.onIsland(w, home, u.pos)) {
+      const n = minBy(w.nodes.filter((x) => x.alive && x.res === r && !x.def.boats_only && !x.def.on_water && x.amount > 0 && x.center.distance(u.pos) <= 30
+        && w.mayTry(this.player, x) && this.sameLand(w, u.pos, x.center)), (x) => x.center.distance(u.pos));
+      if (n) { w.gather(this.player, [u.id], n.id); return true; }
+      return false;
+    }
     if (r === Res.food) {
       const farm = w.freeFarm(this.player, home);
       if (farm) { w.gather(this.player, [u.id], farm.id); return true; }
@@ -902,12 +1074,10 @@ export class AIController {
 
   private placeNear(w: World, type: string, near: Vec2, minR: number, maxR: number, villagers: Unit[], margin = true) {
     if (w.blockerBuilding(type, this.player) !== null) return;
-    // Across the sea, the wood held back for a transport is not spent on buildings either.
-    if (this.wantsTransport(w)) {
-      const need = w.buildingCost(this.player, type);
-      need.add(w.unitCost(this.player, w.current(this.player, "light_transport")));
-      if (!w.players[this.player].res.covers(need)) return;
-    }
+    // Across the sea, the wood held back (for a transport, or a Storage Pit on another island once home's
+    // trees run low) is not spent on buildings either: spent on farms and houses, it left villagers over
+    // there with nowhere to take their wood and no transport to fetch them.
+    if (this.acrossSea && !this.affordable(w, w.buildingCost(this.player, type))) return;
     const builder = this.pickBuilder(villagers, near);
     if (!builder) return;
     const spot = this.findSpot(w, type, near, minR, maxR, margin);

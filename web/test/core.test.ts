@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RULES } from "../src/core/data";
-import { Tile, Vec2 } from "../src/core/geom";
+import { Footprint, Tile, Vec2 } from "../src/core/geom";
 import type { Unit } from "../src/core/entities";
 import { Terrain } from "../src/core/grid";
 import { Res } from "../src/core/rules";
@@ -949,6 +949,37 @@ describe("the original's rules", () => {
       expect(w.nodes.some((n) => n.def.id === "deep_fish"), mapType).toBe(true);
     }
   });
+
+  it("Small Islands: the islands nobody starts on have woods to settle", () => {
+    for (const seed of [1, 2, 3]) {
+      const w = new World(RULES, seed, ["A", "B"], 72, true, { mapType: "small_islands" });
+      const home = new Uint8Array(w.map.width * w.map.height);
+      for (const s of w.startTiles) { const r = w.map.reachable(s, () => true); for (let i = 0; i < r.length; i++) if (r[i]) home[i] = 1; }
+      const spare = w.nodes.filter((n) => n.alive && n.def.resource === "wood" && !n.def.on_water && !home[w.map.index(n.tile)]);
+      expect(spare.reduce((a, n) => a + n.amount, 0), `seed ${seed}`).toBeGreaterThan(3000);
+    }
+  });
+
+  it("on an island map the AI takes villagers to woods on another island when home's run low", () => {
+    const w = new World(RULES, 1, ["A", "B"], 72, true, { mapType: "small_islands" });
+    const tc = w.buildingsOf(0).find((b) => b.def.id === "town_center")!;
+    const island = w.map.reachable(w.startTiles[0], () => true);
+    // Home's woods cut down to the nearest thousand or so: the island is nearly spent.
+    const trees = w.nodes.filter((n) => n.alive && n.res === Res.wood && island[w.map.index(n.tile)]).sort((a, b) => a.center.distance(tc.center) - b.center.distance(tc.center));
+    let kept = 0;
+    for (const n of trees) { if (kept < 1200) kept += n.amount; else n.amount = 0; }
+    w.nodes = w.nodes.filter((n) => n.amount > 0);
+    for (const n of trees) if (n.amount === 0) { n.alive = false; w.map.setOccupant(new Footprint(n.tile, 1), 0); }
+    w.ais = [new AIController(0, "hard")];
+    w.ais[0].attach(w);
+    let away = 0;
+    for (let i = 0; i < (30 * 60) / World.dt && away < 3; i++) {
+      w.step();
+      w.events.length = 0;
+      if (w.tick % 200 === 0) away = w.unitsOf(0).filter((u) => u.isVillager && u.aboard === null && !island[w.map.index(u.pos.tile)]).length;
+    }
+    expect(away).toBeGreaterThanOrEqual(3);
+  }, 120_000);
 
   it("trade: a trade boat sails to another player's Dock and brings gold home, more the further it goes", () => {
     const w = blank(60);
