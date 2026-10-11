@@ -10,7 +10,7 @@ import { MAP_TYPES, MapType } from "../core/mapgen";
 import { SmartResult, Stance, STANCES, Victory, WinHow, World, WorldOptions } from "../core/world";
 import { loadWorld, SaveFile, saveWorld } from "../core/save";
 import { Command as Order, CommandResult, runCommand } from "../core/commands";
-import { GUEST_BUFFER, LockstepGuest, LockstepHost, TURN_TICKS } from "../core/net";
+import { LockstepGuest, LockstepHost, TURN_TICKS } from "../core/net";
 import { Conn, HAS_RELAY, joinRoom, Peer, Room } from "./rtc";
 import { canStart, CHAT_MAX, cleanName, LobbySettings, LobbyState, lobbyHtml, Seat, seated, SEATS } from "./lobby";
 import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
@@ -501,8 +501,50 @@ export class Game {
     if (!this.net) return runCommand(this.world, this.me, c);
     const why = this.preview(c);
     const blocked = typeof why === "string" && c.k !== "smart" || (typeof why === "object" && why !== null && "error" in why) || why === false;
-    if (!blocked) this.net.issue(c);
+    if (!blocked) {
+      if (c.k === "smart" || c.k === "move") this.headStart(c.ids, c.k === "smart" && c.target !== null ? this.world.entity(c.target)?.center ?? new Vec2(c.x, c.y) : new Vec2(c.x, c.y), this.net.nextOrderTurn);
+      this.net.issue(c);
+    }
     return why;
+  }
+
+  /** Online, units sent somewhere set off at once on the screen, before the order's turn comes round on
+   *  every machine; then they ease back into where the game has them. Only the picture moves: the game
+   *  itself waits for the turn, the same on every machine. */
+  private leads = new Map<number, { to: Vec2; t0: number; turn: number; off: Vec2; t1: number }>();
+  /** How far ahead of the game a unit may be drawn, in tiles, and how long it takes to ease back (ms). */
+  private static readonly LEAD_MAX = 0.8;
+  private static readonly LEAD_EASE = 250;
+
+  private headStart(ids: number[], to: Vec2, turn: number) {
+    const now = performance.now();
+    for (const id of ids) {
+      const u = this.world.unit(id);
+      if (!u || u.owner !== this.me || u.aboard !== null || this.world.stats(u).speed <= 0) continue;
+      // A unit already set off keeps the ground it has gained.
+      const was = this.leads.get(id);
+      this.leads.set(id, { to, t0: now, turn, off: was ? this.leadOffset(u, was, now) : new Vec2(0, 0), t1: 0 });
+    }
+  }
+
+  /** How far from the game's place a unit is drawn now (and forgets a head start once it has eased back). */
+  private leadOffset(u: Unit, lead: { to: Vec2; t0: number; turn: number; off: Vec2; t1: number }, now: number, at = u.pos): Vec2 {
+    if (this.net && this.net.turn < lead.turn) {
+      // The order is on its way: walk towards where it sends them, a little, from the head start so far.
+      const d = lead.to.sub(at.add(lead.off));
+      const len = d.length;
+      const step = Math.min(this.world.stats(u).speed * this.speed * (now - lead.t0) / 1000, Math.max(0, len - 0.5));
+      lead.t0 = now;
+      if (len > 0.01 && step > 0) lead.off = lead.off.add(d.mul(step / len));
+      const n = lead.off.length;
+      if (n > Game.LEAD_MAX) lead.off = lead.off.mul(Game.LEAD_MAX / n);
+      return lead.off;
+    }
+    // The order runs now: ease back into the game's place as the unit sets off there too.
+    if (!lead.t1) lead.t1 = now;
+    const k = 1 - (now - lead.t1) / Game.LEAD_EASE;
+    if (k <= 0) { this.leads.delete(u.id); return new Vec2(0, 0); }
+    return lead.off.mul(k);
   }
 
   /** What an order will say, without running it (for playing online). */
@@ -549,29 +591,27 @@ export class Game {
   private lastNetStep = 0;
 
   /** One frame of an online game. The world moves in lockstep: as fast as the clock says, but only as far
-   *  as the turns allow. Menus do not pause it; only the host can (F3). A guest that has fallen behind
-   *  catches up. When it must wait for the other side it says so, rather than looking frozen. */
+   *  as the turns allow. Menus do not pause it; only the host can (F3). A machine that has fallen behind
+   *  catches up. When it must wait for the others it says so, rather than looking frozen. */
   private netFrame(dt: number, hidden = false) {
     const net = this.net;
     if (!net || this.netFailed) return;
     try {
       this.accumulator += dt * this.speed;
-      const behind = net instanceof LockstepGuest ? Math.max(0, net.buffered - (hidden ? 0 : GUEST_BUFFER)) * TURN_TICKS : 0;
+      const behind = (hidden ? net.ahead : net.behind) * TURN_TICKS;
       const maxSteps = Math.ceil((hidden ? 120 : 6) * this.speed) + behind;
       let steps = 0;
       while ((this.accumulator >= World.dt || steps < behind) && steps < maxSteps && net.stepTick()) {
         this.accumulator = Math.max(0, this.accumulator - World.dt); steps++;
       }
-      const waiting = steps === 0 && this.accumulator >= World.dt && !(net instanceof LockstepHost && this.hostPaused);
+      const waiting = steps === 0 && this.accumulator >= World.dt && !this.hostPaused;
       if (this.accumulator > World.dt * 2) this.accumulator = World.dt; // waiting for a turn: do not race when it comes
       const now = performance.now();
       if (!waiting) this.waitingSince = 0;
       else if (!this.waitingSince) this.waitingSince = now;
       else if (now - this.waitingSince > 1500 && now - this.waitSaid > 4000) {
         this.waitSaid = now;
-        this.hud.message(net instanceof LockstepHost
-          ? "Waiting for the other players' games to catch up (is a window hidden, or the connection slow?)"
-          : "Waiting for the host's game (is the host's window hidden, or the connection slow?)", "warn");
+        this.hud.message("Waiting for the other players' games (is a window hidden, or the connection slow?)", "warn");
       }
       if (net.desync !== null && !this.desyncShown) {
         this.desyncShown = true;
@@ -635,23 +675,28 @@ export class Game {
     this.me = me; this.watching = false; this.watchAll = false; this.revealMap = false; this.ended = false;
     this.seed = setup.seed; this.mapSize = setup.size; this.hostPaused = false; this.desyncShown = false; this.netFailed = false;
     this.useWorld(w);
+    this.leads.clear();
     let net: LockstepHost | LockstepGuest;
     if (!host && this.online?.role === "host") {
       const h = new LockstepHost(w, me);
+      h.turnMs = 100 / setup.speed;
       for (const f of this.online.friends.filter((x) => x.slot > 0)) {
         h.addGuest(f.slot, f.peer.link);
         f.peer.onClose = () => { h.dropGuest(f.slot); this.hud.message(`${w.players[f.slot].name} has left the game; their people stay where they are`, "warn"); };
+        if (!f.peer.open) h.dropGuest(f.slot); // gone before the game began: not waited for
+
       }
       net = h;
     } else {
-      const g = new LockstepGuest(w, me, host!.link);
+      const computers = new Set(setup.ais.map(([p]) => p));
+      const g = new LockstepGuest(w, me, host!.link, setup.names.map((_, i) => i).filter((i) => !computers.has(i)));
       host!.onClose = () => this.hud.message("The host has left: the game cannot go on", "warn");
       net = g;
     }
     net.onOther = (m) => {
       const msg = m as { t?: string; v?: number; on?: boolean };
       if (msg.t === "speed" && typeof msg.v === "number") { this.speed = msg.v; this.hud.speed(msg.v); this.hud.message(`The host set the speed to ${msg.v}x`); }
-      if (msg.t === "paused") this.hud.message(msg.on ? "The host has paused the game" : "The host has resumed the game");
+      if (msg.t === "paused") { this.hostPaused = !!msg.on; this.hud.message(msg.on ? "The host has paused the game" : "The host has resumed the game"); }
     };
     this.net = net;
     this.speed = setup.speed; this.hud.speed(setup.speed);
@@ -1628,11 +1673,12 @@ export class Game {
   }
 
   /** How a unit looks this frame: facing, pose, animation frame, the tool in hand, what it carries. */
-  private unitLook(u: Unit, alpha: number): UnitLook {
+  private unitLook(u: Unit, alpha: number, heading: Vec2 | null = null): UnitLook {
     const time = this.world.time + alpha * World.dt;
-    const facing: Facing = u.facing.x + u.facing.y < -0.2 ? "back" : "front"; // heading up the screen
-    const moving = u.prevPos.distance(u.pos) > 0.001;
-    const pose: Pose = u.busy ? "work" : moving ? "walk" : "idle";
+    const face = heading ?? u.facing;
+    const facing: Facing = face.x + face.y < -0.2 ? "back" : "front"; // heading up the screen
+    const moving = !!heading || u.prevPos.distance(u.pos) > 0.001;
+    const pose: Pose = u.busy && !heading ? "work" : moving ? "walk" : "idle";
     const frame = pose === "walk" ? Math.floor(time * 8 + u.id) % 4 : pose === "work" ? Math.floor(time * 5 + u.id) % 3 : 0;
     let tool: Tool = "none";
     if (u.isVillager) {
@@ -1648,7 +1694,7 @@ export class Game {
       }
     }
     const carry = u.isVillager && u.carry >= 1 && u.carryRes !== null && pose !== "work" ? u.carryRes : null;
-    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry, dir: screenDirection(u.facing.x, u.facing.y), t: time + u.id * 0.37, civ: this.civId(u.owner) };
+    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry, dir: screenDirection(face.x, face.y), t: time + u.id * 0.37, civ: this.civId(u.owner) };
   }
 
   private puff(at: Vec2, big: boolean) {
@@ -1758,11 +1804,20 @@ export class Game {
 
   private place(v: View, e: Entity, alpha: number) {
     if (e instanceof Unit) {
-      const p = e.prevPos.lerp(e.pos, alpha);
+      let p = e.prevPos.lerp(e.pos, alpha);
+      // A head start (online): drawn walking ahead until the order's turn comes.
+      const lead = this.leads.get(e.id);
+      let heading: Vec2 | null = null;
+      if (lead) {
+        const pending = !!this.net && this.net.turn < lead.turn;
+        const off = this.leadOffset(e, lead, performance.now(), p);
+        if (pending) { const d = lead.to.sub(p.add(off)); if (d.length > 0.3) heading = d.mul(1 / d.length); }
+        p = p.add(off);
+      }
       const s = iso(p);
       v.root.position.set(Math.round(s.x / 2) * 2, Math.round(s.y / 2) * 2);
       v.root.zIndex = depth(p) + 0.3;
-      const look = this.unitLook(e, alpha);
+      const look = this.unitLook(e, alpha, heading);
       this.setPic(v, unitPic(look));
       // Each swing of a villager's tool makes its sound, as the axe, pick or hoe comes down.
       const wf = look.pose === "work" ? look.frame : -1;
@@ -1772,7 +1827,7 @@ export class Game {
       }
       v.workFrame = wf;
       // A sprite sheet has its own directions and says which are mirrored; drawn units face left or right.
-      const dx = e.facing.x - e.facing.y;
+      const dx = (heading ?? e.facing).x - (heading ?? e.facing).y;
       if (v.pic.asset) v.sprite.scale.x = Math.abs(v.sprite.scale.x) * (v.pic.flip ? -1 : 1);
       else if (Math.abs(dx) > 0.2) v.sprite.scale.x = Math.abs(v.sprite.scale.x) * (dx < 0 ? -1 : 1);
     } else if (e instanceof Building) {
@@ -2663,7 +2718,7 @@ export class Game {
     this.speed = sp[next];
     this.hud.speed(this.speed);
     this.hud.message(`Game speed ${this.speed}x`);
-    if (this.net instanceof LockstepHost) this.net.broadcast({ t: "speed", v: this.speed });
+    if (this.net instanceof LockstepHost) { this.net.broadcast({ t: "speed", v: this.speed }); this.net.turnMs = 100 / this.speed; }
   }
 
   private selectIdleVillager() {
