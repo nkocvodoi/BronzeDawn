@@ -754,6 +754,58 @@ describe("the original's rules", () => {
     }
   });
 
+  it("wild animals start, and herds graze, on open land: not on a narrow strip that is drawn like an islet", () => {
+    // Most of the 5 x 5 tiles around are land: the smooth coast draws a strip or a spit as a speck of sand.
+    const open = (w: World, t: Tile) => { let n = 0; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (w.map.terrainAt(new Tile(t.x + dx, t.y + dy)) !== Terrain.water) n++; return n; };
+    for (const mapType of ["small_islands", "large_islands", "mediterranean", "coastal"] as const) {
+      for (const seed of [1, 2, 3]) {
+        const w = new World(RULES, seed, ["A", "B"], 96, true, { mapType });
+        for (const u of w.units) if (u.isAnimal && u.def.id !== "alligator") expect(open(w, u.pos.tile), `${mapType} ${seed} ${u.def.id} at ${u.pos.tile.x},${u.pos.tile.y}`).toBeGreaterThanOrEqual(13);
+      }
+    }
+    // Left alone for five minutes, the herds of an island map stay on open land.
+    const w = new World(RULES, 1, ["A", "B"], 96, true, { mapType: "small_islands" });
+    const gazelles = w.units.filter((u) => u.animal?.id === "gazelle");
+    expect(gazelles.length).toBeGreaterThan(20);
+    run(w, 300);
+    expect(gazelles.filter((g) => g.alive && open(w, g.pos.tile) < 10).length).toBeLessThanOrEqual(1);
+  });
+
+  it("a villager sent to trees it cannot reach does not search for a way every step", () => {
+    // Trees across a channel of water, within ten tiles: none can be reached. A villager sent to one used
+    // to turn to the next nearest, and back, a whole search every step (a big game slowed to 20 ms a step).
+    const w = blank(24);
+    for (let y = 0; y < 24; y++) for (let x = 8; x <= 9; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    w.addBuilding("storage_pit", 0, new Tile(2, 10), true);
+    for (let y = 9; y <= 13; y++) for (let x = 11; x <= 12; x++) w.addNode("tree", new Tile(x, y));
+    const v = w.spawnUnit("villager", 0, new Tile(6, 11).center);
+    const pf = (w as unknown as { pathfinder: { find: (...a: unknown[]) => unknown } }).pathfinder;
+    const find = pf.find.bind(pf);
+    let searches = 0;
+    pf.find = (...a: unknown[]) => { searches++; return find(...a); };
+    w.gather(0, [v.id], w.nodes.find((n) => n.tile.x === 11 && n.tile.y === 11)!.id);
+    run(w, 20);
+    // None of them is offered to this player's villagers for a while (half a minute).
+    expect(w.nodes.filter((n) => n.def.id === "tree").every((n) => !w.mayTry(0, n))).toBe(true);
+    expect(v.order.kind).toBe("idle");
+    run(w, 40);
+    expect(searches).toBeLessThan(30); // each tree tried once, then rest: it used to go on, about twice a second (120)
+  });
+
+  it("a boat comes out of a Dock on the open sea, not into a pond beside it", () => {
+    const w = blank(24);
+    // The sea to the west, a Dock in it by the shore, and a pond of one tile just behind the Dock on land,
+    // where a boat used to come out (the corner a Dock's units head for when there is no rally point).
+    for (let y = 0; y < 24; y++) for (let x = 0; x <= 5; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    for (let y = 10; y <= 12; y++) for (let x = 6; x <= 8; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    w.map.terrain[w.map.index(new Tile(9, 13))] = Terrain.water;
+    const dock = w.addBuilding("dock", 0, new Tile(6, 10), true);
+    const exit = (w as unknown as { as: <T>(n: boolean, f: () => T) => T; exitTile: (b: unknown, t: null) => Tile });
+    const t = exit.as(true, () => exit.exitTile(dock, null));
+    expect(t.x).toBeLessThanOrEqual(5); // in the sea, not the pond at 9,13
+    expect(w.map.terrainAt(t)).toBe(Terrain.water);
+  });
+
   it("every base can walk to a shore where a Dock could stand: woods never wall it in", () => {
     for (const mapType of ["small_islands", "large_islands", "coastal", "continental"] as const) {
       for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
