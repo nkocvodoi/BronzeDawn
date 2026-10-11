@@ -94,6 +94,16 @@ check((await guest.textContent(".seats")).includes("Computer (Moderate)"), "the 
 await guest.check("#my-ready");
 await host.waitForFunction(() => !document.querySelector("#lobby-start")?.disabled, null, { timeout: 5000 }).catch(() => {});
 check(!(await host.isDisabled("#lobby-start")), "once the friend is ready, the host can start");
+// The host's Settings: another population limit and starting resources reach the friend's lobby.
+await host.click("#lobby-settings");
+await host.waitForSelector("#pop-limit");
+const limit = await host.evaluate(() => { const s = document.querySelector("#pop-limit"); s.selectedIndex = (s.selectedIndex + 1) % s.options.length; return s.value; });
+await host.selectOption("#resources", { index: 2 });
+const res = await host.evaluate(() => document.querySelector("#resources").selectedOptions[0].textContent);
+await host.click("#lobby-settings-ok");
+await guest.waitForFunction((l) => document.querySelector(".lobby-settings")?.textContent?.includes(l), limit, { timeout: 5000 }).catch(() => {});
+const seen = await guest.textContent(".lobby-settings");
+check(seen.includes(limit) && seen.toLowerCase().includes(res.toLowerCase().split(" ")[0]), `the host's settings reach the friend's lobby (population ${limit}, resources ${res})`);
 await host.click("#lobby-start");
 await guest.waitForFunction(() => window.game.started, null, { timeout: 10000 });
 const who = await guest.evaluate(() => ({ me: game.me, n: game.world.players.length, civ: game.world.players[game.me].civ?.id, name: game.world.players[game.me].name, ais: game.world.ais.length }));

@@ -20,20 +20,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  # Unit tests and the AI matches run side by side; the browser tests in jobs of their own, on the build.
+  unit:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
+    defaults: { run: { working-directory: web } }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
       - run: npm ci
-      - run: npm test
+      - run: npx vitest run test/core.test.ts test/orders.test.ts
+
+  matches:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+      - run: npx vitest run test/matches.test.ts
+
+  build:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
       # A TURN relay for players on strict networks, if the repo has one set up (Settings > Secrets and
       # variables > Actions): variables TURN_URLS and TURN_USERNAME, secret TURN_CREDENTIAL. Without them
       # the game still plays online wherever the two machines can reach each other.
@@ -42,14 +57,58 @@ jobs:
           VITE_TURN_URLS: ${{ vars.TURN_URLS }}
           VITE_TURN_USERNAME: ${{ vars.TURN_USERNAME }}
           VITE_TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
+      - uses: actions/upload-artifact@v4
+        with: { name: dist, path: web/dist }
+
+  # Played with the mouse and keys in Chrome: one player, and every sprite against its fingerprint.
+  smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    env: { CHROME: /usr/bin/google-chrome }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: web/dist }
+      - run: npm run smoke
+      - run: npm run smoke:art
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: art-diff, path: web/art-diff, if-no-files-found: ignore }
+
+  # Two and three browsers online, through the public PeerJS server: kept out of the way of publishing,
+  # as that server is not ours.
+  online:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    env: { CHROME: /usr/bin/google-chrome }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: web/dist }
+      - run: npm run smoke:online
+      - run: npm run smoke:host-leaves
+
+  pages:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [unit, matches, smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist }
       - uses: actions/upload-pages-artifact@v3
-        if: github.event_name != 'pull_request'
-        with:
-          path: web/dist
+        with: { path: dist }
 
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: build
+    needs: pages
     runs-on: ubuntu-latest
     environment:
       name: github-pages

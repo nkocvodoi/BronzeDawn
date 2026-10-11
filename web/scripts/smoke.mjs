@@ -240,6 +240,36 @@ await wait(500);
 const loaded = await g(() => ({ t: game.world.time, n: game.world.units.length, food: game.world.players[0].res.food, started: game.started, paused: game.paused }));
 check(loaded.started && !loaded.paused && Math.abs(loaded.t - savedAt.t) < 1 && loaded.n === savedAt.n, `loading puts the game back where it was saved (${savedAt.t.toFixed(1)}s, ${loaded.t.toFixed(1)}s)`);
 
+// Control groups: Ctrl + a digit keeps the selection, the digit picks it again.
+const crew = await g(() => { const vs = game.world.unitsOf(0).filter((u) => u.isVillager).slice(0, 2).map((u) => u.id); game.selection = vs; return vs; });
+await page.keyboard.press("Control+Digit1");
+await g(() => { game.selection = []; });
+await page.keyboard.press("Digit1");
+check(await g((c) => game.selection.join() === c.join(), crew), "Ctrl + 1 keeps a group, and 1 selects it again");
+
+// Delete removes what is selected.
+const doomed = await g(() => { const v = game.world.unitsOf(0).find((u) => u.isVillager); game.selection = [v.id]; return v.id; });
+await page.keyboard.press("Delete");
+await wait(400);
+check(await g((id) => !game.world.unit(id), doomed), "Delete removes the selected unit");
+
+// Save to a file, then load that file: the game is back as it was.
+await page.click("#menu-btn");
+await page.click("#saves-open");
+await page.waitForSelector("#save-file-btn");
+const [download] = await Promise.all([page.waitForEvent("download"), page.click("#save-file-btn")]);
+const file = await download.path();
+check(download.suggestedFilename().endsWith(".bdsave") && !!file, `the game saves to a file (${download.suggestedFilename()})`);
+const atSave = await g(() => ({ t: game.world.time, n: game.world.units.length }));
+await page.keyboard.press("Escape");
+await wait(1500);
+await page.click("#menu-btn");
+await page.click("#saves-open");
+await page.setInputFiles("#load-file", file);
+await page.waitForFunction((t) => Math.abs(game.world.time - t) < 1.5 && game.started, atSave.t, { timeout: 5000 }).catch(() => {});
+const fromFile = await g(() => ({ t: game.world.time, n: game.world.units.length, started: game.started }));
+check(fromFile.started && Math.abs(fromFile.t - atSave.t) < 1.5 && fromFile.n === atSave.n, `loading the file puts the game back as it was saved (${atSave.t.toFixed(1)}s, ${fromFile.t.toFixed(1)}s)`);
+
 await page.screenshot({ path: process.env.SHOT ?? "smoke.png" });
 
 // Watch mode: a new map with every player a computer; you only look.
