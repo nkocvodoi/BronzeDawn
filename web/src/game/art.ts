@@ -5,7 +5,7 @@ import { Texture } from "pixi.js";
 import type { BuildingDef } from "../core/rules";
 import { GridMap, Terrain } from "../core/grid";
 import { HALF_H, HALF_W, fromIso } from "./iso";
-import { drawVillagerHD } from "./hd";
+import { drawPersonHD } from "./hd";
 import { bayer, darken, hash, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
 import { AGE_KEYS, ASSETS, ImageSpec } from "./assets";
 
@@ -365,6 +365,10 @@ const KITS: Record<string, Kit> = {
   elephant_archer: K("turban", "leather", "none", "composite", { quiver: true }),
 };
 
+/** Those on foot, drawn by hd.ts at the screen's own resolution. */
+const FOOT = new Set(["villager", "clubman", "axeman", "slinger", "short_swordsman", "broad_swordsman", "long_swordsman", "legion", "hoplite",
+  "phalanx", "centurion", "bowman", "improved_bowman", "composite_bowman", "priest"]);
+
 const RIDERS = new Set(["scout", "cavalry", "heavy_cavalry", "cataphract", "horse_archer", "heavy_horse_archer"]);
 const CHARIOTS = new Set(["chariot", "scythe_chariot", "chariot_archer"]);
 const ELEPHANTS = new Set(["war_elephant", "armored_elephant", "elephant_archer", "elephant"]);
@@ -376,7 +380,7 @@ export function unitPic(look: UnitLook): Pic {
   const { type, owner, facing, pose, frame, tool, carry } = look;
   const key = `u-${type}-${owner}-${facing}-${pose}-${frame}-${tool}-${carry}`;
   // Drawn anew at the screen's own resolution (the first of the pictures to be): the same size on the map.
-  if (type === "villager") return picHD(key, 52, 56, 22 / 52, 50 / 56, (p) => drawVillagerHD(p, look, playerRGB(owner)));
+  if (FOOT.has(type)) return picHD(key, 52, 56, 22 / 52, 50 / 56, (p) => drawPersonHD(p, look, KITS[type] ?? KITS.clubman, playerRGB(owner)));
   if (RIDERS.has(type)) return pic(key, 34, 37, 16 / 34, 34 / 37, (p) => drawRider(p, look));
   if (type === "camel_rider") return pic(key, 34, 42, 16 / 34, 39 / 42, (p) => drawCamelRider(p, look));
   if (CHARIOTS.has(type)) return pic(key, 50, 36, 22 / 50, 32 / 36, (p) => drawChariot(p, look));

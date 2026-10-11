@@ -100,15 +100,24 @@ export function groundShadow(p: PixelCanvas, cx: number, cy: number, rx: number,
   }
 }
 
-// ---- the villager
+// ---- people: villagers, foot soldiers, archers, priests
 
-const SKIN = ramp(rgb(0xd29a6c)), HAIR = ramp(rgb(0x3e2616)), TUNIC = ramp(rgb(0xb8a070)), TUNIC_D = ramp(rgb(0x947c52));
-const LEATHER = ramp(rgb(0x6e4626)), WOOD = ramp(rgb(0x8e5c30)), IRON = ramp(rgb(0x8c939c)), BASKET = ramp(rgb(0xa47c44));
-const NET = rgb(0xdcd0b4);
+const SKIN = ramp(rgb(0xd29a6c)), SKIN_D = ramp(darken(rgb(0xd29a6c), 0.85)), HAIR = ramp(rgb(0x3e2616));
+const TUNIC = ramp(rgb(0xb8a070)), TUNIC_D = ramp(rgb(0x947c52));
+const LEATHER = ramp(rgb(0x6e4626)), LEATHER_D = ramp(darken(rgb(0x6e4626), 0.82)), SHOE = ramp(rgb(0x4a2e18));
+const WOOD = ramp(rgb(0x8e5c30)), IRON = ramp(rgb(0x9aa2ac)), BRONZE = ramp(rgb(0xc08a3c)), BASKET = ramp(rgb(0xa47c44));
+const ROBE = ramp(rgb(0xe6dcc6)), ROBE_D = ramp(rgb(0xc2b69c)), WHITE = ramp(rgb(0xece6d6));
+const NET = rgb(0xdcd0b4), STRING = rgb(0xe8dcc0);
 
 export interface Figure { type: string; owner: number; facing: "front" | "back"; pose: "idle" | "walk" | "work"; frame: number; tool: string; carry: number | null }
 
-/** Where the parts of a villager are, for a pose: feet, knees, hips, shoulders, hands; the head. */
+/** What a person wears and carries (the same names as the old drawing's kits, in art.ts). */
+export interface Gear {
+  helm: string; armor: string; shield: string; weapon: string;
+  cape?: boolean; greaves?: boolean; robe?: boolean; quiver?: boolean; beard?: boolean; plume?: RGB;
+}
+
+/** Where the parts of a person are, for a pose: feet, knees, hips, shoulders; the head. */
 function skeleton(f: Figure) {
   const cx = 22, fy = 50, f4 = f.frame % 4;
   const walk = f.pose === "walk";
@@ -129,53 +138,132 @@ function skeleton(f: Figure) {
     swing: walk ? Math.sin(ph) * 2.5 : 0,
   };
 }
+type Skel = ReturnType<typeof skeleton>;
 
-/** Where the working hand is, and which way the tool points (radians, 0 to the right, down positive). */
-function toolHold(f: Figure, s: ReturnType<typeof skeleton>): { hand: number[]; angle: number } {
-  const st = f.frame % 3;
-  if (f.pose !== "work") return { hand: [s.cx + 7, s.hipY - 3 + s.swing * 0.4], angle: 1.25 }; // carried at the side, pointing down
-  if (f.tool === "hoe") return [{ hand: [s.cx + 6, s.shY - 3], angle: -1.2 }, { hand: [s.cx + 8, s.shY + 4], angle: 0.35 }, { hand: [s.cx + 7, s.hipY], angle: 1.05 }][st];
-  if (f.tool === "spear") return [{ hand: [s.cx + 2, s.shY - 5], angle: -0.25 }, { hand: [s.cx + 6, s.shY - 3], angle: -0.05 }, { hand: [s.cx + 9, s.shY], angle: 0.2 }][st];
-  // A chop: raised over the head, coming down, struck.
+/** The working hand, and which way what it holds points (radians, 0 to the right, down positive). */
+function hold(f: Figure, s: Skel, kind: string): { hand: number[]; angle: number } {
+  const st = f.frame % 3, work = f.pose === "work";
+  switch (kind) {
+    case "hoe":
+      if (!work) break;
+      return [{ hand: [s.cx + 6, s.shY - 3], angle: -1.2 }, { hand: [s.cx + 8, s.shY + 4], angle: 0.35 }, { hand: [s.cx + 7, s.hipY], angle: 1.05 }][st];
+    case "javelin": // overhead, then thrown forward
+      if (!work) return { hand: [s.cx + 7, s.hipY - 4 + s.swing * 0.4], angle: -1.35 };
+      return [{ hand: [s.cx + 2, s.shY - 5], angle: -0.25 }, { hand: [s.cx + 6, s.shY - 3], angle: -0.05 }, { hand: [s.cx + 9, s.shY], angle: 0.2 }][st];
+    case "spear": case "lance": // carried upright; a thrust low and forward
+      if (!work) return { hand: [s.cx + 7, s.shY + 6 + s.swing * 0.3], angle: -1.48 };
+      return [{ hand: [s.cx + 4, s.shY + 4], angle: -0.1 }, { hand: [s.cx + 8, s.shY + 3], angle: -0.05 }, { hand: [s.cx + 12, s.shY + 2], angle: 0 }][st];
+    case "staff":
+      return { hand: [s.cx + 7, s.shY + 6], angle: work ? -1.75 : -1.6 };
+    case "sling":
+      if (!work) return { hand: [s.cx + 7, s.hipY - 3 + s.swing * 0.4], angle: 1.3 };
+      return [{ hand: [s.cx + 4, s.shY - 7], angle: -2.6 }, { hand: [s.cx + 6, s.shY - 6], angle: -1.0 }, { hand: [s.cx + 9, s.shY - 1], angle: 0.1 }][st];
+  }
+  if (!work) return { hand: [s.cx + 7, s.hipY - 3 + s.swing * 0.4], angle: 1.25 }; // at the side, pointing down
+  // A chop or a cut: raised over the head, coming down, struck.
   return [{ hand: [s.cx + 3, s.shY - 7], angle: -2.2 }, { hand: [s.cx + 8, s.shY - 2], angle: -0.6 }, { hand: [s.cx + 8, s.hipY - 4], angle: 0.75 }][st];
 }
 
-function drawTool(p: PixelCanvas, tool: string, hand: number[], a: number) {
+/** A tool or a weapon held at `hand`, pointing at angle a. */
+function drawHeld(p: PixelCanvas, kind: string, hand: number[], a: number, f: Figure) {
   const along = (d: number, side = 0): [number, number] => [hand[0] + Math.cos(a) * d - Math.sin(a) * side, hand[1] + Math.sin(a) * d + Math.cos(a) * side];
-  const shaft = (from: number, to: number, rad = 0.9) => { const [x0, y0] = along(from), [x1, y1] = along(to); capsule(p, x0, y0, x1, y1, rad, WOOD); };
-  switch (tool) {
+  const shaft = (from: number, to: number, rad = 0.9, r = WOOD) => { const [x0, y0] = along(from), [x1, y1] = along(to); capsule(p, x0, y0, x1, y1, rad, r); };
+  const blade = (from: number, to: number, w: number, r: Ramp) => flat(p, [along(from, -w), along(to - 1, -w * 0.7), along(to + 0.5, 0), along(to - 1, w * 0.7), along(from, w)], r);
+  switch (kind) {
     case "axe": {
       shaft(-3, 12);
-      const pts = [along(9, 0.5), along(9, 4.5), along(12.5, 5.5), along(13, 0.5)];
-      flat(p, pts, IRON);
+      flat(p, [along(9, 0.5), along(9, 4.5), along(12.5, 5.5), along(13, 0.5)], IRON);
       p.line(...along(9.5, 5), ...along(12.8, 5.6), IRON[5]);
       break;
     }
     case "pick": {
       shaft(-3, 11);
-      for (let s = -5; s <= 5; s++) { const [x, y] = along(11 - Math.abs(s) * 0.35, s); capsule(p, x, y, x, y, s === 0 ? 1.4 : 0.9, IRON); }
+      for (let k = -5; k <= 5; k++) { const [x, y] = along(11 - Math.abs(k) * 0.35, k); capsule(p, x, y, x, y, k === 0 ? 1.4 : 0.9, IRON); }
       break;
     }
-    case "hoe": {
-      shaft(-4, 14);
-      flat(p, [along(13, 0), along(13, 3.5), along(15.5, 3), along(15, 0)], IRON);
+    case "hoe": shaft(-4, 14); flat(p, [along(13, 0), along(13, 3.5), along(15.5, 3), along(15, 0)], IRON); break;
+    case "hammer": shaft(-2, 8); capsule(p, ...along(8.5, -2), ...along(8.5, 2.5), 1.8, IRON); break;
+    case "club": shaft(-2, 9, 1.1); capsule(p, ...along(8), ...along(11), 2.2, WOOD); break;
+    case "short": case "gladius": shaft(-2, 1, 1.0, LEATHER); capsule(p, ...along(0.5, -2.2), ...along(0.5, 2.2), 0.8, BRONZE); blade(1, 9, 1.3, kind === "short" ? BRONZE : IRON); break;
+    case "broad": shaft(-2, 1, 1.0, LEATHER); capsule(p, ...along(0.5, -2.5), ...along(0.5, 2.5), 0.8, BRONZE); blade(1, 11, 1.6, IRON); break;
+    case "long": shaft(-3, 1, 1.0, LEATHER); capsule(p, ...along(0.5, -2.8), ...along(0.5, 2.8), 0.8, IRON); blade(1, 14, 1.4, IRON); break;
+    case "scimitar": {
+      shaft(-2, 1, 1.0, LEATHER);
+      for (let t = 1; t <= 11; t++) { const [x, y] = along(t, ((t - 1) * (t - 1)) / 22); capsule(p, x, y, x, y, 1.1, IRON); }
       break;
     }
-    case "hammer": {
-      shaft(-2, 8);
-      const [x, y] = along(8.5);
-      capsule(p, ...along(8.5, -2), ...along(8.5, 2.5), 1.8, IRON);
-      void x; void y;
+    case "spear": case "lance": case "javelin": {
+      const long = kind === "lance" ? 20 : kind === "spear" ? 17 : 13;
+      shaft(-8, long, 0.75);
+      flat(p, [along(long, -1.5), along(long + 4.5, 0), along(long, 1.5)], kind === "javelin" ? IRON : BRONZE);
       break;
     }
-    case "spear": {
-      shaft(-8, 13, 0.75);
-      flat(p, [along(13, -1.4), along(17.5, 0), along(13, 1.4)], IRON);
+    case "staff": {
+      shaft(-6, 18, 0.9);
+      ellipsoid(p, ...along(19), 1.8, 1.8, ramp(rgb(0xe8c040)));
+      if (f.pose === "work") { // a glow about the head of the staff as the priest chants
+        const [gx, gy] = along(19), r = 3 + (f.frame % 3) * 1.6;
+        for (let y = -8; y <= 8; y++) for (let x = -8; x <= 8; x++) {
+          const d = Math.hypot(x, y * 1.15);
+          if (Math.abs(d - r) < 0.7 && bayer(x, y) < 0.7 && !p.alphaAt(gx + x, gy + y)) p.set(gx + x, gy + y, rgb(0xfff2a0), 210);
+        }
+      }
+      break;
+    }
+    case "sling": {
+      const [x, y] = along(5);
+      p.line(hand[0], hand[1], x, y, STRING);
+      ellipsoid(p, x, y, 1.4, 1.4, LEATHER);
       break;
     }
     default: break;
   }
 }
+
+/** A bow held out in the far hand: drawn back, aimed, loosed. */
+function drawBow(p: PixelCanvas, s: Skel, f: Figure, kind: string): number[] {
+  const work = f.pose === "work", st = f.frame % 3;
+  const hand = work ? [s.cx - 8, s.shY + 3] : [s.farShoulder[0] - 1 - s.swing * 0.6, s.shY + 11];
+  const half = kind === "longbow" ? 10 : kind === "composite" ? 7.5 : 8.5;
+  const pull = work ? [3, 5.5, 0.5][st] : 0;
+  // The stave curves away from the archer; the string runs from tip to tip through the drawing hand.
+  const tipA = [hand[0] + (work ? -2 : 1), hand[1] - half], tipB = [hand[0] + (work ? -2 : 1), hand[1] + half];
+  for (let t = 0; t <= 20; t++) {
+    const u = t / 20, yy = tipA[1] + (tipB[1] - tipA[1]) * u;
+    const bend = Math.sin(u * Math.PI) * (kind === "composite" ? 3 : 2.5) - (kind === "composite" ? Math.sin(u * Math.PI * 2) * 0.8 : 0);
+    capsule(p, tipA[0] - bend, yy, tipA[0] - bend, yy, 0.9, WOOD);
+  }
+  const nock = [hand[0] + pull + 1, hand[1]];
+  if (work) {
+    p.line(tipA[0], tipA[1], nock[0], nock[1], STRING); p.line(nock[0], nock[1], tipB[0], tipB[1], STRING);
+    if (st < 2) capsule(p, hand[0] - 6, hand[1], nock[0], nock[1], 0.5, WOOD); // the arrow
+  } else p.line(tipA[0] + 1, tipA[1], tipB[0] + 1, tipB[1], STRING);
+  return hand;
+}
+
+/** A shield on the far arm, its face to the viewer; on the back, seen from behind. */
+function drawShield(p: PixelCanvas, kind: string, at: number[], pc: Ramp) {
+  const [x, y] = at;
+  const rim = BRONZE;
+  switch (kind) {
+    case "small": ellipsoid(p, x, y, 3.6, 3.8, rim); ellipsoid(p, x, y, 2.8, 3, pc); ellipsoid(p, x, y, 0.9, 0.9, rim); break;
+    case "round": ellipsoid(p, x, y, 5, 5.2, rim); ellipsoid(p, x, y, 4.1, 4.3, pc); ellipsoid(p, x, y, 1.2, 1.2, rim); break;
+    case "aspis": ellipsoid(p, x, y, 6.6, 6.8, rim); ellipsoid(p, x, y, 5.4, 5.6, pc); ellipsoid(p, x - 1, y - 1, 1.6, 1.6, rim); break;
+    case "oval": ellipsoid(p, x, y, 4.4, 7, rim); ellipsoid(p, x, y, 3.5, 6.1, pc); capsule(p, x, y - 4, x, y + 4, 0.6, rim); break;
+    case "scutum":
+      for (let j = -7; j <= 7; j++) for (let i = -4; i <= 4; i++) {
+        const nx = i / 4.6, ny = j / 9;
+        const r = Math.abs(i) >= 4 || Math.abs(j) >= 7 ? rim : pc;
+        p.set(x + i, y + j, shadeAt(r, nx, ny, Math.sqrt(Math.max(0, 1 - nx * nx)), x + i, y + j));
+      }
+      ellipsoid(p, x, y, 1.4, 1.4, rim);
+      break;
+    default: break;
+  }
+}
+
+/** shade, for the shields' own shapes. */
+const shadeAt = (r: Ramp, nx: number, ny: number, nz: number, x: number, y: number) => shade(r, nx, ny, nz, x, y);
 
 /** A load on the back: a bundle of logs, a sack of gold, stone in a sling, meat or berries in a basket. */
 function drawLoad(p: PixelCanvas, carry: number, x: number, y: number) {
@@ -193,72 +281,147 @@ function drawLoad(p: PixelCanvas, carry: number, x: number, y: number) {
   }
 }
 
-/** A villager at the screen's own resolution, in a 52 x 56 picture with the feet at (22, 50). */
-export function drawVillagerHD(p: PixelCanvas, f: Figure, pc: RGB) {
-  const s = skeleton(f), back = f.facing === "back";
-  const PC = ramp(pc);
-  const work = f.pose === "work";
-  const hold = toolHold(f, s);
-  const tool = f.tool === "none" ? "" : f.tool;
+/** The head, its hair or helmet, the face. */
+function drawHead(p: PixelCanvas, s: Skel, g: Gear, back: boolean, pc: Ramp) {
+  const hx = s.cx + 0.3, hy = s.headY, rx = 4.6, ry = 5.2;
+  const plume = g.plume ? ramp(g.plume) : pc;
+  const over = (r: Ramp, keep: (dx: number, dy: number) => boolean, grow = 0) => {
+    for (let y = Math.floor(hy - ry - grow); y <= hy + ry + grow; y++) for (let x = Math.floor(hx - rx - grow); x <= hx + rx + grow; x++) {
+      const dx = (x + 0.5 - hx) / (rx + grow), dy = (y + 0.5 - hy) / (ry + grow);
+      if (dx * dx + dy * dy > 1 || !keep(dx, dy)) continue;
+      p.set(x, y, shade(r, dx, dy, Math.sqrt(Math.max(0, 1 - dx * dx - dy * dy)), x, y));
+    }
+  };
+  const hood = g.helm === "hood";
+  ellipsoid(p, hx, hy, rx, ry, back ? (hood ? ROBE : HAIR) : SKIN);
+  if (!back) {
+    if (!hood) over(HAIR, (dx, dy) => dy < -0.38 || (Math.abs(dx) > 0.7 && dy < 0.25)); // hair, under any helmet
+    if (g.beard) over(HAIR, (dx, dy) => dy > 0.35 && Math.abs(dx) < 0.85);
+    p.set(hx - 2, hy + 0.5, rgb(0x2a1a10)); p.set(hx + 1.5, hy + 0.5, rgb(0x2a1a10)); // eyes
+    p.set(hx - 0.2, hy + 1.8, SKIN[1]); // nose
+    if (!g.beard) p.line(hx - 1, hy + 3.6, hx + 1, hy + 3.6, SKIN[1]); // mouth
+  }
+  const dome = (r: Ramp, low = -0.2) => over(r, (_dx, dy) => dy < low, 0.7);
+  switch (g.helm) {
+    case "band": p.line(hx - 4, hy - 2, hx + 4, hy - 2, back ? pc[2] : pc[3]); break;
+    case "cap": dome(LEATHER, -0.35); break;
+    case "leather": dome(LEATHER); over(LEATHER, (dx, dy) => Math.abs(dx) > 0.72 && dy < 0.55, 0.5); break;
+    case "bronze": dome(BRONZE); break;
+    case "cheek": dome(BRONZE); over(BRONZE, (dx, dy) => Math.abs(dx) > 0.6 && dy < 0.6, 0.6); break;
+    case "crest": dome(BRONZE); ellipsoid(p, hx, hy - ry - 1.5, 2.2, 2.4, plume); capsule(p, hx - 3, hy - ry - 0.5, hx + 3, hy - ry - 1.5, 1.6, plume); break;
+    case "corinth":
+      over(BRONZE, (dx, dy) => back || dy < -0.25 || Math.abs(dx) > 0.35 || dy > 0.55, 0.7);
+      if (!back) { p.line(hx - 2.5, hy - 0.5, hx + 2.5, hy - 0.5, rgb(0x20140c)); p.line(hx, hy - 0.5, hx, hy + 2.5, rgb(0x20140c)); }
+      capsule(p, hx - 4, hy - ry - 1, hx + 4, hy - ry - 2, 1.8, plume);
+      break;
+    case "plume": dome(IRON); ellipsoid(p, hx, hy - ry - 2.5, 1.8, 3, plume); break;
+    case "transverse": dome(IRON); capsule(p, hx - 6.5, hy - ry - 1.2, hx + 6.5, hy - ry - 1.2, 1.7, plume); break;
+    case "roman": dome(IRON); over(IRON, (dx, dy) => (back ? dy < 0.6 : Math.abs(dx) > 0.65 && dy < 0.6), 0.6); ellipsoid(p, hx, hy - ry - 1.5, 1.4, 2.2, plume); break;
+    case "pointed":
+      for (let y = 0; y < 7; y++) for (let x = -5; x <= 5; x++) {
+        const w = 1 + y * 0.75;
+        if (Math.abs(x) > w) continue;
+        const px = hx + x, py = hy - ry - 4 + y;
+        p.set(px, py, shade(IRON, x / (w + 1), -0.3, 0.8, px, py));
+      }
+      over(IRON, (dx, dy) => Math.abs(dx) > 0.7 && dy < 0.7, 0.5);
+      break;
+    case "turban": over(WHITE, (_dx, dy) => dy < -0.15, 1.3); p.line(hx - 5, hy - 1.5, hx + 5, hy - 1.5, pc[3]); break;
+    case "hood": over(ROBE, (dx, dy) => back || dy < -0.42 || Math.abs(dx) > 0.66, 0.9); break; // the face shows
+    default: break;
+  }
+}
+
+/** A person at the screen's own resolution, in a 52 x 56 picture with the feet at (22, 50): a villager
+ *  (with the tool of its work and what it carries), a soldier, an archer or a priest. */
+export function drawPersonHD(p: PixelCanvas, f: Figure, g: Gear, pcBase: RGB) {
+  const s = skeleton(f), back = f.facing === "back", villager = f.type === "villager";
+  const pc = ramp(pcBase), pcD = ramp(darken(pcBase, 0.78));
+  const kind = villager ? (f.tool === "spear" ? "javelin" : f.tool === "none" ? "" : f.tool) : g.weapon === "none" ? "" : g.weapon;
+  const bow = kind === "bow" || kind === "longbow" || kind === "composite";
+  const basket = kind === "basket", net = kind === "net";
+  const h = hold(f, s, kind);
+  const workHand = basket ? [s.cx + 5, s.hipY - 2 + (f.pose === "work" ? f.frame % 2 : 0)] : net ? [s.cx + 7, s.shY + 6] : bow ? [s.cx + 4, s.shY + 4] : h.hand;
+  const armored = g.armor !== "none" && g.armor !== "leather";
+  const cloth = g.robe ? ROBE : villager ? TUNIC : pc, clothD = g.robe ? ROBE_D : villager ? TUNIC_D : pcD;
   groundShadow(p, s.cx, s.fy + 0.5, 9, 3);
 
   const leg = (l: { hip: number[]; knee: number[]; foot: number[] }, far: boolean) => {
-    const r = far ? ramp(darken(rgb(0x6e4626), 0.82)) : LEATHER;
+    const r = villager ? (far ? LEATHER_D : LEATHER) : far ? SKIN_D : SKIN;
     capsule(p, l.hip[0], l.hip[1], l.knee[0], l.knee[1], 2.4, r);
-    capsule(p, l.knee[0], l.knee[1], l.foot[0], l.foot[1] - 1.5, 2.0, r);
-    capsule(p, l.foot[0] - 0.5, l.foot[1] - 0.8, l.foot[0] + 2, l.foot[1] - 0.6, 1.2, ramp(rgb(0x4a2e18))); // shoe
+    capsule(p, l.knee[0], l.knee[1], l.foot[0], l.foot[1] - 1.5, 2.0, g.greaves ? BRONZE : r);
+    capsule(p, l.foot[0] - 0.5, l.foot[1] - 0.8, l.foot[0] + 2, l.foot[1] - 0.6, 1.2, SHOE);
   };
   const arm = (sh: number[], hand: number[], far: boolean) => {
     const elbow = [(sh[0] + hand[0]) / 2 + (far ? -1 : 1), (sh[1] + hand[1]) / 2 + 1];
-    const r = far ? ramp(darken(rgb(0xd29a6c), 0.85)) : SKIN;
-    capsule(p, sh[0], sh[1], elbow[0], elbow[1], 2.0, far ? TUNIC_D : TUNIC); // sleeve
-    capsule(p, elbow[0], elbow[1], hand[0], hand[1], 1.5, r);
-    ellipsoid(p, hand[0], hand[1], 1.8, 1.8, r);
+    const skin = g.robe ? (far ? ROBE_D : ROBE) : far ? SKIN_D : SKIN;
+    capsule(p, sh[0], sh[1], elbow[0], elbow[1], 2.0, far ? clothD : cloth); // sleeve
+    capsule(p, elbow[0], elbow[1], hand[0], hand[1], 1.5, skin);
+    ellipsoid(p, hand[0], hand[1], 1.8, 1.8, far ? SKIN_D : SKIN);
   };
   const freeHand = [s.farShoulder[0] - 0.5 - s.swing * 0.6, s.shY + 12];
-  const basket = tool === "basket", net = tool === "net";
-  const workHand = basket ? [s.cx + 5, s.hipY - 2 + (work ? f.frame % 2 : 0)] : net ? [s.cx + 7, s.shY + 6] : hold.hand;
+  const shieldAt = [s.cx - 6, s.shY + 8];
 
-  // Back to front. Seen from behind, the far side is the right one and the load is in front of the body.
-  if (f.carry !== null && !back) drawLoad(p, f.carry, s.cx - 5, s.shY + 3);
-  if (!back) arm(s.farShoulder, freeHand, true);
-  leg(s.farLeg, true);
-  if (back && tool && !basket && !net) drawTool(p, tool, hold.hand, hold.angle);
+  // Back to front. Seen from behind, the far side is the right one; the load, quiver and cape are in front.
+  if (!back) {
+    if (g.cape) torso(p, s.cx - 0.5, s.shY, s.fy - 9, 15, 17, pcD);
+    if (g.quiver) capsule(p, s.cx - 5, s.shY - 3, s.cx - 3, s.shY + 7, 1.6, LEATHER);
+    if (f.carry !== null) drawLoad(p, f.carry, s.cx - 5, s.shY + 3);
+    if (!bow) arm(s.farShoulder, freeHand, true);
+  }
+  if (g.robe) {
+    // A robe to the feet, swaying as the priest walks.
+    const sway = f.pose === "walk" ? [0, 1, 0, -1][f.frame % 4] : 0;
+    torso(p, s.cx, s.hipY - 2, s.fy, 12, 16, back ? ROBE_D : ROBE, sway);
+  } else {
+    leg(s.farLeg, true);
+  }
+  if (back && kind && !bow && !basket && !net) drawHeld(p, kind, h.hand, h.angle, f);
   if (back) arm(s.nearShoulder, workHand, true);
-  leg(s.nearLeg, false);
-  torso(p, s.cx, s.shY - 1, s.hipY + 2, 15, 11, back ? TUNIC_D : TUNIC);
-  // Skirt of the tunic over the hips, and a sash in the player's colour.
-  torso(p, s.cx, s.hipY - 1, s.hipY + 5, 12, 13.5, back ? TUNIC_D : TUNIC);
-  torso(p, s.cx, s.hipY - 2.5, s.hipY - 0.5, 12, 12, PC);
+  if (!g.robe) leg(s.nearLeg, false);
+  torso(p, s.cx, s.shY - 1, s.hipY + 2, 15, 11, back ? clothD : cloth);
+  torso(p, s.cx, s.hipY - 1, s.hipY + 5, 12, 13.5, back ? clothD : cloth); // the skirt of the tunic
+  // Armour over the chest.
+  const chest = (r: Ramp, pattern?: (x: number, y: number) => boolean) => {
+    torso(p, s.cx, s.shY - 0.5, s.hipY - 2, 14.5, 11.5, r);
+    if (pattern) for (let y = Math.floor(s.shY); y < s.hipY - 2; y++) for (let x = s.cx - 7; x <= s.cx + 7; x++) {
+      const c = p.get(x, y);
+      if (c && pattern(x, y) && Math.abs(x + 0.5 - s.cx) < 6.5) p.set(x, y, darken(c, 0.78));
+    }
+  };
+  switch (g.armor) {
+    case "leather": chest(LEATHER, (x, y) => (y - s.shY) % 4 === 3 && x % 2 === 0); break;
+    case "scale": chest(BRONZE, (x, y) => ((x >> 1) + (y >> 1)) % 2 === 0 && (y & 1) === 1); break;
+    case "bronze": chest(BRONZE, (x, y) => !back && (x === s.cx || x === s.cx + 1) && y > s.shY + 4); break;
+    case "iron": chest(IRON); break;
+    case "lorica": chest(IRON, (_x, y) => (y - s.shY) % 3 === 2); break;
+  }
+  if (armored) for (let x = s.cx - 4; x <= s.cx + 4; x += 3) capsule(p, x, s.hipY - 1, x, s.hipY + 3, 0.9, LEATHER); // pteruges
+  // A belt, or a villager's sash in the player's colour; a priest's stole.
+  if (villager) torso(p, s.cx, s.hipY - 2.5, s.hipY - 0.5, 12, 12, pc);
+  else if (!g.robe) torso(p, s.cx, s.hipY - 2.5, s.hipY - 1, 12, 12, LEATHER_D);
+  if (g.robe && !back) capsule(p, s.cx + 0.5, s.shY, s.cx + 0.5, s.hipY + 6, 1.4, pc);
+  if (!villager && !g.robe && g.armor !== "none") { ellipsoid(p, s.farShoulder[0], s.shY + 1, 2.6, 2.4, pcD); ellipsoid(p, s.nearShoulder[0], s.shY + 1, 2.6, 2.4, pc); }
   // Neck and head.
   capsule(p, s.cx, s.shY - 1, s.cx, s.headY + 3, 1.8, SKIN);
-  const hx = s.cx + 0.3, hy = s.headY;
-  ellipsoid(p, hx, hy, 4.6, 5.2, back ? HAIR : SKIN);
-  if (!back) {
-    // Hair over the crown and down the sides, a band of the player's colour, the face.
-    for (let y = Math.floor(hy - 5.2); y <= hy + 1; y++) for (let x = Math.floor(hx - 4.6); x <= hx + 4.6; x++) {
-      const dx = (x + 0.5 - hx) / 4.6, dy = (y + 0.5 - hy) / 5.2;
-      if (dx * dx + dy * dy > 1) continue;
-      if (dy < -0.38 || (Math.abs(dx) > 0.7 && dy < 0.25)) p.set(x, y, shade(HAIR, dx, dy, Math.sqrt(Math.max(0, 1 - dx * dx - dy * dy)), x, y));
-    }
-    p.line(hx - 4, hy - 2, hx + 4, hy - 2, PC[3]);
-    p.set(hx - 2, hy + 0.5, rgb(0x2a1a10)); p.set(hx + 1.5, hy + 0.5, rgb(0x2a1a10)); // eyes
-    p.set(hx - 0.2, hy + 1.8, SKIN[1]); p.set(hx - 0.2, hy + 2.5, SKIN[2]); // nose
-    p.line(hx - 1, hy + 3.6, hx + 1, hy + 3.6, SKIN[1]); // mouth
+  drawHead(p, s, g, back, pc);
+  if (back) {
+    if (g.cape) torso(p, s.cx, s.shY, s.fy - 9, 15, 17, pc);
+    if (g.quiver) { capsule(p, s.cx + 1, s.shY - 4, s.cx + 3, s.shY + 8, 1.7, LEATHER); p.set(s.cx + 1, s.shY - 5, rgb(0xf0ece0)); p.set(s.cx + 2, s.shY - 5, rgb(0xb8282a)); }
+    if (f.carry !== null) drawLoad(p, f.carry, s.cx + 0.5, s.shY + 4);
+    if (g.shield !== "none") drawShield(p, g.shield, [s.cx, s.shY + 7], pc);
+    arm(s.farShoulder, freeHand, false);
   } else {
-    p.line(hx - 4, hy - 2, hx + 4, hy - 2, PC[2]);
-  }
-  if (back && f.carry !== null) drawLoad(p, f.carry, s.cx + 0.5, s.shY + 4);
-  if (back) arm(s.farShoulder, freeHand, false);
-  if (!back) {
+    if (bow) { const bh = drawBow(p, s, f, kind); arm(s.farShoulder, bh, true); }
+    if (g.shield !== "none") drawShield(p, g.shield, shieldAt, pc);
     if (basket) {
       ellipsoid(p, workHand[0] - 1, workHand[1] + 2, 4.5, 3.2, BASKET);
-      if (work) p.set(workHand[0] - 1, workHand[1] - 1, rgb(0xc8243a));
+      if (f.pose === "work") p.set(workHand[0] - 1, workHand[1] - 1, rgb(0xc8243a));
     }
-    if (tool && !basket && !net) drawTool(p, tool, hold.hand, hold.angle);
+    if (kind && !bow && !basket && !net) drawHeld(p, kind, h.hand, h.angle, f);
     arm(s.nearShoulder, workHand, false);
     if (net) {
-      const st = f.frame % 3, nx = s.cx + 8 + (work ? st * 2 : 0), ny = s.shY + (work ? [-4, 0, 6][st] : 7);
+      const st = f.frame % 3, nx = s.cx + 8 + (f.pose === "work" ? st * 2 : 0), ny = s.shY + (f.pose === "work" ? [-4, 0, 6][st] : 7);
       for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) if ((x + y) % 2 === 0 && Math.abs(x - 2.5) + Math.abs(y - 2.5) < 4) p.set(nx + x, ny + y, NET);
     }
   }
