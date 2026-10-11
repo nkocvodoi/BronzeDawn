@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RULES } from "../src/core/data";
 import { Tile, Vec2 } from "../src/core/geom";
+import type { Unit } from "../src/core/entities";
 import { Terrain } from "../src/core/grid";
 import { Res } from "../src/core/rules";
 import { scores } from "../src/core/score";
@@ -485,6 +486,61 @@ describe("the original's rules", () => {
     expect(v.hp).toBeLessThan(v.maxHp);
   });
 
+  /** A herd of gazelles in a blank world, as the map makes them. */
+  const gazelles = (w: World, at: Tile, n: number) => {
+    const id = w.newHerd(at.center);
+    return Array.from({ length: n }, (_, i) => { const g = w.spawnAnimal("gazelle", new Vec2(at.x + 0.5 + (i % 3) * 0.6, at.y + 0.5 + Math.floor(i / 3) * 0.6))!; g.herd = id; return g; });
+  };
+  const spread = (us: Unit[]) => Math.max(...us.flatMap((a) => us.map((b) => a.pos.distance(b.pos))));
+
+  it("gazelles come in herds of 4 to 7, as in the original", () => {
+    for (const seed of [1, 2, 3]) {
+      const w = new World(RULES, seed, ["A", "B"], 96, true);
+      const herds = new Map<number, number>();
+      for (const u of w.units) if (u.animal?.id === "gazelle") herds.set(u.herd, (herds.get(u.herd) ?? 0) + 1);
+      expect(herds.has(0)).toBe(false);
+      for (const n of herds.values()) expect(n).toBeGreaterThanOrEqual(3); // one may not fit, by water or a cliff
+      expect(Math.max(...herds.values())).toBeGreaterThanOrEqual(5);
+    }
+  });
+
+  it("a herd grazes together: left alone for ten minutes it wanders, but does not scatter", () => {
+    const w = new World(RULES, 4, ["A", "B"], 48, false);
+    const herd = gazelles(w, new Tile(24, 24), 6);
+    const from = herd[0].pos;
+    run(w, 600);
+    expect(spread(herd)).toBeLessThan(6);
+    expect(herd[0].pos.distance(from)).toBeGreaterThan(1); // it does move about
+  });
+
+  it("a gazelle struck runs, the herd grazes on, and the runner comes back to it", () => {
+    const w = blank();
+    const herd = gazelles(w, new Tile(14, 12), 5);
+    const v = w.spawnUnit("villager", 0, new Tile(9, 12).center);
+    w.attack(0, [v.id], herd[0].id);
+    for (let i = 0; i < 400 && herd[0].hp === herd[0].maxHp; i++) w.step();
+    expect(herd[0].hp).toBeLessThan(herd[0].maxHp);
+    expect(herd[0].fleeTimer > 0 && herd[0].order.kind === "move").toBe(true);
+    expect(herd.slice(1).filter((g) => g.fleeTimer > 0).length).toBeLessThanOrEqual(1); // not a stampede
+    // The villager is called off before the kill: the gazelle goes back to its herd.
+    w.stop(0, [v.id]);
+    w.move(0, [v.id], new Tile(2, 2).center);
+    run(w, 40);
+    expect(herd.every((g) => g.alive)).toBe(true);
+    expect(spread(herd)).toBeLessThan(6);
+  });
+
+  it("lions hunt gazelles when no one is near, and gazelles run from lions", () => {
+    const w = blank();
+    const herd = gazelles(w, new Tile(12, 12), 4);
+    const lion = w.spawnAnimal("lion", new Tile(9, 12).center)!;
+    run(w, 1);
+    expect(lion.order.kind).toBe("attack");
+    expect(herd.some((g) => g.fleeTimer > 0 || g.order.kind === "move")).toBe(true);
+    run(w, 90);
+    expect(herd.some((g) => !g.alive)).toBe(true);
+  });
+
   it("priests convert after a few chants, and their faith must recover", () => {
     const w = blank();
     w.players[0].age = 2;
@@ -685,6 +741,25 @@ describe("the original's rules", () => {
     expect(riders.length).toBeGreaterThan(0);
     w.applyDamage(t, 1e6, -1);
     expect(riders.every((u) => !u.alive)).toBe(true);
+  });
+
+  it("every base can walk to a shore where a Dock could stand: woods never wall it in", () => {
+    for (const mapType of ["small_islands", "large_islands", "coastal", "continental"] as const) {
+      for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+        const w = new World(RULES, seed, ["A", "B", "C"], 72, true, { mapType });
+        for (const s of w.startTiles) {
+          const from = w.map.nearestPassable(s, 4) ?? s;
+          const seen = w.map.reachable(from, (id) => w.building(id) !== null);
+          let ok = false;
+          for (let i = 0; i < seen.length && !ok; i++) {
+            if (!seen[i]) continue;
+            const t = new Tile(i % w.map.width, Math.floor(i / w.map.width));
+            for (let y = t.y - 3; y <= t.y + 1 && !ok; y++) for (let x = t.x - 3; x <= t.x + 1 && !ok; x++) if (w.canPlace("dock", new Tile(x, y))) ok = true;
+          }
+          expect(ok, `${mapType} ${seed} base at ${s.x},${s.y}`).toBe(true);
+        }
+      }
+    }
   });
 
   it("on an island map the AI builds a Dock on its own shore and a transport within fifteen minutes", () => {
@@ -1424,14 +1499,15 @@ describe("maps and matches", () => {
 
   it("ends headless matches with the stronger AI winning nearly all of them", () => {
     // One map can favour the weaker side (its civilization, where the woods fall), so this asks for
-    // most of six, not every one: both the old and the denser-forest maps win about 9 in 10.
+    // most, not every one: about 9 in 10 are won. Twelve maps, as six were too few to tell a weaker AI
+    // from a change of maps (the gazelle herds moved every map's random numbers: 11 and 10 of 12 won).
     const losses: string[] = [];
-    for (const seed of [1, 2, 3, 4, 5, 6]) {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
       const r = runMatch(RULES, seed, 75, ["hard", "easy"]);
       if (r.winner !== 0) losses.push(`seed ${seed}:\n${r.lines.join("\n")}`);
       expect(r.problems).toEqual([]);
     }
-    expect(losses.length, losses.join("\n\n")).toBeLessThanOrEqual(1);
-    // Six full matches: three minutes is not enough once games run past forty minutes, or on a slower CI machine.
-  }, 600_000);
+    expect(losses.length, losses.join("\n\n")).toBeLessThanOrEqual(2);
+    // Twelve full matches: about eight minutes here, more on a slower CI machine.
+  }, 1_200_000);
 });

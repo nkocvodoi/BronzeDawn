@@ -95,8 +95,8 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
       w.addNode("lone_tree", t);
     }
     // Something to hunt near every base, as in the original's Stone Age.
-    herd(w, "gazelle", at(3, 9), w.rng.int(3, 5));
-    herd(w, "gazelle", at(14, 13), w.rng.int(3, 4));
+    herd(w, "gazelle", at(3, 9), w.rng.int(4, 6));
+    herd(w, "gazelle", at(14, 13), w.rng.int(4, 5));
     herd(w, "elephant", at(7, 14), 1);
   }
 
@@ -112,7 +112,7 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
   // Wild animals across the map: gazelles and elephants to hunt, lions to fear, alligators by the water.
   for (let k = 0; k < Math.round(6 * scale); k++) {
     const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
-    if (farFromStarts(c, 16)) herd(w, "gazelle", c, w.rng.int(3, 6));
+    if (farFromStarts(c, 16)) herd(w, "gazelle", c, w.rng.int(4, 7)); // herds of 4 to 7, as in the original
   }
   for (let k = 0; k < Math.round(3 * scale); k++) {
     const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
@@ -154,7 +154,51 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
   const [hilly, cliffy, high] = RELIEF[type];
   hills(w, starts, hilly, high);
   if (cliffy) cliffs(w, starts, cliffy);
+  if (!landOnly(type)) openToSea(w, starts);
+  w.nodes = w.nodes.filter((x) => x.alive);
   if (withRelics) relics(w, starts);
+}
+
+/** Every base can walk to the sea: where woods wall it in, a way is cut through them to the nearest shore
+ *  a Dock can stand by, with a little room at its end for its builder. (On an island the Dock is the only
+ *  way out.) */
+function openToSea(w: World, starts: Tile[]) {
+  const map = w.map, size = map.width * map.height;
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  // Beside the open sea: a Dock could be built next to this tile (a pond's bank is not enough).
+  const shore = (t: Tile) => {
+    if (!dirs.some(([dx, dy]) => map.terrainAt(new Tile(t.x + dx, t.y + dy)) === Terrain.water)) return false;
+    for (let y = t.y - 3; y <= t.y + 1; y++) for (let x = t.x - 3; x <= t.x + 1; x++) if (w.canPlace("dock", new Tile(x, y))) return true;
+    return false;
+  };
+  for (const s of starts) {
+    const from = map.nearestPassable(s, 4) ?? s;
+    const seen = map.reachable(from, (id) => w.building(id) !== null);
+    let open = false;
+    for (let i = 0; i < size && !open; i++) if (seen[i] && shore(new Tile(i % map.width, Math.floor(i / map.width)))) open = true;
+    if (open) continue;
+    // The nearest shore over land, through the trees, and the way there.
+    const back = new Int32Array(size).fill(-1);
+    const start = map.index(from);
+    back[start] = start;
+    const queue = [from];
+    let end: Tile | null = null;
+    for (let q = 0; q < queue.length && !end; q++) {
+      const t = queue[q];
+      for (const [dx, dy] of dirs) {
+        const n = new Tile(t.x + dx, t.y + dy);
+        if (!map.inside(n) || back[map.index(n)] >= 0 || !walkable(map.terrainAt(n))) continue;
+        const o = map.occupantAt(n);
+        if (o && !w.treeAt(n) && w.building(o) === null) continue;
+        back[map.index(n)] = map.index(t);
+        if (shore(n)) { end = n; break; }
+        queue.push(n);
+      }
+    }
+    if (!end) continue; // walled by cliffs: nothing to cut
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) w.clearTree(new Tile(end.x + dx, end.y + dy));
+    for (let i = map.index(end); i !== start; i = back[i]) w.clearTree(new Tile(i % map.width, Math.floor(i / map.width)));
+  }
 }
 
 /** Rolling hills, 0 to 3 high, rising no more than a step from one tile to the next. Bases, shores and
@@ -396,11 +440,13 @@ export function startTiles(count: number, n: number, seed = 0): Tile[] {
   return [...shuffle(corners), ...shuffle(edges)].slice(0, k);
 }
 
-/** A few animals of one kind standing near a point. */
+/** A few animals of one kind standing near a point. Gazelles keep together as a herd. */
 function herd(w: World, kind: string, c: Tile, count: number) {
+  const id = kind === "gazelle" ? w.newHerd(c.center) : 0;
   for (let i = 0; i < count; i++) {
     const t = w.map.nearestPassable(new Tile(c.x + w.rng.int(-1, 1), c.y + w.rng.int(-1, 1)), 3);
-    if (t) w.spawnAnimal(kind, t.center.add(new Vec2(w.rng.unit() * 0.4 - 0.2, w.rng.unit() * 0.4 - 0.2)));
+    const u = t ? w.spawnAnimal(kind, t.center.add(new Vec2(w.rng.unit() * 0.4 - 0.2, w.rng.unit() * 0.4 - 0.2))) : null;
+    if (u) u.herd = id;
   }
 }
 
