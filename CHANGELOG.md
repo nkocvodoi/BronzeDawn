@@ -9,6 +9,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 ## 2026-10-11
 
 - [#59](https://github.com/nkocvodoi/BronzeDawn/pull/59) Hình ảnh mới ở độ phân giải gốc: dân làng, lính bộ, kỵ binh, xe chiến, voi chiến, thú, cây, mỏ và bụi dâu vẽ lại thành khối có ánh sáng; công trình và mọi hình còn lại mịn gấp đôi, chân tường có bóng
+- [#58](https://github.com/nkocvodoi/BronzeDawn/pull/58) AI trên bản đồ đảo dứt điểm được bên thua: đánh Dock từ bờ, tàu chiến đi đánh khi đối thủ đã yếu, thuyền chở quân không còn kẹt khi đầy dân số, tìm tới lính còn sót trên đảo khác (20 trận: Khó thắng 17, trước 13; trận hết giờ còn 1, trước 6)
 - [#57](https://github.com/nkocvodoi/BronzeDawn/pull/57) Đợt test: test mọi lệnh và lệnh từ máy khác (tìm và sửa một lỗi làm sập trận online), test so từng hình (1.896 hình), smoke test nhóm quân, Delete, lưu/tải file, Settings phòng chờ; CI chạy cả các bài test trên trình duyệt
 - [#56](https://github.com/nkocvodoi/BronzeDawn/pull/56) Hết lag cuối trận khi xem 8 AI ở tốc độ cao (dân không còn tìm đường mãi tới cây không tới được); hươu chỉ ở vùng đất trống, không ở dải đất hẹp trông như đảo; thuyền ra từ Dock ở vùng biển lớn, không ra vũng nước
 - [#55](https://github.com/nkocvodoi/BronzeDawn/pull/55) Chạy mượt hơn khi trận đông: chỉ xử lý và vẽ những gì trong màn hình (trước đây cả bản đồ, kể cả hàng nghìn cây và mỏ), tìm kẻ địch gần nhất theo ô bản đồ (mô phỏng nhanh hơn khoảng 17%, kết quả giống hệt), vòng chọn và thanh máu chỉ tạo khi được chọn, nền địa hình chỉ giữ trên GPU (bớt 10–80 MB tùy cỡ bản đồ)

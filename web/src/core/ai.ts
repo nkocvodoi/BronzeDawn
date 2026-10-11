@@ -187,7 +187,9 @@ export class AIController {
     }
     const near = minBy(w.units.filter((u) => enemy(u) && u.pos.distance(dock.center) < 22), (u) => u.pos.distance(dock.center));
     if (near) { w.attack(this.player, idle.map((u) => u.id), near.id); return; }
-    if (navy.length < 4) return;
+    // Four ships before going out; any at all once the enemy has next to nothing left to fight with.
+    const beaten = w.units.filter((u) => u.alive && !u.isRelic && w.isEnemy(this.player, u.owner) && !u.isVillager && !(u.isBoat && !u.isSoldier)).length <= 2;
+    if (navy.length < 4 && !beaten) return;
     const docks = w.buildings.filter((b) => b.alive && b.def.on_water && w.isEnemy(this.player, b.owner));
     const prey: { center: Vec2 }[] = [...docks, ...w.units.filter(enemy).map((u) => ({ center: u.pos }))];
     const goal = minBy(prey, (x) => x.center.distance(home));
@@ -239,13 +241,16 @@ export class AIController {
     const p = w.players[this.player];
     if (w.unitsOf(this.player).filter((u) => u.isTransport).length >= want) return;
     const docks = w.buildingsOf(this.player).filter((b) => b.def.on_water && b.complete);
-    if (!docks.length || docks.some((d) => d.queue.some((q) => q.kind === "unit" && w.rules.units.get(q.id)?.capacity))) return;
-    // No room left for one: as a player would, give up one unit to make room (an idle soldier, else a villager).
+    if (!docks.length) return;
+    // No room left for one: as a player would, give up one unit to make room (an idle soldier, else a
+    // villager). Also for one already in the queue: it waits for room, and with the population full it
+    // waited for ever (a game of ninety minutes left unfinished).
     if (p.pop + 1 > p.popCap) {
       const mine = w.unitsOf(this.player).filter((u) => u.aboard === null);
       const spare = mine.find((u) => u.isSoldier && !u.isBoat && u.order.kind === "idle") ?? mine.find((u) => u.isVillager && u.order.kind !== "build");
       if (spare) w.destroy(this.player, spare.id);
     }
+    if (docks.some((d) => d.queue.some((q) => q.kind === "unit" && w.rules.units.get(q.id)?.capacity))) return;
     const dock = docks.find((d) => d.queue.length === 0) ?? docks[0];
     const type = w.current(this.player, "light_transport");
     // What the reserve kept back is for this: it is paid from everything there is.
@@ -817,7 +822,9 @@ export class AIController {
     const sea = !!target && this.overSea(w, home, target);
     // A wave the enemy's army would swallow whole is not sent, unless there is no more room to grow.
     const enough = ready.length >= this.waveSize && ready.length >= theirArmy * 0.8;
-    if (!(enough || ((maxed || weak) && (!sea || ready.length >= 10))) || !target) return;
+    // With next to nothing left to fight with, a few are enough to finish them, sea or not.
+    const minSea = theirArmy <= 2 ? 4 : 10;
+    if (!(enough || ((maxed || weak) && (!sea || ready.length >= minSea))) || !target) return;
     const sendPriests = priests.filter((u) => u.order.kind === "idle" && dist(u, home) <= 18).map((u) => u.id);
     const ids = ready.map((u) => u.id).concat(sendPriests);
     // Over the water (islands): by transport, as many as it carries a trip.
@@ -843,8 +850,20 @@ export class AIController {
     // Only what they can walk to: a Dock stands in the water, and on an island map the next building may
     // be across the sea. Sent there, soldiers stop at the shore and are sent again, for ever.
     const seen = this.acrossSea ? w.map.reachable(w.map.nearestPassable(c.tile, 3) ?? c.tile, (id) => w.building(id) !== null) : null;
-    const walkTo = (b: Building) => !seen || (!b.def.on_water && b.footprint.tiles().some((t) => seen[w.map.index(t)] === 1));
+    // A Dock is struck from the shore beside it: sent to its middle, in the water, soldiers stopped at
+    // the shore for ever, so it is attacked, from a tile of land next to it that they can walk to. Once a
+    // Dock was all a beaten player had left, and no one ever came for it.
+    const shore = (b: Building) => {
+      const fp = b.footprint;
+      for (let y = fp.origin.y - 1; y <= fp.origin.y + fp.size; y++) for (let x = fp.origin.x - 1; x <= fp.origin.x + fp.size; x++) {
+        const t = new Tile(x, y);
+        if (!fp.contains(t) && w.map.inside(t) && walkable(w.map.terrainAt(t)) && (!seen || seen[w.map.index(t)] === 1)) return true;
+      }
+      return false;
+    };
+    const walkTo = (b: Building) => b.def.on_water ? shore(b) : !seen || b.footprint.tiles().some((t) => seen[w.map.index(t)] === 1);
     const t = minBy(w.buildings.filter((b) => b.alive && w.isEnemy(this.player, b.owner) && !b.isWall && walkTo(b)), (b) => b.distance(c));
+    if (t?.def.on_water) { w.attack(this.player, group.map((u) => u.id), t.id); return true; }
     if (t) { w.move(this.player, group.map((u) => u.id), t.center, true); return true; }
     const u = w.units.find((u) => u.alive && !u.isRelic && w.isEnemy(this.player, u.owner) && (!seen || (!u.isBoat && u.aboard === null && seen[w.map.index(u.pos.tile)] === 1)));
     if (u) { w.move(this.player, group.map((g) => g.id), u.pos, true); return true; }
@@ -856,7 +875,10 @@ export class AIController {
     const mine = w.startTiles[this.player]?.center ?? null;
     const homes = w.players.filter((p) => w.isEnemy(this.player, p.id) && !p.defeated).map((e) => {
       const tc = w.buildings.find((b) => b.alive && b.owner === e.id && b.def.id === "town_center");
-      return tc?.center ?? w.buildings.find((b) => b.alive && b.owner === e.id && !b.isWall)?.center ?? w.startTiles[e.id].center;
+      // With no building left, where their last soldiers stand (on another island, often): where they began
+      // is where this army already stood, waiting, for the rest of the game.
+      const last = mine ? minBy(w.units.filter((u) => u.alive && u.owner === e.id && !u.isRelic && !u.isBoat && u.aboard === null), (u) => u.pos.distance(mine)) : null;
+      return tc?.center ?? w.buildings.find((b) => b.alive && b.owner === e.id && !b.isWall)?.center ?? last?.pos ?? w.startTiles[e.id].center;
     });
     return mine ? minBy(homes, (h) => h.distance(mine)) : homes[0] ?? null;
   }
