@@ -81,7 +81,10 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [x] Lưu và tải trận: lưu toàn bộ trạng thái (cả AI) trong trình duyệt hoặc ra file .bdsave (nén gzip, khoảng 0,1 MB cho bản đồ nhỏ); trận tải lại chạy tiếp y hệt trận đã lưu
 - [x] Chơi online với bạn bè: lockstep qua WebRTC, không cần máy chủ (host gửi mã mời, bạn bè gửi lại mã trả lời); tới 8 người kể cả máy; host tạm dừng và đặt tốc độ cho mọi người; hai bên so dấu vân tay của trận để phát hiện lệch
 - [x] Online: mã phòng 6 số (ghép qua máy chủ công cộng miễn phí của PeerJS); báo rõ khi không nối được; mã dài vẫn giữ làm dự phòng
-- [ ] Online: một số mạng chặt (NAT đối xứng, CGNAT, 4G) không nối thẳng được, cần máy chủ TURN (máy chủ TURN miễn phí của PeerJS đã ngừng; game đã có chỗ cho TURN riêng lúc build); chưa có chat; người rời trận thì quân đứng yên (máy chưa chơi thay)
+- [x] Online: máy chủ TURN riêng (Metered) đặt lúc build từ biến của repo, nên mạng chặt (NAT đối xứng, CGNAT, 4G) vẫn nối được; màn hình chính và phòng chờ kiểu bản gốc (8 ghế, tên, dân tộc, đội, Ready, chat, Settings của host), chơi không cần máy
+- [x] Online: mọi người chịu cùng một độ trễ ngắn như bản gốc (mỗi người tự xếp lệnh của mình vào lượt phía trước; độ trễ tự đo theo mạng, khoảng 200 đến 300 ms), lính bước đi ngay trên màn hình khi ra lệnh; host tạm dừng thì mọi máy dừng ở cùng một lượt
+- [x] Online: chat trong trận (Enter); người rời trận thì máy (mức Moderate) chơi thay từ cùng một lượt trên mọi máy
+- [ ] Online: chưa vào lại được trận đang chơi khi rớt mạng; host rời thì trận dừng
 
 ## Chỗ đang khác bản gốc (đã chọn, có thể đổi)
 

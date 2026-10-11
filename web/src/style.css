@@ -281,3 +281,10 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay .lobby-card { animation: none; } /* redrawn at every change: no pop each time */
 #overlay .seats input#my-name { background: #2a2218; color: #f3e4bd; border: 2px solid #c8a462; font-weight: 700; }
 #overlay .lobby-chat .sys { color: #a8b88a; font-style: italic; }
+
+/* Chat in an online game: a box at the bottom of the map, and lines among the messages. */
+#game-chat-in { position: fixed; left: 50%; bottom: calc(var(--panel-h) + var(--u) * 30); transform: translateX(-50%); width: min(560px, calc(100vw - 32px));
+  z-index: 6; font: inherit; font-size: calc(var(--u) * 12); padding: calc(var(--u) * 5) calc(var(--u) * 8); color: #f3e6c4; background: rgba(20, 14, 8, 0.88);
+  border: 1px solid #b8913f; border-radius: 3px; outline: none; }
+#messages .chat { color: #f3e6c4; font-weight: 400; }
+#messages .chat b { font-weight: 700; }

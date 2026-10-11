@@ -682,8 +682,16 @@ export class Game {
       h.turnMs = 100 / setup.speed;
       for (const f of this.online.friends.filter((x) => x.slot > 0)) {
         h.addGuest(f.slot, f.peer.link);
-        f.peer.onClose = () => { h.dropGuest(f.slot); this.hud.message(`${w.players[f.slot].name} has left the game; their people stay where they are`, "warn"); };
-        if (!f.peer.open) h.dropGuest(f.slot); // gone before the game began: not waited for
+        // A friend who leaves: the game no longer waits for them, and a computer plays for them, on every
+        // machine from the same turn.
+        const left = () => {
+          h.dropGuest(f.slot);
+          if (this.net !== h || w.winner !== null) return;
+          this.hud.message(`${w.players[f.slot].name} has left the game`, "warn");
+          this.issue({ k: "takeover", player: f.slot });
+        };
+        f.peer.onClose = left;
+        if (!f.peer.open) queueMicrotask(left); // gone before the game began (once the game is set up)
 
       }
       net = h;
@@ -693,8 +701,18 @@ export class Game {
       host!.onClose = () => this.hud.message("The host has left: the game cannot go on", "warn");
       net = g;
     }
-    net.onOther = (m) => {
-      const msg = m as { t?: string; v?: number; on?: boolean };
+    net.onCommand = (_p, c, result) => {
+      if (c.k === "takeover" && result) this.hud.message(`${w.players[c.player].name} has left: a computer plays for them now`, "warn");
+    };
+    net.onOther = (m, from) => {
+      const msg = m as { t?: string; v?: number; on?: boolean; text?: unknown; from?: unknown };
+      if (msg.t === "chat") {
+        // From a friend to the host, who passes it on; from the host to a friend, with who said it.
+        const who = net instanceof LockstepHost ? from : msg.from;
+        if (typeof who === "number" && w.players[who] && who !== this.me) this.showChat(who, msg.text);
+        if (net instanceof LockstepHost) net.broadcast({ t: "chat", from, text: msg.text });
+        return;
+      }
       if (msg.t === "speed" && typeof msg.v === "number") { this.speed = msg.v; this.hud.speed(msg.v); this.hud.message(`The host set the speed to ${msg.v}x`); }
       if (msg.t === "paused") { this.hostPaused = !!msg.on; this.hud.message(msg.on ? "The host has paused the game" : "The host has resumed the game"); }
     };
@@ -705,6 +723,39 @@ export class Game {
     this.enterGame();
     this.hud.message(`Online: you are ${w.players[me].name}${w.players[me].civ ? ` (${w.players[me].civ!.name})` : ""}. Gather food and wood. Good luck.`);
     this.selectTownCenter();
+  }
+
+  /** A line of chat in a game: checked, as it came over the network, and shown as text. */
+  private showChat(player: number, text: unknown) {
+    const t = typeof text === "string" ? text.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, CHAT_MAX) : "";
+    if (!t) return;
+    this.hud.chat(this.world.players[player].name, playerColor(player), t);
+    if (player !== this.me) this.sound.play("click", 0.5);
+  }
+
+  /** Enter in an online game: a box to type a line to everyone; Enter sends it, Escape closes it. */
+  private openChat() {
+    let box = document.querySelector("#game-chat-in") as HTMLInputElement | null;
+    if (!box) {
+      box = document.createElement("input");
+      box.id = "game-chat-in";
+      box.maxLength = CHAT_MAX;
+      box.autocomplete = "off";
+      box.placeholder = "Say something to everyone (Enter to send, Esc to close)";
+      box.addEventListener("blur", () => setTimeout(() => box!.remove())); // not while it is being removed
+      document.body.appendChild(box);
+    }
+    box.focus();
+  }
+
+  private sendGameChat(box: HTMLInputElement) {
+    const text = box.value.trim().slice(0, CHAT_MAX);
+    box.remove();
+    const net = this.net;
+    if (!text || !net) return;
+    this.showChat(this.me, text);
+    if (net instanceof LockstepHost) net.broadcast({ t: "chat", from: this.me, text });
+    else if (this.online?.role === "guest") this.online.peer?.link.send({ t: "chat", text });
   }
 
   /** Back to playing alone: every connection closed. */
@@ -1213,7 +1264,7 @@ export class Game {
       "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · Tab: the next unit of the selection · F4 or S: population, scores or nothing above the minimap · F10: menu",
       "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
-      "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar), and 5x, 10x when watching · F3 pause",
+      "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar), and 5x, 10x when watching · F3 pause · Enter: chat, in an online game",
       "Watching the computers: V follows one player (its fog, resources and panel), then the next, then everything",
       ...(this.started ? this.civLines() : []),
       this.started ? "Press ? or Esc to close" : `<span class="choices"><button id="mm-back">Back</button></span>`,
@@ -2625,6 +2676,10 @@ export class Game {
       if (key === "Enter" && t.id === "room-in") (document.querySelector("#join-room") as HTMLButtonElement | null)?.click();
       if (key === "Enter" && t.id === "chat-in") this.sendChat(t as HTMLInputElement);
       if (key === "Enter" && t.id === "my-name") (t as HTMLInputElement).blur(); // the change event sends it
+      if (t.id === "game-chat-in") {
+        if (key === "Enter") this.sendGameChat(t as HTMLInputElement);
+        else if (key === "Escape") t.remove();
+      }
       return;
     }
     if (key.startsWith("Arrow")) { this.keys.add(key); e.preventDefault(); return; }
@@ -2636,6 +2691,7 @@ export class Game {
       if (key === "Escape" && document.querySelector("#mm-back, #setup-back")) (document.querySelector("#mm-back, #setup-back") as HTMLButtonElement).click();
       return;
     }
+    if (key === "Enter" && this.net && !this.hud.overlayShown) { e.preventDefault(); this.openChat(); return; }
     if (this.world.winner !== null) { if (key === "Enter") this.restart(); return; }
     if (key === "?" || key === "F1" || key === "F10") {
       e.preventDefault();

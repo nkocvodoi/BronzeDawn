@@ -94,8 +94,10 @@ abstract class Lockstep {
 
   /** Sends a sealed turn of this player's commands to the others. */
   protected abstract sendInput(n: number, cmds: Command[]): void;
-  /** Whether a new turn may start (the host's pause). */
-  protected mayBegin() { return true; }
+  /** Whether this player seals new turns (not while the host has paused). */
+  protected sealing() { return true; }
+  /** Called as a turn is about to begin. */
+  protected beginning() { /* nothing by default */ }
   /** A turn has been played to its end. */
   protected abstract finished(): void;
 
@@ -139,12 +141,12 @@ abstract class Lockstep {
     }
   }
 
-  /** Plays one step, if the game may go on; false when it must wait (for the others' commands, or the
-   *  host's pause). The interface calls this as often as its clock says, so units move smoothly. */
+  /** Plays one step, if the game may go on; false when it must wait for the others' commands (or for the
+   *  host's, when paused). The interface calls this as often as its clock says, so units move smoothly. */
   stepTick(): boolean {
     if (this.tickInTurn === 0) {
-      if (!this.mayBegin()) return false;
-      this.seal();
+      this.beginning();
+      if (this.sealing()) this.seal();
       if (!this.ready(this.turn)) return false;
       const t = this.inputs.get(this.turn);
       this.inputs.delete(this.turn);
@@ -182,7 +184,8 @@ export class LockstepHost extends Lockstep {
   private lastPing = -Infinity;
   /** How long a turn takes on the clock (a faster game shortens it), in milliseconds. */
   turnMs = 100;
-  /** Paused by the host: the turn being played is finished, and no new one starts. */
+  /** Paused by the host: no new turns are sealed, so every machine plays to the last one sealed and stops
+   *  there, all at the same turn. */
   paused = false;
   /** Times in a row a lower delay was measured: the delay goes down only when it stays down. */
   private lower = 0;
@@ -229,14 +232,15 @@ export class LockstepHost extends Lockstep {
 
   protected sendInput(n: number, cmds: Command[]) { this.broadcast({ t: "in", p: this.me, n, cmds }); }
 
-  protected mayBegin() {
+  protected sealing() { return !this.paused; }
+
+  protected beginning() {
     const now = this.clock();
     if (now - this.lastPing >= PING_EVERY) {
       this.lastPing = now;
       this.broadcast({ t: "ping", s: now });
       this.retune();
     }
-    return !this.paused;
   }
 
   /** The delay, from the measured connections: up at once, down a turn at a time when it stays down. */
