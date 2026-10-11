@@ -334,7 +334,7 @@ function drawHead(p: PixelCanvas, s: Skel, g: Gear, back: boolean, pc: Ramp) {
 
 /** A person at the screen's own resolution, in a 52 x 56 picture with the feet at (22, 50): a villager
  *  (with the tool of its work and what it carries), a soldier, an archer or a priest. */
-export function drawPersonHD(p: PixelCanvas, f: Figure, g: Gear, pcBase: RGB) {
+export function drawPersonHD(p: PixelCanvas, f: Figure, g: Gear, pcBase: RGB, seated = false) {
   const s = skeleton(f), back = f.facing === "back", villager = f.type === "villager";
   const pc = ramp(pcBase), pcD = ramp(darken(pcBase, 0.78));
   const kind = villager ? (f.tool === "spear" ? "javelin" : f.tool === "none" ? "" : f.tool) : g.weapon === "none" ? "" : g.weapon;
@@ -344,7 +344,7 @@ export function drawPersonHD(p: PixelCanvas, f: Figure, g: Gear, pcBase: RGB) {
   const workHand = basket ? [s.cx + 5, s.hipY - 2 + (f.pose === "work" ? f.frame % 2 : 0)] : net ? [s.cx + 7, s.shY + 6] : bow ? [s.cx + 4, s.shY + 4] : h.hand;
   const armored = g.armor !== "none" && g.armor !== "leather";
   const cloth = g.robe ? ROBE : villager ? TUNIC : pc, clothD = g.robe ? ROBE_D : villager ? TUNIC_D : pcD;
-  groundShadow(p, s.cx, s.fy + 0.5, 9, 3);
+  if (!seated) groundShadow(p, s.cx, s.fy + 0.5, 9, 3);
 
   const leg = (l: { hip: number[]; knee: number[]; foot: number[] }, far: boolean) => {
     const r = villager ? (far ? LEATHER_D : LEATHER) : far ? SKIN_D : SKIN;
@@ -373,14 +373,14 @@ export function drawPersonHD(p: PixelCanvas, f: Figure, g: Gear, pcBase: RGB) {
     // A robe to the feet, swaying as the priest walks.
     const sway = f.pose === "walk" ? [0, 1, 0, -1][f.frame % 4] : 0;
     torso(p, s.cx, s.hipY - 2, s.fy, 12, 16, back ? ROBE_D : ROBE, sway);
-  } else {
+  } else if (!seated) {
     leg(s.farLeg, true);
   }
   if (back && kind && !bow && !basket && !net) drawHeld(p, kind, h.hand, h.angle, f);
   if (back) arm(s.nearShoulder, workHand, true);
-  if (!g.robe) leg(s.nearLeg, false);
+  if (!g.robe && !seated) leg(s.nearLeg, false);
   torso(p, s.cx, s.shY - 1, s.hipY + 2, 15, 11, back ? clothD : cloth);
-  torso(p, s.cx, s.hipY - 1, s.hipY + 5, 12, 13.5, back ? clothD : cloth); // the skirt of the tunic
+  if (!seated) torso(p, s.cx, s.hipY - 1, s.hipY + 5, 12, 13.5, back ? clothD : cloth); // the skirt of the tunic
   // Armour over the chest.
   const chest = (r: Ramp, pattern?: (x: number, y: number) => boolean) => {
     torso(p, s.cx, s.shY - 0.5, s.hipY - 2, 14.5, 11.5, r);
@@ -425,7 +425,26 @@ export function drawPersonHD(p: PixelCanvas, f: Figure, g: Gear, pcBase: RGB) {
       for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) if ((x + y) % 2 === 0 && Math.abs(x - 2.5) + Math.abs(y - 2.5) < 4) p.set(nx + x, ny + y, NET);
     }
   }
-  selout(p);
+  if (!seated) selout(p);
+}
+
+/** Copies what is drawn on `src` onto p, moved by (dx, dy). */
+function blit(p: PixelCanvas, src: PixelCanvas, dx: number, dy: number) {
+  for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) {
+    const a = src.alphaAt(x, y);
+    if (a === 255) p.set(x + dx, y + dy, src.get(x, y)!);
+  }
+}
+
+/** A rider: the person drawn seated, set with the hips at (hx, hy), a leg down the mount's flank. */
+function rider(p: PixelCanvas, f: Figure, g: Gear, pc: RGB, hx: number, hy: number) {
+  const t = new PixelCanvas(52, 56);
+  drawPersonHD(t, f, g, pc, true);
+  const back = f.facing === "back";
+  const skin = g.greaves ? BRONZE : SKIN;
+  // The near leg over the flank: thigh forward, shin down.
+  if (!back) { capsule(p, hx + 2, hy, hx + 6, hy + 4, 2.3, ramp(pc)); capsule(p, hx + 6, hy + 4, hx + 5, hy + 11, 1.9, skin); capsule(p, hx + 5, hy + 11, hx + 7.5, hy + 11.5, 1.2, SHOE); }
+  blit(p, t, Math.round(hx - 22), Math.round(hy - 34));
 }
 
 // ---- trees
@@ -550,13 +569,16 @@ export function drawBushHD(p: PixelCanvas) {
 
 // ---- animals on four legs
 
-interface Beast { coat: RGB; belly: RGB; bodyRx: number; bodyRy: number; leg: number; legR: number; neck: number; headR: number; mane?: RGB; horns?: boolean; tuft?: boolean; trunk?: boolean }
+interface Beast { coat: RGB; belly: RGB; bodyRx: number; bodyRy: number; leg: number; legR: number; neck: number; headR: number; mane?: RGB; horns?: boolean; tuft?: boolean; trunk?: boolean; horse?: boolean; camel?: boolean }
 const GAZELLE: Beast = { coat: rgb(0xc89a5a), belly: rgb(0xf0e4cc), bodyRx: 11, bodyRy: 5.5, leg: 11, legR: 1.1, neck: 8, headR: 2.6, horns: true };
 const ELEPHANT: Beast = { coat: rgb(0x6e6c68), belly: rgb(0x625f5a), bodyRx: 25, bodyRy: 15, leg: 18, legR: 4.4, neck: 1, headR: 8.5, tuft: true, trunk: true };
 const LION: Beast = { coat: rgb(0xc8984c), belly: rgb(0xe4c48c), bodyRx: 14, bodyRy: 6.5, leg: 10, legR: 2, neck: 4, headR: 4.4, mane: rgb(0x8a5a24), tuft: true };
 
 /** A beast walking, standing, grazing (or springing, for a lion), side on, facing right; or lying dead. */
-function drawBeast(p: PixelCanvas, b: Beast, f: Figure, dead: boolean, cx: number, fy: number) {
+/** The beast's back, for a rider: where it was drawn, its top. */
+let lastBack = { x: 0, y: 0, by: 0 };
+
+function drawBeast(p: PixelCanvas, b: Beast, f: Figure, dead: boolean, cx: number, fy: number, cloth?: Ramp, armour?: Ramp) {
   const k = dead ? 0.72 : 1;
   const coat = ramp(darken(b.coat, k)), coatD = ramp(darken(b.coat, k * 0.78)), belly = ramp(darken(b.belly, k)), dark = ramp(rgb(0x3a2a1c));
   if (dead) {
@@ -593,11 +615,36 @@ function drawBeast(p: PixelCanvas, b: Beast, f: Figure, dead: boolean, cx: numbe
     if (d2 > 1) continue;
     p.set(x, y, shade(dy > 0.35 ? belly : coat, dx, dy, Math.sqrt(1 - d2), x, y));
   }
+  // A horse's cloth or scale barding over the back and flanks; a camel's hump.
+  if (cloth || armour) for (let y = Math.floor(by - b.bodyRy); y <= Math.ceil(by + b.bodyRy * 0.45); y++) for (let x = Math.floor(cx - b.bodyRx * 0.8); x <= Math.ceil(cx + b.bodyRx * 0.65); x++) {
+    const dx = (x + 0.5 - cx) / b.bodyRx, dy = (y + 0.5 - by) / b.bodyRy, d2 = dx * dx + dy * dy;
+    if (d2 > 1.02) continue;
+    let c = shade((armour ?? cloth)!, dx, dy, Math.sqrt(Math.max(0, 1 - d2)), x, y);
+    if (armour && ((x >> 1) + (y >> 1)) % 2 === 0 && (y & 1)) c = darken(c, 0.8);
+    p.set(x, y, c);
+  }
+  if (b.camel) ellipsoid(p, cx - 1, by - b.bodyRy - 3, b.bodyRx * 0.42, 5.5, coat);
+  lastBack = { x: cx - 1, y: by - b.bodyRy - (b.camel ? 6 : 0), by };
   leg(hind, 1, false); leg(fore, -1, false);
   // Neck and head: up, down to the grass when grazing, or out level as a lion springs.
   const nx0 = cx + b.bodyRx * 0.7, ny0 = by - b.bodyRy * 0.4;
   const graze = work && !b.mane, pounce = work && !!b.mane;
   const hx = nx0 + (graze ? 7 : pounce ? 8 : 5), hy = graze ? fy - 4 : pounce ? by - 2 : ny0 - b.neck;
+  if (b.horse || b.camel) {
+    // A horse: the neck up and forward from the withers, a long head, the mane down the neck, ears.
+    // A camel: a long neck curving forward and up, a small head.
+    const wx = cx + b.bodyRx * 0.62, wy = by - b.bodyRy * 0.55;
+    const nx = wx + (b.camel ? 9 : 5), ny = wy - (b.camel ? 12 : 9) + (work ? 3 : 0);
+    if (b.camel) { capsule(p, wx, wy + 2, wx + 7, wy + 2, 2.6, coat); capsule(p, wx + 7, wy + 2, nx, ny, 2.4, coat); }
+    else capsule(p, wx, wy, nx, ny, 3.4, coat);
+    if (b.mane) capsule(p, wx - 1, wy - 2, nx - 1.5, ny - 1, 1.6, ramp(b.mane));
+    capsule(p, nx, ny, nx + (b.camel ? 5 : 7), ny + (b.camel ? 2 : 4), b.camel ? 2 : 2.6, coat);
+    ellipsoid(p, nx + 0.5, ny - 0.2, 3, 2.8, coat);
+    p.set(nx + 1.5, ny - 1, rgb(0x1a120a));
+    capsule(p, nx - 0.5, ny - 2.5, nx - 1, ny - 5, 0.9, coatD); // an ear
+    selout(p, 0.38);
+    return;
+  }
   if (b.trunk) {
     // An elephant: the head low on the shoulders, a great ear, the trunk hanging (raised in a charge), tusks.
     const ex = nx0 + 2, ey = ny0 - 3;
@@ -624,3 +671,57 @@ function drawBeast(p: PixelCanvas, b: Beast, f: Figure, dead: boolean, cx: numbe
 export function drawGazelleHD(p: PixelCanvas, f: Figure, dead: boolean) { drawBeast(p, GAZELLE, f, dead, 22, 38); }
 export function drawLionHD(p: PixelCanvas, f: Figure, dead: boolean) { drawBeast(p, LION, f, dead, 26, 42); }
 export function drawElephantHD(p: PixelCanvas, f: Figure, dead: boolean) { drawBeast(p, ELEPHANT, f, dead, 38, 84); }
+
+const HORSE = (coat: number): Beast => ({ coat: rgb(coat), belly: darken(rgb(coat), 0.92), bodyRx: 16, bodyRy: 8, leg: 17, legR: 2, neck: 9, headR: 3.4, mane: darken(rgb(coat), 0.45), tuft: false, horse: true });
+const CAMEL: Beast = { coat: rgb(0xc8a066), belly: rgb(0xd8b480), bodyRx: 15, bodyRy: 7, leg: 21, legR: 2, neck: 11, headR: 2.8, camel: true };
+
+/** A horseman: the horse (its coat, cloth or scale barding) and the rider seated on it. A picture of
+ *  68 x 74 with the hooves at (32, 68). */
+export function drawRiderHD(p: PixelCanvas, f: Figure, g: Gear, pc: RGB, type: string) {
+  const coat = type === "scout" || type === "horse_archer" ? 0xa8743c : type === "cataphract" ? 0x3a2c24 : 0x6a4226;
+  const barding = type === "cataphract" || type === "heavy_horse_archer" ? "scale" : type === "scout" ? "none" : "cloth";
+  drawBeast(p, HORSE(coat), { ...f, pose: f.pose === "work" ? "idle" : f.pose }, false, 28, 68,
+    barding === "cloth" ? ramp(pc) : undefined, barding === "scale" ? BRONZE : undefined);
+  rider(p, f, g, pc, lastBack.x - 3, lastBack.y + 4); // down into the saddle
+  selout(p, 0.38);
+}
+
+/** A camel rider, 68 x 84 with the feet at (30, 78). */
+export function drawCamelRiderHD(p: PixelCanvas, f: Figure, g: Gear, pc: RGB) {
+  drawBeast(p, CAMEL, { ...f, pose: f.pose === "work" ? "idle" : f.pose }, false, 30, 78, ramp(pc));
+  rider(p, f, g, pc, lastBack.x, lastBack.y + 4);
+  selout(p, 0.38);
+}
+
+/** A war elephant with its mahout on the neck; the archer's in a howdah on its back; the armoured one in
+ *  plates. 92 x 92 (108 for the archer's) with the feet at (38, 84 or 100). */
+export function drawWarElephantHD(p: PixelCanvas, f: Figure, mahout: Gear, archer: Gear | null, pc: RGB, armoured: boolean, fy: number) {
+  drawBeast(p, ELEPHANT, f, false, 38, fy, armoured ? undefined : ramp(pc), armoured ? IRON : undefined);
+  const { x, y } = lastBack;
+  if (archer) {
+    // The howdah: a box of planks, the archer standing in it.
+    rider(p, f, archer, pc, x - 4, y - 4);
+    torso(p, x - 4, y - 2, y + 6, 18, 18, WOOD);
+    capsule(p, x - 13, y - 2, x + 5, y - 2, 1.2, ramp(pc));
+  }
+  rider(p, { ...f, pose: f.pose === "work" && !archer ? "work" : "idle" }, mahout, pc, x + 14, y + 4);
+  selout(p, 0.38);
+}
+
+/** A chariot: a horse in front, the car on its wheel behind, the driver standing in it (and an archer). Scythes
+ *  on the hub of a scythed chariot. 100 x 72 with the wheels on the ground at (44, 64). */
+export function drawChariotHD(p: PixelCanvas, f: Figure, driver: Gear, archer: Gear | null, pc: RGB, scythe: boolean) {
+  drawBeast(p, HORSE(0x6a4226), { ...f, pose: f.pose === "work" ? "idle" : f.pose }, false, 66, 64, ramp(pc));
+  const wx = 34, wy = 55, r = 9;
+  capsule(p, wx + 6, wy - 4, 56, lastBack.by + 2, 1.1, WOOD); // the pole to the horse
+  // The car: a curved front of the player's colour, a floor over the axle.
+  torso(p, wx - 1, wy - 12, wy - 1, 18, 16, ramp(pc));
+  if (archer) rider(p, f, archer, pc, wx - 4, wy - 10);
+  rider(p, { ...f, pose: archer ? "idle" : f.pose }, driver, pc, wx + 3, wy - 10);
+  // The wheel: a rim, spokes, the hub.
+  for (let a = 0; a < 24; a++) { const t = (a / 24) * Math.PI * 2; capsule(p, wx + Math.cos(t) * r, wy + Math.sin(t) * r * 0.95, wx + Math.cos(t) * r, wy + Math.sin(t) * r * 0.95, 1.3, WOOD); }
+  for (let a = 0; a < 6; a++) { const t = (a / 6) * Math.PI * 2 + (f.pose === "walk" ? (f.frame % 4) * 0.26 : 0); capsule(p, wx, wy, wx + Math.cos(t) * r, wy + Math.sin(t) * r, 0.6, WOOD); }
+  ellipsoid(p, wx, wy, 2, 2, BRONZE);
+  if (scythe) flat(p, [[wx + 1, wy - 1], [wx + 14, wy + 1], [wx + 1, wy + 2]], IRON);
+  selout(p, 0.38);
+}

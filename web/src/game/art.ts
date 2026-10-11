@@ -5,7 +5,7 @@ import { Texture } from "pixi.js";
 import type { BuildingDef } from "../core/rules";
 import { GridMap, Terrain } from "../core/grid";
 import { HALF_H, HALF_W, fromIso } from "./iso";
-import { drawBushHD, drawElephantHD, drawGazelleHD, drawLionHD, drawMineHD, drawPersonHD, drawTreeHD } from "./hd";
+import { drawBushHD, drawCamelRiderHD, drawChariotHD, drawElephantHD, drawGazelleHD, drawLionHD, drawMineHD, drawPersonHD, drawRiderHD, drawTreeHD, drawWarElephantHD } from "./hd";
 import { bayer, darken, hash, HiCanvas, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
 import { AGE_KEYS, ASSETS, ImageSpec } from "./assets";
 
@@ -385,14 +385,15 @@ export function unitPic(look: UnitLook): Pic {
   const key = `u-${type}-${owner}-${facing}-${pose}-${frame}-${tool}-${carry}`;
   // Drawn anew at the screen's own resolution (the first of the pictures to be): the same size on the map.
   if (FOOT.has(type)) return picHD(key, 52, 56, 22 / 52, 50 / 56, (p) => drawPersonHD(p, look, KITS[type] ?? KITS.clubman, playerRGB(owner)));
-  if (RIDERS.has(type)) return pic(key, 34, 37, 16 / 34, 34 / 37, (p) => drawRider(p, look));
-  if (type === "camel_rider") return pic(key, 34, 42, 16 / 34, 39 / 42, (p) => drawCamelRider(p, look));
-  if (CHARIOTS.has(type)) return pic(key, 50, 36, 22 / 50, 32 / 36, (p) => drawChariot(p, look));
+  const pc = playerRGB(owner);
+  if (RIDERS.has(type)) return picHD(key, 68, 74, 16 / 34, 34 / 37, (p) => drawRiderHD(p, look, KITS[type], pc, type));
+  if (type === "camel_rider") return picHD(key, 68, 84, 16 / 34, 39 / 42, (p) => drawCamelRiderHD(p, look, KITS.camel_rider, pc));
+  if (CHARIOTS.has(type)) return picHD(key, 100, 72, 22 / 50, 32 / 36, (p) => drawChariotHD(p, look, KITS.chariot_driver, type === "chariot_archer" ? KITS.chariot_archer : null, pc, type === "scythe_chariot"));
   if (type === "elephant") return picHD(key, 92, 92, 21 / 46, 42 / 46, (p) => drawElephantHD(p, look, false)); // the wild one
   if (ELEPHANTS.has(type)) {
     const tall = type === "elephant_archer";
     const H = tall ? 54 : 46, fy = H - 4;
-    return pic(key, 46, H, 21 / 46, fy / H, (p) => drawWarElephant(p, look, fy));
+    return picHD(key, 92, H * 2, 21 / 46, fy / H, (p) => drawWarElephantHD(p, look, KITS.mahout, tall ? KITS.elephant_archer : null, pc, type === "armored_elephant", fy * 2));
   }
   if (type === "helepolis") return pic(key, 38, 54, 19 / 38, 50 / 54, (p) => drawHelepolis(p, look));
   if (SIEGE.has(type)) return pic(key, 40, 34, 20 / 40, 30 / 34, (p) => drawSiege(p, look));
@@ -853,86 +854,6 @@ function drawGlow(p: PixelCanvas, x: number, y: number, st: number) {
 
 // ---- mounts
 
-function drawHorse(p: PixelCanvas, ox: number, fy: number, look: UnitLook, coat: RGB, barding: "none" | "cloth" | "scale", pc: RGB) {
-  const coatD = darken(coat, 0.72), coatL = lighten(coat, 0.14), mane = darken(coat, 0.45);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const bob = gait === 1 || gait === 3 ? -1 : 0;
-  const by = fy - 11 + bob;
-  const cyc = [[-2, 0], [0, 2], [2, 0], [1, 1]];
-  const leg = (x: number, phase: number, far: boolean) => {
-    const [dx, lift] = gait < 0 ? [0, 0] : cyc[(gait + phase) % 4];
-    const c = far ? coatD : coat;
-    p.line(x, by + 2, x + dx, fy - 1 - lift, c); p.line(x + 1, by + 2, x + 1 + dx, fy - 1 - lift, darken(c, 0.9));
-    p.rect(x + dx, fy - 1 - lift, 2, 1, C.dark);
-  };
-  leg(ox - 7, 1, true); leg(ox + 6, 3, true);
-  // Tail.
-  p.line(ox - 9, by - 2, ox - 11, by + 3 + (gait >= 0 ? gait % 2 : 0), mane); p.line(ox - 10, by - 2, ox - 12, by + 4, mane);
-  p.ellipse(ox, by, 9.5, 4.6, (x, y) => (y < by - 2 ? coatL : y > by + 2 ? coatD : x > ox + 4 ? coatD : coat));
-  leg(ox - 5, 0, false); leg(ox + 8, 2, false);
-  // Neck and head, toward screen right.
-  const hb = gait === 0 ? 1 : 0;
-  p.poly([[ox + 4, by - 1], [ox + 8, by - 8 + hb], [ox + 12, by - 8 + hb], [ox + 10, by + 2]], (x) => (x < ox + 8 ? coat : coatD));
-  p.poly([[ox + 9, by - 10 + hb], [ox + 13, by - 10 + hb], [ox + 16, by - 5 + hb], [ox + 15, by - 3 + hb], [ox + 12, by - 5 + hb]], coat);
-  p.set(ox + 15, by - 4 + hb, C.dark);
-  p.set(ox + 10, by - 11 + hb, coatD); p.set(ox + 11, by - 11 + hb, coat);
-  p.set(ox + 12, by - 8 + hb, C.dark);
-  p.line(ox + 5, by - 3, ox + 9, by - 10 + hb, mane); p.line(ox + 6, by - 3, ox + 10, by - 10 + hb, mane);
-  if (barding === "cloth") {
-    p.poly([[ox - 5, by - 4], [ox + 4, by - 4], [ox + 5, by + 3], [ox - 6, by + 3]], (x) => (x > ox + 1 ? darken(pc, 0.7) : pc));
-    p.line(ox - 6, by + 3, ox + 5, by + 3, C.gold);
-  } else if (barding === "scale") {
-    p.ellipse(ox, by, 9, 4.3, (x, y) => { const b = y > by + 1 || x > ox + 4 ? C.ironDark : C.iron; return (x + y) % 2 ? b : darken(b, 0.8); });
-    p.poly([[ox + 9, by - 10 + hb], [ox + 13, by - 10 + hb], [ox + 15, by - 6 + hb], [ox + 12, by - 6 + hb]], C.iron);
-    p.poly([[ox + 4, by - 1], [ox + 8, by - 8 + hb], [ox + 10, by - 8 + hb], [ox + 8, by]], C.ironDark);
-    p.line(ox - 8, by + 4, ox + 8, by + 4, pc);
-  }
-  p.rect(ox - 3, by - 5, 6, 2, C.leatherDark); // saddle
-}
-
-function drawRider(p: PixelCanvas, look: UnitLook) {
-  const pc = playerRGB(look.owner);
-  const ox = 16, fy = 34;
-  const t = look.type;
-  p.shadow(ox, fy + 0.5, 13, 2.4);
-  const coat = t === "scout" || t === "horse_archer" ? rgb(0xa8743c) : t === "cataphract" ? rgb(0x3a2c24) : rgb(0x6a4226);
-  drawHorse(p, ox, fy, look, coat, t === "cataphract" || t === "heavy_horse_archer" ? "scale" : t === "scout" ? "none" : "cloth", pc);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const ty = fy - 21 + (gait === 1 || gait === 3 ? -1 : 0);
-  drawPerson(p, KITS[t], look, ox - 3, ty, true);
-  p.outline(C.outline, 0.25);
-}
-
-function drawCamelRider(p: PixelCanvas, look: UnitLook) {
-  const pc = playerRGB(look.owner);
-  const ox = 15, fy = 39;
-  const coat = rgb(0xc8a066), coatD = darken(coat, 0.75), coatL = lighten(coat, 0.15);
-  p.shadow(ox, fy + 0.5, 12, 2.3);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const by = fy - 15;
-  const cyc = [[-2, 0], [0, 2], [2, 0], [1, 1]];
-  const leg = (x: number, phase: number, far: boolean) => {
-    const [dx, lift] = gait < 0 ? [0, 0] : cyc[(gait + phase) % 4];
-    const c = far ? coatD : coat;
-    p.line(x, by + 2, x + dx, fy - 1 - lift, c); p.line(x + 1, by + 2, x + 1 + dx, fy - 1 - lift, c);
-    p.rect(x + dx - 1, fy - 1 - lift, 3, 1, darken(coat, 0.5));
-  };
-  leg(ox - 7, 1, true); leg(ox + 5, 3, true);
-  p.line(ox - 9, by - 1, ox - 10, by + 5, coatD);
-  p.ellipse(ox, by, 9, 4.2, (x, y) => (y < by - 1 ? coatL : x > ox + 4 || y > by + 2 ? coatD : coat));
-  p.ellipse(ox - 1, by - 4, 5, 4, (x) => (x < ox - 2 ? coatL : coat)); // hump
-  leg(ox - 5, 0, false); leg(ox + 7, 2, false);
-  // Long curved neck and a small head.
-  p.poly([[ox + 5, by - 1], [ox + 9, by + 1], [ox + 12, by - 7], [ox + 10, by - 9]], coat);
-  p.poly([[ox + 10, by - 9], [ox + 12, by - 7], [ox + 13, by - 12], [ox + 11, by - 13]], coat);
-  p.rect(ox + 11, by - 15, 4, 3, coat); p.rect(ox + 15, by - 14, 2, 2, coatD);
-  p.set(ox + 13, by - 14, C.dark); p.set(ox + 11, by - 16, coatD);
-  p.poly([[ox - 6, by - 5], [ox + 3, by - 5], [ox + 4, by + 2], [ox - 7, by + 2]], (x) => (x > ox ? darken(pc, 0.7) : pc));
-  p.line(ox - 7, by + 2, ox + 4, by + 2, C.gold);
-  drawPerson(p, KITS.camel_rider, look, ox - 1, by - 15, true);
-  p.outline(C.outline, 0.25);
-}
-
 function drawWheel(p: PixelCanvas, x: number, y: number, r: number, spin: number, rim: RGB, spoke: RGB, blades = false) {
   p.ellipse(x, y, r * 0.55 + 0.4, r + 0.4, rim);
   p.ellipse(x, y, r * 0.55 - 0.7, r - 1, darken(rim, 0.55));
@@ -942,99 +863,6 @@ function drawWheel(p: PixelCanvas, x: number, y: number, r: number, spin: number
   }
   p.set(x, y, C.ironDark);
   if (blades) { p.line(x, y, x - 6, y + 1, C.iron); p.line(x - 6, y + 1, x - 8, y - 1, C.ironLight); p.line(x, y, x + 2, y + 1, C.iron); }
-}
-
-function drawChariot(p: PixelCanvas, look: UnitLook) {
-  const pc = playerRGB(look.owner), pcD = darken(pc, 0.68);
-  const fy = 32, t = look.type;
-  p.shadow(24, fy + 0.5, 20, 2.5);
-  const spin = look.pose === "walk" ? look.frame % 4 : 0;
-  // Two horses: the far one first, a little up and back.
-  drawHorse(p, 30, fy - 3, look, rgb(0x5a3a22), "none", pc);
-  drawHorse(p, 32, fy, look, rgb(0x9a6a38), t === "scythe_chariot" ? "cloth" : "none", pc);
-  // Pole from the car to the yoke.
-  p.line(15, fy - 8, 34, fy - 13, C.woodDark);
-  // Crew stands in the car, drawn before its front panel.
-  if (t === "chariot_archer") drawPerson(p, KITS.chariot_archer, look, 11, fy - 25, true, true);
-  else drawPerson(p, KITS.chariot_driver, { ...look, pose: look.pose === "work" ? "idle" : look.pose }, 11, fy - 25, true, true);
-  if (t !== "chariot_archer") {
-    // The driver lashes out with a spear when attacking.
-    const st = look.pose === "work" ? look.frame % 3 : -1;
-    const a = st < 0 ? -80 : [-30, -10, 5][st];
-    shaft(p, 15, fy - 20, a, -4, 9, C.wood); shaft(p, 15, fy - 20, a, 9, 11, C.iron);
-  }
-  // The car.
-  p.poly([[5, fy - 16], [17, fy - 16], [18, fy - 7], [4, fy - 7]], (x, y) => (y < fy - 14 ? C.bronze : x > 13 ? pcD : pc));
-  p.line(5, fy - 16, 17, fy - 16, C.goldDark);
-  p.rect(7, fy - 13, 6, 1, lighten(pc, 0.3));
-  drawWheel(p, 10, fy - 5, 6, spin, C.woodDark, C.wood, t === "scythe_chariot");
-  p.outline(C.outline, 0.25);
-}
-
-function drawElephant(p: PixelCanvas, ox: number, fy: number, look: UnitLook, wild: boolean, armor: boolean) {
-  const g = wild ? rgb(0x8c8a84) : rgb(0x84827e), gD = darken(g, 0.72), gL = lighten(g, 0.16);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const by = fy - 16;
-  const lift = (ph: number) => (gait < 0 ? 0 : [0, 2, 0, 0][(gait + ph) % 4]);
-  const shift = (ph: number) => (gait < 0 ? 0 : [-1, 0, 1, 0][(gait + ph) % 4]);
-  const leg = (x: number, ph: number, far: boolean) => {
-    const c = far ? gD : g;
-    p.rect(x + shift(ph), by + 4, 4, fy - by - 4 - lift(ph), c);
-    p.rect(x + shift(ph) + 3, by + 4, 1, fy - by - 4 - lift(ph), darken(c, 0.85));
-    p.rect(x + shift(ph), fy - 1 - lift(ph), 4, 1, C.ivory);
-  };
-  leg(ox - 10, 1, true); leg(ox + 5, 3, true);
-  p.line(ox - 13, by - 3, ox - 15, by + 6, gD); p.rect(ox - 16, by + 6, 2, 2, C.dark); // tail
-  p.ellipse(ox, by, 13.5, 9.5, (x, y) => (y < by - 5 && x < ox + 6 ? gL : y > by + 4 || x > ox + 8 ? gD : g));
-  for (const [x, y] of [[ox - 4, by + 2], [ox + 2, by - 3], [ox - 8, by - 2]]) p.set(x, y, gD);
-  leg(ox - 7, 0, false); leg(ox + 8, 2, false);
-  // Head, ear, trunk and tusks.
-  const st = look.pose === "work" ? look.frame % 3 : -1;
-  const hx = ox + 13, hy = by - 4 - (st === 1 ? 1 : 0);
-  p.ellipse(hx, hy, 6, 6.5, (x, y) => (y < hy - 3 ? gL : x > hx + 3 ? gD : g));
-  if (st < 0 || st === 2) {
-    const sw = gait >= 0 ? [0, 1, 0, -1][gait] : 0;
-    p.thick(hx + 4, hy + 2, hx + 5 + sw, hy + 10, g, 3);
-    p.thick(hx + 5 + sw, hy + 10, hx + 7 + sw, hy + 14, g, 2);
-    p.set(hx + 8 + sw, hy + 14, gD);
-  } else {
-    p.thick(hx + 4, hy + 1, hx + 9, hy - 6, g, 3);
-    p.thick(hx + 9, hy - 6, hx + 8, hy - 11, g, 2);
-  }
-  p.line(hx + 3, hy + 4, hx + 7, hy + 6, C.ivory); p.set(hx + 8, hy + 5, C.ivory);
-  if (armor) { p.line(hx + 7, hy + 6, hx + 10, hy + 6, C.ironLight); p.set(hx + 10, hy + 5, C.ironLight); }
-  p.ellipse(hx - 3, hy + 1, 3.6, 5.6, (x) => (x < hx - 4 ? g : gD));
-  p.line(hx - 6, hy - 3, hx - 6, hy + 5, gL);
-  p.set(hx + 2, hy - 2, C.dark);
-  if (armor) {
-    p.poly([[hx - 2, hy - 6], [hx + 4, hy - 6], [hx + 6, hy + 1], [hx + 1, hy + 2]], (x, y) => ((x + y) % 2 ? C.iron : C.ironDark));
-  }
-}
-
-function drawWarElephant(p: PixelCanvas, look: UnitLook, fy: number) {
-  const t = look.type, wild = t === "elephant";
-  const ox = 19;
-  p.shadow(ox + 2, fy + 0.5, 17, 3);
-  if (look.owner < 0 || wild) { drawElephant(p, ox, fy, look, true, false); p.outline(C.outline, 0.25); return; }
-  const pc = playerRGB(look.owner), pcD = darken(pc, 0.68);
-  const armor = t === "armored_elephant";
-  drawElephant(p, ox, fy, look, false, armor);
-  const by = fy - 16;
-  if (armor) p.ellipse(ox, by - 1, 12, 7, (x, y) => { const b = y > by + 2 || x > ox + 6 ? C.ironDark : C.iron; return (x + 2 * y) % 3 ? b : darken(b, 0.8); });
-  // Saddle cloth in the player's colour with a gold fringe.
-  p.poly([[ox - 7, by - 9], [ox + 4, by - 9], [ox + 6, by + 1], [ox - 9, by + 1]], (x) => (x > ox + 1 ? pcD : pc));
-  for (let x = ox - 9; x <= ox + 6; x += 2) p.set(x, by + 2, C.gold);
-  p.line(ox - 7, by - 9, ox + 4, by - 9, C.gold);
-  if (t === "elephant_archer") {
-    // A howdah with an archer in it.
-    drawPerson(p, KITS.elephant_archer, look, ox - 1, by - 20, true, true);
-    p.rect(ox - 8, by - 15, 15, 6, C.wood); p.rect(ox - 8, by - 15, 15, 1, C.woodLight); p.rect(ox + 3, by - 14, 4, 5, C.woodDark);
-    p.rect(ox - 6, by - 13, 3, 3, pc); p.rect(ox - 1, by - 13, 3, 3, pc);
-    p.rect(ox - 8, by - 21, 1, 6, C.woodDark); p.rect(ox + 6, by - 21, 1, 6, C.woodDark);
-  } else {
-    drawPerson(p, KITS.mahout, look, ox + 7, by - 17, true);
-  }
-  p.outline(C.outline, 0.25);
 }
 
 // ---- siege
