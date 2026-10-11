@@ -792,6 +792,21 @@ describe("the original's rules", () => {
     expect(searches).toBeLessThan(30); // each tree tried once, then rest: it used to go on, about twice a second (120)
   });
 
+  it("the AI's soldiers finish an enemy whose last building is a Dock, striking it from the shore", () => {
+    // All a beaten player had left was a Dock; soldiers sent to its middle, in the water, stopped at the
+    // shore, so Docks were never picked, and the game ran ninety minutes without an end.
+    const w = blank(32);
+    for (let y = 0; y < 32; y++) for (let x = 16; x < 32; x++) w.map.terrain[w.map.index(new Tile(x, y))] = Terrain.water;
+    const dock = w.addBuilding("dock", 1, new Tile(16, 10), true);
+    w.fog[0].revealAll();
+    const army = [0, 1, 2, 3, 4].map((i) => w.spawnUnit("clubman", 0, new Tile(8, 8 + i).center));
+    w.ais = [new AIController(0, "hard")];
+    w.ais[0].attach(w);
+    run(w, 90);
+    expect(army.some((u) => u.order.kind === "attack" && u.order.id === dock.id) || !dock.alive).toBe(true);
+    expect(dock.hp).toBeLessThan(dock.maxHp);
+  });
+
   it("a boat comes out of a Dock on the open sea, not into a pond beside it", () => {
     const w = blank(24);
     // The sea to the west, a Dock in it by the shore, and a pond of one tile just behind the Dock on land,
