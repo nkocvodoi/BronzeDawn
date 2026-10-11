@@ -5,7 +5,7 @@ import { Texture } from "pixi.js";
 import type { BuildingDef } from "../core/rules";
 import { GridMap, Terrain } from "../core/grid";
 import { HALF_H, HALF_W, fromIso } from "./iso";
-import { drawBushHD, drawCamelRiderHD, drawChariotHD, drawElephantHD, drawGazelleHD, drawLionHD, drawMineHD, drawPersonHD, drawRiderHD, drawTreeHD, drawWarElephantHD } from "./hd";
+import { drawAlligatorHD, drawBoatHD, drawHelepolisHD, drawSiegeHD, drawBushHD, drawCamelRiderHD, drawChariotHD, drawElephantHD, drawGazelleHD, drawLionHD, drawMineHD, drawPersonHD, drawRiderHD, drawTreeHD, drawWarElephantHD } from "./hd";
 import { bayer, darken, hash, HiCanvas, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
 import { AGE_KEYS, ASSETS, ImageSpec } from "./assets";
 
@@ -395,14 +395,14 @@ export function unitPic(look: UnitLook): Pic {
     const H = tall ? 54 : 46, fy = H - 4;
     return picHD(key, 92, H * 2, 21 / 46, fy / H, (p) => drawWarElephantHD(p, look, KITS.mahout, tall ? KITS.elephant_archer : null, pc, type === "armored_elephant", fy * 2));
   }
-  if (type === "helepolis") return pic(key, 38, 54, 19 / 38, 50 / 54, (p) => drawHelepolis(p, look));
-  if (SIEGE.has(type)) return pic(key, 40, 34, 20 / 40, 30 / 34, (p) => drawSiege(p, look));
-  if (BOATS.has(type)) return pic(key, 56, 38, 28 / 56, 31 / 38, (p) => drawBoat(p, look));
+  if (type === "helepolis") return picHD(key, 76, 108, 19 / 38, 50 / 54, (p) => drawHelepolisHD(p, look, pc));
+  if (SIEGE.has(type)) return picHD(key, 80, 68, 20 / 40, 30 / 34, (p) => drawSiegeHD(p, look, pc));
+  if (BOATS.has(type)) return picHD(key, 112, 76, 28 / 56, 31 / 38, (p) => drawBoatHD(p, look, pc, WARSHIP[type] ?? null, type === "fishing_ship"));
   if (type === "ruins") return pic(`ruins-${owner}`, 44, 40, 22 / 44, 33 / 40, (p) => drawRuins(p, owner));
   if (type === "artifact") return pic(`artifact-${owner}-${pose === "walk" ? frame % 2 : 0}`, 20, 26, 10 / 20, 23 / 26, (p) => drawArtifact(p, owner, pose === "walk" ? frame % 2 : 0));
   if (type === "gazelle") return picHD(key, 48, 44, 12 / 24, 19 / 22, (p) => drawGazelleHD(p, look, false));
   if (type === "lion") return picHD(key, 60, 48, 14 / 30, 21 / 24, (p) => drawLionHD(p, look, false));
-  if (type === "alligator") return pic(key, 36, 18, 17 / 36, 14 / 18, (p) => drawAlligator(p, look, false));
+  if (type === "alligator") return picHD(key, 72, 36, 17 / 36, 14 / 18, (p) => drawAlligatorHD(p, look, false));
   const kit = KITS[type] ?? KITS.clubman;
   return pic(key, 26, 28, 11 / 26, 25 / 28, (p) => {
     const cx = 11, fy = 25;
@@ -854,127 +854,9 @@ function drawGlow(p: PixelCanvas, x: number, y: number, st: number) {
 
 // ---- mounts
 
-function drawWheel(p: PixelCanvas, x: number, y: number, r: number, spin: number, rim: RGB, spoke: RGB, blades = false) {
-  p.ellipse(x, y, r * 0.55 + 0.4, r + 0.4, rim);
-  p.ellipse(x, y, r * 0.55 - 0.7, r - 1, darken(rim, 0.55));
-  for (let i = 0; i < 3; i++) {
-    const a = spin * 0.5 + (i * Math.PI) / 3;
-    p.line(Math.round(x - Math.cos(a) * r * 0.45), Math.round(y - Math.sin(a) * (r - 1)), Math.round(x + Math.cos(a) * r * 0.45), Math.round(y + Math.sin(a) * (r - 1)), spoke);
-  }
-  p.set(x, y, C.ironDark);
-  if (blades) { p.line(x, y, x - 6, y + 1, C.iron); p.line(x - 6, y + 1, x - 8, y - 1, C.ironLight); p.line(x, y, x + 2, y + 1, C.iron); }
-}
-
 // ---- siege
 
-function drawSiege(p: PixelCanvas, look: UnitLook) {
-  const pc = playerRGB(look.owner);
-  const t = look.type, fy = 30;
-  const spin = look.pose === "walk" ? look.frame % 4 : 0;
-  const st = look.pose === "work" ? look.frame % 3 : -1;
-  p.shadow(20, fy + 0.5, 16, 2.6);
-  const heavy = t === "heavy_catapult";
-  const wood = heavy ? rgb(0x7a4c26) : C.wood, woodD = darken(wood, 0.68), woodL = lighten(wood, 0.2);
-  const wr = t === "stone_thrower" ? 3.5 : heavy ? 5.5 : 4.5;
-  // Far wheels, then the frame, then near wheels.
-  drawWheel(p, 12, fy - wr - 3, wr, spin, woodD, wood);
-  drawWheel(p, 29, fy - wr - 3, wr, spin, woodD, wood);
-  if (t === "ballista") {
-    p.poly([[7, fy - 12], [32, fy - 12], [31, fy - 7], [8, fy - 7]], (x, y) => (y < fy - 10 ? woodL : wood));
-    // Stock, tilted up toward the front, with the torsion frame.
-    p.thick(8, fy - 15, 32, fy - 19, woodD, 2);
-    p.rect(26, fy - 24, 4, 11, woodD); p.rect(27, fy - 23, 2, 9, rgb(0x5a4a3a));
-    p.rect(26, fy - 25, 4, 1, C.ironDark); p.rect(26, fy - 13, 4, 1, C.ironDark);
-    const back = st < 0 || st === 0 ? 10 : st === 1 ? 15 : 24;
-    const tipBack = st === 2 ? 25 : 21;
-    p.line(28, fy - 24, tipBack, fy - 29, wood); p.line(28, fy - 14, tipBack, fy - 9, wood);
-    p.line(tipBack, fy - 29, back, fy - 17, rgb(0xe8e0c8)); p.line(tipBack, fy - 9, back, fy - 17, rgb(0xe8e0c8));
-    if (st !== 2) { p.line(back, fy - 18, 35, fy - 20, C.woodLight); p.rect(35, fy - 21, 2, 2, C.iron); }
-    p.rect(9, fy - 9, 5, 2, pc);
-  } else {
-    // Catapults: a frame, an A-frame with a padded stop bar, and a throwing arm with a cup.
-    const big = heavy ? 1.2 : t === "stone_thrower" ? 0.8 : 1;
-    p.poly([[6, fy - 12], [34, fy - 12], [33, fy - 7], [7, fy - 7]], (x, y) => (y < fy - 10 ? woodL : wood));
-    const ax = 27, top = Math.round(fy - 12 - 12 * big);
-    p.line(23, fy - 12, ax, top, woodD); p.line(31, fy - 12, ax, top, woodD); p.line(24, fy - 11, ax + 1, top, wood);
-    p.rect(ax - 2, top - 1, 5, 2, heavy ? C.ironDark : C.leather);
-    const pivot: [number, number] = [18, fy - 12];
-    const ang = st < 0 || st === 0 ? 192 : st === 1 ? 250 : 296;
-    const len = Math.round(14 * big);
-    const end = along(pivot[0], pivot[1], ang, len);
-    p.thick(pivot[0], pivot[1], end[0], end[1], woodD, 2);
-    p.ellipse(end[0], end[1], 2.2, 1.6, C.leatherDark);
-    if (st <= 0) p.ellipse(end[0], end[1] - 1, 1.6, 1.6, C.stone);
-    p.rect(pivot[0] - 2, pivot[1] - 2, 4, 4, rgb(0x5a4a3a)); // twisted rope skein
-    p.set(pivot[0] - 1, pivot[1] - 1, rgb(0x8a7a5a));
-    if (heavy) { p.rect(6, fy - 12, 28, 1, C.ironDark); p.rect(33, fy - 13, 1, 6, C.ironDark); }
-    // A banner in the player's colour on a post at the back.
-    p.rect(7, fy - 22, 1, 10, woodD); p.rect(8, fy - 22, 4, 3, pc); p.rect(8, fy - 19, 3, 1, darken(pc, 0.7));
-  }
-  drawWheel(p, 10, fy - wr, wr, spin, wood, woodL);
-  drawWheel(p, 27, fy - wr, wr, spin, wood, woodL);
-  p.outline(C.outline, 0.25);
-}
-
-function drawHelepolis(p: PixelCanvas, look: UnitLook) {
-  const pc = playerRGB(look.owner), pcD = darken(pc, 0.68);
-  const fy = 50;
-  const spin = look.pose === "walk" ? look.frame % 4 : 0;
-  const st = look.pose === "work" ? look.frame % 3 : -1;
-  p.shadow(19, fy + 0.5, 16, 2.8);
-  const wood = rgb(0x8a5a2e), woodD = rgb(0x5c3a1c), woodL = rgb(0xb07a44);
-  drawWheel(p, 10, fy - 6, 4.5, spin, woodD, wood);
-  drawWheel(p, 30, fy - 6, 4.5, spin, woodD, wood);
-  // The tower: a lit front face and a shaded side, tapering a little.
-  p.poly([[5, fy - 6], [24, fy - 6], [22, fy - 44], [8, fy - 44]], (x, y) => ((y % 6 === 0) ? woodD : x % 4 === 0 ? darken(woodL, 0.85) : woodL));
-  p.poly([[24, fy - 6], [34, fy - 10], [31, fy - 46], [22, fy - 44]], (x, y) => ((y + Math.floor((x - 24) / 2)) % 6 === 0 ? darken(woodD, 0.8) : wood));
-  // Hides hung on the front, in the player's colour.
-  p.poly([[7, fy - 12], [22, fy - 12], [21, fy - 20], [8, fy - 20]], pc);
-  p.line(7, fy - 12, 22, fy - 12, pcD);
-  // Two firing ports with bolts.
-  for (const y of [fy - 28, fy - 38]) {
-    p.rect(12, y, 6, 4, C.dark);
-    if (st !== 2) { p.line(13, y + 2, 26, y + 2, C.woodLight); p.rect(26, y + 1, 2, 2, C.iron); }
-  }
-  p.rect(7, fy - 47, 16, 3, woodD); p.rect(22, fy - 48, 9, 3, darken(woodD, 0.8));
-  p.rect(14, fy - 53, 1, 6, woodD); p.rect(15, fy - 53, 5, 3, pc);
-  drawWheel(p, 8, fy - 4, 4.5, spin, wood, woodL);
-  drawWheel(p, 26, fy - 4, 4.5, spin, wood, woodL);
-  p.outline(C.outline, 0.25);
-}
-
 // ---- animals
-
-function drawAlligator(p: PixelCanvas, look: UnitLook, dead: boolean) {
-  const k = dead ? 0.7 : 1;
-  const g = darken(rgb(0x4e6a34), k), gD = darken(g, 0.7), belly = darken(rgb(0x9aa462), k);
-  const fy = 14, ox = 17;
-  p.shadow(ox, fy, 15, 1.8);
-  const gait = look.pose === "walk" ? look.frame % 4 : -1;
-  const sway = gait < 0 ? 0 : [0, 1, 0, -1][gait];
-  const st = look.pose === "work" ? look.frame % 3 : -1;
-  if (dead) {
-    p.poly([[2, fy - 3], [ox + 14, fy - 3], [ox + 14, fy], [2, fy - 1]], (x, y) => (y < fy - 2 ? belly : g));
-    p.line(ox - 4, fy - 1, ox - 6, fy, gD); p.line(ox + 4, fy - 1, ox + 6, fy, gD);
-    p.outline(C.outline, 0.25);
-    return;
-  }
-  for (const [x, ph] of [[ox - 6, 0], [ox + 5, 1]] as [number, number][]) {
-    const off = gait < 0 ? 0 : (gait + ph * 2) % 4 < 2 ? 1 : -1;
-    p.line(x, fy - 3, x + off - 1, fy - 1, gD); p.line(x + 1, fy - 3, x + off + 2, fy - 1, gD);
-  }
-  // Tail tapering to the left.
-  p.poly([[1, fy - 4 + sway], [ox - 8, fy - 6], [ox - 8, fy - 2], [1, fy - 3 + sway]], g);
-  p.poly([[ox - 9, fy - 7], [ox + 8, fy - 7], [ox + 9, fy - 2], [ox - 9, fy - 2]], (x, y) => (y > fy - 4 ? belly : g));
-  for (let x = ox - 12; x < ox + 8; x += 2) p.set(x, x < ox - 8 ? fy - 5 + sway : fy - 8, gD);
-  // Head and jaws.
-  const open = st >= 1 ? (st === 1 ? 3 : 2) : 0;
-  p.poly([[ox + 8, fy - 7 - open], [ox + 17, fy - 5 - open], [ox + 17, fy - 4 - open], [ox + 8, fy - 4]], g);
-  p.poly([[ox + 8, fy - 4], [ox + 17, fy - 3], [ox + 17, fy - 2], [ox + 8, fy - 2]], belly);
-  if (open) { p.line(ox + 10, fy - 4, ox + 16, fy - 3 - open, C.berry); p.set(ox + 13, fy - 4 - open, C.ivory); p.set(ox + 15, fy - 3, C.ivory); }
-  p.set(ox + 10, fy - 8 - open, gD); p.set(ox + 10, fy - 7 - open, rgb(0xd8c040));
-  p.outline(C.outline, 0.25);
-}
 
 // =====================================================================================
 // ---- resources and other map objects
@@ -1097,7 +979,7 @@ export function nodePic(type: string, variant: number): Pic {
       });
     }
     if (animal === "lion") return picHD(type, 60, 48, 0.5, 21 / 24, (p) => drawLionHD(p, dead, true));
-    if (animal === "alligator") return pic(type, 36, 18, 0.5, 14 / 18, (p) => drawAlligator(p, dead, true));
+    if (animal === "alligator") return picHD(type, 72, 36, 0.5, 14 / 18, (p) => drawAlligatorHD(p, dead, true));
     return picHD(type, 48, 44, 0.5, 19 / 22, (p) => drawGazelleHD(p, dead, true));
   }
   const gold = type === "gold_mine";
@@ -1151,93 +1033,6 @@ const WARSHIP: Record<string, { L: number; oars: number; deck: "archer" | "catap
   juggernaught: { L: 21, oars: 3, deck: "catapult", tall: 24 },
   fire_galley: { L: 18, oars: 2, deck: "fire", tall: 19 },
 };
-
-/** A fishing boat, or the bigger fishing ship: a wooden hull, a sail in the owner's colour, and a net
- *  over the side while it fishes. Drawn facing right; the view mirrors it. */
-function drawBoat(p: PixelCanvas, look: UnitLook) {
-  const war = WARSHIP[look.type];
-  if (war) { drawWarship(p, look, war); return; }
-  const ship = look.type === "fishing_ship", pc = playerRGB(look.owner);
-  const L = ship ? 18 : 14, cx = Math.floor(p.w / 2), wy = p.h - 7; // half length, middle, waterline
-  const hull = ship ? rgb(0x7a4e26) : C.wood, dark = C.woodDark;
-  // Wake on the water.
-  if (look.pose === "walk") for (let k = 0; k < 4; k++) p.set(cx - L - 2 - k * 2, wy + 1 + (k % 2), rgb(0xd8ecf8), 200 - k * 40);
-  // Hull: a long low bowl, raised at the bow (right).
-  for (let x = -L; x <= L; x++) {
-    const t = x / L, depth = Math.round((1 - t * t) * (ship ? 6 : 5));
-    const top = wy - depth - (x > L - 4 ? (x - (L - 4)) : 0);
-    for (let y = top; y <= wy; y++) p.set(cx + x, y, y === top ? lighten(hull, 0.2) : y > wy - 2 ? dark : hull);
-  }
-  p.line(cx - L + 2, wy - 2, cx + L - 2, wy - 2, dark);
-  // Mast and sail.
-  const mx = cx - 2, mh = ship ? 24 : 19;
-  p.rect(mx, wy - 5 - mh, 1, mh, C.woodDark);
-  for (let y = 0; y < mh - 6; y++) {
-    const w = Math.round(3 + y * (ship ? 0.55 : 0.45));
-    for (let x = 1; x <= w; x++) p.set(mx + x, wy - 5 - mh + 3 + y, x === w || y === mh - 7 ? darken(pc, 0.7) : pc);
-  }
-  if (ship) p.rect(mx - 6, wy - 9, 12, 1, C.woodDark);
-  // At work: the net over the side, with fish in it now and then; carrying: the catch on deck.
-  if (look.pose === "work") {
-    const f = look.frame % 3;
-    for (let k = 0; k < 6; k++) p.set(cx + L - 6 + k, wy + 1 + ((k + f) % 2), rgb(0xc8b890));
-    p.line(cx + 4, wy - 6, cx + L - 4, wy + 1, rgb(0xc8b890));
-    if (f === 1) p.set(cx + L - 3, wy + 1, rgb(0x9ab8c8));
-  }
-  if (look.carry !== null) { p.ellipse(cx + 5, wy - 6, 3, 1.2, rgb(0x5a7a8a)); p.set(cx + 4, wy - 7, rgb(0xb8d0e0)); }
-  p.outline(C.outline, 0.25);
-}
-
-/** A war ship: a long hull with rows of oars, a sail in the owner's colour, and archers, a catapult or a
- *  fire pot on deck. Rows of oars beat while it sails; the deck weapon recoils as it strikes. */
-function drawWarship(p: PixelCanvas, look: UnitLook, k: (typeof WARSHIP)[string]) {
-  const pc = playerRGB(look.owner), cx = Math.floor(p.w / 2), wy = p.h - 7, L = k.L;
-  const hull = rgb(0x6a4220), dark = C.woodDark;
-  if (look.pose === "walk") for (let i = 0; i < 5; i++) p.set(cx - L - 2 - i * 2, wy + 1 + (i % 2), rgb(0xd8ecf8), 200 - i * 35);
-  for (let x = -L; x <= L; x++) {
-    const t = x / L, depth = Math.round((1 - t * t * t * t) * 6);
-    const top = wy - depth - (x > L - 3 ? (x - (L - 3)) * 2 : 0) - (x < -L + 3 ? 1 : 0);
-    for (let y = top; y <= wy; y++) p.set(cx + x, y, y === top ? lighten(hull, 0.25) : y > wy - 2 ? dark : hull);
-  }
-  // A ram at the bow, a band in the owner's colour along the side.
-  p.line(cx + L, wy - 1, cx + L + 3, wy, C.iron);
-  p.line(cx - L + 3, wy - 4, cx + L - 3, wy - 4, darken(pc, 0.85));
-  // Oars, one row a level, swinging with the stroke.
-  const stroke = look.pose === "walk" ? (look.frame % 2) : 0;
-  for (let r = 0; r < k.oars; r++) for (let x = -L + 4; x <= L - 5; x += 4) {
-    const y0 = wy - 3 + r, dx = stroke ? 1 : -1;
-    p.line(cx + x, y0, cx + x + dx * 2, wy + 2 + r, C.woodLight);
-  }
-  // Mast and a square sail.
-  const mx = cx - 3, mh = k.tall;
-  p.rect(mx, wy - 6 - mh, 1, mh, C.woodDark);
-  p.rect(mx - 6, wy - 4 - mh, 13, 1, C.woodDark);
-  for (let y = 0; y < mh - 9; y++) for (let x = -6; x <= 6; x++) {
-    const edge = Math.abs(x) === 6 || y === mh - 10;
-    p.set(mx + x + (y > (mh - 9) / 2 ? 1 : 0), wy - 3 - mh + y, edge ? darken(pc, 0.7) : y % 5 === 0 ? lighten(pc, 0.15) : pc);
-  }
-  // On deck.
-  const hit = look.pose === "work" && look.frame % 3 === 0;
-  if (k.deck === "archer") {
-    for (const ax of [cx + 6, cx - 10]) {
-      p.rect(ax, wy - 11, 2, 4, C.skin); p.rect(ax - 1, wy - 8, 4, 2, pc); p.line(ax + 2, wy - 12, ax + 3, wy - 8, C.woodDark);
-    }
-  } else if (k.deck === "catapult") {
-    p.rect(cx + 3, wy - 9, 8, 3, C.woodDark);
-    const arm = hit ? -1 : 1;
-    p.line(cx + 5, wy - 9, cx + 5 + 5 * arm, wy - 15, C.wood);
-    p.rect(cx + 4 + 5 * arm, wy - 16, 3, 2, C.stone);
-  } else if (k.deck === "cargo") {
-    // A deckhouse amidships and bales lashed fore and aft.
-    p.rect(cx - 6, wy - 10, 9, 5, C.wood); p.rect(cx - 6, wy - 11, 9, 1, C.woodDark);
-    p.rect(cx + 5, wy - 8, 3, 3, rgb(0xb89a68)); p.rect(cx - 11, wy - 8, 3, 3, rgb(0xb89a68));
-  } else {
-    // A brazier at the bow, burning.
-    p.rect(cx + L - 6, wy - 9, 4, 3, C.iron);
-    p.set(cx + L - 5, wy - 11 - (hit ? 1 : 0), rgb(0xf8a02c)); p.set(cx + L - 4, wy - 12, rgb(0xd8401c)); p.set(cx + L - 4, wy - 10, rgb(0xfff0a0));
-  }
-  p.outline(C.outline, 0.25);
-}
 
 // ---- projectiles
 
