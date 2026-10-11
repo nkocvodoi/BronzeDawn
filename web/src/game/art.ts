@@ -5,8 +5,8 @@ import { Texture } from "pixi.js";
 import type { BuildingDef } from "../core/rules";
 import { GridMap, Terrain } from "../core/grid";
 import { HALF_H, HALF_W, fromIso } from "./iso";
-import { drawPersonHD } from "./hd";
-import { bayer, darken, hash, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
+import { drawBushHD, drawMineHD, drawPersonHD, drawTreeHD } from "./hd";
+import { bayer, darken, hash, HiCanvas, lighten, mix, PixelCanvas, PX, RGB, rgb } from "./pixel";
 import { AGE_KEYS, ASSETS, ImageSpec } from "./assets";
 
 export const PLAYER_COLORS = ["#2f6be6", "#d8322c", "#f0c530", "#3daf4a", "#33b5c4", "#9a4ad8", "#888888", "#e87a28"];
@@ -62,12 +62,21 @@ function picHD(key: string, w: number, h: number, ax: number, ay: number, draw: 
   return out;
 }
 
+/** A picture drawn by the old drawing code, now filled at the screen's own resolution (HiCanvas): the code
+ *  works in old pixels, and edges, lines and the outline come out twice as fine. The same size on the map. */
+function finishHi(p: HiCanvas, ax: number, ay: number, cropTop = false): Pic {
+  const canvas = p.toCanvas(cropTop);
+  const texture = Texture.from(canvas);
+  texture.source.scaleMode = "nearest";
+  return { texture, canvas, w: canvas.width * (PX / p.k), h: canvas.height * (PX / p.k), ax, ay };
+}
+
 function pic(key: string, w: number, h: number, ax: number, ay: number, draw: (p: PixelCanvas) => void): Pic {
   const hit = cache.get(key);
   if (hit) return hit;
-  const p = new PixelCanvas(w, h);
-  draw(p);
-  const out = finish(p, ax, ay);
+  const p = new HiCanvas(w, h);
+  draw(p as unknown as PixelCanvas);
+  const out = finishHi(p, ax, ay);
   cache.set(key, out);
   return out;
 }
@@ -76,14 +85,9 @@ function pic(key: string, w: number, h: number, ax: number, ay: number, draw: (p
 function tallPic(key: string, w: number, h: number, ax: number, draw: (p: PixelCanvas) => void): Pic {
   const hit = cache.get(key);
   if (hit) return hit;
-  const p = new PixelCanvas(w, h);
-  draw(p);
-  let top = 0;
-  find: for (; top < h - 1; top++) for (let x = 0; x < w; x++) if (p.alphaAt(x, top)) break find;
-  top = Math.max(0, top - 1);
-  const q = new PixelCanvas(w, h - top);
-  q.data.set(p.data.subarray(top * w * 4));
-  const out = finish(q, ax, 1);
+  const p = new HiCanvas(w, h);
+  draw(p as unknown as PixelCanvas);
+  const out = finishHi(p, ax, 1, true);
   cache.set(key, out);
   return out;
 }
@@ -1299,18 +1303,11 @@ export function nodePic(type: string, variant: number): Pic {
   }
   if (type === "tree" || type === "palm") {
     const v = type === "palm" ? 4 : variant % 4;
-    return pic(`tree${v}`, 26, 38, 0.5, 0.92, (p) => drawTree(p, v, 13, 35, 1));
+    return picHD(`tree${v}`, 52, 76, 0.5, 0.92, (p) => drawTreeHD(p, v, 26, 70, 1));
   }
-  if (type === "lone_tree") return pic("lone_tree", 44, 58, 0.5, 54 / 58, (p) => drawTree(p, 5, 22, 54, 1.7));
+  if (type === "lone_tree") return picHD("lone_tree", 88, 116, 0.5, 54 / 58, (p) => drawTreeHD(p, 5, 44, 108, 1.7));
   if (type === "berry_bush") {
-    return pic("berry", 20, 15, 0.5, 0.85, (p) => {
-      p.shadow(10, 12.5, 8, 2);
-      for (const [x, y, r] of [[6, 8, 4.5], [13, 8, 4.5], [10, 6, 5]] as [number, number, number][]) {
-        p.ellipse(x, y, r, r * 0.85, (px, py) => (hash(px, py, 2) < 0.2 ? C.leafLight : px + py < x + y - 1 ? C.leaf : C.leafDark));
-      }
-      for (const [x, y] of [[5, 6], [8, 4], [11, 7], [14, 5], [7, 9], [10, 10], [4, 9], [15, 9], [12, 4]]) { p.set(x, y, C.berry); p.set(x + 1, y, darken(C.berry, 0.7)); p.set(x, y - 1, rgb(0xf06070)); }
-      p.outline(C.outline, 0.3);
-    });
+    return picHD("berry", 40, 30, 0.5, 0.85, (p) => drawBushHD(p));
   }
   if (type === "fish") return pic(`fish${variant % 2}`, 26, 14, 0.5, 0.6, (p) => drawFish(p, variant % 2));
   if (type === "deep_fish") return pic(`deepfish${variant % 2}`, 30, 16, 0.5, 0.6, (p) => drawFish(p, variant % 2, true));
@@ -1333,6 +1330,7 @@ export function nodePic(type: string, variant: number): Pic {
     return pic(type, 24, 22, 0.5, 19 / 22, (p) => drawGazelle(p, dead, true));
   }
   const gold = type === "gold_mine";
+  if (type === "gold_mine" || type === "stone_mine") return picHD(type, 56, 36, 0.5, 0.85, (p) => drawMineHD(p, gold));
   return pic(type, 28, 18, 0.5, 0.85, (p) => {
     p.shadow(14, 15, 12, 2.4);
     const base = gold ? rgb(0x8a7454) : C.stone, light = lighten(base, 0.18), dark = gold ? rgb(0x5e4c34) : C.stoneDark;
@@ -1348,59 +1346,6 @@ export function nodePic(type: string, variant: number): Pic {
 }
 
 /** Trees: 0 round broadleaf, 1 conifer, 2 tall poplar-ish, 3 oak, 4 palm, 5 the big lone tree. */
-function drawTree(p: PixelCanvas, v: number, cx: number, base: number, k: number) {
-  p.shadow(cx + 1, base - 1, 8 * k, 2.4 * k);
-  const leaf = (x: number, y: number, ccx: number, ccy: number) => {
-    const n = hash(x, y, v + 7);
-    const lit = (x - ccx) + (y - ccy) * 1.2 < -1;
-    if (n < 0.1) return lit ? lighten(C.leafLight, 0.15) : C.leaf;
-    return lit ? (n < 0.45 ? C.leafLight : C.leaf) : n < 0.25 ? C.leaf : C.leafDark;
-  };
-  const trunk = (x: number, top: number, w: number) => { p.rect(x, top, w, base - 2 - top, C.wood); p.rect(x + w - 1, top, 1, base - 2 - top, C.woodDark); };
-  if (v === 4) {
-    // Palm: a leaning ringed trunk and drooping fronds.
-    for (let y = base - 3, i = 0; y > base - 26; y--, i++) {
-      const x = cx + Math.round(Math.sin(i / 9) * 3);
-      p.rect(x, y, 2, 1, i % 3 === 0 ? C.woodDark : rgb(0x9a7046));
-    }
-    const tx = cx + 3, ty = base - 27;
-    for (const [dx, dy] of [[-10, 4], [-7, -3], [0, -6], [7, -3], [10, 4], [-4, 7], [5, 7]]) {
-      const n = 10;
-      for (let i = 0; i <= n; i++) {
-        const t = i / n;
-        const x = Math.round(tx + dx * t), y = Math.round(ty + dy * t + Math.abs(dx) * 0.5 * t * t);
-        p.set(x, y, t < 0.5 ? C.leaf : C.leafDark); p.set(x, y + 1, C.leafDark);
-        if (i % 2) p.set(x, y - 1, C.leafLight);
-      }
-    }
-    p.rect(tx - 1, ty, 3, 2, rgb(0x6a4a24));
-    p.outline(C.outline, 0.3);
-    return;
-  }
-  if (v === 1) {
-    trunk(cx - 1, base - 10, 3);
-    for (const [top, half, bot] of [[2, 4, 13], [8, 6, 20], [14, 8, 28]]) {
-      const ccx = cx, ccy = (top + bot) / 2;
-      p.poly([[cx, top], [cx + half + 1, bot], [cx - half - 1, bot]], (x, y) => leaf(x, y, ccx, ccy));
-      p.line(cx - half, bot - 1, cx + half, bot - 1, C.leafDark);
-    }
-    p.outline(C.outline, 0.3);
-    return;
-  }
-  const blobs: [number, number, number][] = v === 0 ? [[-4, 18, 6], [4, 18, 6], [0, 11, 7], [0, 20, 6]]
-    : v === 2 ? [[0, 8, 4.5], [-2, 14, 5], [2, 18, 5], [0, 23, 4.5]]
-    : v === 3 ? [[-6, 17, 5.5], [6, 16, 6], [-2, 10, 6], [3, 9, 5], [0, 19, 6]]
-    : [[-11, 22, 9], [11, 21, 9], [-5, 12, 10], [6, 10, 9], [0, 22, 10], [0, 5, 7]];
-  trunk(cx - Math.round(1.5 * k), base - Math.round(16 * k), Math.round(3 * k));
-  if (v === 5) { p.line(cx - 1, base - 18, cx - 8, base - 28, C.woodDark); p.line(cx + 2, base - 20, cx + 8, base - 30, C.woodDark); }
-  const yk = v === 5 ? 1 : 1;
-  for (const [dx, dy, r] of blobs) {
-    const bx = cx + dx, by = (v === 5 ? 2 : 0) + dy * yk;
-    p.ellipse(bx, by, r, r * 0.88, (x, y) => leaf(x, y, bx, by));
-  }
-  p.outline(C.outline, 0.3);
-}
-
 function drawFish(p: PixelCanvas, v: number, sea = false) {
   // Out at sea: a darker shoal under a wider ripple, for boats only.
   const ring = rgb(sea ? 0x6a9cc8 : 0x8ab8e0), deep = rgb(sea ? 0x123458 : 0x1e4a7e), fish = rgb(sea ? 0x2a5070 : 0x3a6a8a);
@@ -1692,7 +1637,12 @@ class Bld {
     const [b0, b1] = s;
     const dx = b1[0] - b0[0];
     const slope = Math.abs(dx) < 0.01 ? 0 : (b1[1] - b0[1]) / dx;
-    this.p.poly(s, (x, y) => tex(m, x, Math.floor(b0[1] + (x + 0.5 - b0[0]) * slope - y), x, y, f));
+    this.p.poly(s, (x, y) => {
+      const row = Math.floor(b0[1] + (x + 0.5 - b0[0]) * slope - y);
+      // Light falls off toward the ground, as on a rendered wall: the foot of every wall a little darker.
+      const c = tex(m, x, row, x, y, f);
+      return row < 5 ? darken(c, 0.74 + row * 0.052) : c;
+    });
   }
 
   box(u0: number, v0: number, u1: number, v1: number, h: number, m: Mat, o: BOpts = {}) {

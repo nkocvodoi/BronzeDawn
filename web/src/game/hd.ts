@@ -427,3 +427,123 @@ export function drawPersonHD(p: PixelCanvas, f: Figure, g: Gear, pcBase: RGB) {
   }
   selout(p);
 }
+
+// ---- trees
+
+const LEAF = ramp(rgb(0x4e8a32)), LEAF_PINE = ramp(rgb(0x3a7038)), BARK = ramp(rgb(0x7a5230)), PALM_LEAF = ramp(rgb(0x5a9a3a));
+
+/** Foliage: a ball of leaves, lit as a ball, broken up into clumps (a clump is lit as one, with darker
+ *  gaps between), so it reads as leaves and not as a smooth ball. */
+function foliage(p: PixelCanvas, cx: number, cy: number, rx: number, ry: number, r: Ramp, salt: number) {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+    const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, d2 = dx * dx + dy * dy;
+    // A ragged rim: leaves stick out of the ball here and there.
+    const edge = 1 + (leafNoise(x, y, salt) - 0.5) * 0.28;
+    if (d2 > edge) continue;
+    const clump = leafNoise(x >> 1, y >> 1, salt + 3);
+    const nz = Math.sqrt(Math.max(0, 1 - Math.min(1, d2)));
+    let c = shade(r, dx, dy, nz, x, y);
+    if (clump < 0.18) c = r[Math.max(0, r.indexOf(c) - 1)] ?? c; // a gap between clumps
+    else if (clump > 0.86 && dx + dy < 0) c = r[Math.min(r.length - 1, r.indexOf(c) + 1)] ?? c; // a lit clump
+    p.set(x, y, c);
+  }
+}
+const leafNoise = (x: number, y: number, s: number) => {
+  let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(s | 0, 2147483647);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+};
+
+/** A tree at the screen's own resolution: variants 0, 2, 3 broadleaf, 1 a pine, 4 a palm, 5 the big lone
+ *  tree. (cx, base) is the foot of the trunk; k the size (1, or 1.7 for the lone tree). Coordinates are those
+ *  of the old drawing, doubled. */
+export function drawTreeHD(p: PixelCanvas, v: number, cx: number, base: number, k: number) {
+  groundShadow(p, cx + 2, base - 2, 16 * k, 4.8 * k);
+  if (v === 4) {
+    // A palm: a leaning ringed trunk, drooping fronds.
+    let px = cx, py = base - 6;
+    for (let i = 0; i < 24; i++) {
+      const nx = cx + Math.sin(i / 9) * 6, ny = base - 6 - i * 2;
+      capsule(p, px, py, nx, ny, 1.9, i % 3 === 0 ? ramp(darken(rgb(0x7a5230), 0.8)) : BARK);
+      px = nx; py = ny;
+    }
+    const tx = px + 1, ty = py - 2;
+    for (const [dx, dy] of [[-20, 8], [-14, -6], [0, -12], [14, -6], [20, 8], [-8, 14], [10, 14]]) {
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16, x = tx + dx * t, y = ty + dy * t + Math.abs(dx) * 0.5 * t * t, w = 2.4 * (1 - t * 0.7);
+        capsule(p, x, y, x, y, w, PALM_LEAF);
+      }
+    }
+    ellipsoid(p, tx, ty + 1, 3, 2.4, ramp(rgb(0x6a4a24)));
+    selout(p, 0.4);
+    return;
+  }
+  const trunkTop = v === 1 ? base - 20 : base - 32 * k;
+  capsule(p, cx, base - 4, cx, trunkTop, (v === 1 ? 2.6 : 2.8) * k, BARK);
+  if (v === 1) {
+    // A pine: three tiers of boughs, each a cone lit from the left, its underside in shadow.
+    for (const [top, half, bot] of [[4, 8, 26], [16, 12, 40], [28, 16, 56]]) {
+      for (let y = top; y < bot; y++) {
+        const t = (y - top) / (bot - top), w = 1 + half * t;
+        for (let x = Math.floor(cx - w - 1); x <= Math.ceil(cx + w + 1); x++) {
+          const nx = (x + 0.5 - cx) / (w + 1);
+          const rag = (leafNoise(x, y, 11) - 0.5) * 0.3;
+          if (Math.abs(nx) > 1 + rag) continue;
+          let c = shade(LEAF_PINE, nx, -0.35 + t * 0.6, Math.sqrt(Math.max(0, 1 - nx * nx)), x, y);
+          if (leafNoise(x >> 1, y, 5) < 0.15) c = LEAF_PINE[1];
+          p.set(x, y, c);
+        }
+      }
+    }
+    selout(p, 0.4);
+    return;
+  }
+  const blobs: [number, number, number][] = v === 0 ? [[-4, 18, 6], [4, 18, 6], [0, 11, 7], [0, 20, 6]]
+    : v === 2 ? [[0, 8, 4.5], [-2, 14, 5], [2, 18, 5], [0, 23, 4.5]]
+    : v === 3 ? [[-6, 17, 5.5], [6, 16, 6], [-2, 10, 6], [3, 9, 5], [0, 19, 6]]
+    : [[-11, 22, 9], [11, 21, 9], [-5, 12, 10], [6, 10, 9], [0, 22, 10], [0, 5, 7]];
+  if (v === 5) { capsule(p, cx - 2, base - 36, cx - 16, base - 56, 2, BARK); capsule(p, cx + 4, base - 40, cx + 16, base - 60, 2, BARK); }
+  // Back blobs first: the lower ones in front, as the crown is seen from above.
+  const order = [...blobs].sort((a, b) => a[1] - b[1]);
+  order.forEach(([dx, dy, r], i) => foliage(p, cx + dx * 2, (v === 5 ? 4 : 0) + dy * 2, r * 2, r * 2 * 0.88, LEAF, v * 10 + i));
+  selout(p, 0.4);
+}
+
+// ---- mines and bushes
+
+/** A rock: a lumpy, faceted boulder lit from the upper left (a ball, flattened, its facets in steps). */
+function rock(p: PixelCanvas, cx: number, cy: number, rx: number, ry: number, r: Ramp, salt: number) {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry * 0.6); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+    const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry;
+    const lump = 1 + (leafNoise(x >> 2, y >> 2, salt) - 0.5) * 0.35;
+    if (dx * dx + dy * dy > lump || dy > 0.6) continue;
+    // Facets: the normal snapped to a few directions, so the stone looks chipped, not smooth.
+    const fx = Math.round(dx * 2.5) / 2.5, fy = Math.round(dy * 2.5) / 2.5;
+    p.set(x, y, shade(r, fx, fy, Math.sqrt(Math.max(0.05, 1 - fx * fx - fy * fy)), x, y));
+  }
+}
+
+/** A gold or stone mine at the screen's own resolution: a heap of boulders, gold glinting in it. */
+export function drawMineHD(p: PixelCanvas, gold: boolean) {
+  groundShadow(p, 28, 30, 24, 5);
+  const r = ramp(gold ? rgb(0x8c7656) : rgb(0xa8a49c));
+  const rocks: [number, number, number][] = [[14, 24, 10], [32, 22, 12], [22, 16, 11], [42, 26, 8.5], [24, 28, 8]];
+  rocks.forEach(([x, y, s], i) => rock(p, x, y, s, s * 0.85, r, i + (gold ? 20 : 0)));
+  if (gold) for (const [x, y] of [[16, 18], [28, 12], [34, 18], [22, 10], [42, 22], [26, 24], [36, 25]]) {
+    ellipsoid(p, x, y, 1.8, 1.4, ramp(rgb(0xe8c040)));
+    p.set(x - 1, y - 1, rgb(0xfff6c0));
+  }
+  else for (const [x, y] of [[12, 20], [28, 14], [38, 22], [20, 24]]) p.set(x, y, r[5]);
+  selout(p, 0.38);
+}
+
+/** A berry bush: a low mound of leaves dotted with red berries. */
+export function drawBushHD(p: PixelCanvas) {
+  groundShadow(p, 20, 25, 16, 4);
+  for (const [x, y, s] of [[12, 16, 9], [26, 16, 9], [20, 12, 10]] as [number, number, number][]) foliage(p, x, y, s, s * 0.85, LEAF, x + y);
+  for (const [x, y] of [[10, 12], [16, 8], [22, 14], [28, 10], [14, 18], [20, 20], [8, 18], [30, 18], [24, 8], [18, 14]]) {
+    ellipsoid(p, x, y, 1.6, 1.5, ramp(rgb(0xc8243a)));
+    p.set(x - 1, y - 1, rgb(0xff9aa8));
+  }
+  selout(p, 0.38);
+}
