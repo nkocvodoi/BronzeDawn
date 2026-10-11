@@ -84,7 +84,8 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [x] Online: máy chủ TURN riêng (Metered) đặt lúc build từ biến của repo, nên mạng chặt (NAT đối xứng, CGNAT, 4G) vẫn nối được; màn hình chính và phòng chờ kiểu bản gốc (8 ghế, tên, dân tộc, đội, Ready, chat, Settings của host), chơi không cần máy
 - [x] Online: mọi người chịu cùng một độ trễ ngắn như bản gốc (mỗi người tự xếp lệnh của mình vào lượt phía trước; độ trễ tự đo theo mạng, khoảng 200 đến 300 ms), lính bước đi ngay trên màn hình khi ra lệnh; host tạm dừng thì mọi máy dừng ở cùng một lượt
 - [x] Online: chat trong trận (Enter); người rời trận thì máy (mức Moderate) chơi thay từ cùng một lượt trên mọi máy
-- [ ] Online: chưa vào lại được trận đang chơi khi rớt mạng; host rời thì trận dừng
+- [x] Online: rớt mạng thì vào lại được trận đang chơi (nút Rejoin, hoặc Multiplayer → Rejoin sau khi tải lại trang, trong 3 giờ): host gửi trận như đang có, máy chơi thay trong lúc vắng mặt rồi trả quân lại
+- [ ] Online: host rời thì trận dừng (chưa chuyển host sang máy khác)
 
 ## Chỗ đang khác bản gốc (đã chọn, có thể đổi)
 

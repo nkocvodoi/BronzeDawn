@@ -10,7 +10,7 @@ import { MAP_TYPES, MapType } from "../core/mapgen";
 import { SmartResult, Stance, STANCES, Victory, WinHow, World, WorldOptions } from "../core/world";
 import { loadWorld, SaveFile, saveWorld } from "../core/save";
 import { Command as Order, CommandResult, runCommand } from "../core/commands";
-import { LockstepGuest, LockstepHost, TURN_TICKS } from "../core/net";
+import { Link, LockstepGuest, LockstepHost, LockstepState, TURN_TICKS } from "../core/net";
 import { Conn, HAS_RELAY, joinRoom, Peer, Room } from "./rtc";
 import { canStart, CHAT_MAX, cleanName, LobbySettings, LobbyState, lobbyHtml, Seat, seated, SEATS } from "./lobby";
 import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
@@ -79,6 +79,12 @@ const VICTORIES: [string, string, Victory][] = [
 const HOW_TEXT: Record<WinHow, string> = { conquest: "", wonder: "A Wonder stood its time. ", score: "The target score was reached. ", time: "Time ran out: the best score wins. ",
   ruins: "All the Ruins were held for their time. ", artifacts: "All the Artifacts were held for their time. " };
 /** What the host sends every machine when an online game starts, to build the same world from. */
+/** Where the token for going back into an online game is kept, and for how long it is offered. */
+const REJOIN_KEY = "bd-rejoin";
+const REJOIN_FOR = 3 * 60 * 60 * 1000;
+/** A piece of a game sent to a friend coming back, in characters. */
+const SNAP_PIECE = 16000;
+
 interface OnlineSetup { seed: number; names: string[]; size: number; options: WorldOptions; ais: [number, Difficulty][]; reseed: boolean; speed: number }
 
 /** Starting resources: Low is the original's default. */
@@ -193,7 +199,7 @@ export class Game {
   net: LockstepHost | LockstepGuest | null = null;
   /** The online lobby: as host, the friends connected; as a guest, the line to the host. */
   private online: {
-    role: "host"; friends: { peer: Conn; civ: string | null; slot: number; id: number }[];
+    role: "host"; friends: { peer: Conn; civ: string | null; slot: number; id: number; token: string }[];
     /** The six-digit room friends join by; or, with `longCodes`, an invitation made by hand. */
     room: Room | null; longCodes: boolean; invite: { peer: Peer; code: string; accept: (a: string) => Promise<void>; tried: boolean } | null;
   } | { role: "guest"; peer: Conn | null; civ: string | null; longCodes: boolean; code: string | null; joining?: { code: string; since: number } | null; room?: string; tried?: string } | null = null;
@@ -665,13 +671,14 @@ export class Game {
       options: { civs: all, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, startAge: this.startAge, resources: this.resources,
         popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2] },
     };
-    friends.forEach((f, i) => { f.slot = i + 1; f.peer.link.send({ t: "start", setup, you: f.slot }); });
+    friends.forEach((f, i) => { f.slot = i + 1; f.peer.link.send({ t: "start", setup, you: f.slot, token: f.token }); });
     this.beginOnline(setup, 0, null);
   }
 
   /** An online game begins on this machine: as the host (no link), or as a guest with its line to the host. */
-  private beginOnline(setup: OnlineSetup, me: number, host: Conn | null) {
-    const w = this.worldFromSetup(setup);
+  private beginOnline(setup: OnlineSetup, me: number, host: Conn | null, back?: { world: World; state: LockstepState; link: Link }) {
+    const w = back?.world ?? this.worldFromSetup(setup);
+    this.onlineSetup = setup;
     this.me = me; this.watching = false; this.watchAll = false; this.revealMap = false; this.ended = false;
     this.seed = setup.seed; this.mapSize = setup.size; this.hostPaused = false; this.desyncShown = false; this.netFailed = false;
     this.useWorld(w);
@@ -684,25 +691,21 @@ export class Game {
         h.addGuest(f.slot, f.peer.link);
         // A friend who leaves: the game no longer waits for them, and a computer plays for them, on every
         // machine from the same turn.
-        const left = () => {
-          h.dropGuest(f.slot);
-          if (this.net !== h || w.winner !== null) return;
-          this.hud.message(`${w.players[f.slot].name} has left the game`, "warn");
-          this.issue({ k: "takeover", player: f.slot });
-        };
-        f.peer.onClose = left;
-        if (!f.peer.open) queueMicrotask(left); // gone before the game began (once the game is set up)
+        f.peer.onClose = () => this.friendLeft(h, f.slot);
+        if (!f.peer.open) queueMicrotask(() => this.friendLeft(h, f.slot)); // gone before the game began (once the game is set up)
 
       }
+      h.onReadmit = (p) => this.sendGameTo(h, p);
       net = h;
     } else {
       const computers = new Set(setup.ais.map(([p]) => p));
-      const g = new LockstepGuest(w, me, host!.link, setup.names.map((_, i) => i).filter((i) => !computers.has(i)));
-      host!.onClose = () => this.hud.message("The host has left: the game cannot go on", "warn");
+      const g = new LockstepGuest(w, me, back?.link ?? host!.link, setup.names.map((_, i) => i).filter((i) => !computers.has(i)), back?.state);
+      host!.onClose = () => { if (this.net === g) this.connectionLost(); };
       net = g;
     }
     net.onCommand = (_p, c, result) => {
       if (c.k === "takeover" && result) this.hud.message(`${w.players[c.player].name} has left: a computer plays for them now`, "warn");
+      if (c.k === "rejoin" && result && c.player !== this.me) this.hud.message(`${w.players[c.player].name} is back in the game`);
     };
     net.onOther = (m, from) => {
       const msg = m as { t?: string; v?: number; on?: boolean; text?: unknown; from?: unknown };
@@ -721,8 +724,130 @@ export class Game {
     const u = Math.min(window.innerWidth / 800, window.innerHeight / 600);
     this.cam.zoom = ZOOMS.reduce((a, b) => (Math.abs(b - 1 / u) < Math.abs(a - 1 / u) ? b : a));
     this.enterGame();
-    this.hud.message(`Online: you are ${w.players[me].name}${w.players[me].civ ? ` (${w.players[me].civ!.name})` : ""}. Gather food and wood. Good luck.`);
+    this.hud.message(back ? "You are back in the game: catching up with the others…"
+      : `Online: you are ${w.players[me].name}${w.players[me].civ ? ` (${w.players[me].civ!.name})` : ""}. Gather food and wood. Good luck.`);
     this.selectTownCenter();
+  }
+
+  // ---- coming back into an online game
+
+  /** The setup the online game began with (sent again to a friend coming back). */
+  private onlineSetup: OnlineSetup | null = null;
+  /** Friends coming back, by player, until the game has been sent to them. */
+  private rejoining = new Map<number, Conn>();
+
+  /** A friend has gone (their connection closed): the game no longer waits for them, and a computer plays
+   *  for them, on every machine from the same turn. */
+  private friendLeft(h: LockstepHost, slot: number) {
+    h.dropGuest(slot);
+    this.rejoining.delete(slot);
+    if (this.net !== h || this.world.winner !== null) return;
+    this.hud.message(`${this.world.players[slot].name} has left the game`, "warn");
+    this.issue({ k: "takeover", player: slot });
+  }
+
+  /** Someone joins the room once the game has begun: only a player who was in it, with their token. */
+  private rejoinAsked(conn: Conn) {
+    const o = this.online, h = this.net;
+    const refuse = (why: string) => { conn.link.send({ t: "no-rejoin", why }); setTimeout(() => conn.close(), 500); };
+    let heard = false;
+    conn.link.onMessage((m) => {
+      if (heard) return;
+      heard = true;
+      const msg = m as { t?: string; rejoin?: unknown };
+      const f = o?.role === "host" && typeof msg.rejoin === "string" ? o.friends.find((x) => x.slot > 0 && x.token === msg.rejoin) : undefined;
+      if (!f || !(h instanceof LockstepHost) || this.online !== o) { refuse("This game has already begun"); return; }
+      if (this.world.winner !== null) { refuse("This game is over"); return; }
+      if (this.rejoining.has(f.slot)) { refuse("You are already on your way back in"); return; }
+      // Their old connection may not have been found broken yet: it is let go now.
+      if (f.peer.open) { f.peer.onClose = null; f.peer.close(); this.friendLeft(h, f.slot); }
+      f.peer = conn;
+      conn.onClose = () => this.friendLeft(h, f.slot);
+      this.rejoining.set(f.slot, conn);
+      this.hud.message(`${this.world.players[f.slot].name} is coming back${this.hostPaused ? " (resume the game to let them in)" : ""}`);
+      this.issue({ k: "rejoin", player: f.slot });
+    });
+  }
+
+  /** Between turns, right after a friend was let back in: the whole game goes to them, compressed and in
+   *  pieces (a connection takes messages of a few hundred kilobytes at most). What the game sends meanwhile
+   *  waits behind it, so it arrives in order. */
+  private sendGameTo(h: LockstepHost, player: number) {
+    const conn = this.rejoining.get(player);
+    this.rejoining.delete(player);
+    if (!conn?.open || !this.onlineSetup) { this.friendLeft(h, player); return; }
+    const waiting: unknown[] = [];
+    let ready = false;
+    h.attachGuest(player, { send: (m) => { if (ready) conn.link.send(m); else waiting.push(m); }, onMessage: (f) => conn.link.onMessage(f) });
+    const file = saveWorld(this.world, { setup: this.onlineSetup, you: player, state: h.exportState(), speed: this.speed, paused: this.hostPaused });
+    pack(file).then((blob) => blob.arrayBuffer()).then((buf) => {
+      const bytes = new Uint8Array(buf);
+      let text = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      const all = btoa(text), n = Math.ceil(all.length / SNAP_PIECE);
+      for (let i = 0; i < n; i++) conn.link.send({ t: "snap", i, n, d: all.slice(i * SNAP_PIECE, (i + 1) * SNAP_PIECE) });
+      ready = true;
+      for (const m of waiting.splice(0)) conn.link.send(m);
+    }).catch((e) => { console.error(e); conn.close(); });
+  }
+
+  /** The connection to the host broke in the middle of a game. */
+  private connectionLost() {
+    this.hud.showOverlay("The connection to the host was lost", [
+      "The game cannot go on without the host. If the host is still playing, you can go back in where the game is now; a computer plays for you meanwhile.",
+      `<span class="choices"><button id="rejoin-btn">Rejoin the game</button><button id="online-leave">Main menu</button></span>`,
+    ], "menu");
+  }
+
+  /** The game this machine could go back into: its room and token, if not too old. */
+  private rejoinable(): { room: string; token: string } | null {
+    try {
+      const r = JSON.parse(store.get(REJOIN_KEY) ?? "null") as { room?: unknown; token?: unknown; at?: unknown } | null;
+      if (r && typeof r.room === "string" && typeof r.token === "string" && typeof r.at === "number" && Date.now() - r.at < REJOIN_FOR) return { room: r.room, token: r.token };
+    } catch { /* nothing kept */ }
+    return null;
+  }
+
+  /** Back into the game this machine was playing: the room again, the token, then the game as it is now. */
+  private rejoin() {
+    const r = this.rejoinable();
+    if (!r) { this.showOnline(); return; }
+    this.started = false; this.hud.playing(false);
+    this.leaveOnline();
+    const o: Extract<NonNullable<Game["online"]>, { role: "guest" }> = { role: "guest", peer: null, civ: null, longCodes: false, code: null, joining: { code: r.room, since: performance.now() }, room: r.room, tried: r.room };
+    this.online = o;
+    this.showJoin();
+    const failed = (why: string) => { if (this.online === o) { o.joining = null; o.peer?.close(); o.peer = null; this.showJoin(`Could not rejoin: ${why}`); } };
+    joinRoom(r.room).then((conn) => {
+      if (this.online !== o) { conn.close(); return; }
+      o.joining = null; o.peer = conn;
+      this.showJoin("Connected: the host is sending the game…");
+      // Everything after the game itself waits until the game is loaded, then goes to the lockstep.
+      const parts: string[] = [];
+      let later: unknown[] | null = [], handler: ((m: unknown) => void) | null = null;
+      const link: Link = { send: (m) => conn.link.send(m), onMessage: (f) => { handler = f; for (const m of later ?? []) f(m); later = null; } };
+      conn.link.onMessage((m) => {
+        const msg = m as { t?: string; i?: unknown; n?: unknown; d?: unknown; why?: unknown };
+        if (msg.t === "no-rejoin") { failed(typeof msg.why === "string" ? msg.why.slice(0, 200) : "the host said no"); return; }
+        if (msg.t === "snap" && typeof msg.i === "number" && typeof msg.n === "number" && typeof msg.d === "string" && msg.n > 0 && msg.n <= 2000 && msg.i >= 0 && msg.i < msg.n) {
+          parts[msg.i] = msg.d;
+          if (parts.filter((x) => x !== undefined).length < msg.n) return;
+          const bytes = Uint8Array.from(atob(parts.join("")), (c) => c.charCodeAt(0));
+          unpack(new Blob([bytes])).then((file) => {
+            if (this.online !== o) return;
+            const ui = file.ui as { setup: OnlineSetup; you: number; state: LockstepState; speed: number; paused: boolean };
+            const world = loadWorld(file, this.rules);
+            this.beginOnline({ ...ui.setup, speed: ui.speed }, ui.you, conn, { world, state: ui.state, link });
+            this.hostPaused = !!ui.paused;
+            store.set(REJOIN_KEY, JSON.stringify({ room: r.room, token: r.token, at: Date.now() }));
+          }).catch((e) => failed(String((e as Error).message ?? e)));
+          return;
+        }
+        if (later) later.push(m); else handler?.(m);
+      });
+      conn.onClose = () => { if (!this.started) failed("the connection to the host closed"); };
+      conn.link.send({ t: "hello", rejoin: r.token });
+    }, (e) => failed((e as Error).message));
   }
 
   /** A line of chat in a game: checked, as it came over the network, and shown as text. */
@@ -773,6 +898,7 @@ export class Game {
     this.hud.showOverlay("Multiplayer", [
       "Up to eight players in all, friends and computers, on any networks. The host opens a room and gets a six-digit code; friends type it in. No account needed.",
       `<span class="choices"><button id="host-btn">Host a game</button><button id="join-btn">Join a friend's game</button><button id="online-back">Back</button></span>`,
+      ...(this.rejoinable() ? [`<span class="choices"><button id="rejoin-btn">Rejoin the game in room ${this.rejoinable()!.room.slice(0, 3)} ${this.rejoinable()!.room.slice(3)}</button></span>`] : []),
     ], "menu");
   }
 
@@ -782,8 +908,11 @@ export class Game {
     if (o?.role !== "host") { conn.close(); return; }
     const lobby = this.lobby;
     const seat = lobby ? lobby.seats.findIndex((x) => x.kind === "open") : -1;
-    if (this.started || !lobby || seat < 0) { conn.link.send({ t: "full" }); setTimeout(() => conn.close(), 500); return; }
-    const friend = { peer: conn, civ: null as string | null, slot: 0, id: this.nextFriendId++ };
+    if (this.started) { this.rejoinAsked(conn); return; }
+    if (!lobby || seat < 0) { conn.link.send({ t: "full" }); setTimeout(() => conn.close(), 500); return; }
+    // The token lets this friend back into the game, should their connection drop.
+    const token = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const friend = { peer: conn, civ: null as string | null, slot: 0, id: this.nextFriendId++, token };
     o.friends.push(friend);
     lobby.seats[seat] = { kind: "friend", name: `Player ${seat + 1}`, civ: null, team: 0, ready: false, level: "normal", friend: friend.id };
     const mySeat = () => lobby.seats.find((x) => x.kind === "friend" && x.friend === friend.id);
@@ -1001,7 +1130,7 @@ export class Game {
     for (const f of o.friends) {
       const p = players.findIndex(({ seat }) => seat.kind === "friend" && seat.friend === f.id);
       f.slot = p;
-      if (p >= 0) f.peer.link.send({ t: "start", setup, you: p });
+      if (p >= 0) f.peer.link.send({ t: "start", setup, you: p, token: f.token });
     }
     this.beginOnline(setup, 0, null);
   }
@@ -1053,8 +1182,12 @@ export class Game {
     if (o?.role !== "guest") { conn.close(); return; }
     o.peer = conn;
     conn.link.onMessage((m) => {
-      const msg = m as { t?: string; setup?: OnlineSetup; you?: number; state?: LobbyState };
-      if (msg.t === "start" && msg.setup && typeof msg.you === "number") { this.guestLobby = null; this.beginOnline(msg.setup, msg.you, conn); }
+      const msg = m as { t?: string; setup?: OnlineSetup; you?: number; state?: LobbyState; token?: unknown };
+      if (msg.t === "start" && msg.setup && typeof msg.you === "number") {
+        this.guestLobby = null;
+        if (typeof msg.token === "string" && o.room) store.set(REJOIN_KEY, JSON.stringify({ room: o.room, token: msg.token, at: Date.now() }));
+        this.beginOnline(msg.setup, msg.you, conn);
+      }
       else if (msg.t === "lobby" && msg.state && Array.isArray(msg.state.seats) && typeof msg.you === "number") {
         this.guestLobby = { state: msg.state, you: msg.you };
         if (!this.started) this.showGuestLobby();
@@ -1074,6 +1207,7 @@ export class Game {
     switch (id) {
       case "online-open": this.showOnline(); return true;
       case "online-back": this.showMainMenu(); return true;
+      case "rejoin-btn": this.rejoin(); return true;
       case "online-setup": // with friends in: on to the settings (they stay connected); alone: back to Host or Join
         if (this.online?.role === "host" && this.online.friends.length) this.showStart(); else { this.leaveOnline(); this.showOnline(); }
         return true;
