@@ -1630,21 +1630,21 @@ export class World {
   /** The nearest wild animal of a behavior within r, if any. */
   private nearestAnimal(p: Vec2, r: number, behavior: string): Unit | null {
     let best: Unit | null = null, bestD = r;
-    for (const o of this.units) {
-      if (!o.alive || o.owner >= 0 || o.animal?.behavior !== behavior || o.aboard !== null) continue;
+    this.eachUnitNear(p, r, (o) => {
+      if (!o.alive || o.owner >= 0 || o.animal?.behavior !== behavior || o.aboard !== null) return;
       const d = o.pos.distance(p);
       if (d <= bestD) { bestD = d; best = o; }
-    }
+    });
     return best;
   }
 
   private nearestPlayerUnit(p: Vec2, r: number): Unit | null {
     let best: Unit | null = null, bestD = r;
-    for (const o of this.units) {
-      if (!o.alive || o.owner < 0) continue;
+    this.eachUnitNear(p, r, (o) => {
+      if (!o.alive || o.owner < 0) return;
       const d = o.pos.distance(p);
       if (d <= bestD) { bestD = d; best = o; }
-    }
+    });
     return best;
   }
 
@@ -2056,13 +2056,47 @@ export class World {
 
   // ---- queries
 
+  // ---- units near a point
+  // Every soldier and animal looks for the nearest enemy twice a second; with hundreds of units, going
+  // through all of them each time was most of a step. The units are kept in cells of the map, made once
+  // a step; a search goes through the cells near the point only, in the units' own order, so it finds
+  // exactly what going through all of them would.
+
+  private grid: { tick: number; list: Unit[]; len: number; cells: Map<number, number[]> } | null = null;
+  private static readonly CELL = 8;
+
+  private unitGrid() {
+    const g = this.grid;
+    if (g && g.tick === this.tick && g.list === this.units) return g;
+    const cells = new Map<number, number[]>(), C = World.CELL;
+    this.units.forEach((u, i) => {
+      const k = Math.floor(u.pos.x / C) + Math.floor(u.pos.y / C) * 4096;
+      const c = cells.get(k);
+      if (c) c.push(i); else cells.set(k, [i]);
+    });
+    return (this.grid = { tick: this.tick, list: this.units, len: this.units.length, cells });
+  }
+
+  /** Each unit that may be within r of p, in the order of `units`: those in the cells around (with two
+   *  tiles more, for units that moved since the cells were made), then any made since. */
+  private eachUnitNear(p: Vec2, r: number, visit: (u: Unit) => void) {
+    if (!(r < 48)) { for (const u of this.units) visit(u); return; }
+    const g = this.unitGrid(), C = World.CELL, R = r + 2;
+    const x0 = Math.floor((p.x - R) / C), x1 = Math.floor((p.x + R) / C), y0 = Math.floor((p.y - R) / C), y1 = Math.floor((p.y + R) / C);
+    const idx: number[] = [];
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const c = g.cells.get(x + y * 4096); if (c) for (const i of c) idx.push(i); }
+    idx.sort((a, b) => a - b);
+    for (const i of idx) visit(g.list[i]);
+    for (let i = g.len; i < this.units.length; i++) visit(this.units[i]);
+  }
+
   nearestEnemy(player: number, p: Vec2, r: number, skip?: (e: Entity) => boolean): Entity | null {
     let best: Entity | null = null, bestD = r;
-    for (const u of this.units) {
-      if (!u.alive || !this.hostile(player, u) || skip?.(u)) continue;
+    this.eachUnitNear(p, r, (u) => {
+      if (!u.alive || !this.hostile(player, u) || skip?.(u)) return;
       const d = u.pos.distance(p);
       if (d <= bestD) { bestD = d; best = u; }
-    }
+    });
     if (best) return best;
     for (const b of this.buildings) {
       if (!b.alive || !this.isEnemy(player, b.owner) || skip?.(b)) continue;
@@ -2082,11 +2116,11 @@ export class World {
 
   nearestEnemyUnit(player: number, p: Vec2, r: number): Unit | null {
     let best: Unit | null = null, bestD = r;
-    for (const u of this.units) {
-      if (!u.alive || u.isRelic || !this.isEnemy(player, u.owner)) continue;
+    this.eachUnitNear(p, r, (u) => {
+      if (!u.alive || u.isRelic || !this.isEnemy(player, u.owner)) return;
       const d = u.pos.distance(p);
       if (d <= bestD) { bestD = d; best = u; }
-    }
+    });
     return best;
   }
 

@@ -70,9 +70,10 @@ check(await g(() => game.world.units.filter((u) => u.isRelic).length === 10), "t
 // The ground is drawn piece by piece: every piece has ground in it, and together they cover the map's diamond
 // (half the picture). A piece once came out empty and the rest shifted, leaving black where the map was seen.
 const ground = await g(() => game.terrain.children.map((c) => {
-  const cv = c.texture.source.resource, d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data;
+  // The ground lives in the graphics card only: read back from there.
+  const { pixels: d, width, height } = game.app.renderer.extract.pixels(c.texture);
   let filled = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) filled++;
-  return { filled, area: cv.width * cv.height };
+  return { filled, area: width * height };
 }));
 const share = ground.reduce((a, x) => a + x.filled, 0) / ground.reduce((a, x) => a + x.area, 0);
 check(ground.length > 1 && ground.every((x) => x.filled > 0) && share > 0.45 && share < 0.55, `the ground is drawn in ${ground.length} pieces that cover the map (${(share * 100).toFixed(1)}% of the picture)`);
