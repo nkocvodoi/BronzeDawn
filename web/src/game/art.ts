@@ -1894,7 +1894,8 @@ class Bld {
     this.p.set(cx, ay, darken(r.c, 0.7));
   }
 
-  dome(u: number, v: number, z: number, R: number, c: RGB, ribs = true) {
+  /** A dome, with a finial on top: gold, or the player's colour where nothing else on the building says whose it is. */
+  dome(u: number, v: number, z: number, R: number, c: RGB, ribs = true, finial: RGB = C.gold) {
     if (this.rough) return;
     const [cx, cy] = this.pt(u, v, z);
     const rx = R * 22.6 * this.sc, ry = rx / 2, hz = rx * 0.85;
@@ -1915,8 +1916,8 @@ class Bld {
         this.p.set(x, y, col);
       }
     }
-    this.p.rect(cx - 1, cy - hz - 3, 2, 3, C.gold);
-    this.p.set(cx - 1, cy - hz - 4, C.gold);
+    this.p.rect(cx - 1, cy - hz - 3, 2, 3, finial);
+    this.p.set(cx - 1, cy - hz - 4, finial);
   }
 
   /** Scaffolding over every recorded wall box: poles, planks and a brace. */
@@ -2151,7 +2152,9 @@ const PLANS: Record<string, (b: Bld) => void> = {
       b.p.poly(b.pts([[0.45, 0.45, z + 6], [1.05, 0.45, z + 6], [1.05, 1.05, z + 6], [0.45, 1.05, z + 6]]), (x) => (md(x, 4) < 2 ? b.pc : C.white));
       if (b.age >= 2) propPalm(b, 1.8, 0.25);
     }
-    if (b.arch === "babylonian" && b.age >= 2) b.dome(0.75, 0.75, 13 + 2, 0.22, rgb(0x2e64b0), false);
+    if (b.arch === "babylonian" && b.age >= 2) b.dome(0.75, 0.75, 13 + 2, 0.22, rgb(0x2e64b0), false, b.pc);
+    // Whose it is, as every other building says: a pennant on the roof (a house had none past the Stone Age).
+    b.flag(1.5, 0.45, 11 + (b.kit.plinth ? 2 : 0) + (b.kit.roof === "flat" ? 0 : 6), 9);
   },
 
   town_center(b) {

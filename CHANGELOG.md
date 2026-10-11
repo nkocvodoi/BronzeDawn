@@ -8,7 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-11
 
-- [#54](https://github.com/nkocvodoi/BronzeDawn/pull/54) Hươu đi theo bầy 4–7 con và đi cùng nhau; con bị đánh thì chạy rồi quay về bầy; sư tử săn hươu. Thú, mỏ và bụi dâu không còn bị đặt trên dải cát giữa biển. Căn cứ bị rừng bao kín thì có lối chặt sẵn ra bờ biển; AI trên bản đồ đảo xây được Dock cả khi gần đó không có cá
+- [#54](https://github.com/nkocvodoi/BronzeDawn/pull/54) Hươu đi theo bầy 4–7 con và đi cùng nhau; con bị đánh thì chạy rồi quay về bầy; sư tử săn hươu. Thú, mỏ và bụi dâu không còn bị đặt trên dải cát giữa biển. Căn cứ bị rừng bao kín thì có lối chặt sẵn ra bờ biển; AI trên bản đồ đảo xây được Dock cả khi gần đó không có cá. Nhà có cờ màu người chơi ở mọi thời đại (trước chỉ có ở Stone Age), núm mái vòm nhà Babylon theo màu người chơi thay vì màu vàng
 - [#53](https://github.com/nkocvodoi/BronzeDawn/pull/53) Online: host rời thì người có số nhỏ nhất làm host thay, những người khác tự vào lại; chỉ còn một người thì chơi tiếp một mình
 - [#52](https://github.com/nkocvodoi/BronzeDawn/pull/52) Online: rớt mạng thì vào lại được trận đang chơi (nút Rejoin, hoặc từ Multiplayer sau khi tải lại trang)
 - [#51](https://github.com/nkocvodoi/BronzeDawn/pull/51) Online: chat trong trận (Enter); máy chơi thay người rời trận; host tạm dừng thì mọi máy dừng ở cùng một lượt
