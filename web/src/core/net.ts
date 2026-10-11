@@ -204,6 +204,12 @@ abstract class Lockstep {
     };
   }
 
+  /** Plays the rest of the turn begun: its commands are here, as it began. */
+  finishTurn() { while (this.tickInTurn !== 0) this.stepTick(); }
+
+  /** The players at a keyboard still in the game. */
+  get present() { return [...this.last.keys()].filter((p) => !this.gone.has(p)).sort((a, b) => a - b); }
+
   /** Takes up a game where another machine's lockstep stood (a friend coming back). */
   restore(s: LockstepState) {
     this.turn = s.turn; this.tickInTurn = 0; this.delay = s.delay;
@@ -330,6 +336,9 @@ export class LockstepHost extends Lockstep {
     this.broadcast({ t: "gone", p: player, after });
   }
 
+  /** Whether a friend is connected as this player. */
+  hasGuest(player: number) { return this.links.has(player); }
+
   /** Sends something to every friend. */
   broadcast(msg: unknown) { for (const l of this.links.values()) l.send(msg); }
 }
@@ -363,6 +372,22 @@ export class LockstepGuest extends Lockstep {
   }
 
   protected sendInput(n: number, cmds: Command[]) { this.host.send({ t: "in", n, cmds }); }
+
+  /** The host has gone, and this machine takes its place: a host from where this game stands. The other
+   *  players' commands are no longer waited for, and those not yet played are dropped; they come back as a
+   *  friend does after a broken connection, into the game as this machine has it. */
+  becomeHost(clock?: () => number): LockstepHost {
+    this.finishTurn();
+    const s = this.exportState(), t = s.turn, mine = (p: number) => p === this.me;
+    const gone = new Map(s.gone);
+    for (const [p] of s.last) if (!mine(p)) gone.set(p, Math.min(gone.get(p) ?? Infinity, t - 1));
+    s.last = s.last.map(([p, l]) => [p, mine(p) ? l : Math.min(l, t - 1)]);
+    s.gone = [...gone];
+    s.inputs = s.inputs.map(([n, cmds]) => [n, cmds.filter(([p]) => mine(p))] as [number, [number, Command[]][]]).filter(([, cmds]) => cmds.length);
+    const h = new LockstepHost(this.world, this.me, clock);
+    h.restore(s);
+    return h;
+  }
 
   protected finished() {
     // Every CHECK_EVERY turns, the fingerprint of the world this turn leaves, for the host to compare.

@@ -155,6 +155,10 @@ export class World {
 
   /** A player changes how they stand toward another. The computer answers: an enemy is an enemy back, and
    *  whoever declares an alliance must still win it (see `tribute`). Everyone is told, as in the original. */
+  /** Online, the player whose machine is the host: only they may hand a player to a computer and back.
+   *  Another player takes it on when the host leaves. (A save from before this field: 0.) */
+  host = 0;
+
   /** A computer takes over a player (a friend who left an online game) from now on: false if it already
    *  plays for them, or they are out. */
   takeOver(player: number, difficulty: Difficulty = "normal") {

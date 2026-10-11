@@ -147,6 +147,9 @@ export class Peer implements Conn {
 /** Room codes are six digits, kept apart from other PeerJS users by this prefix. */
 const ROOM_PREFIX = "bronzedawn-room-";
 const roomId = (code: string) => ROOM_PREFIX + code;
+/** A room's code: six digits for people to type, or a long secret one that machines pass among themselves
+ *  (the room a new host opens when the host has left). */
+const isCode = (code: string) => /^\d{6}$/.test(code) || /^m[0-9a-f]{16,64}$/.test(code);
 const newCode = () => String(Math.floor(Math.random() * 900000) + 100000);
 
 /** Why a room could not be reached, in words for the player. */
@@ -203,17 +206,17 @@ export class Room {
     peer.on("disconnected", () => this.onLost?.("The room is no longer listed: friends already in stay connected, but no one new can join"));
   }
 
-  /** Opens a room under a fresh six-digit code (another one if that code is taken). */
-  static open(tries = 4): Promise<Room> {
+  /** Opens a room under a fresh six-digit code (another one if that code is taken), or under the code given. */
+  static open(tries = 4, given?: string): Promise<Room> {
     return new Promise((resolve, reject) => {
-      const code = newCode();
+      const code = given ?? newCode();
       const peer = new PeerJS(roomId(code), { config: { iceServers: ICE } });
       const timer = setTimeout(() => { peer.destroy(); reject(new Error("The free matching service did not answer; try again, or use the long codes")); }, 12000);
       peer.on("open", () => { clearTimeout(timer); resolve(new Room(peer, code)); });
       peer.on("error", (e) => {
         clearTimeout(timer);
         peer.destroy();
-        if ((e as { type?: string }).type === "unavailable-id" && tries > 1) Room.open(tries - 1).then(resolve, reject);
+        if ((e as { type?: string }).type === "unavailable-id" && tries > 1 && !given) Room.open(tries - 1).then(resolve, reject);
         else reject(new Error(says(e)));
       });
     });
@@ -224,8 +227,8 @@ export class Room {
 
 /** A friend's side: joins the room with this code. Fails with a reason if nothing answers in time. */
 export function joinRoom(code: string): Promise<Conn> {
-  const digits = code.replace(/\D/g, "");
-  if (digits.length !== 6) return Promise.reject(new Error("A room code is six digits"));
+  const digits = /^m/.test(code) ? code : code.replace(/\D/g, "");
+  if (!isCode(digits)) return Promise.reject(new Error("A room code is six digits"));
   return new Promise((resolve, reject) => {
     const peer = new PeerJS({ config: { iceServers: ICE } });
     let done = false;
