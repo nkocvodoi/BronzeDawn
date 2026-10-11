@@ -85,7 +85,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [x] Online: mọi người chịu cùng một độ trễ ngắn như bản gốc (mỗi người tự xếp lệnh của mình vào lượt phía trước; độ trễ tự đo theo mạng, khoảng 200 đến 300 ms), lính bước đi ngay trên màn hình khi ra lệnh; host tạm dừng thì mọi máy dừng ở cùng một lượt
 - [x] Online: chat trong trận (Enter); người rời trận thì máy (mức Moderate) chơi thay từ cùng một lượt trên mọi máy
 - [x] Online: rớt mạng thì vào lại được trận đang chơi (nút Rejoin, hoặc Multiplayer → Rejoin sau khi tải lại trang, trong 3 giờ): host gửi trận như đang có, máy chơi thay trong lúc vắng mặt rồi trả quân lại
-- [ ] Online: host rời thì trận dừng (chưa chuyển host sang máy khác)
+- [x] Online: host rời thì người có số nhỏ nhất làm host thay, những người khác tự vào lại; máy chơi thay cho host cũ; chỉ còn một người thì chơi tiếp một mình
 
 ## Chỗ đang khác bản gốc (đã chọn, có thể đổi)
 

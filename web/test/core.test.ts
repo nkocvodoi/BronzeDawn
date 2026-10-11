@@ -1103,6 +1103,48 @@ describe("playing online, in lockstep", () => {
     expect(host.desync).toBeNull();
   });
 
+  it("the host leaves: a friend takes its place from where its game stands, the other comes back in to them", () => {
+    const rng = new RNG(31);
+    const old = new LockstepHost(makeWorld(), 0, () => 0);
+    const pipes = [pipe(rng, 3), pipe(rng, 2)];
+    const [g1, g2] = pipes.map((p, i) => { old.addGuest(i + 1, p.end1); return new LockstepGuest(makeWorld(), i + 1, p.end2, [0, 1, 2]); });
+    let live: { tick: () => void }[] = [...pipes];
+    let peers: (LockstepHost | LockstepGuest)[] = [old, g1, g2];
+    const run = (n: number) => { for (let i = 0; i < n; i++) { for (const p of live) p.tick(); for (const p of peers) { if (rng.int(0, 4) === 0) play(p.world, p.me, rng, (c) => p.issue(c)); p.advance(1); } } };
+    run(100);
+    // The host is gone, with messages still on their way: the first friend hosts from its own game.
+    live = []; peers = [g2];
+    run(3);
+    const h = g1.becomeHost(() => 0);
+    h.world.host = 1;
+    h.world.takeOver(0);
+    expect(h.present).toEqual([1]);
+    peers = [h];
+    run(20);
+    // The other friend comes back in as after a broken connection; what it had played past the new host is dropped.
+    const again = pipe(rng, 2);
+    let back: LockstepGuest | null = null;
+    h.onReadmit = (p) => {
+      const file = JSON.parse(JSON.stringify(saveWorld(h.world, h.exportState())));
+      back = new LockstepGuest(loadWorld(file, RULES), p, again.end2, [0, 1, 2], file.ui);
+      h.attachGuest(p, again.end1);
+    };
+    expect(runCommand(h.world, 0, { k: "rejoin", player: 2 })).toBe(false); // the old host's word counts no more
+    h.issue({ k: "rejoin", player: 2 });
+    live = [again];
+    for (let i = 0; i < 60 && !back; i++) run(1);
+    expect(back).not.toBeNull();
+    peers = [h, back!];
+    run(300);
+    const end = h.turn + 20;
+    for (let i = 0; i < 200; i++) { again.tick(); for (const p of peers) while (p.turn < end && p.stepTick()) { /* on */ } }
+    const state = (w: World) => JSON.stringify(saveWorld(w).world);
+    expect(back!.turn).toBe(end);
+    expect(state(back!.world)).toBe(state(h.world));
+    expect(h.world.ais.map((a) => a.player).sort()).toEqual([0, 3]);
+    expect(h.desync).toBeNull();
+  });
+
   it("the host's pause stops every machine at the same turn, and the game goes on after", () => {
     const rng = new RNG(11);
     const host = new LockstepHost(makeWorld(), 0, () => 0);
