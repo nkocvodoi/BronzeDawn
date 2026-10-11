@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-11
 
+- [#64](https://github.com/nkocvodoi/BronzeDawn/pull/64) Form Game Settings (Single Player và Multiplayer) căn thẳng hàng: nhãn một cột, ô chọn bên cạnh, hai mục ngắn chung một hàng
 - [#63](https://github.com/nkocvodoi/BronzeDawn/pull/63) Xác thú chồng nhau không còn thối mất: xác chỉ thối khi bắt đầu được xẻ; không xoá được Town Center cuối cùng, xoá nhà đã xây phải bấm Delete hai lần
 - [#62](https://github.com/nkocvodoi/BronzeDawn/pull/62) Nhà đổ bóng xuống đất về phía dưới bên phải, tường sáng tối mượt dần thay cho các dải pixel
 - [#61](https://github.com/nkocvodoi/BronzeDawn/pull/61) Không còn đàn thú bị rừng bao kín: chỉ thả và cho gặm cỏ ở đất không có cây, con nào vẫn bị kẹt thì cả đàn được dời ra bãi trống gần nhất

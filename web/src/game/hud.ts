@@ -410,7 +410,7 @@ export class HUD {
   clearMessages() { this.messages.innerHTML = ""; }
 
   showOverlay(title: string, lines: string[], kind = "") {
-    this.overlay.innerHTML = `<div class="card ${kind}"><h1>${title}</h1>${lines.map((l) => `<p>${l}</p>`).join("")}</div>`;
+    this.overlay.innerHTML = `<div class="card ${kind}"><h1>${title}</h1>${lines.map((l) => (l.startsWith("<div") ? l : `<p>${l}</p>`)).join("")}</div>`;
     this.overlay.hidden = false;
   }
 
