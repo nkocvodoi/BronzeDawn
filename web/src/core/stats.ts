@@ -124,7 +124,7 @@ export class Mods {
     const k = f(1, "cost");
     for (let i = 0; i < 4; i++) cost.values[i] = Math.round(cost.values[i] * k);
     const s: BuildingStats = {
-      hp: Math.round(f(def.hp, "hp")), build_time: f(def.build_time, "build_time"),
+      hp: Math.round(f(def.hp, "hp")), build_time: f(def.build_time, "build_time") / (this.rules.economy.build_speed ?? 1),
       range: f(def.range ?? 0, "range"), attack: f(def.attack ?? 0, "attack"), los: f(def.los ?? 2, "los"), cost,
     };
     this.buildingCache.set(def.id, s);

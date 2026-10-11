@@ -86,6 +86,11 @@ export interface EconomyDef {
   trade_gold_per_tile?: number;
   /** Repair speed, as a share of the building speed. */
   repair_rate?: number;
+  /** Everything gathers this much faster than the rates above say (boats and farms too): 4/3 takes a quarter
+   *  off the time a load takes. */
+  gather_speed?: number;
+  /** Every building goes up this much faster than its build_time; repair keeps its own pace. */
+  build_speed?: number;
   /** What a full bar of repair costs, as a share of the building's price. */
   repair_cost?: number;
 }

@@ -486,6 +486,18 @@ describe("the original's rules", () => {
     expect(w.players[0].stats.gathered.food).toBeGreaterThan(200);
   });
 
+  it("everything gathers and builds a quarter faster than the original's times", () => {
+    const w = blank();
+    expect(w.buildingStats(0, "house").build_time).toBeCloseTo(RULES.buildings.get("house")!.build_time * 0.75, 2);
+    const tree = w.addNode("tree", new Tile(10, 6))!;
+    const v = w.spawnUnit("villager", 0, new Tile(9, 6).center);
+    w.gather(0, [v.id], tree.id);
+    run(w, 3); // walk up and start
+    const before = tree.amount;
+    run(w, 10);
+    expect(before - tree.amount).toBeCloseTo(RULES.gatherRate(Res.wood) * 4 / 3 * 10, 0);
+  });
+
   it("a soldier's kill leaves no meat", () => {
     const w = blank();
     const g = w.spawnAnimal("gazelle", new Tile(9, 6).center)!;
