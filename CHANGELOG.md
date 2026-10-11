@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-11
 
+- [#56](https://github.com/nkocvodoi/BronzeDawn/pull/56) Hết lag cuối trận khi xem 8 AI ở tốc độ cao (dân không còn tìm đường mãi tới cây không tới được); hươu chỉ ở vùng đất trống, không ở dải đất hẹp trông như đảo; thuyền ra từ Dock ở vùng biển lớn, không ra vũng nước
 - [#55](https://github.com/nkocvodoi/BronzeDawn/pull/55) Chạy mượt hơn khi trận đông: chỉ xử lý và vẽ những gì trong màn hình (trước đây cả bản đồ, kể cả hàng nghìn cây và mỏ), tìm kẻ địch gần nhất theo ô bản đồ (mô phỏng nhanh hơn khoảng 17%, kết quả giống hệt), vòng chọn và thanh máu chỉ tạo khi được chọn, nền địa hình chỉ giữ trên GPU (bớt 10–80 MB tùy cỡ bản đồ)
 - [#54](https://github.com/nkocvodoi/BronzeDawn/pull/54) Hươu đi theo bầy 4–7 con và đi cùng nhau; con bị đánh thì chạy rồi quay về bầy; sư tử săn hươu. Thú, mỏ và bụi dâu không còn bị đặt trên dải cát giữa biển. Căn cứ bị rừng bao kín thì có lối chặt sẵn ra bờ biển; AI trên bản đồ đảo xây được Dock cả khi gần đó không có cá. Nhà có cờ màu người chơi ở mọi thời đại (trước chỉ có ở Stone Age), núm mái vòm nhà Babylon theo màu người chơi thay vì màu vàng
 - [#53](https://github.com/nkocvodoi/BronzeDawn/pull/53) Online: host rời thì người có số nhỏ nhất làm host thay, những người khác tự vào lại; chỉ còn một người thì chơi tiếp một mình

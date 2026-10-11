@@ -521,7 +521,7 @@ export class AIController {
       if (farm) { w.gather(this.player, [u.id], farm.id); return true; }
       const meat = w.nodes.find((n) => n.alive && n.decay > 0 && n.at.distance(home) < 16);
       if (meat) { w.gather(this.player, [u.id], meat.id); return true; }
-      const berry = w.nearestNode(Res.food, home, 14, null, "berry_bush");
+      const berry = w.nearestNode(Res.food, home, 14, null, "berry_bush", null, this.player);
       if (berry) { w.gather(this.player, [u.id], berry.id); return true; }
       const game = this.huntNear(w, home);
       if (game) { w.attack(this.player, [u.id], game.id); return true; }
@@ -530,7 +530,7 @@ export class AIController {
     // villager sent there would only come back idle, again and again.
     const radius = r === Res.gold || r === Res.stone ? FAR : 30;
     const n = minBy(w.nodes.filter((x) => x.alive && x.res === r && !x.def.boats_only && x.amount > 0 && x.center.distance(home) <= radius
-      && (!this.acrossSea || this.byLand(w, home, x.center))), (x) => x.center.distance(home));
+      && w.mayTry(this.player, x) && (!this.acrossSea || this.byLand(w, home, x.center))), (x) => x.center.distance(home));
     if (n) { w.gather(this.player, [u.id], n.id); return true; }
     return false;
   }

@@ -2,7 +2,7 @@ import { AIController, Difficulty } from "./ai";
 import { Building, Entity, GAIA, GameEvent, IDLE, Order, Player, QueueItem, ResourceNode, Unit } from "./entities";
 import { Fog } from "./fog";
 import { Footprint, RNG, Tile, Vec2 } from "./geom";
-import { buildable, GridMap, Terrain, walkable } from "./grid";
+import { buildable, GridMap, sailable, Terrain, walkable } from "./grid";
 import { generateMap, MapType } from "./mapgen";
 import { Pathfinder } from "./path";
 import { hasTag, NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
@@ -258,6 +258,15 @@ export class World {
     this.units.push(u);
     this.byId.set(u.id, u);
     return u;
+  }
+
+  /** Open land, for animals to graze on: most of the 5 x 5 tiles around it are land. A narrow strip or a
+   *  spit out into the sea is drawn with a smooth coast, so it looks like an islet; animals there looked
+   *  as if they stood on a speck of sand. */
+  openLand(t: Tile) {
+    let land = 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (walkable(this.map.terrainAt(new Tile(t.x + dx, t.y + dy))) && this.map.terrainAt(new Tile(t.x + dx, t.y + dy)) !== Terrain.shallows) land++;
+    return land >= 15;
   }
 
   /** A new herd, grazing at `at`; its number, for its members. */
@@ -1288,17 +1297,43 @@ export class World {
 
   private exitTile(b: Building, toward: Vec2 | null): Tile {
     const fp = b.footprint;
-    let best: Tile | null = null, bestD = Infinity;
+    let best: Tile | null = null, bestScore = -Infinity;
     const aim = toward ?? new Vec2(fp.maxX + 1, fp.maxY + 1);
+    // A boat comes out on the open water: a Dock can stand beside a pond or a pool of shallows cut off
+    // from the sea, and a boat put there could never leave it.
+    const naval = this.map.naval, sizes = new Map<number, number>();
     for (let y = fp.origin.y - 1; y <= fp.origin.y + fp.size; y++) {
       for (let x = fp.origin.x - 1; x <= fp.origin.x + fp.size; x++) {
         const t = new Tile(x, y);
         if (fp.contains(t) || !this.map.passable(t)) continue;
-        const d = t.center.distance(aim);
-        if (d < bestD) { bestD = d; best = t; }
+        let score = -t.center.distance(aim);
+        if (naval) score += this.waterAround(t, sizes) * 1000 + (this.map.terrainAt(t) === Terrain.water ? 100 : 0);
+        if (score > bestScore) { bestScore = score; best = t; }
       }
     }
     return best ?? this.map.nearestPassable(fp.origin, 8) ?? fp.origin;
+  }
+
+  /** How much water a boat could sail from a tile, counted up to a sea's worth (300 tiles): the same for
+   *  every tile of one body of water, worked out once for it. */
+  private waterAround(t: Tile, sizes: Map<number, number>) {
+    const known = sizes.get(this.map.index(t));
+    if (known !== undefined) return known;
+    const seen: number[] = [this.map.index(t)], stack = [t];
+    const mark = new Set(seen);
+    while (stack.length && seen.length < 300) {
+      const c = stack.pop()!;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const n = new Tile(c.x + dx, c.y + dy);
+        if (!this.map.inside(n) || !sailable(this.map.terrainAt(n)) || !this.map.passable(n)) continue; // not through the Dock itself
+        const k = this.map.index(n);
+        if (mark.has(k)) continue;
+        mark.add(k); seen.push(k); stack.push(n);
+      }
+    }
+    const n = Math.min(300, seen.length);
+    for (const k of seen) sizes.set(k, n);
+    return n;
   }
 
   // ---- units
@@ -1607,7 +1642,7 @@ export class World {
     const herd = this.herdGoals;
     if (this.rng.unit() < 0.01) {
       const t = new Vec2(goal.x + this.rng.int(-4, 4), goal.y + this.rng.int(-4, 4));
-      if (this.map.inside(t.tile) && this.map.passable(t.tile)) { herd.set(u.herd, t); goal = t; }
+      if (this.map.inside(t.tile) && this.map.passable(t.tile) && this.openLand(t.tile)) { herd.set(u.herd, t); goal = t; }
     }
     const far = u.pos.distance(goal) > 2.5;
     if (!far && this.rng.unit() >= 0.08) return;
@@ -1718,11 +1753,13 @@ export class World {
       u.carryKind = foodKind;
       u.lastGather = res;
     } else if (a === "blocked") {
-      // Cannot reach this one (fenced in by trees): try another.
-      const n = u.isBoat ? null : this.nearestNode(res, u.pos, 10, id);
+      // Cannot reach this one (fenced in by trees, or over the water): try another, after a pause, and not
+      // this one again for a while, by anyone of this player.
+      if (src instanceof ResourceNode) this.markUnreachable(u.owner, src.id);
+      const n = u.isBoat ? null : this.nearestNode(res, u.pos, 10, id, null, null, u.owner);
       const next = u.isBoat ? this.nextSource(u) : null;
-      if (n) { u.order = { kind: "gather", id: n.id }; u.repathTimer = 0; }
-      else if (next && !(next.kind === "gather" && next.id === id)) { u.order = next; u.repathTimer = 0; }
+      if (n) { u.order = { kind: "gather", id: n.id }; u.repathTimer = 0.6; }
+      else if (next && !(next.kind === "gather" && next.id === id)) { u.order = next; u.repathTimer = 0.6; }
       else u.order = IDLE;
     }
   }
@@ -1757,7 +1794,7 @@ export class World {
       }
       return best ? { kind: "gather", id: best.id } : null;
     }
-    const n = this.nearestNode(u.lastGather, u.pos, 10, null, type);
+    const n = this.nearestNode(u.lastGather, u.pos, 10, null, type, null, u.owner);
     return n ? { kind: "gather", id: n.id } : null;
   }
 
@@ -1870,7 +1907,7 @@ export class World {
       const prefs = b.def.drop_off.map((k) => RES_KEY.indexOf(k as (typeof RES_KEY)[number])).filter((r) => r >= 0) as Res[];
       const ordered = (u.lastGather !== null && prefs.includes(u.lastGather) ? [u.lastGather] : []).concat(prefs);
       for (const r of ordered) {
-        const n = this.nearestNode(r, b.center, 7, null, null, b);
+        const n = this.nearestNode(r, b.center, 7, null, null, b, b.owner);
         if (n) { u.order = { kind: "gather", id: n.id }; u.lastGather = r; u.lastNodeType = n.def.id; return; }
       }
     }
@@ -2125,16 +2162,46 @@ export class World {
   }
 
   /** Nearest node of a resource; optionally of one type, or that a given building takes. */
-  nearestNode(r: Res, p: Vec2, radius: number, excluding: number | null = null, type: string | null = null, dropAt: Building | null = null): ResourceNode | null {
+  /** The nearest node of a resource within radius; optionally of one type, or one a building takes. For a
+   *  player (`player`), only one their villagers could stand beside and have not lately failed to reach. */
+  nearestNode(r: Res, p: Vec2, radius: number, excluding: number | null = null, type: string | null = null, dropAt: Building | null = null, player: number | null = null): ResourceNode | null {
     let best: ResourceNode | null = null, bestD = radius;
     for (const n of this.nodes) {
       if (!n.alive || n.res !== r || n.id === excluding || n.decay > 0) continue;
       if (type !== null && n.def.id !== type) continue;
       if (dropAt && !dropAt.dropsOff(n.res, n.foodKind)) continue;
       const d = n.center.distance(p);
-      if (d < bestD) { bestD = d; best = n; }
+      if (d < bestD && (player === null || this.mayTry(player, n))) { bestD = d; best = n; }
     }
     return best;
+  }
+
+  // ---- what cannot be reached
+  // Late in a game the trees left near a town are deep in the woods, and the nearest are often ones no one
+  // can stand beside. A villager sent to one searched for a way, found none, turned to the next nearest,
+  // found none, and back, a whole search every step: with a few dozen of them a step took 20 ms.
+
+  /** Nodes a player's villagers found they could not reach, and until when they are not sent there again. */
+  private cantReach: Map<number, number>[] = [];
+
+  /** A villager of this player could not reach this node: not for half a minute (woods are cut meanwhile). */
+  markUnreachable(player: number, id: number) {
+    this.cantReach ??= []; // a save from before this
+    (this.cantReach[player] ??= new Map()).set(id, this.time + 30);
+  }
+
+  /** Whether this player's villagers may be sent to a node: one with a free side to stand on, not lately
+   *  found out of reach. */
+  mayTry(player: number, n: ResourceNode) {
+    const until = this.cantReach?.[player]?.get(n.id);
+    if (until !== undefined) { if (until > this.time) return false; this.cantReach[player].delete(n.id); }
+    return n.def.on_water || this.openSide(n.tile);
+  }
+
+  /** Whether a tile has a side one can stand on (a tree inside a wood has none). */
+  private openSide(t: Tile) {
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) if (this.map.passable(new Tile(t.x + dx, t.y + dy))) return true;
+    return false;
   }
 
   /** The nearest finished farm of this owner nobody is working, within 10 tiles. */
