@@ -119,7 +119,7 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
         const t = farFromStarts(c, away) ? map.nearestPassable(c, 3) : null;
         if (!t) break;
         // On a narrow strip of a big island: the open land nearest it, if near.
-        const at = roomy(w, t) ? (w.openLand(t) ? t : openNear(w, t, 6)) : null;
+        const at = roomy(w, t) ? (w.openLand(t) ? t : openNear(w, t, 10)) : null;
         if (at) { herd(w, kind, at, size()); break; }
       }
     }
@@ -167,6 +167,58 @@ export function generateMap(w: World, type: MapType = "inland", withRelics = tru
   if (!landOnly(type)) openToSea(w, starts);
   w.nodes = w.nodes.filter((x) => x.alive);
   if (withRelics) relics(w, starts);
+  freeAnimals(w);
+}
+
+/** Last of all, when every wood is grown: an animal walled in by trees (woods grown around it after it was
+ *  placed, or a clearing that seemed open) is moved, with its herd, to the nearest open pasture. */
+function freeAnimals(w: World) {
+  const map = w.map, size = map.width * map.height;
+  // Pieces of ground one can walk across, trees and buildings in the way, and how big each is.
+  const piece = new Int32Array(size).fill(-1), sizes: number[] = [];
+  for (let i = 0; i < size; i++) {
+    const t0 = new Tile(i % map.width, Math.floor(i / map.width));
+    if (piece[i] >= 0 || !map.passable(t0)) continue;
+    const id = sizes.length, stack = [t0];
+    piece[i] = id;
+    let n = 0;
+    while (stack.length) {
+      const t = stack.pop()!;
+      n++;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const q = new Tile(t.x + dx, t.y + dy);
+        if (!map.inside(q) || piece[map.index(q)] >= 0 || !map.passable(q)) continue;
+        piece[map.index(q)] = id;
+        stack.push(q);
+      }
+    }
+    sizes.push(n);
+  }
+  // Most of the 5 x 5 around it land (trees or not): not a strip drawn like an islet.
+  const landAround = (t: Tile) => { let n = 0; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (map.terrainAt(new Tile(t.x + dx, t.y + dy)) !== Terrain.water) n++; return n; };
+  const room = (t: Tile) => { const p = map.inside(t) ? piece[map.index(t)] : -1; return p >= 0 ? sizes[p] : 0; };
+  const pasture = (from: Tile): Tile | null => {
+    // Open pasture if there is any near; else any ground with room to roam.
+    for (const open of [true, false]) for (let d = 1; d <= 30; d++) for (let dy = -d; dy <= d; dy++) for (let dx = -d; dx <= d; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== d) continue;
+      const t = new Tile(from.x + dx, from.y + dy);
+      if (open ? room(t) >= 200 && w.openLand(t) : room(t) >= 80 && landAround(t) >= 15) return t;
+    }
+    return null;
+  };
+  const moved = new Map<number, Tile | null>(); // a herd's new pasture
+  for (const u of w.units) {
+    if (!u.isAnimal || u.def.id === "alligator" || room(u.pos.tile) >= 80) continue;
+    const key = u.herd || -u.id;
+    if (!moved.has(key)) moved.set(key, pasture(u.pos.tile));
+    const to = moved.get(key);
+    if (!to) continue;
+    // Beside the others, but only on the open ground: a gap of one tile between trees is beside it too.
+    const near = map.nearestPassable(new Tile(to.x + (u.id % 3) - 1, to.y + ((u.id >> 2) % 3) - 1), 2);
+    const spot = near && room(near) >= 80 && landAround(near) >= 15 ? near : to; // not out on the shore's edge either
+    u.pos = spot.center; u.prevPos = u.pos;
+    if (u.herd) w.herdGoals.set(u.herd, to.center);
+  }
 }
 
 /** Every base can walk to the sea: where woods wall it in, a way is cut through them to the nearest shore
@@ -455,7 +507,7 @@ function herd(w: World, kind: string, c: Tile, count: number) {
   const id = kind === "gazelle" ? w.newHerd(c.center) : 0;
   for (let i = 0; i < count; i++) {
     // Beside the others, on open land: a few tries, wider each time.
-    for (let tries = 0; tries < 6; tries++) {
+    for (let tries = 0; tries < 10; tries++) {
       const r = 1 + (tries >> 1);
       const t = w.map.nearestPassable(new Tile(c.x + w.rng.int(-r, r), c.y + w.rng.int(-r, r)), 3);
       if (!t || !roomy(w, t) || !w.openLand(t)) continue;

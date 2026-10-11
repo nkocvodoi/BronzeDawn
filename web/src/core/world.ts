@@ -269,7 +269,11 @@ export class World {
    *  as if they stood on a speck of sand. */
   openLand(t: Tile) {
     let land = 0;
-    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (walkable(this.map.terrainAt(new Tile(t.x + dx, t.y + dy))) && this.map.terrainAt(new Tile(t.x + dx, t.y + dy)) !== Terrain.shallows) land++;
+    // Land free of trees and buildings too: a clearing deep in a wood is no pasture.
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const n = new Tile(t.x + dx, t.y + dy);
+      if (walkable(this.map.terrainAt(n)) && this.map.terrainAt(n) !== Terrain.shallows && this.map.inside(n) && this.map.solidAt(n) === false) land++;
+    }
     return land >= 15;
   }
 
