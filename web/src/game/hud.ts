@@ -391,6 +391,21 @@ export class HUD {
     setTimeout(() => d.remove(), 6000);
   }
 
+  /** A line of chat from another player (or your own), with their name in their color. Shown longer than
+   *  a message; written as text, never as markup, whatever it says. */
+  chat(from: string, color: string, text: string) {
+    const d = document.createElement("div");
+    d.className = "chat";
+    const who = document.createElement("b");
+    who.textContent = `${from}: `;
+    who.style.color = color;
+    d.append(who, document.createTextNode(text));
+    this.messages.appendChild(d);
+    while (this.messages.children.length > 6) this.messages.firstChild!.remove();
+    setTimeout(() => d.classList.add("fade"), 10000);
+    setTimeout(() => d.remove(), 11000);
+  }
+
   /** Clears the messages, as when a game starts. */
   clearMessages() { this.messages.innerHTML = ""; }
 

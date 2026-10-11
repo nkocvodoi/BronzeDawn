@@ -10,7 +10,7 @@ import { AIController } from "../src/core/ai";
 import { Victory, World, WorldOptions } from "../src/core/world";
 import { loadWorld, saveWorld } from "../src/core/save";
 import { delayFor, LockstepGuest, LockstepHost, MIN_DELAY, START_DELAY, TURN_TICKS } from "../src/core/net";
-import { Command } from "../src/core/commands";
+import { Command, isCommand, runCommand } from "../src/core/commands";
 import { RNG } from "../src/core/geom";
 
 /** An empty grass map, for tests that set up their own scene. */
@@ -1042,6 +1042,37 @@ describe("playing online, in lockstep", () => {
     // And at that delay nobody waits for anybody once the game is under way.
     expect(stalls).toBe(0);
     expect(delayFor([], 100)).toBe(MIN_DELAY);
+  });
+
+  it("a computer takes over a friend who left: only on the host's word, and it plays on", () => {
+    const w = new World(RULES, 5, ["Host", "Friend"], 48, true);
+    expect(isCommand({ k: "takeover", player: 1 })).toBe(true);
+    expect(runCommand(w, 1, { k: "takeover", player: 0 })).toBe(false); // a friend cannot hand the host to a computer
+    expect(runCommand(w, 0, { k: "takeover", player: 0 })).toBe(false);
+    expect(runCommand(w, 0, { k: "takeover", player: 1 })).toBe(true);
+    expect(runCommand(w, 0, { k: "takeover", player: 1 })).toBe(false); // once
+    expect(w.ais.map((a) => a.player)).toEqual([1]);
+    run(w, 4 * 60);
+    expect(w.unitsOf(1).filter((u) => u.isVillager).length).toBeGreaterThan(RULES.economy.start_villagers);
+  });
+
+  it("the host's pause stops every machine at the same turn, and the game goes on after", () => {
+    const rng = new RNG(11);
+    const host = new LockstepHost(makeWorld(), 0, () => 0);
+    const pipes = [pipe(rng, 3), pipe(rng, 1)];
+    const guests = pipes.map((p, i) => { host.addGuest(i + 1, p.end1); return new LockstepGuest(makeWorld(), i + 1, p.end2, [0, 1, 2]); });
+    const peers = [host, ...guests];
+    const run = (n: number) => { for (let i = 0; i < n; i++) { for (const p of pipes) p.tick(); for (const p of peers) p.advance(1); } };
+    run(60);
+    host.paused = true;
+    run(60);
+    const at = host.turn;
+    for (const p of peers) expect(p.turn).toBe(at);
+    run(20);
+    expect(host.turn).toBe(at); // still paused
+    host.paused = false;
+    run(40);
+    expect(host.turn).toBeGreaterThan(at + 20);
   });
 
   it("a friend who leaves is not waited for, by the host or the other friends", () => {

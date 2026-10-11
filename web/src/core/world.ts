@@ -1,4 +1,4 @@
-import { AIController } from "./ai";
+import { AIController, Difficulty } from "./ai";
 import { Building, Entity, GAIA, GameEvent, IDLE, Order, Player, QueueItem, ResourceNode, Unit } from "./entities";
 import { Fog } from "./fog";
 import { Footprint, RNG, Tile, Vec2 } from "./geom";
@@ -155,6 +155,17 @@ export class World {
 
   /** A player changes how they stand toward another. The computer answers: an enemy is an enemy back, and
    *  whoever declares an alliance must still win it (see `tribute`). Everyone is told, as in the original. */
+  /** A computer takes over a player (a friend who left an online game) from now on: false if it already
+   *  plays for them, or they are out. */
+  takeOver(player: number, difficulty: Difficulty = "normal") {
+    const p = this.players[player];
+    if (!p || p.defeated || this.ais.some((ai) => ai.player === player)) return false;
+    const ai = new AIController(player, difficulty);
+    ai.attach(this);
+    this.ais.push(ai);
+    return true;
+  }
+
   setStance(a: number, b: number, s: Stance) {
     if (a === b || a < 0 || b < 0 || this.stance[a][b] === s) return;
     this.stance[a][b] = s;

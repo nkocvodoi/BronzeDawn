@@ -134,7 +134,20 @@ const [c, d] = [await sum(host), await sum(guest)];
 check(c.tick > a.tick + 600 && c.tick === d.tick && c.units === d.units && c.res === d.res, `after ${Math.round((c.tick - a.tick) / 20)} more game seconds, still the same world (step ${c.tick})`);
 check(await host.evaluate(() => game.net.desync === null), "and still no disagreement");
 
-// The friend leaves: the host is told, and goes on.
+// Chat in the game: Enter opens a box, Enter sends; the line reaches the other side with who said it.
+await guest.keyboard.press("Enter");
+await guest.keyboard.type("gg <b>well played</b>");
+await guest.keyboard.press("Enter");
+await host.waitForFunction(() => document.querySelector("#messages")?.textContent?.includes("well played"), null, { timeout: 5000 }).catch(() => {});
+check(await host.evaluate(() => [...document.querySelectorAll("#messages .chat")].some((d) => d.textContent === "Friend: gg <b>well played</b>" && !d.querySelector("b b"))), "chat in the game reaches the host, as plain text");
+await host.keyboard.press("Enter");
+await host.keyboard.type("hello back");
+await host.keyboard.press("Enter");
+await guest.waitForFunction(() => document.querySelector("#messages")?.textContent?.includes("hello back"), null, { timeout: 5000 }).catch(() => {});
+check((await guest.textContent("#messages")).includes(": hello back"), "and the host's reaches the friend");
+check(!(await host.$("#game-chat-in")), "the chat box closes once a line is sent");
+
+// The friend leaves: the host is told, a computer takes over their people, and the game goes on.
 await guest.close();
 await host.waitForFunction(() => document.querySelector("#messages")?.textContent?.includes("has left the game"), null, { timeout: 20000 }).catch(() => {});
 check((await host.textContent("#messages")).includes("Friend has left the game"), "when the friend leaves, the host is told");
@@ -142,6 +155,8 @@ await host.keyboard.press("F3");
 const before = await host.evaluate(() => game.world.tick);
 await host.waitForTimeout(1500);
 check((await host.evaluate(() => game.world.tick)) > before + 10, "and the host's game goes on without them");
+check(await host.evaluate(() => game.world.ais.some((ai) => ai.player === 1)), "a computer plays for the friend now");
+check((await host.textContent("#messages")).includes("Friend has left: a computer plays for them now"), "and the host is told so");
 
 check(errors.length === 0, `no errors in the console${errors.length ? ": " + errors.join(" | ") : ""}`);
 await browser.close();

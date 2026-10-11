@@ -24,7 +24,9 @@ export type Command =
   | { k: "repair"; ids: number[]; target: number }
   | { k: "sacrifice"; priest: number; target: number }
   | { k: "stance"; to: number; stance: Stance }
-  | { k: "tribute"; to: number; res: Res; amount: number };
+  | { k: "tribute"; to: number; res: Res; amount: number }
+  /** Online, from the host (player 0) only: a computer plays for a friend who has left. */
+  | { k: "takeover"; player: number };
 
 /** What running a command said: a reason it could not be done, the result of a right-click, or nothing. */
 export type CommandResult = string | null | SmartResult | { id: number } | { error: string } | { placed: number } | boolean | void;
@@ -55,6 +57,7 @@ export function runCommand(w: World, player: number, c: Command): CommandResult 
     case "sacrifice": return w.sacrifice(player, c.priest, c.target);
     case "stance": return w.setStance(player, c.to, c.stance);
     case "tribute": return w.tribute(player, c.to, c.res, c.amount);
+    case "takeover": return player === 0 && c.player !== 0 && w.takeOver(c.player);
   }
 }
 
@@ -80,6 +83,7 @@ export function isCommand(x: unknown): x is Command {
     case "sacrifice": return num("priest") && num("target");
     case "stance": return num("to") && (c.stance === "ally" || c.stance === "neutral" || c.stance === "enemy");
     case "tribute": return num("to") && num("res") && num("amount") && (c.amount as number) > 0 && (c.amount as number) <= 10000;
+    case "takeover": return num("player");
     default: return false;
   }
 }
