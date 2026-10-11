@@ -25,12 +25,23 @@ export const MIN_DELAY = 2;
 export const MAX_DELAY = 12;
 /** A fingerprint of the world goes with every this many turns. */
 export const CHECK_EVERY = 25;
+/** A friend back in a game sends commands again from this many turns after the one that let them back in
+ *  (about four seconds): time to load the game the host sends and catch up. */
+export const REJOIN_GAP = 40;
 /** How often the host measures each connection, in milliseconds. */
 const PING_EVERY = 1000;
 /** Kept in hand against a connection's unevenness, in milliseconds. */
 const JITTER = 40;
 /** The most commands a player may put in one turn. */
 const MAX_CMDS = 64;
+
+/** Where a game's lockstep stands between two turns: with the world as saved, what a friend coming back
+ *  needs to play on from there. */
+export interface LockstepState {
+  turn: number; delay: number;
+  last: [number, number][]; gone: [number, number][];
+  inputs: [number, [number, Command[]][]][];
+}
 
 /** One end of a connection: send a message, hear one. */
 export interface Link { send(msg: unknown): void; onMessage(handler: (msg: unknown) => void): void }
@@ -80,6 +91,10 @@ abstract class Lockstep {
   protected gone = new Map<number, number>();
   /** This player's orders, not yet sealed into a turn. */
   private queue: Command[] = [];
+  /** Friends let back in during the turn being played. */
+  private readmitted: number[] = [];
+  /** Called between turns, right after a friend has been let back in: the moment to send them the game. */
+  onReadmit: ((player: number) => void) | null = null;
 
   /** `humans`: the players at a keyboard (the computers' orders are part of the simulation). */
   constructor(readonly world: World, readonly me: number, humans: number[]) {
@@ -154,6 +169,7 @@ abstract class Lockstep {
       if (t) for (const p of [...t.keys()].sort((a, b) => a - b)) {
         for (const c of t.get(p)!) {
           const result = runCommand(this.world, p, c); // not inside the call below: `?.` would skip it with no one listening
+          if (c.k === "rejoin" && result) this.readmit(c.player);
           this.onCommand?.(p, c, result);
         }
       }
@@ -164,8 +180,35 @@ abstract class Lockstep {
       this.turn++;
       if (this.turn % CHECK_EVERY === 0) this.checks.set(this.turn, fingerprint(this.world));
       this.finished();
+      for (const p of this.readmitted.splice(0)) this.onReadmit?.(p);
     }
     return true;
+  }
+
+  /** A friend who had left is waited for again, from REJOIN_GAP turns on: the same turn on every machine,
+   *  as this runs with the turn's commands. */
+  private readmit(player: number) {
+    const from = this.turn + REJOIN_GAP;
+    this.last.set(player, Math.max(this.last.get(player) ?? -1, from - 1));
+    // Unless they have already left again (the host's word for that can come before this turn is played).
+    if ((this.gone.get(player) ?? -Infinity) < from - 1) this.gone.delete(player);
+    this.readmitted.push(player);
+  }
+
+  /** Where the lockstep stands, between two turns. */
+  exportState(): LockstepState {
+    if (this.tickInTurn !== 0) throw new Error("lockstep: the state is taken between turns");
+    return {
+      turn: this.turn, delay: this.delay, last: [...this.last], gone: [...this.gone],
+      inputs: [...this.inputs].map(([n, t]) => [n, [...t]]),
+    };
+  }
+
+  /** Takes up a game where another machine's lockstep stood (a friend coming back). */
+  restore(s: LockstepState) {
+    this.turn = s.turn; this.tickInTurn = 0; this.delay = s.delay;
+    this.last = new Map(s.last); this.gone = new Map(s.gone);
+    this.inputs = new Map(s.inputs.map(([n, t]) => [n, new Map(t)]));
   }
 
   /** Plays up to `maxTurns` whole turns, as far as allowed; returns how many it finished. */
@@ -194,9 +237,15 @@ export class LockstepHost extends Lockstep {
 
   /** A friend playing as `player`, reached through `link`. Whatever arrives from it is that player's. */
   addGuest(player: number, link: Link) {
-    this.links.set(player, link);
     this.last.set(player, START_DELAY - 1);
-    link.onMessage((m) => this.hear(player, m));
+    this.attachGuest(player, link);
+  }
+
+  /** A friend let back in (by a "rejoin" command) on a new connection: their turns go on where they were. */
+  attachGuest(player: number, link: Link) {
+    this.links.set(player, link);
+    this.trips.delete(player);
+    link.onMessage((m) => { if (this.links.get(player) === link) this.hear(player, m); });
   }
 
   private hear(player: number, m: unknown) {
@@ -272,7 +321,9 @@ export class LockstepHost extends Lockstep {
 
   /** A friend has gone: the game no longer waits for them. Their people stay where they are. */
   dropGuest(player: number) {
-    if (!this.links.delete(player)) return;
+    this.links.delete(player);
+    // Also one let back in whose connection broke before the game reached them: no link yet.
+    if (this.gone.has(player) || !this.last.has(player) || player === this.me) return;
     const after = this.last.get(player)!;
     this.gone.set(player, after);
     this.trips.delete(player);
@@ -288,9 +339,11 @@ export class LockstepGuest extends Lockstep {
   /** Told by the host that the worlds came apart. */
   onDesync: ((turn: number) => void) | null = null;
 
-  /** `humans`: every player at a keyboard, the host among them. */
-  constructor(world: World, me: number, private host: Link, humans: number[]) {
+  /** `humans`: every player at a keyboard, the host among them. `state`: where the game stands, for a
+   *  friend coming back; taken up before anything from the host is heard, which builds on it. */
+  constructor(world: World, me: number, private host: Link, humans: number[], state?: LockstepState) {
     super(world, me, humans);
+    if (state) this.restore(state);
     host.onMessage((m) => this.hear(m));
   }
 

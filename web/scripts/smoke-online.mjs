@@ -147,6 +147,26 @@ await guest.waitForFunction(() => document.querySelector("#messages")?.textConte
 check((await guest.textContent("#messages")).includes(": hello back"), "and the host's reaches the friend");
 check(!(await host.$("#game-chat-in")), "the chat box closes once a line is sent");
 
+// The friend's connection breaks: a computer plays for them, and they come back into the game as it is now.
+await host.keyboard.press("F3"); // resumed
+await guest.evaluate(() => game.online.peer.close());
+await host.waitForFunction(() => game.world.ais.some((ai) => ai.player === 1), null, { timeout: 20000 }).catch(() => {});
+check(await host.evaluate(() => game.world.ais.some((ai) => ai.player === 1)), "when the friend's connection breaks, a computer plays for them");
+await guest.waitForSelector("#rejoin-btn", { timeout: 10000 }).catch(() => {});
+check(!!(await guest.$("#rejoin-btn")), "the friend is told, and offered to rejoin");
+await guest.click("#rejoin-btn");
+await host.waitForFunction(() => !game.world.ais.some((ai) => ai.player === 1), null, { timeout: 30000 }).catch(() => {});
+await guest.waitForFunction(() => game.started && game.net && game.world.ais.every((ai) => ai.player !== 1), null, { timeout: 30000 }).catch(() => {});
+check(await guest.evaluate(() => game.started && game.me === 1 && !game.world.ais.some((ai) => ai.player === 1)), "the friend is back in the game, playing for themselves");
+check((await host.textContent("#messages")).includes("Friend is back in the game"), "and the host is told");
+await guest.evaluate(() => { const vs = game.world.unitsOf(game.me).filter((u) => u.isVillager).map((u) => u.id); const v = game.world.unit(vs[0]); game.issue({ k: "move", ids: vs, x: v.pos.x + 3, y: v.pos.y + 2 }); });
+await host.waitForTimeout(6000);
+await host.keyboard.press("F3"); // paused
+await host.waitForTimeout(2000);
+const [e, f] = [await sum(host), await sum(guest)];
+check(e.tick === f.tick && e.units === f.units && e.res === f.res && e.tick > d.tick, `after coming back, the same world on both (step ${e.tick})`);
+check(await host.evaluate(() => game.net.desync === null), "and no disagreement");
+
 // The friend leaves: the host is told, a computer takes over their people, and the game goes on.
 await guest.close();
 await host.waitForFunction(() => document.querySelector("#messages")?.textContent?.includes("has left the game"), null, { timeout: 20000 }).catch(() => {});

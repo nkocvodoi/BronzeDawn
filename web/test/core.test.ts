@@ -9,7 +9,7 @@ import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
 import { Victory, World, WorldOptions } from "../src/core/world";
 import { loadWorld, saveWorld } from "../src/core/save";
-import { delayFor, LockstepGuest, LockstepHost, MIN_DELAY, START_DELAY, TURN_TICKS } from "../src/core/net";
+import { delayFor, LockstepGuest, LockstepHost, LockstepState, MIN_DELAY, START_DELAY, TURN_TICKS } from "../src/core/net";
 import { Command, isCommand, runCommand } from "../src/core/commands";
 import { RNG } from "../src/core/geom";
 
@@ -1054,6 +1054,53 @@ describe("playing online, in lockstep", () => {
     expect(w.ais.map((a) => a.player)).toEqual([1]);
     run(w, 4 * 60);
     expect(w.unitsOf(1).filter((u) => u.isVillager).length).toBeGreaterThan(RULES.economy.start_villagers);
+  });
+
+  it("a friend who left comes back: the game as it is now, from the host, and all three play on alike", () => {
+    const rng = new RNG(21);
+    const host = new LockstepHost(makeWorld(), 0, () => 0);
+    const pipes = [pipe(rng, 3), pipe(rng, 2)];
+    let guests = pipes.map((p, i) => { host.addGuest(i + 1, p.end1); return new LockstepGuest(makeWorld(), i + 1, p.end2, [0, 1, 2]); });
+    const state = (w: World) => JSON.stringify(saveWorld(w).world);
+    let live: { tick: () => void }[] = [...pipes];
+    const run = (n: number) => { for (let i = 0; i < n; i++) { for (const p of live) p.tick(); for (const p of [host, ...guests]) { if (rng.int(0, 4) === 0) play(p.world, p.me, rng, (c) => p.issue(c)); p.advance(1); } } };
+    run(80);
+    // The second friend's connection breaks: dropped, and a computer plays for them.
+    live = [pipes[0]];
+    guests = [guests[0]];
+    host.dropGuest(2);
+    host.issue({ k: "takeover", player: 2 });
+    run(80);
+    expect(host.world.ais.some((a) => a.player === 2)).toBe(true);
+    // They come back on a new connection: let back in by the host's command, then sent the game.
+    // Their machine takes a while to load the game; what the host sends meanwhile waits on the connection,
+    // and is handed over the moment the lockstep listens.
+    const again = pipe(rng, 2);
+    const early: unknown[] = [];
+    let hand: ((m: unknown) => void) | null = null;
+    again.end2.onMessage((m) => (hand ? hand(m) : early.push(m)));
+    const link = { send: again.end2.send, onMessage: (f: (m: unknown) => void) => { hand = f; for (const m of early.splice(0)) f(m); } };
+    let file: ReturnType<typeof saveWorld> | null = null;
+    host.onReadmit = (p) => {
+      expect(p).toBe(2);
+      file = JSON.parse(JSON.stringify(saveWorld(host.world, host.exportState())));
+      host.attachGuest(p, again.end1);
+    };
+    host.issue({ k: "rejoin", player: 2 });
+    live = [pipes[0], again];
+    for (let i = 0; i < 60 && !file; i++) run(1);
+    expect(file).not.toBeNull();
+    run(8);
+    expect(early.length).toBeGreaterThan(0);
+    const back = new LockstepGuest(loadWorld(file!, RULES), 2, link, [0, 1, 2], file!.ui as LockstepState);
+    guests = [guests[0], back];
+    run(300);
+    for (const w of [host.world, ...guests.map((g) => g.world)]) expect(w.ais.some((a) => a.player === 2)).toBe(false);
+    // Everyone on to the same turn: the same world on all three, the friend's own orders in it.
+    const end = host.turn + 20;
+    for (let i = 0; i < 200; i++) { for (const p of live) p.tick(); for (const p of [host, ...guests]) while (p.turn < end && p.stepTick()) { /* on */ } }
+    for (const g of guests) { expect(g.turn).toBe(end); expect(state(g.world)).toBe(state(host.world)); }
+    expect(host.desync).toBeNull();
   });
 
   it("the host's pause stops every machine at the same turn, and the game goes on after", () => {
