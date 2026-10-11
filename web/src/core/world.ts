@@ -166,6 +166,15 @@ export class World {
     return true;
   }
 
+  /** A player back at the keyboard: the computer that played for them stops. False if there is no such player. */
+  giveBack(player: number) {
+    const p = this.players[player];
+    if (!p) return false;
+    this.ais = this.ais.filter((ai) => ai.player !== player);
+    p.gatherBonus = 1;
+    return true;
+  }
+
   setStance(a: number, b: number, s: Stance) {
     if (a === b || a < 0 || b < 0 || this.stance[a][b] === s) return;
     this.stance[a][b] = s;
