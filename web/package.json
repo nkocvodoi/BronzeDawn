@@ -14,7 +14,8 @@
     "smoke": "node scripts/smoke.mjs",
     "smoke:online": "node scripts/smoke-online.mjs",
     "smoke:host-leaves": "node scripts/smoke-host-leaves.mjs",
-    "smoke:art": "node scripts/smoke-art.mjs"
+    "smoke:art": "node scripts/smoke-art.mjs",
+    "import-aoe": "tsx scripts/aoe/export-aoe.ts"
   },
   "dependencies": {
     "peerjs": "1.5.4",
