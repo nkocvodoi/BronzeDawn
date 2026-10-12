@@ -408,8 +408,15 @@ of the file give, for every Bronze Dawn unit, building, tech, civ, resource node
   of classes; the extra classes are in `rules-notes.md`.
 - Additive gather-rate techs become multipliers on the base rate (exact for one tech, slightly different when
   several stack).
-- Not converted yet: "set attribute" effects (several civ reload-time bonuses), priests' faith and its
-  recharge, building conversion, smart projectiles, population-cost changes, tribute inefficiency.
+- `data/rules.json` is the importer's output (2026-10-12), with three engine-specific readings: a blow of a class
+  other than melee or pierce is the attack when the unit has no other (catapult ships 35, lion 2); a Farm holds
+  the player's "farm food amount" (resource 36, 250); meat rots at the living animal's decay (gazelle 0.3,
+  elephant 0.2, lion 1 a second), not the carcass unit's 1. Unit upgrades keep Bronze Dawn's chain (War Galley →
+  Trireme) where the original names the line's first unit (Scout Ship → Trireme): that is what makes the ships on
+  the water change in Bronze Dawn.
+- Still not carried over (rules-notes.md): Artisanship's +1 line of sight for all, Alchemy's +1 for catapult ships,
+  Coinage's gold productivity, Architecture's builder work rate, Logistics' population cost, Jihad's carry −8,
+  Astrology's priest work rate; Monotheism, Medicine and Martyrdom keep Bronze Dawn's own effects.
 - The loader has no death or corpse animation; the sheets include a `die` row for when it does.
 - Projectiles, walls, fire and rubble are still drawn by code; music is MIDI and is not imported.
 - Tech icons are not imported (unit and building icons are).
