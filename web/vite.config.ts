@@ -2,6 +2,10 @@ import { defineConfig, type Plugin } from "vite";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { extname, resolve, sep } from "node:path";
 
+/** Whether the dev server leaves web/assets-local/ out (`BD_ASSETS=default`): to see the game's own art, as
+ *  published, on a machine that has the original's art imported. */
+const noLocalAssets = process.env.BD_ASSETS === "default";
+
 /** Serves web/assets-local/ at /assets-local/ on the dev server only: art and sound for playing on this
  *  machine that may not be published. It is never built into dist/ and never committed. */
 function localAssets(): Plugin {
@@ -56,7 +60,7 @@ export default defineConfig(({ command }) => ({
   // Checked when the dev server starts or the build runs: restart the dev server after adding a manifest.
   define: {
     __PUBLIC_ASSETS__: JSON.stringify(existsSync(resolve(__dirname, "public/assets/manifest.json"))),
-    __LOCAL_ASSETS__: JSON.stringify(command === "serve" && existsSync(resolve(__dirname, "assets-local/manifest.json"))),
+    __LOCAL_ASSETS__: JSON.stringify(command === "serve" && !noLocalAssets && existsSync(resolve(__dirname, "assets-local/manifest.json"))),
   },
   server: { fs: { allow: [".."] } },   // the game reads ../data/rules.json, shared with the Mac build
   build: {
