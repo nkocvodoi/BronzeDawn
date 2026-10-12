@@ -35,6 +35,9 @@ export interface Manifest {
   units?: Record<string, UnitSheetSpec>;
   /** By building id: one picture for all, or by architecture and age ("stone", "tool", "bronze", "iron"). */
   buildings?: Record<string, ImageSpec | Record<string, ImageSpec | Record<string, ImageSpec>>>;
+  /** A building going up, by building id: its construction site, one picture per stage from the bare
+   *  ground to nearly done, shown in turn as the work goes on. */
+  construction?: Record<string, ImageSpec[]>;
   /** By resource id (tree, lone_tree, berry_bush, gold_mine, stone_mine, fish): one or several variants. */
   resources?: Record<string, ImageSpec | ImageSpec[]>;
   /** Ground tiles, each a 64 x 32 diamond: several variants per kind. */
@@ -224,6 +227,7 @@ function filesOf(m: Manifest): string[] {
   };
   for (const u of Object.values(m.units ?? {})) out.push(u.file);
   img(m.buildings);
+  img(m.construction);
   img(m.cliffs);
   for (const r of Object.values(m.resources ?? {})) (Array.isArray(r) ? r : [r]).forEach((x) => out.push(x.file));
   for (const t of Object.values(m.terrain ?? {})) out.push(...(t ?? []));
