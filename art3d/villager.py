@@ -68,14 +68,30 @@ class Rig:
                 lib.box("hammerhead", (0.05, 0.05, 0.09), (hx, end, hz), lib.mat("stonehead", (0.5, 0.48, 0.44), 0.8), g, bevel=0.01)
             g.rotation_euler = (R(-25), 0, 0)
             self.grip = g
-        if tool == "basket":
-            # A wicker basket of berries on the left arm.
+        if tool == "butcher":
+            # A flint knife in the right fist.
+            g = lib.empty("grip", (hx, 0, hz), self.handR)
+            lib.cyl("knifehaft", 0.012, 0.06, (hx, -0.03, hz), wood, g, rot=(R(90), 0, 0))
+            lib.cyl("knife", 0.016, 0.09, (hx, -0.1, hz), lib.mat("flint", (0.35, 0.33, 0.36), 0.4), g, rot=(R(90), 0, 0), r2=0.002, verts=4)
+            g.rotation_euler = (R(60), 0, 0)
+            self.grip = g
+            # On the ground beside the work: a basket with meat in it.
+            gb = lib.empty("groundbasket", (0.2, -0.16, 0), self.root)
+            wicker = lib.mat("wicker", (0.78, 0.60, 0.32), 0.9, grain=0.45, grain_size=0.006)
+            lib.cyl("gbasket", 0.085, 0.1, (0.2, -0.16, 0.05), wicker, gb, r2=0.105, verts=16)
+            lib.cyl("grim", 0.11, 0.018, (0.2, -0.16, 0.1), lib.mat("wickerd", (0.55, 0.38, 0.18), 0.9), gb, verts=16)
+            meat = lib.mat("meat", (0.72, 0.22, 0.20), 0.5, grain=0.3, grain_size=0.01)
+            for i, (bx, by) in enumerate(((0, 0), (0.035, 0.02), (-0.03, 0.02), (0.01, -0.035))):
+                lib.ball(f"gmeat{i}", 0.032, (0.2 + bx, -0.16 + by, 0.11), meat, gb, scale=(1.3, 1, 0.7), sub=1)
+            self.ground_basket = gb
+        if tool in ("basket", "butcher"):
+            # A wicker basket on the left arm: of berries, or of meat.
             g = lib.empty("basketgrip", (0.112, 0, hz), self.handL)
             self.basket = g
             wicker = lib.mat("wicker", (0.78, 0.60, 0.32), 0.9, grain=0.45, grain_size=0.006)
             lib.cyl("basket", 0.085, 0.10, (0.13, -0.05, hz - 0.03), wicker, g, r2=0.105, verts=16)
             lib.cyl("rim", 0.11, 0.018, (0.13, -0.05, hz + 0.02), lib.mat("wickerd", (0.55, 0.38, 0.18), 0.9), g, verts=16)
-            berry = lib.mat("berry", (0.85, 0.10, 0.12), 0.35, grain=0)
+            berry = lib.mat("berry", (0.85, 0.10, 0.12), 0.35, grain=0) if tool == "basket" else lib.mat("meat", (0.72, 0.22, 0.20), 0.5, grain=0.3, grain_size=0.01)
             for i, (bx, by, bz) in enumerate(((0, 0, 0.05), (0.04, 0.02, 0.035), (-0.04, 0.015, 0.035), (0.015, -0.045, 0.035),
                                               (-0.03, -0.035, 0.03), (0.02, 0.045, 0.03), (-0.01, 0.0, 0.075))):
                 lib.ball(f"berry{i}", 0.03, (0.13 + bx, -0.05 + by, hz + bz), berry, g, sub=1)
@@ -93,8 +109,16 @@ class Rig:
             self.elbows[side].rotation_euler = (R(-12), 0, 0)
             self.legs[side].rotation_euler = (0, 0, 0)
             self.knees[side].rotation_euler = (0, 0, 0)
-        if self.tool == "basket":
+        if self.tool in ("basket", "butcher"):
             self.carry_basket()
+        if self.tool == "butcher":
+            self.show(self.basket, True)
+            self.show(self.ground_basket, False)
+
+    @staticmethod
+    def show(root, on):
+        for o in [root, *root.children_recursive]:
+            o.hide_render = not on
 
     def carry_basket(self, sway=0.0):
         # The forearm up and across the body, the basket at the hip, kept upright whatever the arm does.
@@ -117,7 +141,7 @@ class Rig:
             self.torso.rotation_euler = (R(1.2 * s), 0, 0)
             self.neck.rotation_euler = (R(-1.5 * s), 0, R(4 * math.sin(math.pi * t)))
             for side, k in (("L", 1), ("R", -1)):
-                if side == "L" and self.tool == "basket":
+                if side == "L" and self.tool in ("basket", "butcher"):
                     self.carry_basket(2 * s)
                 else:
                     self.arms[side].rotation_euler = (R(3 * s * k), R(-6 * k), 0)
@@ -130,7 +154,7 @@ class Rig:
                 # The knee bends as the leg comes forward behind the body.
                 back = math.sin(2 * math.pi * t + (0 if k > 0 else math.pi) - math.pi / 2)
                 self.knees[side].rotation_euler = (R(8 + 32 * max(0.0, back)), 0, 0)
-                held = (side == "R" and self.tool in ("axe", "pick")) or (side == "L" and self.tool == "basket")
+                held = (side == "R" and self.tool in ("axe", "pick")) or (side == "L" and self.tool in ("basket", "butcher"))
                 if not held:
                     self.arms[side].rotation_euler = (R(24 * s * k), R(-6 * k), 0)
                     self.elbows[side].rotation_euler = (R(-14 - 10 * max(0.0, -s * k)), 0, 0)
@@ -138,7 +162,7 @@ class Rig:
                 # Carried over the shoulder.
                 self.arms["R"].rotation_euler = (R(-12 - 6 * s), R(6), 0)
                 self.elbows["R"].rotation_euler = (R(-50), 0, 0)
-            if self.tool == "basket":
+            if self.tool in ("basket", "butcher"):
                 self.carry_basket(4 * s)
         elif anim == "chop":
             # A woodcutter's swing: the body turns away to the right with the axe drawn back at the
@@ -220,3 +244,28 @@ class Rig:
             self.arms["R"].rotation_euler = (R(arm), 0, R(out))
             self.elbows["R"].rotation_euler = (R(elbow), 0, 0)
             self.stance(14, 6)
+        elif anim == "butcher":
+            # Down on the haunches by the carcass, the basket set on the ground: cutting with the knife in
+            # short strokes, then reaching over to drop the meat in the basket.
+            self.show(self.basket, False)
+            self.show(self.ground_basket, True)
+            self.hips.location = (0, 0, 0.27)
+            self.torso.rotation_euler = (R(38), 0, R(-6))
+            self.neck.rotation_euler = (R(12), 0, 0)
+            for side, k in (("L", 1), ("R", -1)):
+                self.legs[side].rotation_euler = (R(-82), R(10 * k), 0)
+                self.knees[side].rotation_euler = (R(118), 0, 0)
+            # The left hand holds the carcass steady.
+            self.arms["L"].rotation_euler = (R(-48), 0, R(-12))
+            self.elbows["L"].rotation_euler = (R(-12), 0, 0)
+            if t < 0.6:
+                k = t / 0.6
+                arm, across, elbow = -42 + 10 * math.sin(6 * math.pi * k), 4, -18 - 10 * math.sin(6 * math.pi * k)
+            elif t < 0.8:
+                k = ease((t - 0.6) / 0.2)
+                arm, across, elbow = -42 + 12 * k, 4 + 44 * k, -18 - 10 * k
+            else:
+                k = ease((t - 0.8) / 0.2)
+                arm, across, elbow = -30 - 12 * k, 48 - 44 * k, -28 + 10 * k
+            self.arms["R"].rotation_euler = (R(arm), 0, R(-across))
+            self.elbows["R"].rotation_euler = (R(elbow), 0, 0)

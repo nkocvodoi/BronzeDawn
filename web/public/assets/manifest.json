@@ -144,11 +144,66 @@
      "fps": 10
     }
    }
+  },
+  "gazelle": {
+   "file": "art3d/gazelle.png",
+   "frame": [
+    90,
+    75
+   ],
+   "anchor": [
+    43.0,
+    52.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 10,
+     "fps": 5
+    },
+    "walk": {
+     "row": 8,
+     "frames": 10,
+     "fps": 16
+    }
+   }
+  },
+  "villager:butcher": {
+   "file": "art3d/villager-butcher.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
   }
  },
  "credits": [
   {
-   "what": "Sprites in art3d/ (units, buildings, trees, cliffs)",
+   "what": "Sprites in art3d/ (units, animals, buildings, trees, resources, cliffs)",
    "author": "Bronze Dawn contributors, rendered with Blender from art3d/",
    "license": "Same as the game (made for this project)"
   }
@@ -219,6 +274,92 @@
    "anchor": [
     77.2,
     110.5
+   ],
+   "scale": 1.0
+  },
+  "berry_bush": [
+   {
+    "file": "art3d/berry_bush0.png",
+    "anchor": [
+     34.3,
+     37.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/berry_bush1.png",
+    "anchor": [
+     34.3,
+     37.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/berry_bush2.png",
+    "anchor": [
+     34.3,
+     37.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "gold_mine": [
+   {
+    "file": "art3d/gold_mine0.png",
+    "anchor": [
+     39.3,
+     39.6
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/gold_mine1.png",
+    "anchor": [
+     39.3,
+     39.6
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/gold_mine2.png",
+    "anchor": [
+     39.3,
+     39.6
+    ],
+    "scale": 1.0
+   }
+  ],
+  "stone_mine": [
+   {
+    "file": "art3d/stone_mine0.png",
+    "anchor": [
+     39.3,
+     39.6
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/stone_mine1.png",
+    "anchor": [
+     39.3,
+     39.6
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/stone_mine2.png",
+    "anchor": [
+     39.3,
+     39.6
+    ],
+    "scale": 1.0
+   }
+  ],
+  "carcass_gazelle": {
+   "file": "art3d/carcass_gazelle.png",
+   "anchor": [
+    39.3,
+    30.7
    ],
    "scale": 1.0
   }
