@@ -482,6 +482,12 @@ rules = {
         # this share of the building's price, paid as the work goes.
         "repair_rate": 0.5,
         "repair_cost": 0.5,
+        # Sowing a spent farm again (the reseed setting) costs this share of building a new one.
+        "reseed_cost": 0.5,
+        # Everyone gathers and builds a quarter faster than the original's times (3/4 of the time), as rules.json
+        # has had since #65; kept here so the generator writes the same file.
+        "gather_speed": 1.3333,
+        "build_speed": 1.3333,
     },
     "nodes": [
         {"id": "tree", "name": "Tree", "resource": W, "amount": 40},

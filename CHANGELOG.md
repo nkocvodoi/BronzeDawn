@@ -8,6 +8,8 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-12
 
+- [#71](https://github.com/nkocvodoi/BronzeDawn/pull/71) Hotfix: ruộng tự trồng lại chỉ tốn nửa giá xây ruộng mới (38 gỗ thay vì 75, vẫn tính giảm giá theo dân tộc)
+- [#69](https://github.com/nkocvodoi/BronzeDawn/pull/69) Smoke test online không còn hỏng thất thường trên CI: đợi tới khi hai máy cùng dừng ở một bước, và đợi tốc độ game của chủ phòng tới máy khách, rồi mới so
 - [#68](https://github.com/nkocvodoi/BronzeDawn/pull/68) Gói hình (Art Packs): người chơi tự nạp hình và tiếng của mình từ một thư mục hoặc file zip ngay trong trình duyệt (lưu trong trình duyệt, không tải lên đâu cả), thay từng phần; kèm gói mẫu "voi chiến thành khủng long" và hướng dẫn trong replica/art-packs.md
 - [#66](https://github.com/nkocvodoi/BronzeDawn/pull/66) Đảo phụ của Small Islands có rừng; máy biết chở dân sang đảo khác đốn gỗ khi đảo nhà sắp hết cây, hết rừng thì sang đảo tiếp hoặc về nhà
 

@@ -276,7 +276,7 @@ describe("fixes from the logic review", () => {
       run(w, 30);
       const sown = reseed && wood > 0;
       expect(farm.alive).toBe(sown);
-      expect(w.players[0].res.wood).toBe(sown ? wood - 75 : wood);
+      expect(w.players[0].res.wood).toBe(sown ? wood - Math.round(75 * 0.5) : wood); // half a new farm's 75 wood
       if (sown) expect(v.order.kind === "gather" || v.order.kind === "return").toBe(true);
     }
   });

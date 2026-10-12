@@ -762,8 +762,16 @@ export class World {
     t.cargo = [];
   }
 
-  /** The reseeding setting: spent farms are sown again for their price, while there is the wood. */
+  /** The reseeding setting: spent farms are sown again for half a new farm's price, while there is the wood. */
   setAutoReseed(player: number, on: boolean) { this.players[player].autoReseed = on; }
+
+  /** What sowing a spent farm again costs this player: a share (rules.json, economy.reseed_cost) of a new
+   *  farm's price, after its civilization's discounts. */
+  reseedCost(player: number) {
+    const k = this.rules.economy.reseed_cost ?? 0.5, full = this.buildingCost(player, "farm"), out = new ResBag();
+    for (const r of RES_ALL) out.values[r] = Math.round(full.values[r] * k);
+    return out;
+  }
 
   /** Stand Ground on or off for soldiers. Villagers and priests have no stance. */
   setStandGround(player: number, ids: number[], on: boolean) {
@@ -1756,9 +1764,9 @@ export class World {
         src.food -= take;
         u.carry += take;
         const p = this.players[src.owner];
-        if (src.food <= 0.0001 && p.autoReseed && p.res.covers(this.buildingCost(src.owner, "farm"))) {
-          // Sown again where it stands, at a farm's price: the farmer keeps working it.
-          p.res.spend(this.buildingCost(src.owner, "farm"));
+        if (src.food <= 0.0001 && p.autoReseed && p.res.covers(this.reseedCost(src.owner))) {
+          // Sown again where it stands, for half a new farm's price: the farmer keeps working it.
+          p.res.spend(this.reseedCost(src.owner));
           src.food = p.mods.farmFood(src.def.resource!.food);
         } else if (src.food <= 0.0001) {
           src.alive = false;
