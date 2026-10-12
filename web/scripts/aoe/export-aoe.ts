@@ -171,8 +171,12 @@ function art(where: ReturnType<typeof locate>, dat: DatFile, out: string): Recor
   for (const [tool, aoe] of Object.entries(tools)) {
     const u = all.get(aoe);
     if (!u) continue;
-    const task = u.action?.tasks.find((t) => t.workingGraphic >= 0);
-    sheet(`villager:${tool}`, `aoe/units/villager-${tool}.png`, animsOf(u, g(task?.workingGraphic)));
+    // The woodcutter and the hunter have a working graphic; the forager, miners, farmer, builder and
+    // fisherman work in their task's proceeding graphic ("Man Forager", "Man Ore"...).
+    const tasks = u.action?.tasks ?? [];
+    const worked = tasks.find((t) => t.workingGraphic >= 0);
+    const work = worked ? g(worked.workingGraphic) : g(tasks.find((t) => t.proceedingGraphic >= 0)?.proceedingGraphic);
+    sheet(`villager:${tool}`, `aoe/units/villager-${tool}.png`, animsOf(u, work));
   }
   for (const [id, m] of Object.entries(ANIMAL_MAP)) {
     const u = all.get(m.live);

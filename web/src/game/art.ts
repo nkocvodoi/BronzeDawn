@@ -317,7 +317,10 @@ function assetUnitPic(look: UnitLook): Pic | null {
   if (!anim) return null;
   let dir = look.dir ?? 0, flip = false;
   if (spec.directions === 5 && dir > 4) { dir = 8 - dir; flip = true; } // NE, E, SE are NW, W, SW mirrored
-  const f = Math.floor((look.t ?? 0) * (anim.fps ?? 10)) % Math.max(1, anim.frames);
+  // A sheet with nothing for work (a pack imported before the importer read every job's working
+  // pictures) plays its idle at the pace of work, so a villager at work is not seen standing still.
+  const fps = look.pose === "work" && !a.work && !a.attack ? Math.max(anim.fps ?? 10, 8) : anim.fps ?? 10;
+  const f = Math.floor((look.t ?? 0) * fps) % Math.max(1, anim.frames);
   const [fw, fh] = spec.frame, x = f * fw, y = (anim.row + dir) * fh;
   const key = `ua-${spec.file}-${look.owner}-${x}-${y}-${flip}`;
   const hit = cache.get(key);
