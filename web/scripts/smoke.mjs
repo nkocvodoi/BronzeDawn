@@ -1,10 +1,40 @@
 // Plays the first minutes in a real browser with real mouse and keyboard input.
 //   npm run build && npm run smoke            (uses the Chrome installed on this machine)
 import { createServer } from "node:http";
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { crc32, deflateRawSync } from "node:zlib";
 import { chromium } from "playwright-core";
+
+/** A zip of a folder, its files inside a folder of the same name, as zipping a folder by hand gives:
+ *  the folder's own entry, then each file deflated. */
+function zipFolder(dir, name) {
+  const local = [], central = [];
+  let offset = 0;
+  const entries = [[`${name}/`, null], ...readdirSync(dir).map((f) => [`${name}/${f}`, readFileSync(join(dir, f))])];
+  for (const [path, raw] of entries) {
+    const file = Buffer.from(path), data = raw ? deflateRawSync(raw) : Buffer.alloc(0);
+    const head = (size) => { const b = Buffer.alloc(size); return b; };
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(raw ? 8 : 0, 8);
+    lh.writeUInt32LE(raw ? crc32(raw) : 0, 14); lh.writeUInt32LE(data.length, 18); lh.writeUInt32LE(raw?.length ?? 0, 22); lh.writeUInt16LE(file.length, 26);
+    const ch = Buffer.alloc(46);
+    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt16LE(raw ? 8 : 0, 10);
+    ch.writeUInt32LE(raw ? crc32(raw) : 0, 16); ch.writeUInt32LE(data.length, 20); ch.writeUInt32LE(raw?.length ?? 0, 24); ch.writeUInt16LE(file.length, 28);
+    ch.writeUInt32LE(offset, 42);
+    local.push(lh, file, data);
+    central.push(ch, file);
+    offset += 30 + file.length + data.length;
+  }
+  const dirSize = central.reduce((n, b) => n + b.length, 0);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(dirSize, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...local, ...central, end]);
+}
 
 const dist = fileURLToPath(new URL("../dist/", import.meta.url)); // a real path on Windows too
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" };
@@ -58,6 +88,23 @@ page.once("dialog", (d) => d.accept());
 await page.click("[data-pack-remove]");
 await page.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Removed"), null, { timeout: 10000 }).catch(() => {});
 check((await page.textContent("#overlay")).includes("No art packs yet"), "and removes it");
+// The same pack as a zip, its files one folder down: after a reload the game uses it, then it goes again.
+const zipPath = join(mkdtempSync(join(tmpdir(), "bd-pack-")), "dino-pack.zip");
+writeFileSync(zipPath, zipFolder(fileURLToPath(new URL("../examples/dino-pack", import.meta.url)), "dino-pack"));
+await page.setInputFiles("#pack-zip", zipPath);
+await page.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Added"), null, { timeout: 10000 }).catch(() => {});
+check((await page.textContent("#overlay")).includes("War dinosaurs (example)") && (await page.textContent(".pack-state")) === "On after reload", "Art Packs keeps a pack picked as a zip, its files in a folder inside");
+const reload = async () => { await page.reload(); await page.waitForFunction(() => window.game, null, { timeout: 120000 }); };
+await reload();
+await page.click("#mm-packs");
+await page.waitForSelector(".pack-state", { timeout: 10000 }).catch(() => {});
+check((await page.textContent(".pack-state")) === "On", "after a reload the zip's pack is in use");
+page.once("dialog", (d) => d.accept());
+await page.click("[data-pack-remove]");
+await page.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Removed"), null, { timeout: 10000 }).catch(() => {});
+await reload(); // the rest of the test plays with the game's own pictures
+await page.click("#mm-packs");
+check((await page.textContent("#overlay")).includes("No art packs yet"), "and it is gone after removing it and reloading");
 await page.click("#mm-back");
 await page.click("#mm-single");
 check(await page.isVisible("#overlay [data-start]"), "Single Player leads to the settings and the difficulty choice");
