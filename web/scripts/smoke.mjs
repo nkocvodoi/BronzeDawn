@@ -341,6 +341,32 @@ check(await g(() => game.world.allied(0, 1) && game.world.isEnemy(0, 2) && game.
 check(set.age === 2 && set.food >= 900 && set.pop === 100 && set.explored === 1, "the start screen sets the age, resources, population limit and an explored map");
 check(set.v.kind === "time" && /Time left 29:\d\d|Time left 30:00/.test(await page.textContent("#clock")), "a time limit counts down in the top bar");
 
+// Going to buildings by key, as in the original: H for Town Centers, Ctrl and a letter for the others; again
+// for the next one. A second Town Center and two Barracks, put down finished.
+const tcs = await g(() => {
+  const w = game.world, s = w.startTiles[0], T = s.constructor;
+  w.addBuilding("barracks", 0, new T(s.x + 6, s.y), true);
+  w.addBuilding("barracks", 0, new T(s.x - 7, s.y + 3), true);
+  w.addBuilding("town_center", 0, new T(s.x + 1, s.y + 7), true);
+  game.selection = [];
+  return w.buildingsOf(0).filter((b) => b.def.id === "town_center").map((b) => b.id).sort((a, b) => a - b);
+});
+const picked = () => g(() => { const e = game.world.entity(game.selection[0]); return e ? `${e.def.id}#${e.id}` : ""; });
+await page.keyboard.press("h");
+const h1 = await picked();
+await page.keyboard.press("h");
+const h2 = await picked();
+await page.keyboard.press("h");
+const h3 = await picked();
+check(tcs.length === 2 && h1 === `town_center#${tcs[0]}` && h2 === `town_center#${tcs[1]}` && h3 === h1, "H goes to a Town Center, again to the next, and round");
+await page.keyboard.press("Control+b");
+const b1 = await picked();
+await page.keyboard.press("Control+b");
+const b2 = await picked();
+check(b1.startsWith("barracks#") && b2.startsWith("barracks#") && b1 !== b2, "Ctrl+B goes to a Barracks, and again to the next one");
+await page.keyboard.press("Control+l");
+check((await page.textContent("#messages")).includes("No Stable") && (await picked()) === b2, "Ctrl+L with no Stable says so and keeps the selection");
+
 check(errors.length === 0, `no errors in the console${errors.length ? ": " + errors.join(" | ") : ""}`);
 await browser.close();
 server.close();
