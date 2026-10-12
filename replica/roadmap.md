@@ -27,8 +27,9 @@ rồi chấm lại.
 | Thắng | Chinh phục, Wonder (đứng 15 phút) |
 | AI | 3 mức, chơi đủ 4 thời đại, săn, nghiên cứu, tập hợp quân trước khi đánh; mức Khó thu nhanh hơn 20% (ghi rõ trên màn hình); chế độ chỉ xem các máy đánh nhau (V đổi góc nhìn, tới 10x) |
 | Giao diện | Bố cục kiểu bản gốc, phím xây B + chữ, phím luyện quân của bản gốc, đối tượng nháy khi giao việc, tốc độ 1x đến 3x, hiển thị dân tộc, tùy chọn ruộng tự trồng lại (kiểu AoE2, bật sẵn, tắt trong Menu), thời gian còn lại khi luyện quân, nghiên cứu, lên đời và xây (thanh trên cùng đếm ngược lúc lên đời) |
-| Hình | Pixel art vẽ bằng code cho mọi unit, thú, công trình (4 thời đại, 4 giai đoạn xây), tường nối liền |
-| Kiểm thử | 34 unit test, smoke test bằng chuột và phím thật trên Chrome, trận AI đấu AI chạy không cần màn hình, CI và deploy lên GitHub Pages |
+| Hình | Mọi unit, thú, công trình (theo thời đại và kiến trúc), ô đất, cây, mỏ dựng bằng code trong `art3d/` rồi render bằng Blender; hình vẽ bằng code còn làm dự phòng; tường và vách đá nối liền |
+| Gói hình (Art Packs) | Người chơi tự nạp hình, tiếng và bản đồ từ thư mục hoặc zip, lưu trong trình duyệt; `npm run import-aoe` lấy hình, tiếng, số liệu từ bản AoE của chính mình vào `web/assets-local/` (chỉ dev server dùng, không bao giờ vào repo hay bản deploy), kể cả công trường lúc đang xây và vách đá |
+| Kiểm thử | 128 unit test, smoke test bằng chuột và phím thật trên Chrome (cả chơi online), so từng hình với dấu vân tay (`smoke:art`, 2.191 hình), trận AI đấu AI chạy không cần màn hình, CI và deploy lên GitHub Pages |
 
 ## Còn thiếu, theo thứ tự nên làm
 
@@ -48,7 +49,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - [x] Tiếng đáp lời của unit khi chọn và khi ra lệnh (một thứ tiếng bịa, tổng hợp bằng formant), tiếng tụng của thầy tu khi cải đạo, mỗi công trình có tiếng riêng khi chọn
 - [x] Nhạc nền tự sinh: drone, đàn lyre, trống tay, sáo, điệu D dorian; nút Sound / Music trên thanh trên cùng
 - Toàn bộ tổng hợp bằng Web Audio lúc chạy, không có file âm thanh nào. Không lấy âm thanh của bản gốc.
-- [ ] Tinh chỉnh: nghe thử thật và cân lại âm lượng từng tiếng; thêm tiếng thú (voi, sư tử), tiếng ngựa
+- Tinh chỉnh âm lượng và thêm tiếng thú, tiếng ngựa: không làm nữa, nghe thử thấy ổn (2026-10-12)
 
 ### Giai đoạn 3: nước và tàu (lớn)
 - [x] Dock (cũng là công trình tính để lên Tool Age), đặt dưới nước sát bờ
@@ -104,6 +105,8 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 - Không chép sprite, âm thanh, nhạc, chữ, giao diện hay tên "Age of Empires" của bản gốc. Game chạy công khai trên
   GitHub Pages, nên chép vào là phát tán tài sản có bản quyền. "Giống 100%" ở đây nghĩa là lối chơi và cảm giác,
   không phải tài sản.
+- Trình nhập AoE (`npm run import-aoe`) chỉ đọc bản game của người dùng và ghi ra máy của họ; những gì nó ghi ra
+  không được đưa vào repo này hay bản deploy (bản lưu riêng: repo private `BronzeDawn-aoe-data`).
 - Campaign và trình chỉnh kịch bản: để sau cùng, có thể không làm.
 
 ## Ghi chú cho bản Mac

@@ -8,6 +8,11 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-12
 
+- [#89](https://github.com/nkocvodoi/BronzeDawn/pull/89) Tài liệu sau đợt nhập AoE: hướng dẫn nhập lại và đưa sang máy khác (replica/aoe-reimport.md, thay cho danh sách việc đã xong), roadmap cập nhật phần hình, Art Packs, kiểm thử và bỏ việc tinh chỉnh âm thanh
+- [#88](https://github.com/nkocvodoi/BronzeDawn/pull/88) Trình nhập AoE lấy vách đá của game gốc (mảnh 3×3 của "Cliffs_1" theo hướng vách chạy) vào khoá `cliffs` của art pack
+- [#87](https://github.com/nkocvodoi/BronzeDawn/pull/87) Công trình đang xây hiện công trường theo từng giai đoạn: trình nhập AoE lấy hình công trường của game gốc vào khoá mới `construction`, game chọn hình theo tiến độ xây
+- [#86](https://github.com/nkocvodoi/BronzeDawn/pull/86) Mọi unit, công trình và ô đất còn lại dựng bằng code trong art3d/ và render bằng Blender (27 loại lính, 5 máy công thành, 12 tàu, 19 công trình theo thời đại, Thời đồ đá vẽ lại)
+- [#85](https://github.com/nkocvodoi/BronzeDawn/pull/85) Xoá unit không còn sót hình; săn thú chỉ còn xác, không còn thân mờ bên cạnh; người dân đi bộ nốt đoạn cuối tới chỗ làm thay vì trượt; `BD_ASSETS=default` để xem hình của game trên máy đã nhập AoE
 - [#84](https://github.com/nkocvodoi/BronzeDawn/pull/84) Vẽ lại bằng Blender: bụi quả, mỏ vàng, mỏ đá, linh dương (gặm cỏ, chạy) và xác của nó; người dân ngồi xổm xẻ thịt, bỏ vào giỏ đặt cạnh
 - [#83](https://github.com/nkocvodoi/BronzeDawn/pull/83) Phím tắt tới công trình như bản gốc: H tới Town Center, Ctrl+B Barracks, Ctrl+A Archery Range, Ctrl+L Stable, Ctrl+K Siege Workshop, Ctrl+Y Academy, Ctrl+P Temple, Ctrl+D Dock; bấm lại để sang cái kế tiếp
 - [#82](https://github.com/nkocvodoi/BronzeDawn/pull/82) Vách đá vẽ lại bằng Blender, nối với ô bên cạnh thành một sống núi đá liền thay cho dãy khối lặp lại
