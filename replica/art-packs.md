@@ -66,8 +66,30 @@ Danh sách đầy đủ và kích thước nằm trong `replica/assets-needed.md
 | `terrain` | ô đất | `grass`, `dirt`, `sand`, `water` |
 | `icons`, `resourceIcons`, `cursors` | nút, biểu tượng tài nguyên, con trỏ | id |
 | `sfx`, `music` | tiếng, nhạc | tên tiếng (`chop`, `sword`, `voice-villager`...) |
+| `maps` | bản đồ ngẫu nhiên thêm vào ô chọn Map | danh sách `RandomMapSpec` (`web/src/core/rmspec.ts`) |
 
 Danh sách id của đơn vị, công trình và công nghệ nằm trong `data/rules.json`.
+
+### Bản đồ (`maps`)
+
+Mỗi bản đồ là một bộ số, không có file ảnh: nền là biển hay đất, đất chiếm bao nhiêu phần trăm, lề ở bốn
+cạnh, mỗi người một đảo (`apart`), đất liền nhau (`joined`) hay chung một vùng (`shared`), các vùng cát và
+rừng, rồi từng thứ đặt lên bản đồ (mỏ, bụi dâu, thú, cá) gần mỗi người hay rải khắp nơi. Game dựng bản
+đồ từ bộ số đó bằng seed của trận, nên cùng seed ra cùng bản đồ, kể cả khi chơi online (bộ số được gửi
+kèm cài đặt trận cho mọi máy).
+
+Bản đồ của pack hiện trong ô chọn Map với chữ "(art pack)" phía sau. Tắt pack thì game quay về bản đồ
+của chính nó.
+
+Có bản gốc của game trên máy thì `npm run import-aoe` tự ghi `maps` từ dữ liệu bản đồ của game vào
+`assets-local/manifest.json`. Với manifest đã nhập từ trước:
+
+```
+npm run aoe-maps -- assets-local/aoe-data/empires-ror.json assets-local/aoe-data/strings.json assets-local/manifest.json
+```
+
+Cũng như ảnh và tiếng nhập từ game, các bản đồ này chỉ nằm trên máy bạn hoặc trong pack của bạn, không
+đưa vào repo hay bản deploy.
 
 ## Về bản quyền
 

@@ -14,6 +14,7 @@ import { inflateDat, parseDat, type DatFile, type DatGraphic, type DatUnit } fro
 import { readDrs, type DrsFile } from "./drs";
 import { readJascPalette } from "./png";
 import { slpFrame, slpFrameCount, slpIndex, still, unitSheet, type Anim, type Library } from "./sprites";
+import { mapSpecs } from "./maps";
 import { readStringTable } from "./strings";
 import { tables } from "./tables";
 import type { RulesFile } from "../../src/core/rules";
@@ -120,6 +121,7 @@ function main(): void {
   const manifest: Record<string, unknown> = { ...old };
   if (!opt.noArt) Object.assign(manifest, art(where, dat, out));
   if (!opt.noSound) Object.assign(manifest, sound(where, dat, out));
+  manifest.maps = mapSpecs(dat.randomMaps, str);
   const credits = ((old.credits as { what: string }[] | undefined) ?? []).filter((c) => !c.what.startsWith("Age of Empires"));
   credits.push({ what: "Age of Empires / Rise of Rome art and sound (your own copy, local use only)", author: "Ensemble Studios / Microsoft", license: "Proprietary: do not publish" } as never);
   manifest.credits = credits;
