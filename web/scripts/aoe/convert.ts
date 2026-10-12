@@ -75,6 +75,9 @@ const RES_KEYS: Record<number, string> = { 0: "food", 1: "wood", 2: "stone", 3: 
 /** Melee attack/armour class and pierce class. */
 const MELEE = 4;
 const PIERCE = 3;
+/** Player resources in empires.dat (names.ts RESOURCES). */
+const FAITH_RATE = 35;
+const TRIBUTE_FEE = 46;
 
 export interface Converted {
   rules: RulesFile;
@@ -339,11 +342,26 @@ function convertCommands(cmds: DatEffectCommand[], ctx: Ctx): { effects: Effect[
       continue;
     }
     if (k.type === 2) { miss(k, true); continue; } // unlocks: Bronze Dawn's tech tree handles these
-    if (k.type !== 4 && k.type !== 5) { miss(k); continue; }
+    // Resources the game keeps per player: how fast a priest's faith comes back (2 a second unless changed),
+    // and what a tribute costs on top (a quarter unless changed).
+    if (k.type === 1 && k.a === FAITH_RATE) {
+      const base = ctx.dat.civs[1].resources[FAITH_RATE] || 2;
+      effects.push({ type: "conversion", stat: "regen", value: round((k.b ? base + k.d : k.d) / base) });
+      continue;
+    }
+    if (k.type === 1 && k.a === TRIBUTE_FEE && !k.b && k.d === 0) { effects.push({ type: "flag", flag: "free_tribute" }); continue; }
+    if (k.type !== 0 && k.type !== 4 && k.type !== 5) { miss(k); continue; }
+
+    // A Farm's own work rate is how fast it is farmed.
+    if (k.c === 13 && ctx.buildingByAoe.get(k.a) === "farm" && k.type !== 0) {
+      const base = ctx.unit(k.a).action?.workRate || 0.4;
+      effects.push({ type: "gather", resource: "food", rate: round(k.type === 4 ? (base + k.d) / base : k.d), carry: 0, kind: "farm" });
+      continue;
+    }
 
     // Gather work rate and carry capacity on the villager jobs.
     const jobRes = jobOf(k.a);
-    if (jobRes && (k.c === 13 || k.c === 14)) {
+    if (jobRes && (k.c === 13 || k.c === 14) && k.type !== 0) {
       const base = jobRes.kind ? ctx.eco.gather_kind_rates?.[jobRes.kind] ?? ctx.eco.gather_rates[jobRes.res] : ctx.eco.gather_rates[jobRes.res];
       const rate = k.c === 13 ? (k.type === 4 ? (base + k.d) / base : k.d) : 1;
       const carry = k.c === 14 && k.type === 4 ? k.d : 0;
@@ -355,10 +373,25 @@ function convertCommands(cmds: DatEffectCommand[], ctx: Ctx): { effects: Effect[
     }
 
     const target = targetOf(k.a, k.b, ctx);
-    if (!target) { miss(k, k.a >= 0 && isNonGameUnit(k.a, ctx)); continue; }
-    const op = k.type === 4 ? "add" : "mul";
+    // A unit or a class Bronze Dawn does not have (heroes, domestic animals) has nothing to change.
+    if (!target) { miss(k, (k.a >= 0 && isNonGameUnit(k.a, ctx)) || (k.a < 0 && k.b >= 0)); continue; }
+    const op = k.type === 0 ? "set" : k.type === 4 ? "add" : "mul";
     let stat: string | null = null;
     let value = k.d;
+    // A cost set outright becomes the same cost as a share of each unit's own ("Civilian cost 35": 35 of 50).
+    if (k.c === 100 && op === "set") {
+      for (const id of target.units ?? []) {
+        const total = Object.values(ctx.rules.units?.find((u) => u.id === id)?.cost ?? {}).reduce((a, b) => a + (b ?? 0), 0);
+        if (total > 0) effects.push({ type: "stat", stat: "cost", op: "mul", value: round(k.d / total), target: { units: [id] } });
+      }
+      continue;
+    }
+    // Base armor counts against every kind of attack the unit has no armor of its own for: for the
+    // villager, which has none, both melee and pierce.
+    if (k.c === 15 && op === "add") {
+      for (const s of ["armor", "pierce_armor"]) effects.push({ type: "stat", stat: s, op, value: k.d, target });
+      continue;
+    }
     switch (k.c) {
       case 0: stat = "hp"; break;
       case 1: stat = "los"; break;

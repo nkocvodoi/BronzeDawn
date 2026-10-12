@@ -8,6 +8,9 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-12
 
+- [#92](https://github.com/nkocvodoi/BronzeDawn/pull/92) Bonus của 16 dân tộc là đúng số của Rise of Rome, lấy thẳng từ `empires.dat` (Assyrian bắn mỗi 1,1 s, Egyptian đào vàng +44% và mang thêm 2, Sumerian ruộng +250, Babylonian hồi faith ×1,375...); hiệu ứng "set" như bản gốc; trình nhập AoE chuyển được mọi bonus dân tộc
+- [#91](https://github.com/nkocvodoi/BronzeDawn/pull/91) Ruins vẽ lại thành vòng đá cổ, Artifact thành rương vàng trên đòn khiêng (Blender), có hình riêng lúc có người giữ; art3d chạy được trên Windows
+- [#90](https://github.com/nkocvodoi/BronzeDawn/pull/90) Smoke test nạp art pack dạng zip (các file trong thư mục con), dùng sau khi tải lại trang, rồi xoá
 - [#89](https://github.com/nkocvodoi/BronzeDawn/pull/89) Tài liệu sau đợt nhập AoE: hướng dẫn nhập lại và đưa sang máy khác (replica/aoe-reimport.md, thay cho danh sách việc đã xong), roadmap cập nhật phần hình, Art Packs, kiểm thử và bỏ việc tinh chỉnh âm thanh
 - [#88](https://github.com/nkocvodoi/BronzeDawn/pull/88) Trình nhập AoE lấy vách đá của game gốc (mảnh 3×3 của "Cliffs_1" theo hướng vách chạy) vào khoá `cliffs` của art pack
 - [#87](https://github.com/nkocvodoi/BronzeDawn/pull/87) Công trình đang xây hiện công trường theo từng giai đoạn: trình nhập AoE lấy hình công trường của game gốc vào khoá mới `construction`, game chọn hình theo tiến độ xây

@@ -743,10 +743,24 @@ describe("the original's rules", () => {
     expect(cat.order.kind).toBe("attackGround");
     const c = new World(RULES, 1, ["A", "B", "C", "D"], 24, false, { civs: ["minoan", "greek", "yamato", "babylonian"] });
     expect(c.unitCost(0, "scout_ship").wood).toBe(Math.round(135 * 0.7));
-    expect(c.unitStats(1, "war_galley").speed).toBeCloseTo(1.8 * 1.3);
+    expect(c.unitStats(1, "war_galley").speed).toBeCloseTo(1.8 + 0.3); // the original adds 0.3 to Greek war ships
     expect(c.unitStats(2, "trireme").hp).toBe(Math.round(200 * 1.3));
     expect(c.blockerTech("trireme_tech", 3)).toContain("Not available"); // no Trireme for Babylon
     expect(RULES.units.get("trireme")!.convert_resist).toBe(2);
+  });
+
+  it("civilization bonuses are the original's numbers, a reload time set outright among them", () => {
+    const w = new World(RULES, 1, ["A", "B", "C", "D"], 24, false, { civs: ["assyrian", "sumerian", "shang", "palmyran"] });
+    expect(w.unitStats(0, "bowman").attack_cooldown).toBeCloseTo(1.1); // set, not scaled
+    expect(w.unitStats(1, "stone_thrower").attack_cooldown).toBeCloseTo(3.5);
+    expect(w.unitStats(1, "helepolis").attack_cooldown).toBeCloseTo(3.5); // the whole siege class, as in the original
+    expect(w.unitCost(2, "villager").food).toBe(35);
+    expect(w.unitCost(3, "villager").food).toBe(75);
+    expect(w.unitStats(3, "villager").armor).toBe(1);
+    expect(w.unitStats(3, "villager").pierce_armor).toBe(1);
+    expect(w.players[3].mods.flags.has("free_tribute")).toBe(true);
+    const b = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["babylonian", "greek"] });
+    expect(b.players[0].mods.conversionRegen).toBeCloseTo(1.375); // faith back at 2.75 a second instead of 2
   });
 
   it("fishing boats: five for each finished Dock, counting those in training", () => {

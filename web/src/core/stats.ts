@@ -92,7 +92,9 @@ export class Mods {
     let add = 0, mul = 1;
     for (const e of this.stats) {
       if (e.stat !== stat || !match(e.target)) continue;
-      if (e.op === "add") add += e.value; else mul *= e.value;
+      if (e.op === "set") base = e.value;
+      else if (e.op === "add") add += e.value;
+      else mul *= e.value;
     }
     return (base + add) * mul;
   }
