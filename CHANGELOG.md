@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-12
 
+- [#96](https://github.com/nkocvodoi/BronzeDawn/pull/96) Bản đồ ngẫu nhiên sinh theo đúng thuật toán của Empiresx.exe, số liệu 9 kiểu bản đồ lấy từ empires.dat (vị trí và khoảng cách vàng, đá, bụi quả, linh dương, cá, rừng, đồi, vách đá, nước nông như bản gốc; cỡ bản đồ đúng bản gốc); AI tìm quả và săn xa hơn theo khoảng cách của bản gốc
 - [#89](https://github.com/nkocvodoi/BronzeDawn/pull/89) Tài liệu sau đợt nhập AoE: hướng dẫn nhập lại và đưa sang máy khác (replica/aoe-reimport.md, thay cho danh sách việc đã xong), roadmap cập nhật phần hình, Art Packs, kiểm thử và bỏ việc tinh chỉnh âm thanh
 - [#88](https://github.com/nkocvodoi/BronzeDawn/pull/88) Trình nhập AoE lấy vách đá của game gốc (mảnh 3×3 của "Cliffs_1" theo hướng vách chạy) vào khoá `cliffs` của art pack
 - [#87](https://github.com/nkocvodoi/BronzeDawn/pull/87) Công trình đang xây hiện công trường theo từng giai đoạn: trình nhập AoE lấy hình công trường của game gốc vào khoá mới `construction`, game chọn hình theo tiến độ xây

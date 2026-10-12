@@ -63,7 +63,13 @@ const check = (ok, what) => { console.log(`${ok ? "ok  " : "FAIL"}  ${what}`); i
 const g = (fn, arg) => page.evaluate(fn, arg);
 const wait = (ms) => page.waitForTimeout(ms);
 /** Screen position of an entity, after centring the camera on it. */
-const at = async (id) => g((id) => { const e = game.world.entity(id); game.look(e.center); return game.screenOf(e.center); }, id);
+// Two frames after the look, as the camera keeps clear of the map's edge on the next frame: near the edge
+// (where the original's maps can start a player) the point read at once is off by a tile or two.
+const at = async (id) => {
+  await g((id) => game.look(game.world.entity(id).center), id);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  return g((id) => game.screenOf(game.world.entity(id).center), id);
+};
 
 await page.goto(`http://localhost:${port}/?seed=5`);
 await page.waitForFunction(() => window.game, null, { timeout: 120000 }); // a CI runner with three browsers open is slow to start one
@@ -168,8 +174,11 @@ let p = await at(v);
 await page.mouse.click(p.x, p.y - 14);
 check(await g((v) => game.selection.length === 1 && game.selection[0] === v, v), "clicking a villager selects it");
 
-// Right click berries: it goes to gather.
-const berry = await g((v) => game.world.nearestNode(0, game.world.unit(v).pos, 20).id, v);
+// Right click berries: it goes to gather. On the original's maps a player's berries lie 7 to 16 tiles out, often
+// still in the dark at the start: the test lights the nearest, as a scout would.
+const berry = await g((v) => { const w = game.world, n = w.nearestNode(0, w.unit(v).pos, 30, null, "berry_bush");
+  w.fog[0].reveal(n.center, 3); game.look(n.center); return n.id; }, v);
+await page.waitForFunction((id) => game.views.get(id)?.root.visible, berry, { timeout: 5000 }).catch(() => {});
 p = await at(berry);
 await page.mouse.click(p.x, p.y - 8, { button: "right" });
 check(await g((v) => game.world.unit(v).order.kind === "gather", v), "right clicking berries orders a gather");
@@ -181,6 +190,7 @@ check((await g(() => game.flashes)) === 0, "the flash ends after a moment");
 await page.mouse.click(p.x, p.y - 8); // reselect nothing in particular
 await page.mouse.click(1, 1);         // top bar: no-op
 p = await at(v);
+await page.waitForFunction((id) => game.views.get(id)?.root.visible, v, { timeout: 5000 }).catch(() => {});
 await page.mouse.click(p.x, p.y - 14);
 check((await page.$$("#commands button:not(.empty)")).length === 4, "a villager's panel shows Build, Repair, Stop and Delete");
 check((await page.$$("#commands button")).length === 12, "the command grid has the original's two rows of six");
