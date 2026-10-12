@@ -16,7 +16,8 @@
     "smoke:host-leaves": "node scripts/smoke-host-leaves.mjs",
     "smoke:art": "node scripts/smoke-art.mjs",
     "import-aoe": "tsx scripts/aoe/export-aoe.ts",
-    "aoe-maps": "tsx scripts/aoe/maps.ts"
+    "aoe-maps": "tsx scripts/aoe/maps.ts",
+    "sim:civ": "tsx scripts/civ-ai.ts"
   },
   "dependencies": {
     "peerjs": "1.5.4",
