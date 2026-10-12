@@ -39,6 +39,9 @@ export interface Manifest {
   resources?: Record<string, ImageSpec | ImageSpec[]>;
   /** Ground tiles, each a 64 x 32 diamond: several variants per kind. */
   terrain?: Partial<Record<"grass" | "dirt" | "sand" | "water", string[]>>;
+  /** Cliff rock, one picture per cliff tile, by which of its neighbours are cliffs too (a number 0 to 15: 1 for
+   *  x - 1, 2 for x + 1, 4 for y - 1, 8 for y + 1), with variants; anchored at the tile's centre. */
+  cliffs?: Record<string, ImageSpec | ImageSpec[]>;
   /** Command icons by unit, building, tech or command id. */
   icons?: Record<string, string>;
   /** The four resource icons of the top bar. */
@@ -221,6 +224,7 @@ function filesOf(m: Manifest): string[] {
   };
   for (const u of Object.values(m.units ?? {})) out.push(u.file);
   img(m.buildings);
+  img(m.cliffs);
   for (const r of Object.values(m.resources ?? {})) (Array.isArray(r) ? r : [r]).forEach((x) => out.push(x.file));
   for (const t of Object.values(m.terrain ?? {})) out.push(...(t ?? []));
   out.push(...Object.values(m.icons ?? {}), ...Object.values(m.resourceIcons ?? {}).filter((x): x is string => !!x));

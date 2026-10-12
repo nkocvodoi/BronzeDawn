@@ -64,6 +64,7 @@ export function mapFiles(m: Manifest, f: (file: string) => string): Manifest {
     units: img(m.units) as Manifest["units"],
     buildings: img(m.buildings) as Manifest["buildings"],
     resources: img(m.resources) as Manifest["resources"],
+    cliffs: img(m.cliffs) as Manifest["cliffs"],
     terrain: strs(m.terrain) as Manifest["terrain"],
     icons: strs(m.icons) as Manifest["icons"],
     resourceIcons: strs(m.resourceIcons) as Manifest["resourceIcons"],

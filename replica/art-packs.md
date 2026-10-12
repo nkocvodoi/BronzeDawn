@@ -64,6 +64,7 @@ Danh sách đầy đủ và kích thước nằm trong `replica/assets-needed.md
 | `buildings` | công trình | id, rồi kiểu kiến trúc (`greek`, `egyptian`...) và thời đại |
 | `resources` | cây, mỏ, bụi dâu, cá | id |
 | `terrain` | ô đất | `grass`, `dirt`, `sand`, `water` |
+| `cliffs` | vách đá, mỗi ô một hình | số 0–15: ô bên cạnh nào cũng là vách đá (1 x-1, 2 x+1, 4 y-1, 8 y+1) |
 | `icons`, `resourceIcons`, `cursors` | nút, biểu tượng tài nguyên, con trỏ | id |
 | `sfx`, `music` | tiếng, nhạc | tên tiếng (`chop`, `sword`, `voice-villager`...) |
 | `maps` | bản đồ ngẫu nhiên thêm vào ô chọn Map | danh sách `RandomMapSpec` (`web/src/core/rmspec.ts`) |

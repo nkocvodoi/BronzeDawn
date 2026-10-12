@@ -914,7 +914,16 @@ export function rubblePic(size: number, salt: number): Pic {
 
 /** A piece of cliff standing on one tile: a jagged block of rock, lit from the top left. Neighbouring
  *  pieces overlap, so a line of them reads as one wall. */
-export function cliffPic(variant: number): Pic {
+/** `joins`: which neighbours are cliffs too (1 x - 1, 2 x + 1, 4 y - 1, 8 y + 1), for pictures from files
+ *  that join up into a ridge. */
+export function cliffPic(variant: number, joins = 0): Pic {
+  const files = ASSETS.manifest.cliffs?.[String(joins)];
+  if (files) {
+    const list = Array.isArray(files) ? files : [files];
+    const spec = list[Math.abs(Math.floor(variant)) % list.length];
+    const fromFile = spec && assetPic(`cl-${spec.file}`, spec, null, 0.75);
+    if (fromFile) return fromFile;
+  }
   const v = variant % 4;
   return pic(`cliff${v}`, 40, 38, 0.5, 30 / 38, (p) => {
     const base = rgb(0x8a745a), lit = rgb(0xb09a7a), dark = rgb(0x5a4834), deep = rgb(0x3e3024);

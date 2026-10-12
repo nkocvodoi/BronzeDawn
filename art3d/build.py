@@ -120,16 +120,23 @@ def main():
         s = models.LONE_TREE
         resources["lone_tree"] = still("lone_tree", models.lone_tree, s["size"], (0, 0, 0), tmp, s["center"])
 
-    write_manifest(units, buildings, resources)
+    cliffs = {}
+    if want("cliff"):
+        s = models.CLIFF
+        for mask in range(16):
+            cliffs[str(mask)] = [still(f"cliff{mask}-{v}", lambda mask=mask, v=v: models.cliff(mask, v), s["size"], (0, 0, 0), tmp, s["center"])
+                                 for v in range(s["variants"])]
+
+    write_manifest(units, buildings, resources, cliffs)
 
 
-def write_manifest(units, buildings, resources):
+def write_manifest(units, buildings, resources, cliffs=None):
     path = os.path.join(OUT, "manifest.json")
     m = json.load(open(path)) if os.path.exists(path) else {}
-    for k, v in (("units", units), ("buildings", buildings), ("resources", resources)):
+    for k, v in (("units", units), ("buildings", buildings), ("resources", resources), ("cliffs", cliffs or {})):
         if v:
             m.setdefault(k, {}).update(v)
-    credit = {"what": "Sprites in art3d/ (units, buildings, trees)", "author": "Bronze Dawn contributors, rendered with Blender from art3d/",
+    credit = {"what": "Sprites in art3d/ (units, buildings, trees, cliffs)", "author": "Bronze Dawn contributors, rendered with Blender from art3d/",
               "license": "Same as the game (made for this project)"}
     m["credits"] = [c for c in m.get("credits", []) if not c.get("what", "").startswith("Sprites in art3d/")] + [credit]
     with open(path, "w") as f:
