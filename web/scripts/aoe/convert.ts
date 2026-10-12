@@ -167,12 +167,15 @@ export function convert(dat: DatFile, base: RulesFile): Converted {
     a.hp = live.hitPoints;
     a.speed = live.speed ?? a.speed;
     a.los = live.lineOfSight;
-    a.attack = amountOf(live.combat?.attacks, MELEE) ?? 0;
+    // The lion's claws are a blow of class 12 of their own, not melee.
+    a.attack = amountOf(live.combat?.attacks, MELEE) || Math.max(0, ...(live.combat?.attacks ?? []).map((x) => x.amount));
     a.armor = amountOf(live.combat?.armors, MELEE) ?? 0;
     if (live.combat && live.combat.reloadTime > 0) a.attack_cooldown = live.combat.reloadTime;
     const food = live.resourceStorages.find((r) => r.type === 0);
     if (food) a.food = food.amount;
-    a.decay = dead.resourceDecay;
+    // How fast the meat rots is the living animal's decay (gazelle 0.3, elephant 0.2, lion 1 food a
+    // second); the carcass unit's own is 1 for every animal.
+    a.decay = live.resourceDecay || dead.resourceDecay;
   }
 
   // Units.
@@ -204,9 +207,10 @@ export function convert(dat: DatFile, base: RulesFile): Converted {
     const parm = amountOf(u.combat?.armors, PIERCE);
     if (arm !== undefined && arm !== 0) b.armor = arm;
     if (parm !== undefined && parm !== 0) b.pierce_armor = parm;
+    // A Farm's food is the player's "farm food amount" (resource 36, 250), not the 15 the Farm unit holds.
     if (b.id === "farm") {
-      const food = u.resourceStorages.find((r) => r.type === 0);
-      if (food) b.resource = { food: food.amount };
+      const food = dat.civs[1].resources[36];
+      if (food > 0) b.resource = { food };
     }
   }
 
@@ -272,6 +276,12 @@ function applyUnit(def: UnitDef, u: DatUnit, notes: string[]): void {
     if (c.maxRange > 0) def.damage = "melee";
   } else if (!def.converts) {
     def.attack = 0;
+  }
+  // A blow of another class only (the catapult ships' stones, class 6; the lion's claws, class 12), with no
+  // melee or pierce of its own, or only a zero one: that blow is the attack.
+  if (!def.converts && !(def.attack > 0)) {
+    const other = Math.max(0, ...c.attacks.filter((a) => a.class !== MELEE && a.class !== PIERCE).map((a) => a.amount));
+    if (other > 0) def.attack = other;
   }
   def.armor = amountOf(c.armors, MELEE) ?? 0;
   def.pierce_armor = amountOf(c.armors, PIERCE) ?? 0;
@@ -470,10 +480,13 @@ function mergeTargets(list: Effect[]): Effect[] {
 }
 
 /** Bronze Dawn names its unit upgrades itself; keep its upgrade effects and use the data for the rest. */
+// The original upgrades from a line's first unit ("Scout Ship → Trireme"); Bronze Dawn upgrades the units
+// standing as the one before ("War Galley → Trireme"), which is what makes the ships on the water change.
+// The data's own upgrades are taken only where Bronze Dawn has none (Battle Axe: Clubman → Axeman).
 function mergeUpgrades(old: Effect[], fresh: Effect[]): Effect[] {
   const ups = old.filter((e) => e.type === "upgrade");
   const freshUps = fresh.filter((e) => e.type === "upgrade");
-  return [...fresh.filter((e) => e.type !== "upgrade"), ...(freshUps.length ? freshUps : ups)];
+  return [...fresh.filter((e) => e.type !== "upgrade"), ...(ups.length ? ups : freshUps)];
 }
 
 function disabledFor(aoeTechs: number[], ctx: Ctx, keep: string[]): string[] {
