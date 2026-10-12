@@ -422,7 +422,11 @@ export class Game {
     if (id === "packs-zip") { (document.querySelector("#pack-zip") as HTMLInputElement | null)?.click(); return true; }
     if (id === "packs-reload") { location.reload(); return true; }
     const toggle = t.closest("[data-pack-toggle]") as HTMLElement | null;
-    if (toggle) { void setEnabled(toggle.dataset.packToggle!, toggle.dataset.on !== "1").then(() => this.showPacks("Changed: reload to use it.")); return true; }
+    if (toggle) {
+      const on = toggle.dataset.on !== "1";
+      void setEnabled(toggle.dataset.packToggle!, on).then(() => this.showPacks(on ? "Turned on: press Reload to apply." : "Turned off: press Reload to apply."));
+      return true;
+    }
     const del = t.closest("[data-pack-remove]") as HTMLElement | null;
     if (del) {
       if (confirm(`Remove the art pack "${del.dataset.name}" from this browser? The files on your disk stay where they are.`)) {
@@ -1632,9 +1636,14 @@ export class Game {
     let error = "";
     try { packs = await listPacks(); } catch (e) { error = `This browser will not keep packs: ${(e as Error).message}`; }
     const inUse = new Set(ASSETS.packs.map((p) => p.id));
-    const rows = packs.map((p) => `<tr><td><b>${esc(p.name)}</b>${inUse.has(p.id) ? "" : p.enabled ? " · on after reload" : ""}</td>`
+    // What the pack does now, and what it will do after a reload, in words; the button says what it will do.
+    const state = (p: PackInfo) => {
+      const now = inUse.has(p.id);
+      return p.enabled ? (now ? "<b>On</b>" : "<b>On after reload</b>") : now ? "Off after reload" : "Off";
+    };
+    const rows = packs.map((p) => `<tr><td><b>${esc(p.name)}</b></td><td class="pack-state">${state(p)}</td>`
       + `<td>${p.files} files, ${(p.bytes / 1e6).toFixed(1)} MB${p.missing.length ? ` · <span title="${esc(p.missing.slice(0, 20).join(", "))}">${p.missing.length} named but missing</span>` : ""}</td>`
-      + `<td><button class="toggle${p.enabled ? "" : " off"}" data-pack-toggle="${p.id}" data-on="${p.enabled ? 1 : 0}">In use</button>`
+      + `<td><button data-pack-toggle="${p.id}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Turn off" : "Turn on"}</button>`
       + ` <button data-pack-remove="${p.id}" data-name="${esc(p.name)}">Remove</button></td></tr>`).join("");
     this.hud.showOverlay("Art Packs", [
       "Your own pictures and sounds in place of the game's: a folder (or a zip of one) with a manifest.json. "
