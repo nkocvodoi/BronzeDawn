@@ -1,171 +1,30 @@
 import { DIRS16, Footprint, RNG, Tile, Vec2 } from "./geom";
 import { Terrain, walkable } from "./grid";
 import type { Host, RandomMapSpec } from "./rmspec";
+import { AOE_MAP_IDS, AOE_MAPS, AoeMapGen, fillWorld } from "./aoemap";
 import type { World } from "./world";
 
 /**
  * Builds a skirmish map from the world's seed: lakes, forests, and a start for each
  * player with a town center, villagers, berries, a forest, gold and stone close by.
  */
-/** The kinds of map, as the start screen offers them. Inland is the land with lakes it always was. */
+/** The kinds of map, as the start screen offers them: the original's nine, made as it makes them (aoemap.ts). */
 export type MapType = "inland" | "coastal" | "continental" | "mediterranean" | "large_islands" | "small_islands"
   | "highland" | "hill_country" | "narrows";
 export const MAP_TYPES: [MapType, string][] = [
-  ["inland", "Inland (lakes)"], ["coastal", "Coastal (sea on two sides)"],
-  ["continental", "Continental (sea all around)"], ["mediterranean", "Mediterranean (a sea in the middle)"],
+  ["inland", "Inland (all land)"], ["coastal", "Coastal (sea along some edges)"],
+  ["continental", "Continental (one land in the sea)"], ["mediterranean", "Mediterranean (a sea in the middle)"],
   ["large_islands", "Large Islands (an island each: transports needed)"], ["small_islands", "Small Islands (an island each, and more to settle)"],
-  ["highland", "Highland (high ground, a sea on one side)"], ["hill_country", "Hill Country (hills and cliffs, small lakes)"],
-  ["narrows", "Narrows (two shores, joined by narrow land bridges)"],
+  ["highland", "Highland (lands apart in the sea, or all land)"], ["hill_country", "Hill Country (many hills and cliffs)"],
+  ["narrows", "Narrows (shores close together across the water)"],
 ];
-const islands = (t: MapType) => t === "large_islands" || t === "small_islands";
-/** Maps with no sea, only lakes. */
-const landOnly = (t: MapType) => t === "inland" || t === "hill_country";
-/** How hilly each kind of map is: hills and cliffs per Small map, and whether the hills are broad and high. */
-const RELIEF: Record<MapType, [number, number, boolean]> = {
-  inland: [5, 3, false], coastal: [5, 3, false], continental: [5, 3, false], mediterranean: [5, 3, false],
-  large_islands: [2, 0, false], small_islands: [2, 0, false],
-  highland: [9, 4, true], hill_country: [11, 8, true], narrows: [4, 2, false],
-};
-
+/** One of the original's nine maps, made as the original makes it (aoemap.ts), from the world's seed. Ruins and
+ *  Artifacts are Bronze Dawn's own afterwards: the original places them apart from the map generator. */
 export function generateMap(w: World, type: MapType = "inland", withRelics = true) {
   const map = w.map;
-  const n = map.width;
-  // Everything spread over the map grows with its area; a Small map (72 x 72) is the baseline.
-  const scale = (map.width * map.height) / (72 * 72);
   for (let i = 0; i < map.shade.length; i++) map.shade[i] = w.rng.int(0, 255);
-
-  const starts = startTiles(w.players.length, n, w.seed);
-  w.startTiles = starts;
-  const farFromStarts = (t: Tile, d: number) => starts.every((s) => t.center.distance(s.center) >= d);
-
-  // The sea, for every map but the land ones. Inland draws no random numbers here, so its maps stay as they were.
-  if (!landOnly(type)) sea(w, type);
-
-  // Lakes, away from the bases: Hill Country has a few small ones among its hills.
-  for (let k = 0; k < Math.round((type === "inland" ? 3 : type === "hill_country" ? 2 : 1) * scale); k++) {
-    let c = new Tile(0, 0);
-    for (let tries = 0; tries < 30; tries++) {
-      c = new Tile(w.rng.int(8, n - 9), w.rng.int(8, n - 9));
-      if (farFromStarts(c, 18)) break;
-    }
-    const r = type === "hill_country" ? w.rng.int(2, 4) : w.rng.int(3, 6);
-    blob(w, c, r, (t) => { map.terrain[map.index(t)] = Terrain.water; });
-  }
-  // Shore.
-  for (let y = 0; y < n; y++) {
-    for (let x = 0; x < n; x++) {
-      if (map.terrain[y * n + x] === Terrain.water) continue;
-      const t = new Tile(x, y);
-      const wet = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
-        const o = new Tile(x + dx, y + dy);
-        return map.inside(o) && map.terrainAt(o) === Terrain.water;
-      });
-      if (wet) map.terrain[map.index(t)] = Terrain.sand;
-    }
-  }
-
-  // Bases.
-  starts.forEach((s, pid) => {
-    for (let y = s.y - 8; y <= s.y + 8; y++) {
-      for (let x = s.x - 8; x <= s.x + 8; x++) {
-        const t = new Tile(x, y);
-        if (!map.inside(t)) continue;
-        const d = t.center.distance(s.center);
-        if (d <= 8) map.terrain[y * n + x] = d <= 3.2 ? Terrain.dirt : Terrain.grass;
-      }
-    }
-    w.addBuilding("town_center", pid, new Tile(s.x - 1, s.y - 1), true);
-    const spots = [[2, 0], [2, 1], [-2, 1], [0, 2], [1, -2], [-1, 2]];
-    for (let i = 0; i < w.rules.economy.start_villagers; i++) {
-      const [dx, dy] = spots[i % spots.length];
-      w.spawnUnit("villager", pid, new Tile(s.x + dx, s.y + dy).center);
-    }
-  });
-
-  for (const s of starts) {
-    const a = w.rng.int(0, 15);
-    const at = (step: number, dist: number) => s.center.add(DIRS16[(a + step) % 16].mul(dist)).tile;
-    cluster(w, "berry_bush", at(0, 6), 6);
-    // A thick wood near every base, as in the original: trees standing shoulder to shoulder.
-    forest(w, at(5, 11), 4.2, 0.95);
-    forest(w, at(8, 13), 2.8, 0.92);
-    cluster(w, "gold_mine", at(10, 9), 5);
-    cluster(w, "stone_mine", at(12, 10), 4);
-    for (let k = 0; k < 6; k++) {
-      const t = s.center.add(DIRS16[w.rng.int(0, 15)].mul(w.rng.int(6, 9))).tile;
-      w.addNode("lone_tree", t);
-    }
-    // Something to hunt near every base, as in the original's Stone Age.
-    herd(w, "gazelle", at(3, 9), w.rng.int(4, 6));
-    herd(w, "gazelle", at(14, 13), w.rng.int(4, 5));
-    herd(w, "elephant", at(7, 14), 1);
-  }
-
-  // The rest of the map: fewer, bigger and denser woods than scattered copses, and lone trees between.
-  for (let k = 0; k < Math.round(11 * scale); k++) {
-    const c = new Tile(w.rng.int(2, n - 3), w.rng.int(2, n - 3));
-    if (farFromStarts(c, 12)) forest(w, c, w.rng.int(3, 6), 0.93);
-  }
-  for (let k = 0; k < Math.round(45 * scale); k++) {
-    const c = new Tile(w.rng.int(1, n - 2), w.rng.int(1, n - 2));
-    if (farFromStarts(c, 8)) w.addNode("lone_tree", c);
-  }
-  // Wild animals across the map: gazelles and elephants to hunt, lions to fear, alligators by the water.
-  // Each on land with room to roam. A spot too near a base, or out at sea, has none (as ever: the map's
-  // share of animals goes with its land); one on a sandbank is tried again elsewhere.
-  const wild = (kind: string, count: number, away: number, size: () => number) => {
-    for (let k = 0; k < count; k++) {
-      for (let tries = 0; tries < 8; tries++) {
-        const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
-        const t = farFromStarts(c, away) ? map.nearestPassable(c, 3) : null;
-        if (!t) break;
-        // On a narrow strip of a big island: the open land nearest it, if near.
-        const at = roomy(w, t) ? (w.openLand(t) ? t : openNear(w, t, 10)) : null;
-        if (at) { herd(w, kind, at, size()); break; }
-      }
-    }
-  };
-  wild("gazelle", Math.round(6 * scale), 16, () => w.rng.int(4, 7)); // herds of 4 to 7, as in the original
-  wild("elephant", Math.round(3 * scale), 16, () => w.rng.int(1, 2));
-  wild("lion", Math.round(3 * scale), 20, () => w.rng.int(1, 2));
-  // Shore fish, and alligators, along the lakes.
-  let gators = 0;
-  for (let y = 1; y < n - 1; y++) {
-    for (let x = 1; x < n - 1; x++) {
-      const t = new Tile(x, y);
-      if (map.terrainAt(t) !== Terrain.water) continue;
-      const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => map.terrainAt(new Tile(x + dx, y + dy)) !== Terrain.water);
-      if (!shore) continue;
-      if (w.rng.chance(0.07)) w.addNode("fish", t);
-      else if (gators < Math.round(4 * scale) && w.rng.chance(0.01) && farFromStarts(t, 18)) {
-        const land = map.nearestPassable(t, 2);
-        if (land) { herd(w, "alligator", land, 1); gators++; }
-      }
-    }
-  }
-  const extras = ["gold_mine", "gold_mine", "stone_mine", "stone_mine", "berry_bush", "berry_bush", "berry_bush"];
-  for (const kind of Array.from({ length: Math.round(scale) }, () => extras).flat()) {
-    for (let tries = 0; tries < 30; tries++) {
-      const c = new Tile(w.rng.int(6, n - 7), w.rng.int(6, n - 7));
-      if (!farFromStarts(c, 15)) continue;
-      // As the animals: by the nearest land, if any (far out at sea, none: the map's share goes with its
-      // land); on a sandbank, elsewhere.
-      const t = map.nearestPassable(c, 3);
-      if (!t) break;
-      if (roomy(w, t)) { cluster(w, kind, t, kind === "berry_bush" ? 5 : 4); break; }
-    }
-  }
-
-  if (islands(type)) islandWoods(w, starts);
-
-  // Land paths between the bases, except where the sea is meant to part them.
-  if (!islands(type)) connect(w, starts);
-  if (!landOnly(type)) deepFish(w, starts);
-  w.nodes = w.nodes.filter((x) => x.alive);
-  const [hilly, cliffy, high] = RELIEF[type];
-  hills(w, starts, hilly, high);
-  if (cliffy) cliffs(w, starts, cliffy);
-  if (!landOnly(type)) openToSea(w, starts);
+  const gen = new AoeMapGen(AOE_MAPS[AOE_MAP_IDS[type]], map.width, w.players.length, w.seed >>> 0).generate();
+  const starts = fillWorld(w, gen);
   w.nodes = w.nodes.filter((x) => x.alive);
   if (withRelics) relics(w, starts);
   freeAnimals(w);
@@ -569,62 +428,6 @@ function relics(w: World, starts: Tile[]) {
   }
 }
 
-/** An island holds only its own wood, where a land map shares all its woods: the woods placed around a base
- *  left an island about 3,000, gone before its boats were built. Woods go round the island's edge, away
- *  from the town, until it holds about `ISLAND_WOOD`. */
-const ISLAND_WOOD = 10000;
-function islandWoods(w: World, starts: Tile[]) {
-  const map = w.map;
-  for (const s of starts) {
-    // The island under the base: every land tile joined to it, trees and all.
-    const land = new Uint8Array(map.width * map.height), stack = [s];
-    land[map.index(s)] = 1;
-    while (stack.length) {
-      const t = stack.pop()!;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const o = new Tile(t.x + dx, t.y + dy);
-        if (!map.inside(o) || land[map.index(o)] || map.terrainAt(o) === Terrain.water) continue;
-        land[map.index(o)] = 1;
-        stack.push(o);
-      }
-    }
-    const wood = () => w.nodes.reduce((a, n) => a + (n.alive && n.def.resource === "wood" && land[map.index(n.tile)] ? n.amount : 0), 0);
-    for (let tries = 0; tries < 60 && wood() < ISLAND_WOOD; tries++) {
-      const c = s.center.add(DIRS16[w.rng.int(0, 15)].mul(w.rng.int(12, 18))).tile;
-      if (!map.inside(c) || !land[map.index(c)]) continue;
-      forest(w, c, 2 + w.rng.int(0, 15) / 10, 0.92);
-    }
-  }
-  // The islands nobody starts on are there to be settled: each grows woods of its own, about 18 wood a
-  // tile of ground (an islet of 100 tiles, some 1,800), with room left on its shore for a Storage Pit.
-  const seen = new Uint8Array(map.width * map.height);
-  for (const s of starts) { const r = map.reachable(s, () => true); for (let i = 0; i < r.length; i++) if (r[i]) seen[i] = 1; }
-  for (let i = 0; i < seen.length; i++) {
-    const t0 = new Tile(i % map.width, Math.floor(i / map.width));
-    if (seen[i] || map.terrainAt(t0) === Terrain.water) continue;
-    const isle: Tile[] = [], stack = [t0];
-    seen[i] = 1;
-    while (stack.length) {
-      const t = stack.pop()!;
-      isle.push(t);
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const o = new Tile(t.x + dx, t.y + dy);
-        if (!map.inside(o) || seen[map.index(o)] || map.terrainAt(o) === Terrain.water) continue;
-        seen[map.index(o)] = 1;
-        stack.push(o);
-      }
-    }
-    if (isle.length < 40) continue;
-    const on = new Set(isle.map((t) => map.index(t)));
-    const wood = () => w.nodes.reduce((a, n) => a + (n.alive && n.def.resource === "wood" && on.has(map.index(n.tile)) ? n.amount : 0), 0);
-    for (let tries = 0; tries < 20 && wood() < isle.length * 18; tries++) {
-      const c = isle[w.rng.int(0, isle.length - 1)];
-      if (map.coastal(c)) continue;
-      forest(w, c, 1.5 + w.rng.int(0, 10) / 10, 0.85);
-    }
-  }
-}
-
 /** A depth from the edge for each tile along it: a slow random walk between lo and hi. */
 function coastline(w: World, len: number, lo: number, hi: number): number[] {
   const out: number[] = [];
@@ -634,94 +437,6 @@ function coastline(w: World, len: number, lo: number, hi: number): number[] {
     out.push(d);
   }
   return out;
-}
-
-/** Floods the sea of a map type. Bases are cleared to land afterwards, so none starts in the water. */
-function sea(w: World, type: MapType) {
-  const map = w.map, n = map.width;
-  const wet = (x: number, y: number) => { map.terrain[y * n + x] = Terrain.water; };
-  if (type === "coastal") {
-    // Two opposite sides, so that whichever corners the players get, each has a coast.
-    const alongX = w.rng.chance(0.5);
-    const a = coastline(w, n, 5, 10), b = coastline(w, n, 5, 10);
-    for (let i = 0; i < n; i++) for (let d = 0; d < n; d++) {
-      if (d < a[i]) alongX ? wet(d, i) : wet(i, d);
-      if (d < b[i]) alongX ? wet(n - 1 - d, i) : wet(i, n - 1 - d);
-    }
-  } else if (type === "continental") {
-    const sides = [coastline(w, n, 4, 8), coastline(w, n, 4, 8), coastline(w, n, 4, 8), coastline(w, n, 4, 8)];
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-      if (x < sides[0][y] || n - 1 - x < sides[1][y] || y < sides[2][x] || n - 1 - y < sides[3][x]) wet(x, y);
-    }
-  } else if (islands(type)) {
-    // All sea, then an island for every base, and on Small Islands a few more out in the water.
-    map.terrain.fill(Terrain.water);
-    const big = type === "large_islands";
-    const land = (t: Tile) => { map.terrain[map.index(t)] = Terrain.grass; };
-    // Each base's island is big enough for a town and a ring of woods around it (see islandWoods).
-    for (const s of w.startTiles) {
-      blob(w, s, n * (big ? 0.28 : 0.24), land);
-      for (let k = 0; k < 3; k++) blob(w, new Tile(s.x + w.rng.int(-6, 6), s.y + w.rng.int(-6, 6)), n * (big ? 0.16 : 0.13), land);
-    }
-    const scale = (n * n) / (72 * 72);
-    for (let k = 0; k < Math.round((big ? 1 : 4) * scale); k++) {
-      for (let tries = 0; tries < 30; tries++) {
-        const c = new Tile(w.rng.int(8, n - 9), w.rng.int(8, n - 9));
-        if (w.startTiles.every((s) => s.center.distance(c.center) > n * 0.35)) { blob(w, c, n * (big ? 0.07 : 0.085), land); break; }
-      }
-    }
-  } else if (type === "highland") {
-    // One side is sea; the rest is high ground (its hills come later).
-    const side = w.rng.int(0, 3), depth = coastline(w, n, 6, 12);
-    for (let i = 0; i < n; i++) for (let d = 0; d < depth[i]; d++) {
-      if (side === 0) wet(d, i); else if (side === 1) wet(n - 1 - d, i); else if (side === 2) wet(i, d); else wet(i, n - 1 - d);
-    }
-  } else if (type === "narrows") {
-    // A wavering sea across the middle between the first two bases, with two narrow land bridges over it.
-    const [a, b] = [w.startTiles[0], w.startTiles[1] ?? new Tile(n - 1 - w.startTiles[0].x, n - 1 - w.startTiles[0].y)];
-    // The band runs across the line between the two bases: along the other diagonal, or straight across.
-    const ux = b.x - a.x, uy = b.y - a.y, len = Math.hypot(ux, uy) || 1;
-    const half = Math.max(3, Math.round(n * 0.07));
-    const wobble = coastline(w, 2 * n, 0, 3);
-    const mid = new Vec2(n / 2, n / 2);
-    const across = (x: number, y: number) => ((x + 0.5 - mid.x) * ux + (y + 0.5 - mid.y) * uy) / len; // distance from the middle line
-    const along = (x: number, y: number) => ((x + 0.5 - mid.x) * -uy + (y + 0.5 - mid.y) * ux) / len;
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-      const k = Math.max(0, Math.min(2 * n - 1, Math.round(along(x, y) + n)));
-      if (Math.abs(across(x, y)) <= half + wobble[k]) wet(x, y);
-    }
-    // Two bridges, a third of the way in from either end of the band, three tiles wide.
-    const span = n * 0.25;
-    for (const at of [-span, span]) {
-      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-        if (Math.abs(along(x, y) - at) <= 1.5 && Math.abs(across(x, y)) <= half + 4) map.terrain[y * n + x] = Terrain.grass;
-      }
-    }
-  } else {
-    // A sea in the middle, made of a few overlapping rounds so its shore is not a circle.
-    const mid = Math.floor(n / 2), r = n * 0.24;
-    blob(w, new Tile(mid, mid), r, (t) => wet(t.x, t.y));
-    for (let k = 0; k < 5; k++) {
-      const c = new Tile(mid + w.rng.int(-Math.round(r * 0.6), Math.round(r * 0.6)), mid + w.rng.int(-Math.round(r * 0.6), Math.round(r * 0.6)));
-      blob(w, c, r * (0.45 + w.rng.int(0, 20) / 100), (t) => wet(t.x, t.y));
-    }
-  }
-}
-
-/** Fish out at sea for boats: a few within reach of every base's coast, and more across the water. */
-function deepFish(w: World, starts: Tile[]) {
-  const map = w.map, n = map.width;
-  const open: Tile[] = [];
-  for (let y = 2; y < n - 2; y++) for (let x = 2; x < n - 2; x++) {
-    const t = new Tile(x, y);
-    if (map.openWater(t, 1) && map.occupantAt(t) === 0) open.push(t);
-  }
-  if (!open.length) return;
-  for (const s of starts) {
-    const near = open.filter((t) => t.center.distance(s.center) < 22);
-    for (let k = 0; k < 4 && near.length; k++) w.addNode("deep_fish", near.splice(w.rng.int(0, near.length - 1), 1)[0]);
-  }
-  for (let k = 0; k < Math.round(open.length / 90); k++) w.addNode("deep_fish", open[w.rng.int(0, open.length - 1)]);
 }
 
 /** Where each player starts: the corners first, then the middle of each edge, up to eight. Who gets
@@ -756,18 +471,6 @@ function herd(w: World, kind: string, c: Tile, count: number) {
       break;
     }
   }
-}
-
-/** The nearest open land to a tile, within r, on land with room to roam; nearest first, ring by ring. */
-function openNear(w: World, t: Tile, r: number): Tile | null {
-  for (let d = 1; d <= r; d++) {
-    for (let dy = -d; dy <= d; dy++) for (let dx = -d; dx <= d; dx++) {
-      if (Math.max(Math.abs(dx), Math.abs(dy)) !== d) continue;
-      const c = new Tile(t.x + dx, t.y + dy);
-      if (w.map.inside(c) && w.map.passable(c) && roomy(w, c) && w.openLand(c)) return c;
-    }
-  }
-  return null;
 }
 
 /** Land enough for wild animals to live on: this many tiles joined by land at least. */
@@ -815,10 +518,6 @@ function blob(w: World, c: Tile, r: number, body: (t: Tile) => void) {
       if (t.center.distance(c.center) <= r * wobble) body(t);
     }
   }
-}
-
-function forest(w: World, c: Tile, r: number, density: number) {
-  blob(w, c, r, (t) => { if (w.rng.chance(density)) w.addNode("tree", t); });
 }
 
 function cluster(w: World, kind: string, c: Tile, count: number) {

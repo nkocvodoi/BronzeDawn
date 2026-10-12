@@ -627,9 +627,10 @@ export class AIController {
       this.placeNear(w, "house", home, 3, 12, villagers);
     }
 
-    // Drop sites next to the resources.
+    // Drop sites next to the resources. The original puts a player's berries 7 to 16 tiles out, counted on the
+    // longer axis: on a diagonal that is up to 23 tiles.
     if (this.count(bs, "granary") === 0 && villagers.length >= 4 && p.res.wood >= 120) {
-      const spot = w.nearestNode(Res.food, home, 14, null, "berry_bush")?.center ?? home;
+      const spot = w.nearestNode(Res.food, home, 24, null, "berry_bush")?.center ?? home;
       this.placeNear(w, "granary", spot, 2, 7, villagers, false);
     }
     if (this.count(bs, "storage_pit") === 0 && villagers.length >= 6 && p.res.wood >= 120) {
@@ -681,14 +682,13 @@ export class AIController {
     }
 
     // Farms when the berries and game near home are gone. One farmer each.
-    const foodNear = w.nearestNode(Res.food, home, 16) !== null || this.huntNear(w, home) !== null;
+    const foodNear = w.nearestNode(Res.food, home, 23) !== null || this.huntNear(w, home) !== null;
     const farms = bs.filter((b) => b.isFarm);
     const foodWorkers = Math.ceil(this.shares(p, this.reserve(w))[Res.food] * villagers.length);
     const wantFarms = Math.max(0, foodWorkers - (foodNear ? 5 : 0));
     const farmsBuilding = farms.filter((f) => !f.complete).length;
     if (farms.length < wantFarms && farmsBuilding < 2 && p.res.wood >= 75 && w.blockerBuilding("farm", this.player) === null) {
-      const granary = bs.find((b) => b.def.id === "granary" && b.complete)?.center ?? home;
-      this.placeNear(w, "farm", granary, 3, 10, villagers, false);
+      this.placeFarm(w, home, villagers);
     }
 
     if (this.acrossSea) this.settle(w, home, villagers);
@@ -744,9 +744,9 @@ export class AIController {
     if (r === Res.food) {
       const farm = w.freeFarm(this.player, home);
       if (farm) { w.gather(this.player, [u.id], farm.id); return true; }
-      const meat = w.nodes.find((n) => n.alive && n.decay > 0 && n.at.distance(home) < 16);
+      const meat = w.nodes.find((n) => n.alive && n.decay > 0 && n.at.distance(home) < 24);
       if (meat) { w.gather(this.player, [u.id], meat.id); return true; }
-      const berry = w.nearestNode(Res.food, home, 14, null, "berry_bush", null, this.player);
+      const berry = w.nearestNode(Res.food, home, 23, null, "berry_bush", null, this.player);
       if (berry) { w.gather(this.player, [u.id], berry.id); return true; }
       const game = this.huntNear(w, home);
       if (game) { w.attack(this.player, [u.id], game.id); return true; }
@@ -757,6 +757,15 @@ export class AIController {
     const n = minBy(w.nodes.filter((x) => x.alive && x.res === r && !x.def.boats_only && x.amount > 0 && x.center.distance(home) <= radius
       && w.mayTry(this.player, x) && (!this.acrossSea || this.byLand(w, home, x.center))), (x) => x.center.distance(home));
     if (n) { w.gather(this.player, [u.id], n.id); return true; }
+    // Nothing nearer to eat: a farm if the wood is there, else a herd further out. The original's maps keep
+    // the gazelles beyond the berries, a herd for each player 10 to 24 tiles out and more past 26; a hunter
+    // walking 30 tiles home with 10 food a trip brought in less than a farmer, so the herd comes after.
+    if (r === Res.food) {
+      if (this.farmFor(w, u, home)) return true;
+      const herd = minBy(w.units.filter((x) => x.alive && x.isAnimal && x.animal!.behavior === "flee" && x.pos.distance(home) < 32
+        && (!this.acrossSea || this.byLand(w, home, x.pos))), (x) => x.pos.distance(home));
+      if (herd) { w.attack(this.player, [u.id], herd.id); return true; }
+    }
     return false;
   }
 
@@ -875,20 +884,61 @@ export class AIController {
   private assignIdle(w: World, home: Vec2, villagers: Unit[]) {
     const idle = villagers.filter((u) => u.order.kind === "idle");
     if (!idle.length) return;
+    // With nothing left to eat, a villager carrying food home is not a food worker: counted as one, a dozen
+    // hunters back from the last herd made food look staffed, went to gold and stone by the gaps, and the
+    // town starved with a thousand gold in the bank.
+    const fed = this.foodLeft(w, home);
     const working = [0, 0, 0, 0];
     for (const u of villagers) {
+      if (u.order.kind === "return" && u.lastGather === Res.food && !fed) continue;
       if ((u.order.kind === "gather" || u.order.kind === "return") && u.lastGather !== null) working[u.lastGather]++;
       if (u.order.kind === "attack") working[Res.food]++; // hunting
     }
     const want = this.shares(w.players[this.player], this.reserve(w));
     const total = villagers.length;
+    let foodOut = false;
     for (const u of idle) {
       const order = [...RES_ALL].sort((a, b) => (want[b] * total - working[b]) - (want[a] * total - working[a]));
+      // Food wanted and none to send it to: a farm of its own when the wood is there, else wood for farms.
+      if (!fed && order[0] === Res.food) {
+        order.splice(order.indexOf(Res.wood), 1);
+        order.splice(1, 0, Res.wood);
+      }
       for (const r of order) {
-        if (want[r] === 0) continue;
+        if (want[r] === 0 || (r === Res.food && foodOut)) continue;
         if (this.sendTo(w, u, r, home)) { working[r]++; break; }
+        if (r === Res.food) {
+          if (this.farmFor(w, u, home)) { working[r]++; break; }
+          foodOut = true;
+        }
       }
     }
+  }
+
+  /** Whether a food worker would find anything near: a free farm, meat, berries or game (not a far herd). */
+  private foodLeft(w: World, home: Vec2): boolean {
+    if (w.freeFarm(this.player, home)) return true;
+    if (w.nodes.some((n) => n.alive && n.decay > 0 && n.at.distance(home) < 24)) return true;
+    if (this.huntNear(w, home)) return true;
+    return w.nodes.some((x) => x.alive && x.res === Res.food && !x.def.boats_only && x.amount > 0 && x.center.distance(home) <= 30
+      && w.mayTry(this.player, x) && (!this.acrossSea || this.byLand(w, home, x.center)));
+  }
+
+  /** Puts an idle villager to building a farm by the granary, if the wood is there; false if not. */
+  private farmFor(w: World, u: Unit, home: Vec2): boolean {
+    const p = w.players[this.player];
+    if (p.res.wood - this.reserve(w).wood < w.buildingCost(this.player, "farm").wood) return false;
+    this.placeFarm(w, home, [u]);
+    return u.order.kind === "build";
+  }
+
+  /** A farm by the granary, or by the Town Center when the granary has no room: on the original's maps the
+   *  berries, and so the granary, can sit on the map's edge, and with no farm going up there 15 farmers
+   *  shared 3 farms over 1,800 unspent wood. */
+  private placeFarm(w: World, home: Vec2, villagers: Unit[]) {
+    const granary = w.buildingsOf(this.player).find((b) => b.def.id === "granary" && b.complete)?.center;
+    const near = granary && this.findSpot(w, "farm", granary, 3, 10, false) ? granary : home;
+    this.placeNear(w, "farm", near, 3, 10, villagers, false);
   }
 
   // ---- research
@@ -1125,7 +1175,9 @@ export class AIController {
     // Across the sea, the wood held back (for a transport, or a Storage Pit on another island once home's
     // trees run low) is not spent on buildings either: spent on farms and houses, it left villagers over
     // there with nowhere to take their wood and no transport to fetch them.
-    if (this.acrossSea && !this.affordable(w, w.buildingCost(this.player, type))) return;
+    // Only the wood held back counts here: food saved for the next age once kept a house from going up at
+    // the population cap, and with it every villager after.
+    if (this.acrossSea && w.players[this.player].res.wood - this.reserve(w).wood < w.buildingCost(this.player, type).wood) return;
     const builder = this.pickBuilder(villagers, near);
     if (!builder) return;
     const spot = this.findSpot(w, type, near, minR, maxR, margin);

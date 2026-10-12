@@ -70,6 +70,8 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 ### Giai đoạn 4: bản đồ và luật còn lại (xong)
 - [x] Đồi (cao 0 đến 3), vách đá, độ cao (đánh từ trên cao xuống có 25% cơ hội gây gấp 3 sát thương, như bản gốc), vùng nước nông lội qua được ở chỗ đường nối các căn cứ băng qua nước
 - [x] Các kiểu bản đồ: highland, hill country, narrows (cùng inland, continental đã có); cỡ Gigantic 200 x 200
+- [x] Bộ sinh bản đồ làm lại theo đúng Empiresx.exe (`web/src/core/aoemap.ts`, mô tả ở `replica/game/aoe1-mapgen.md`): đủ 9 kiểu bản đồ của Rise of Rome với số liệu lấy từ `empires.dat` (`data/aoe-maps.json`); đủ các bước lands, shallows, đồi (cố định trong exe), vách đá, mảng địa hình, bãi biển, objects; khoảng cách tính theo Chebyshev như bản gốc; cỡ bản đồ đúng bản gốc (Tiny 72, Small 96, Medium 120, Large 144, Huge 200, Gigantic 250). Cùng thuật toán và cùng số liệu, nhưng cùng một seed chưa ra đúng bản đồ của game gốc (xem §8 của tài liệu)
+- [ ] Bản đồ giống từng ô với game gốc theo seed: còn thiếu hình các đoạn vách đá, các lần gọi rand khi đặt ô có unit tự sinh, và rand hướng quay của object
 - [x] Ruins và artifact (5 mỗi loại), chiếm bằng cách đến gần; artifact mang đi được, kể cả trên thuyền; giữ hết một loại 15 phút là thắng; 10 điểm mỗi cái và 50 khi giữ hết; AI biết đi chiếm và giành lại
 - [x] Mỗi dân tộc thiếu đúng các unit và công nghệ như bản gốc (theo cây công nghệ bản DE, cả 17 dân tộc)
 - [x] Martyrdom (nút Sacrifice, phím Q)

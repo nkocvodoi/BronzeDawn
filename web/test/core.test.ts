@@ -652,28 +652,33 @@ describe("the original's rules", () => {
     expect(new Set(eight).size).toBe(8);
   });
 
-  it("map types: every one but the land maps has a sea, deep fish for boats, and every base on land", () => {
-    for (const mapType of ["coastal", "continental", "mediterranean", "highland", "narrows"] as const) {
+  it("map types: the sea maps have a sea and fish for boats, Inland is all land, every base has its Town Center", () => {
+    for (const mapType of ["coastal", "continental", "mediterranean", "narrows", "small_islands", "large_islands"] as const) {
       for (const seed of [1, 2]) {
-        const w = new World(RULES, seed, ["A", "B"], 72, true, { mapType });
+        const w = new World(RULES, seed, ["A", "B"], 96, true, { mapType });
         const water = w.map.terrain.filter((t) => t === Terrain.water).length;
-        expect(water, mapType).toBeGreaterThan(72 * 72 * 0.08);
-        expect(w.nodes.filter((n) => n.def.id === "deep_fish").length, mapType).toBeGreaterThan(4);
+        expect(water, mapType).toBeGreaterThan(96 * 96 * 0.08);
+        expect(w.nodes.filter((n) => n.def.on_water).length, mapType).toBeGreaterThan(4);
         for (const p of w.players) expect(w.buildingsOf(p.id).some((b) => b.def.id === "town_center"), mapType).toBe(true);
       }
     }
+    // The original's Inland: land everywhere, no lakes (its fish have no water to go in).
     const inland = new World(RULES, 1, ["A", "B"], 72, true);
-    expect(inland.nodes.some((n) => n.def.id === "deep_fish")).toBe(false);
+    expect(inland.map.terrain.some((t) => t === Terrain.water)).toBe(false);
+    for (const p of inland.players) expect(inland.buildingsOf(p.id).some((b) => b.def.id === "town_center")).toBe(true);
   });
 
-  it("Highland and Hill Country are hillier than Inland, Hill Country has the most cliffs, and every map links its bases by land", () => {
+  it("Hill Country is far hillier than Inland and has the most cliffs; the land maps link their bases by land", () => {
     const share = (mapType: MapType, f: (w: World) => number) => [1, 2, 3].reduce((a, seed) => a + f(new World(RULES, seed, ["A", "B", "C", "D"], 96, true, { mapType })), 0);
     const high = (w: World) => w.map.elevation.filter((e) => e >= 2).length;
     const cliffs = (w: World) => w.map.terrain.filter((t) => t === Terrain.cliff).length;
-    expect(share("highland", high)).toBeGreaterThan(share("inland", high) * 1.5);
-    expect(share("hill_country", high)).toBeGreaterThan(share("inland", high) * 1.5);
+    // The original makes Hill Country's hills five times the others'.
+    expect(share("hill_country", high)).toBeGreaterThan(share("inland", high) * 2);
     expect(share("hill_country", cliffs)).toBeGreaterThan(share("inland", cliffs));
-    for (const mapType of ["highland", "hill_country", "narrows"] as const) {
+    expect(share("small_islands", cliffs)).toBe(0); // no cliffs on Small Islands
+    // Inland is grass under the lands, so they always meet. (Hill Country is water under them: each player's land
+    // keeps its 3 tiles from the others', and a channel of water runs between, as in the original.)
+    for (const mapType of ["inland"] as const) {
       for (const seed of [1, 2, 3]) {
         const w = new World(RULES, seed, ["A", "B", "C", "D"], 96, true, { mapType });
         const s0 = w.startTiles[0];
@@ -683,7 +688,7 @@ describe("the original's rules", () => {
     }
   });
 
-  it("a Gigantic map holds eight players", () => {
+  it("a Huge map holds eight players", () => {
     const w = new World(RULES, 5, ["A", "B", "C", "D", "E", "F", "G", "H"], 200, true);
     expect(w.buildings.filter((b) => b.def.id === "town_center").length).toBe(8);
     expect(w.nodes.length).toBeGreaterThan(3000);
@@ -824,12 +829,14 @@ describe("the original's rules", () => {
   });
 
   it("no wild animal, mine or berry bush is put on a sandbank out at sea", () => {
+    // The original's island maps have small islands of their own with a mine on each: a few dozen tiles of land,
+    // not a sandbank.
     const land = (w: World, t: Tile) => { let n = 0; for (const v of w.map.reachable(t, () => true)) n += v; return n; };
     for (const mapType of ["small_islands", "large_islands", "mediterranean", "coastal"] as const) {
       for (const seed of [1, 2, 3, 4]) {
         const w = new World(RULES, seed, ["A", "B"], 96, true, { mapType });
-        for (const u of w.units) if (u.isAnimal && u.def.id !== "alligator") expect(land(w, u.pos.tile), `${mapType} ${seed} ${u.def.id}`).toBeGreaterThanOrEqual(80);
-        for (const n of w.nodes) if (["gold_mine", "stone_mine", "berry_bush"].includes(n.def.id)) expect(land(w, n.tile), `${mapType} ${seed} ${n.def.id}`).toBeGreaterThanOrEqual(80);
+        for (const u of w.units) if (u.isAnimal && u.def.id !== "alligator") expect(land(w, u.pos.tile), `${mapType} ${seed} ${u.def.id}`).toBeGreaterThanOrEqual(25);
+        for (const n of w.nodes) if (["gold_mine", "stone_mine", "berry_bush"].includes(n.def.id)) expect(land(w, n.tile), `${mapType} ${seed} ${n.def.id}`).toBeGreaterThanOrEqual(25);
       }
     }
   });
@@ -840,13 +847,14 @@ describe("the original's rules", () => {
     for (const mapType of ["small_islands", "large_islands", "mediterranean", "coastal"] as const) {
       for (const seed of [1, 2, 3]) {
         const w = new World(RULES, seed, ["A", "B"], 96, true, { mapType });
-        for (const u of w.units) if (u.isAnimal && u.def.id !== "alligator") expect(open(w, u.pos.tile), `${mapType} ${seed} ${u.def.id} at ${u.pos.tile.x},${u.pos.tile.y}`).toBeGreaterThanOrEqual(13);
+        // The original sets a herd down near the shore as readily as inland: not out on a one-tile spit.
+        for (const u of w.units) if (u.isAnimal && u.def.id !== "alligator") expect(open(w, u.pos.tile), `${mapType} ${seed} ${u.def.id} at ${u.pos.tile.x},${u.pos.tile.y}`).toBeGreaterThanOrEqual(6);
       }
     }
     // Left alone for five minutes, the herds of an island map stay on open land.
     const w = new World(RULES, 1, ["A", "B"], 96, true, { mapType: "small_islands" });
     const gazelles = w.units.filter((u) => u.animal?.id === "gazelle");
-    expect(gazelles.length).toBeGreaterThan(20);
+    expect(gazelles.length).toBeGreaterThan(8); // one herd of 6, give or take 2, for each player
     run(w, 300);
     expect(gazelles.filter((g) => g.alive && open(w, g.pos.tile) < 10).length).toBeLessThanOrEqual(1);
   });
@@ -935,9 +943,10 @@ describe("the original's rules", () => {
   });
 
   it("on an island map the AI builds a Dock on its own shore and a transport within fifteen minutes", () => {
+    // From the Small size: on a Tiny map the original's island lands start too close to stay apart.
     for (const mapType of ["small_islands", "large_islands"] as const) {
       for (const seed of [1, 2]) {
-        const w = new World(RULES, seed, ["A", "B"], 72, true, { mapType });
+        const w = new World(RULES, seed, ["A", "B"], 96, true, { mapType });
         w.ais = [new AIController(0, "hard"), new AIController(1, "normal")];
         for (const ai of w.ais) ai.attach(w);
         // A transport may well be sunk by then: what counts is that each built one.
@@ -972,8 +981,10 @@ describe("the original's rules", () => {
   });
 
   it("island maps: every base on its own island, no way across but by sea", () => {
+    // From the Small size up: on a Tiny map the original's 30-tile margin leaves the lands' origins so close that
+    // their first squares overlap.
     for (const mapType of ["large_islands", "small_islands"] as const) {
-      const w = new World(RULES, 3, ["A", "B"], 72, true, { mapType });
+      const w = new World(RULES, 3, ["A", "B"], 96, true, { mapType });
       const [a, b] = w.players.map((p) => w.buildingsOf(p.id).find((x) => x.def.id === "town_center")!);
       const seen = w.map.reachable(new Tile(a.footprint.origin.x - 1, a.footprint.origin.y - 1), () => true);
       const to = new Tile(b.footprint.origin.x - 1, b.footprint.origin.y - 1);
@@ -982,18 +993,19 @@ describe("the original's rules", () => {
     }
   });
 
-  it("Small Islands: the islands nobody starts on have woods to settle", () => {
+  it("island maps: the islands nobody starts on carry a mine, gold or stone, as in the original", () => {
+    let mines = 0;
     for (const seed of [1, 2, 3]) {
-      const w = new World(RULES, seed, ["A", "B"], 72, true, { mapType: "small_islands" });
+      const w = new World(RULES, seed, ["A", "B"], 96, true, { mapType: "small_islands" });
       const home = new Uint8Array(w.map.width * w.map.height);
       for (const s of w.startTiles) { const r = w.map.reachable(s, () => true); for (let i = 0; i < r.length; i++) if (r[i]) home[i] = 1; }
-      const spare = w.nodes.filter((n) => n.alive && n.def.resource === "wood" && !n.def.on_water && !home[w.map.index(n.tile)]);
-      expect(spare.reduce((a, n) => a + n.amount, 0), `seed ${seed}`).toBeGreaterThan(3000);
+      mines += w.nodes.filter((n) => n.alive && (n.def.id === "gold_mine" || n.def.id === "stone_mine") && !home[w.map.index(n.tile)]).length;
     }
+    expect(mines).toBeGreaterThan(0);
   });
 
   it("on an island map the AI takes villagers to woods on another island when home's run low", () => {
-    const w = new World(RULES, 1, ["A", "B"], 72, true, { mapType: "small_islands" });
+    const w = new World(RULES, 1, ["A", "B"], 96, true, { mapType: "small_islands" });
     const tc = w.buildingsOf(0).find((b) => b.def.id === "town_center")!;
     const island = w.map.reachable(w.startTiles[0], () => true);
     // Home's woods cut down to the nearest thousand or so: the island is nearly spent.
@@ -1730,7 +1742,8 @@ describe("maps and matches", () => {
     for (const p of w.players) {
       expect(w.unitsOf(p.id).length).toBe(RULES.economy.start_villagers);
       for (const r of [Res.food, Res.wood, Res.gold, Res.stone]) {
-        expect(w.nearestNode(r, w.startTiles[p.id].center, 16)).not.toBeNull();
+        // The original puts the near gold and stone 10 to 18 tiles out on each axis: up to 26 tiles away.
+        expect(w.nearestNode(r, w.startTiles[p.id].center, 26)).not.toBeNull();
       }
     }
     const s0 = w.startTiles[0], s1 = w.startTiles[1];
