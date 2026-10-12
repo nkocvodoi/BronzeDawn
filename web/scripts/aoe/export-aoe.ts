@@ -205,7 +205,8 @@ function art(where: ReturnType<typeof locate>, dat: DatFile, out: string): Recor
         if (!pic) return;
         const file = `aoe/buildings/${id}/${arch}-${age}.png`;
         write(file, pic.png);
-        byAge[age] = { file, anchor: pic.anchor };
+        // The original's hotspot is the middle of the building's tiles, not the bottom corner Bronze Dawn places it by.
+        byAge[age] = { file, anchor: pic.anchor, anchorAt: "center" };
       });
       if (Object.keys(byAge).length) (buildings[id] ??= {})[arch] = byAge;
     }

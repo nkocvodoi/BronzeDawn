@@ -47,7 +47,9 @@ luyện voi chiến ở Stable: ra khủng long.
 - **Hoạt ảnh:** `row` là hàng của hướng S; các hướng sau nằm ở các hàng ngay dưới. Có `idle`, `walk`,
   `work` (người dân làm việc), `attack`. Thiếu hoạt ảnh nào thì game dùng hoạt ảnh gần nhất (thiếu `walk`
   thì dùng `idle`).
-- **Điểm neo:** `anchor: [x, y]` là chân của đơn vị trong một khung, tính theo điểm ảnh.
+- **Điểm neo:** `anchor: [x, y]` là chân của đơn vị trong một khung, tính theo điểm ảnh. Với công trình,
+  mặc định là **đỉnh dưới** của hình thoi các ô nó chiếm. Nếu hình của bạn neo ở **tâm** hình thoi (như hình
+  trích từ game gốc), thêm `"anchorAt": "center"` vào cạnh `anchor`, nếu không công trình sẽ lệch xuống nửa ô.
 - **Màu người chơi:** vùng nào cần đổi màu theo phe (áo, yên, cờ) thì tô bằng các sắc độ của **#FF00FF**.
   Game thay bằng màu của từng người chơi, giữ nguyên sáng tối.
 - **Tỉ lệ:** ô đất là hình thoi 64 × 32. Muốn vẽ to rồi thu nhỏ thì thêm `"scale": 0.5`.
