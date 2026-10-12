@@ -42,6 +42,22 @@ npm run build && npm run smoke:host-leaves  # ba trình duyệt: host rời, ng�
 Mỗi lần push lên `main`, workflow `.github/workflows/web.yml` chạy unit test, 12 trận AI và các bài test trên Chrome (một người chơi và so hình là bắt buộc trước khi đăng; hai bài online chạy riêng vì dùng máy chủ PeerJS công cộng), rồi đăng lên GitHub Pages.
 Chủ repo cần bật một lần: **Settings → Pages → Source: GitHub Actions**. Thêm `?seed=42` vào URL để chơi lại đúng một bản đồ.
 
+### Chơi bằng hình, tiếng và số liệu của bản AoE bạn sở hữu
+
+Nếu máy có cài Age of Empires (1997) hoặc Rise of Rome, lệnh dưới đây đọc `empires.dat`, các file `.drs` và `language.dll` rồi ghi
+vào `web/assets-local/`. Thư mục này bị gitignore và chỉ dev server đọc. Kết quả gồm: `rules.json` với số liệu gốc (dev server
+dùng thay `data/rules.json`), sprite sheet, công trình theo kiến trúc và thời đại, âm thanh, cùng bảng số liệu đầy đủ trong
+`assets-local/aoe-data/`.
+
+```bash
+npm run import-aoe -- --aoe "C:/Games/AOE/Empires.exe"   # hoặc thư mục game
+npm run dev
+```
+
+Máy không cài được game (ví dụ máy Mac) chỉ cần chép nguyên thư mục `web/assets-local/` từ máy đã chạy lệnh trên, rồi chạy
+`npm run dev`. Không được commit hay đăng thư mục đó lên chỗ công khai. Chi tiết về định dạng file, cơ chế và AI của game gốc
+nằm trong [replica/game/aoe1-engine-spec.md](replica/game/aoe1-engine-spec.md).
+
 ## Cách chơi
 
 Bạn bắt đầu với 1 Town Center và 3 dân làng (villager). Nhiệm vụ: thu thập

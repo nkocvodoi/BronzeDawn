@@ -66,6 +66,8 @@ export interface AnimalDef {
 export interface EconomyDef {
   carry: number;
   gather_rates: Record<string, number>;
+  /** Food rates by kind of work ("forage", "hunt", "farm", "fish"), over `gather_rates.food`. */
+  gather_kind_rates?: Partial<Record<"farm" | "hunt" | "forage" | "fish", number>>;
   start: Record<string, number>;
   /** Other starting stockpiles, by the start screen's name for them. "low" is `start`. */
   start_levels?: Record<string, Record<string, number>>;
@@ -224,5 +226,8 @@ export class Rules {
   ageIndex(id: string) { return Math.max(0, this.ages.findIndex((a) => a.id === id)); }
   unitCost(id: string) { return ResBag.of(this.units.get(id)?.cost); }
   buildingCost(id: string) { return ResBag.of(this.buildings.get(id)?.cost); }
-  gatherRate(r: Res) { return this.economy.gather_rates[RES_KEY[r]] ?? 0.4; }
+  gatherRate(r: Res, kind?: string) {
+    const byKind = kind ? this.economy.gather_kind_rates?.[kind as "farm"] : undefined;
+    return byKind ?? this.economy.gather_rates[RES_KEY[r]] ?? 0.4;
+  }
 }

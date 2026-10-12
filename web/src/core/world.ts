@@ -1742,7 +1742,7 @@ export class World {
       this.face(u, src.center);
       u.busy = true;
       // Boats gather at their own pace; villagers at the node's or the resource's.
-      const base = u.def.gather_rate ?? (src instanceof ResourceNode ? src.def.rate ?? this.rules.gatherRate(res) : this.rules.gatherRate(res));
+      const base = u.def.gather_rate ?? (src instanceof ResourceNode ? src.def.rate ?? this.rules.gatherRate(res, kind ?? undefined) : this.rules.gatherRate(res, kind ?? undefined));
       const rate = base * mods.gather(res, kind) * this.players[u.owner].gatherBonus * (this.rules.economy.gather_speed ?? 1);
       const yieldK = mods.yieldOf(res);
       if (src instanceof ResourceNode) {
