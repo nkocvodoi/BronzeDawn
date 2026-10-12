@@ -158,7 +158,9 @@ export class Assets {
     const g = c.getContext("2d")!;
     g.drawImage(img, 0, 0);
     if (owner !== null && color) recolor(c, color);
-    const out = { texture: Texture.from(c), canvas: c };
+    const texture = Texture.from(c);
+    texture.source.scaleMode = "nearest"; // sprites are pixel art: keep their pixels sharp when zoomed
+    const out = { texture, canvas: c };
     this.frames.set(key, out);
     return out;
   }

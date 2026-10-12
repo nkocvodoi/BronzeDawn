@@ -12,15 +12,19 @@ import numpy as np
 from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
-# Pictures are rendered at twice the game's size and drawn at scale 0.5, for sharp sprites on a
-# high-density screen.
+# Scenes are rendered at twice the game's size, then brought down to the game's own size as pixel art
+# (see pixel_art), drawn at scale 1 with sharp pixels, as the sprites of the old games were.
 RES = 2
-SCALE = 1 / RES
+DOWN = 2
+SCALE = DOWN / RES  # one picture pixel to one game unit
 # Pixels per unit across the screen: a tile's diagonal (sqrt 2 units) is 64 px at scale 1.
 PPU = 64 * RES / math.sqrt(2)
 ELEVATION = math.radians(30)
 
 TEAM = (1.0, 0.0, 1.0)
+# A hard sun and a dim sky: strong light and shade, as pre-rendered sprites had.
+SUN = 5.2
+SKY = 0.3
 
 
 def reset():
@@ -63,14 +67,14 @@ def world():
     w.use_nodes = True
     bg = w.node_tree.nodes["Background"]
     bg.inputs["Color"].default_value = (0.62, 0.70, 0.85, 1)
-    bg.inputs["Strength"].default_value = 0.55
+    bg.inputs["Strength"].default_value = SKY
     bpy.context.scene.world = w
 
 
 def sun():
     # Light from the upper left of the screen and a little behind, as in the old pre-rendered games.
     d = bpy.data.lights.new("sun", "SUN")
-    d.energy = 3.6
+    d.energy = SUN
     d.angle = math.radians(6)
     d.color = (1.0, 0.95, 0.86)
     o = bpy.data.objects.new("sun", d)
@@ -186,7 +190,7 @@ def mask_mode(on):
     if g:
         g.hide_render = on
     s = bpy.context.scene
-    s.world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.0 if on else 0.55
+    s.world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.0 if on else SKY
     s.cycles.samples = 4 if on else 24
     s.cycles.use_denoising = not on
 
@@ -212,7 +216,7 @@ def frame(tmp):
     mask_mode(True)
     m = render_rgba(os.path.join(tmp, "mask.png"))[:, :, 0]
     mask_mode(False)
-    return teamify(clean_shadow(rgba), m)
+    return pixel_art(clean_shadow(rgba), m)
 
 
 def clean_shadow(rgba, floor=0.13):
@@ -376,3 +380,45 @@ def check_edges(arr, what):
     if cut:
         print(f"WARNING {what}: cut off at the {', '.join(cut)}")
     return not cut
+
+
+# ---- pixel art: the look of a sprite from the late 90s
+
+LEVELS = 20        # steps per colour channel
+SATURATE = 1.18
+OUTLINE = 0.55     # how dark the outermost pixels of the model are made
+
+
+def down(a, k):
+    h, w = a.shape[0] // k * k, a.shape[1] // k * k
+    a = a[:h, :w]
+    return a.reshape(h // k, k, w // k, k, *a.shape[2:]).mean(axis=(1, 3))
+
+
+def pixel_art(rgba, mask):
+    """The render brought down to the game's size with hard edges, a dark rim, fewer colours and a
+    shadow of one flat tone; the player's colour areas in shades of magenta."""
+    # Averaged with the alpha, so edges do not pick up the black of the empty background.
+    pre = rgba.copy()
+    pre[:, :, :3] *= pre[:, :, 3:4]
+    small = down(pre, DOWN)
+    m = down(mask, DOWN)
+    a = small[:, :, 3]
+    rgb = small[:, :, :3] / np.maximum(a, 1e-6)[:, :, None]
+    dark = rgb.max(axis=2) < 0.07
+    model = (a >= 0.5) & ~dark
+    shadow = ~model & (a >= 0.22)
+    # More colour and fewer steps of it.
+    grey = rgb.mean(axis=2, keepdims=True)
+    rgb = np.clip(grey + (rgb - grey) * SATURATE, 0, 1)
+    rgb = np.round(rgb * (LEVELS - 1)) / (LEVELS - 1)
+    out = np.zeros((*a.shape, 4), dtype=np.float32)
+    out[:, :, :3] = np.where(model[:, :, None], rgb, 0)
+    out[:, :, 3] = np.where(model, 1.0, np.where(shadow, 0.5, 0.0))
+    # A dark rim: model pixels next to anything that is not the model.
+    edge = np.zeros_like(model)
+    pad = np.pad(model, 1, constant_values=False)
+    for dy, dx in ((0, 1), (2, 1), (1, 0), (1, 2)):
+        edge |= model & ~pad[dy:dy + model.shape[0], dx:dx + model.shape[1]]
+    out[:, :, :3] = np.where(edge[:, :, None], out[:, :, :3] * OUTLINE, out[:, :, :3])
+    return teamify(out, np.where(model, m, 0))
