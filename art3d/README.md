@@ -26,9 +26,13 @@ dời tâm (`center`) trong code.
 | File | Nội dung |
 | --- | --- |
 | `lib.py` | Cảnh, camera isometric 2:1, nắng, vật liệu, render và đóng sheet |
-| `villager.py` | Người dân: khung xương bằng empty; dụng cụ (rìu, cuốc, búa, giỏ quả, dao); các động tác đứng, đi, chặt cây, đào mỏ, đóng búa, hái quả, ngồi xẻ thịt |
+| `villager.py` | Người dân: khung xương bằng empty; dụng cụ (rìu, cuốc, búa, giỏ quả, dao, cuốc ruộng, giáo, cần câu); các động tác đứng, đi, chặt cây, đào mỏ, đóng búa, hái quả, ngồi xẻ thịt, cày ruộng, phóng giáo, đứng câu cá (giỏ cá đặt bên cạnh, dây câu và phao, giật cần khi cá cắn) |
 | `animals.py` | Thú: linh dương (gặm cỏ, chạy) và xác của nó |
-| `models.py` | Công trình (Town Center, nhà Thời đồ đá), cây, bụi quả, mỏ vàng, mỏ đá, vách đá |
+| `models.py` | Cây, bụi quả, mỏ vàng, mỏ đá, vách đá |
+| `buildings.py` | Mọi công trình theo từng thời đại (Tool, Bronze, Iron) |
+| `stoneage.py` | Công trình Thời đồ đá: chòi tròn và nhà dài vách đất trên móng đá, mái rơm nhiều lớp có dây buộc, sân đất và đồ vật quanh nhà (củi, chum, giỏ, giá phơi da, hàng rào, cột cờ) |
+| `soldiers.py`, `machines.py` | Lính bộ, cung thủ, thầy tu, quân cưỡi; máy công thành và tàu |
+| `terrain.py` | Ô đất: cỏ, đất, cát, nước |
 | `build.py` | Danh sách cái cần render, kích thước khung, điểm neo, ghi manifest |
 
 ## Quy ước

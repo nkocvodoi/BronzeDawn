@@ -3,6 +3,8 @@
 
 import math
 
+import mathutils
+
 import lib
 
 R = math.radians
@@ -13,6 +15,8 @@ CLOTH = (0.80, 0.70, 0.50)     # undyed linen, for the parts that are not the pl
 BELT = (0.30, 0.18, 0.08)
 WOOD = (0.45, 0.28, 0.12)
 IRON = (0.55, 0.55, 0.58)
+ROD = 0.95                     # a fishing rod's length
+CARRIES = ("basket", "butcher", "rod")  # the tools that go with a basket on the left arm
 
 
 class Rig:
@@ -53,6 +57,39 @@ class Rig:
         self.tool = tool
         wood, iron = lib.mat("wood", WOOD, 0.7), lib.mat("iron", IRON, 0.35, 0.8)
         hx, hz = -0.112, 0.36  # the right fist
+        if tool == "hoe":
+            g = lib.empty("grip", (hx, 0, hz), self.handR)
+            lib.cyl("haft", 0.013, 0.34, (hx, -0.12, hz), wood, g, rot=(R(90), 0, 0))
+            lib.box("hoeblade", (0.07, 0.015, 0.06), (hx, -0.28, hz - 0.03), iron, g, bevel=0.005)
+            g.rotation_euler = (R(80), 0, 0)
+            self.grip = g
+        if tool == "spear":
+            g = lib.empty("grip", (hx, 0, hz), self.handR)
+            lib.cyl("shaft", 0.011, 0.62, (hx, -0.12, hz), wood, g, rot=(R(90), 0, 0))
+            lib.cyl("point", 0.02, 0.07, (hx, -0.46, hz), lib.mat("flint", (0.35, 0.33, 0.36), 0.4), g, rot=(R(90), 0, 0), r2=0.002, verts=4)
+            g.rotation_euler = (R(-80), 0, 0)
+            self.grip = g
+        if tool == "rod":
+            # A long cane rod in the right fist, the line from its tip to a float on the water in front.
+            g = lib.empty("grip", (hx, 0, hz), self.handR)
+            cane = lib.mat("cane", (0.74, 0.62, 0.36), 0.7, grain=0.3, grain_size=0.01)
+            lib.cyl("rod", 0.014, ROD, (hx, -ROD / 2 + 0.08, hz), cane, g, rot=(R(90), 0, 0), r2=0.005, verts=8)
+            lib.cyl("rodgrip", 0.018, 0.1, (hx, 0.0, hz), lib.mat("cord", (0.40, 0.26, 0.12), 0.9), g, rot=(R(90), 0, 0), verts=8)
+            self.tip = lib.empty("tip", (hx, -ROD + 0.08, hz), g)
+            g.rotation_euler = (R(-25), 0, 0)
+            self.grip = g
+            self.float = lib.empty("float", (hx, -0.95, 0.01), self.root)
+            lib.ball("floatred", 0.022, (hx, -0.95, 0.03), lib.mat("floatred", (0.85, 0.16, 0.10), 0.5, grain=0), self.float, scale=(1, 1, 1.3), sub=1)
+            lib.ball("floatwhite", 0.018, (hx, -0.95, 0.06), lib.mat("floatwhite", (0.92, 0.90, 0.84), 0.5, grain=0), self.float, sub=1)
+            # The line: a thin thread stretched from the tip to the float at each pose (`string_line`).
+            self.line = lib.cyl("line", 0.005, 1.0, (0, 0, 0), lib.mat("line", (0.88, 0.86, 0.78), 0.6, grain=0), verts=4, smooth_it=False)
+            # On the bank beside the angler: a creel with the catch in it.
+            gb = lib.empty("creel", (0.22, -0.12, 0), self.root)
+            wicker = lib.mat("wicker", (0.78, 0.60, 0.32), 0.9, grain=0.45, grain_size=0.006)
+            lib.cyl("gcreel", 0.08, 0.11, (0.22, -0.12, 0.055), wicker, gb, r2=0.1, verts=16)
+            lib.cyl("gcrim", 0.105, 0.018, (0.22, -0.12, 0.11), lib.mat("wickerd", (0.55, 0.38, 0.18), 0.9), gb, verts=16)
+            self.fish_in(gb, (0.22, -0.12, 0.12), "g")
+            self.ground_basket = gb
         if tool in ("axe", "pick", "hammer"):
             # Held in the right fist, the handle running forward from it.
             g = lib.empty("grip", (hx, 0, hz), self.handR)
@@ -84,14 +121,17 @@ class Rig:
             for i, (bx, by) in enumerate(((0, 0), (0.035, 0.02), (-0.03, 0.02), (0.01, -0.035))):
                 lib.ball(f"gmeat{i}", 0.032, (0.2 + bx, -0.16 + by, 0.11), meat, gb, scale=(1.3, 1, 0.7), sub=1)
             self.ground_basket = gb
-        if tool in ("basket", "butcher"):
-            # A wicker basket on the left arm: of berries, or of meat.
+        if tool in CARRIES:
+            # A wicker basket on the left arm: of berries, of meat, or of fish.
             g = lib.empty("basketgrip", (0.112, 0, hz), self.handL)
             self.basket = g
             wicker = lib.mat("wicker", (0.78, 0.60, 0.32), 0.9, grain=0.45, grain_size=0.006)
             lib.cyl("basket", 0.085, 0.10, (0.13, -0.05, hz - 0.03), wicker, g, r2=0.105, verts=16)
             lib.cyl("rim", 0.11, 0.018, (0.13, -0.05, hz + 0.02), lib.mat("wickerd", (0.55, 0.38, 0.18), 0.9), g, verts=16)
-            berry = lib.mat("berry", (0.85, 0.10, 0.12), 0.35, grain=0) if tool == "basket" else lib.mat("meat", (0.72, 0.22, 0.20), 0.5, grain=0.3, grain_size=0.01)
+            if tool == "rod":
+                self.fish_in(g, (0.13, -0.05, hz + 0.03), "c")
+                return
+            berry =lib.mat("berry", (0.85, 0.10, 0.12), 0.35, grain=0) if tool == "basket" else lib.mat("meat", (0.72, 0.22, 0.20), 0.5, grain=0.3, grain_size=0.01)
             for i, (bx, by, bz) in enumerate(((0, 0, 0.05), (0.04, 0.02, 0.035), (-0.04, 0.015, 0.035), (0.015, -0.045, 0.035),
                                               (-0.03, -0.035, 0.03), (0.02, 0.045, 0.03), (-0.01, 0.0, 0.075))):
                 lib.ball(f"berry{i}", 0.03, (0.13 + bx, -0.05 + by, hz + bz), berry, g, sub=1)
@@ -109,11 +149,40 @@ class Rig:
             self.elbows[side].rotation_euler = (R(-12), 0, 0)
             self.legs[side].rotation_euler = (0, 0, 0)
             self.knees[side].rotation_euler = (0, 0, 0)
-        if self.tool in ("basket", "butcher"):
+        if self.tool in CARRIES:
             self.carry_basket()
-        if self.tool == "butcher":
+        if self.tool in ("butcher", "rod"):
             self.show(self.basket, True)
             self.show(self.ground_basket, False)
+        if self.tool == "rod":
+            # Not fishing: the rod upright at the side, no line out.
+            self.grip.rotation_euler = (R(-68), 0, 0)
+            self.show(self.float, False)
+            self.line.hide_render = True
+
+    @staticmethod
+    def fish_in(parent, at, tag):
+        """Three fish in a basket, heads and tails over the rim."""
+        scale = lib.mat("fishscale", (0.70, 0.74, 0.76), 0.35, 0.4, grain=0.2, grain_size=0.01)
+        x, y, z = at
+        for i, (dx, dy, tilt) in enumerate(((0.0, 0.0, 30), (0.03, 0.025, -40), (-0.03, 0.02, 70))):
+            f = lib.ball(f"{tag}fish{i}", 0.026, (x + dx, y + dy, z), scale, parent, scale=(2.2, 0.8, 0.9), sub=1)
+            f.rotation_euler = (R(28), 0, R(tilt))
+            lib.cyl(f"{tag}tail{i}", 0.022, 0.03, (x + dx + 0.055 * math.cos(R(tilt)), y + dy + 0.055 * math.sin(R(tilt)), z + 0.03),
+                    scale, parent, rot=(0, R(90), R(tilt)), r2=0.002, verts=4)
+
+    def string_line(self):
+        """Stretches the line from the rod's tip to the float, as they stand in this pose."""
+        import bpy
+        bpy.context.view_layer.update()
+        a = self.tip.matrix_world.translation
+        b = self.float.matrix_world.translation + mathutils.Vector((0, 0, 0.05))
+        d = b - a
+        self.line.location = (a + b) / 2
+        self.line.rotation_mode = "QUATERNION"
+        self.line.rotation_quaternion = d.to_track_quat("Z", "Y")
+        self.line.scale = (1, 1, d.length)
+        self.line.hide_render = False
 
     @staticmethod
     def show(root, on):
@@ -141,7 +210,7 @@ class Rig:
             self.torso.rotation_euler = (R(1.2 * s), 0, 0)
             self.neck.rotation_euler = (R(-1.5 * s), 0, R(4 * math.sin(math.pi * t)))
             for side, k in (("L", 1), ("R", -1)):
-                if side == "L" and self.tool in ("basket", "butcher"):
+                if side == "L" and self.tool in CARRIES:
                     self.carry_basket(2 * s)
                 else:
                     self.arms[side].rotation_euler = (R(3 * s * k), R(-6 * k), 0)
@@ -154,15 +223,28 @@ class Rig:
                 # The knee bends as the leg comes forward behind the body.
                 back = math.sin(2 * math.pi * t + (0 if k > 0 else math.pi) - math.pi / 2)
                 self.knees[side].rotation_euler = (R(8 + 32 * max(0.0, back)), 0, 0)
-                held = (side == "R" and self.tool in ("axe", "pick")) or (side == "L" and self.tool in ("basket", "butcher"))
+                held = (side == "R" and self.tool in ("axe", "pick", "hoe", "spear", "rod")) or (side == "L" and self.tool in CARRIES)
                 if not held:
                     self.arms[side].rotation_euler = (R(24 * s * k), R(-6 * k), 0)
                     self.elbows[side].rotation_euler = (R(-14 - 10 * max(0.0, -s * k)), 0, 0)
+            if self.tool == "spear":
+                # Carried upright at the side.
+                self.arms["R"].rotation_euler = (R(-10 - 4 * s), R(8), 0)
+                self.elbows["R"].rotation_euler = (R(-70), 0, 0)
+                self.grip.rotation_euler = (R(-10), 0, 0)
+            if self.tool == "hoe":
+                self.arms["R"].rotation_euler = (R(-20 - 4 * s), R(6), 0)
+                self.elbows["R"].rotation_euler = (R(-40), 0, 0)
+            if self.tool == "rod":
+                # Over the right shoulder, the tip up and behind.
+                self.arms["R"].rotation_euler = (R(-22 - 4 * s), R(8), 0)
+                self.elbows["R"].rotation_euler = (R(-58), 0, 0)
+                self.grip.rotation_euler = (R(-52), 0, 0)
             if self.tool in ("axe", "pick"):
                 # Carried over the shoulder.
                 self.arms["R"].rotation_euler = (R(-12 - 6 * s), R(6), 0)
                 self.elbows["R"].rotation_euler = (R(-50), 0, 0)
-            if self.tool in ("basket", "butcher"):
+            if self.tool in CARRIES:
                 self.carry_basket(4 * s)
         elif anim == "chop":
             # A woodcutter's swing: the body turns away to the right with the axe drawn back at the
@@ -269,3 +351,63 @@ class Rig:
                 arm, across, elbow = -30 - 12 * k, 48 - 44 * k, -28 + 10 * k
             self.arms["R"].rotation_euler = (R(arm), 0, R(-across))
             self.elbows["R"].rotation_euler = (R(elbow), 0, 0)
+        elif anim == "hoe":
+            # Short strokes into the soil: up to the chest, down to the feet.
+            if t < 0.5:
+                a = -35 - 70 * ease(t / 0.5)
+            elif t < 0.7:
+                a = -105 + 75 * ((t - 0.5) / 0.2) ** 2
+            else:
+                a = -30 - 5 * ease((t - 0.7) / 0.3)
+            self.torso.rotation_euler = (R(18), 0, R(-6))
+            for side, y in (("L", -16), ("R", 16)):
+                self.arms[side].rotation_euler = (R(a), R(y), 0)
+                self.elbows[side].rotation_euler = (R(-22), 0, 0)
+            self.stance(16, 12)
+        elif anim == "throw":
+            # A hunter's throw: the spear drawn back over the shoulder, the body turning, then let fly.
+            if t < 0.5:
+                k = ease(t / 0.5)
+                arm, turn, lean = -60 - 100 * k, -25 * k, -6 * k
+            elif t < 0.65:
+                k = ((t - 0.5) / 0.15) ** 2
+                arm, turn, lean = -160 + 110 * k, -25 + 45 * k, -6 + 16 * k
+            else:
+                k = ease((t - 0.65) / 0.35)
+                arm, turn, lean = -50 - 10 * k, 20 - 20 * k, 10 - 10 * k
+            self.torso.rotation_euler = (R(lean), 0, R(turn))
+            self.arms["R"].rotation_euler = (R(arm), 0, R(10))
+            self.elbows["R"].rotation_euler = (R(-25), 0, 0)
+            self.arms["L"].rotation_euler = (R(-70), 0, R(-10))
+            self.grip.rotation_euler = (R(-arm + 25 - 5), 0, 0)  # the spear level, pointing at the quarry
+            self.stance(10, 18)
+        elif anim == "angle":
+            # Angling from the bank, the creel set down beside: the rod held out over the water while the
+            # float bobs, then a bite pulls it under and the rod is struck up, and lowered again.
+            self.show(self.basket, False)
+            self.show(self.ground_basket, True)
+            self.show(self.float, True)
+            bob, pull = 0.006 * math.sin(6 * math.pi * t), 0.0
+            if t < 0.55:
+                lift, lean = 2 * math.sin(2 * math.pi * t / 0.55), 0
+            elif t < 0.65:
+                k = (t - 0.55) / 0.1
+                lift, lean, bob = -6 * k, 3 * k, -0.03 * k
+            elif t < 0.75:
+                k = ((t - 0.65) / 0.1) ** 0.6
+                lift, lean, bob, pull = -6 + 34 * k, 3 - 10 * k, -0.03 + 0.05 * k, 0.12 * k
+            else:
+                k = ease((t - 0.75) / 0.25)
+                lift, lean, bob, pull = 28 - 28 * k, -7 + 7 * k, 0.02 - 0.02 * k, 0.12 - 0.12 * k
+            self.torso.rotation_euler = (R(6 + lean), 0, R(-6))
+            self.neck.rotation_euler = (R(8), 0, 0)  # eyes on the float
+            arm, elbow = -42 - lift * 0.4, -40
+            self.arms["R"].rotation_euler = (R(arm), 0, R(10))
+            self.elbows["R"].rotation_euler = (R(elbow), 0, 0)
+            self.arms["L"].rotation_euler = (R(arm + 4), 0, R(-30))
+            self.elbows["L"].rotation_euler = (R(elbow - 6), 0, 0)
+            # The rod 40 degrees up from level, more as it is struck.
+            self.grip.rotation_euler = (R(-40 - lift - (arm + elbow)), 0, 0)
+            self.float.location = (-0.112, -0.95 + pull, 0.01 + bob)
+            self.stance(8, 12)
+            self.string_line()

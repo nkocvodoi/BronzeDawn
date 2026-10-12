@@ -271,3 +271,30 @@ def mine(kind, variant):
         for k in range(3):
             a = rnd.uniform(0, 2 * math.pi)
             lib.box(f"block{k}", (0.12, 0.09, 0.08), (math.cos(a) * 0.3, math.sin(a) * 0.3, 0.04), rock, rot=(0, 0, a), bevel=0.012)
+
+
+# ---- fish: what shows above the water of a shoal, with rings on the water round it.
+
+FISH = {"size": (130, 90), "center": (0.05, 0, 0.05)}
+
+
+def fish(variant, deep):
+    rnd = random.Random(variant * 5 + (11 if deep else 1))
+    scale = lib.mat("fishscale", (0.45, 0.55, 0.62) if not deep else (0.30, 0.38, 0.48), 0.3, metal=0.4, grain=0.2)
+    ripple = lib.mat("ripple", (0.80, 0.90, 0.95), 0.2, grain=0)
+    for k in range(2 if not deep else 3):
+        x, y = rnd.uniform(-0.18, 0.18), rnd.uniform(-0.18, 0.18)
+        a = rnd.uniform(0, math.pi)
+        # A back and a fin breaking the surface, and a tail.
+        lib.ball(f"back{k}", 0.07, (x, y, 0.0), scale, scale=(0.5, 1.6, 0.45), sub=2).rotation_euler = (0, 0, a)
+        fin = lib.box(f"fin{k}", (0.01, 0.06, 0.05), (x, y, 0.045), scale, rot=(0, 0, a), bevel=0.004)
+        fin.scale = (1, 1, 1)
+        dx, dy = math.sin(a) * 0.12, -math.cos(a) * 0.12
+        lib.box(f"tail{k}", (0.01, 0.04, 0.05), (x - dx, y - dy, 0.03), scale, rot=(R(20), 0, a), bevel=0.004)
+        for j, r in enumerate((0.12, 0.19)):
+            bpy_ = lib.bpy
+            bpy_.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=0.006, location=(x, y, 0.0))
+            ring = bpy_.context.object
+            ring.name = f"ring{k}{j}"
+            ring.scale = (1, 1, 0.3)
+            lib.setmat(ring, ripple)

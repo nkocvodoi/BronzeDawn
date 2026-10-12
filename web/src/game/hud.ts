@@ -6,7 +6,7 @@ import { Res, RES_ALL, RES_KEY } from "../core/rules";
 import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import type { World } from "../core/world";
-import { iconPic, playerColor, reliefTexture, resourceIcons, statIcons, stoneTexture } from "./art";
+import { iconPic, playerColor, reliefTexture, resourceIcons, statIcons, stoneTexture, type Arch } from "./art";
 
 /** One command button: a hotkey, a label, a cost, and why it is greyed out. */
 export interface Command {
@@ -142,9 +142,22 @@ export class HUD {
     this.tip.hidden = false;
   }
 
+  /** The age, architecture and civilization the building icons are drawn for: the player's own, so a
+   *  button shows the building that will go up. */
+  private iconLook: { age: number; arch: Arch; civ?: string } = { age: 2, arch: "greek" };
+  private iconLookKey = "";
+  setIconLook(age: number, arch: Arch, civ?: string) {
+    const key = `${age}/${arch}/${civ ?? ""}`;
+    if (key === this.iconLookKey) return;
+    this.iconLook = { age, arch, civ };
+    this.iconLookKey = key;
+    this.signature = ""; // redraw the buttons
+  }
+
   iconUrl(id: string) {
-    let url = this.icons.get(id);
-    if (!url) { url = iconPic(id).toDataURL(); this.icons.set(id, url); }
+    const key = `${id}@${this.iconLookKey}`;
+    let url = this.icons.get(key);
+    if (!url) { url = iconPic(id, this.iconLook.age, this.iconLook.arch, this.iconLook.civ).toDataURL(); this.icons.set(key, url); }
     return url;
   }
 

@@ -44,6 +44,37 @@ function assetPic(key: string, spec: ImageSpec, owner: number | null, defaultAnc
   return out;
 }
 
+/** A building picture cut off at a part of its height above the ground, the cut ragged, as the walls rise:
+ *  what stands of a building half built. The ground under it (its diamond) always shows. */
+function risingPic(full: Pic, size: number, part: number, key: string): Pic {
+  const k = `rise-${key}-${part}`;
+  const hit = cache.get(k);
+  if (hit) return hit;
+  const src = full.canvas, w = src.width, h = src.height;
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const g = c.getContext("2d")!;
+  g.drawImage(src, 0, 0);
+  const img = g.getImageData(0, 0, w, h), d = img.data;
+  // The picture's rows from its foot (the diamond's bottom corner) to its top; the diamond itself is the
+  // bottom `size * HALF_H` units, which always stay.
+  const foot = full.ay * h, perUnit = h / full.h;
+  const top = d.findIndex((_, i) => i % 4 === 3 && d[i] > 0);
+  const topRow = top < 0 ? 0 : Math.floor(top / 4 / w);
+  const floor = foot - size * HALF_H * perUnit * 2;
+  const cut = floor - (floor - topRow) * part;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const ragged = cut + (hash(x >> 1, 7, 91) - 0.5) * 6 * perUnit;
+    if (y < ragged) d[(y * w + x) * 4 + 3] = 0;
+  }
+  g.putImageData(img, 0, 0);
+  const texture = Texture.from(c);
+  texture.source.scaleMode = "nearest";
+  const out: Pic = { ...full, texture, canvas: c };
+  cache.set(k, out);
+  return out;
+}
+
 function finish(p: PixelCanvas, ax: number, ay: number, px = PX): Pic {
   const canvas = p.toCanvas();
   const texture = Texture.from(canvas);
@@ -2265,7 +2296,7 @@ function assetBuildingSpec(id: string, age: number, arch: Arch, civ?: string): I
 }
 
 export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3, farmLeft = 1, arch: Arch = "greek", civ?: string): Pic {
-  if (stage >= 3) {
+  if (stage >= 1) {
     const found = assetBuildingSpec(def.id, Math.round(age), arch, civ);
     // A picture anchored at the diamond's centre stands half the diamond's height above its bottom corner,
     // which is where a building is placed.
@@ -2273,6 +2304,8 @@ export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3,
       ? { ...found, anchor: [found.anchor[0], found.anchor[1] + (def.size * HALF_H) / (found.scale ?? 1)] as [number, number] }
       : found;
     const fromFile = spec && assetPic(`ba-${spec.file}-${spec.anchorAt ?? "bottom"}-${owner}`, spec, owner);
+    // Going up: the finished picture, shown from the ground to the height built so far.
+    if (fromFile && stage < 3) return risingPic(fromFile, def.size, stage === 1 ? 0.4 : 0.72, `${spec!.file}-${owner}`);
     if (fromFile) return fromFile;
   }
   const s = def.size;
@@ -2442,7 +2475,7 @@ export function wallPic(tier: 0 | 1 | 2, owner: number, mask: number, stage: num
 
 // ---- icons
 
-const UNIT_IDS = new Set([...Object.keys(KITS), ...RIDERS, ...CHARIOTS, ...ELEPHANTS, ...SIEGE, "gazelle", "lion", "alligator", "camel_rider"]);
+const UNIT_IDS = new Set([...Object.keys(KITS), ...RIDERS, ...CHARIOTS, ...ELEPHANTS, ...SIEGE, ...BOATS, "gazelle", "lion", "alligator", "camel_rider"]);
 
 const iconCache = new Map<string, HTMLCanvasElement>();
 
@@ -2522,9 +2555,41 @@ const TECH_WORDS: [RegExp, string][] = [
   [/wood|carpent|artisan|craft|build|siege|catapult|alchemy/, "hammer"],
 ];
 
-/** A 24x24 art-px button icon for a unit, building or technology id. */
-export function iconPic(id: string): HTMLCanvasElement {
-  const hit = iconCache.get(id);
+/** A button icon from a sprite out of a file, 48 x 48: such a sprite sits small in a big frame, with its
+ *  shadow, so shrinking the whole frame into the icon leaves a speck. Only the solid part is kept (the
+ *  shadow is half see-through), and a tall figure shows from the head down to its waist, as the
+ *  original's icons do; then it fills the icon. */
+function spriteIcon(src: HTMLCanvasElement, bg: RGB, upper: boolean): HTMLCanvasElement {
+  const p = new PixelCanvas(24, 24);
+  iconFrame(p, bg);
+  const out = document.createElement("canvas");
+  out.width = out.height = 48;
+  const g = out.getContext("2d")!;
+  g.imageSmoothingEnabled = false;
+  g.drawImage(p.toCanvas(), 0, 0, 48, 48);
+  const w = src.width, h = src.height, d = src.getContext("2d")!.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (d[(y * w + x) * 4 + 3] < 255) continue;
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  if (x1 < 0) return out;
+  let cw = x1 - x0 + 1, ch = y1 - y0 + 1;
+  // A standing figure: its upper part, a little taller than wide.
+  if (upper && ch > cw * 1.4) ch = Math.min(ch, Math.round(Math.max(cw * 1.3, ch * 0.66)));
+  // Inside the frame's 4 px border; a figure stands on the bottom with room over its head.
+  const room = upper ? 38 : 40, f = Math.min(room / cw, room / ch);
+  const dw = Math.round(cw * f), dh = Math.round(ch * f);
+  g.drawImage(src, x0, y0, cw, ch, Math.floor((48 - dw) / 2), upper ? 48 - 4 - dh : Math.floor((48 - dh) / 2), dw, dh);
+  return out;
+}
+
+/** A 24x24 art-px button icon for a unit, building or technology id (48 x 48 when drawn from a sprite file).
+ *  A building is drawn as it would go up for this age, architecture and civilization. */
+export function iconPic(id: string, age = 2, arch: Arch = "greek", civ?: string): HTMLCanvasElement {
+  const isBuilding = NOMINAL[id] !== undefined;
+  const cacheKey = isBuilding ? `${id}@${age}@${arch}@${civ ?? ""}` : id;
+  const hit = iconCache.get(cacheKey);
   if (hit) return hit;
   const file = ASSETS.manifest.icons?.[id];
   const fromFile = file ? ASSETS.canvasOf(file, null) : null;
@@ -2532,7 +2597,12 @@ export function iconPic(id: string): HTMLCanvasElement {
   const p = new PixelCanvas(24, 24);
   if (UNIT_IDS.has(id)) {
     iconFrame(p, rgb(0x3a4a5e));
-    const u = unitPic({ type: id, owner: 0, facing: "front", pose: "idle", frame: 0, tool: "none", carry: null });
+    const u = unitPic({ type: id, owner: 0, facing: "front", pose: "idle", frame: 0, tool: "none", carry: null, dir: 1 });
+    if (u.asset) {
+      const out = spriteIcon(u.canvas, rgb(0x3a4a5e), !BOATS.has(id) && u.canvas.height >= u.canvas.width * 0.7);
+      iconCache.set(id, out);
+      return out;
+    }
     if (u.canvas.width <= 26 && u.canvas.height <= 28) {
       // Infantry: show head and shoulders at full size.
       const data = u.canvas.getContext("2d")!.getImageData(0, 0, u.canvas.width, u.canvas.height).data;
@@ -2544,10 +2614,15 @@ export function iconPic(id: string): HTMLCanvasElement {
     } else shrinkInto(p, u.canvas, 2, 2, 20, 20);
   } else if (NOMINAL[id] !== undefined || id.endsWith("_wall") || id === "fortification") {
     iconFrame(p, rgb(0x5a4a34));
-    const src = id.endsWith("_wall") || id === "fortification"
-      ? wallPic(id === "small_wall" ? 0 : id === "medium_wall" ? 1 : 2, 0, 3, 3).canvas
-      : buildingPic({ id, size: NOMINAL[id] } as BuildingDef, 0, 2, 3, 1, "greek").canvas;
-    shrinkInto(p, src, 2, 2, 20, 20);
+    const pic = id.endsWith("_wall") || id === "fortification"
+      ? wallPic(id === "small_wall" ? 0 : id === "medium_wall" ? 1 : 2, 0, 3, 3)
+      : buildingPic({ id, size: NOMINAL[id] } as BuildingDef, 0, age, 3, 1, arch, civ);
+    if (pic.asset) {
+      const out = spriteIcon(pic.canvas, rgb(0x5a4a34), false);
+      iconCache.set(cacheKey, out);
+      return out;
+    }
+    shrinkInto(p, pic.canvas, 2, 2, 20, 20);
   } else {
     iconFrame(p, rgb(0x3e5a38));
     techGlyph(p, TECH_WORDS.find(([re]) => re.test(id))?.[1] ?? "scroll");
@@ -2555,7 +2630,7 @@ export function iconPic(id: string): HTMLCanvasElement {
   const q = new PixelCanvas(24, 24);
   q.data.set(p.data);
   const out = q.toCanvas();
-  iconCache.set(id, out);
+  iconCache.set(cacheKey, out);
   return out;
 }
 

@@ -6,6 +6,7 @@
 #
 # --quick renders two directions and a frame or two of each animation, for a look at the style.
 
+import fcntl
 import json
 import math
 import os
@@ -18,6 +19,10 @@ sys.path.insert(0, HERE)
 import lib  # noqa: E402
 import models  # noqa: E402
 import animals  # noqa: E402
+import buildings as blds  # noqa: E402
+import machines  # noqa: E402
+import soldiers  # noqa: E402
+import terrain  # noqa: E402
 import villager  # noqa: E402
 
 OUT = os.path.join(HERE, "..", "web", "public", "assets")
@@ -68,15 +73,19 @@ def unit_sheet(key, build, anims, frame_size, anchor, quick, tmp):
             "directions": DIRS, "anims": spec_anims}
 
 
-def still(key, build, size, anchor_point, tmp, center=(0, 0, 0)):
-    """One picture of a model; `anchor_point` is the point in the scene that stands on the ground spot."""
+def still(key, build, size, anchor_point, tmp, center=(0, 0, 0), ground=True):
+    """One picture of a model; `anchor_point` is the point in the scene that stands on the ground spot.
+    `ground`: whether it casts a shadow on the ground (not on water)."""
     lib.reset()
     build()
-    lib.shadow_catcher(12)
+    lib.RIM = ground
+    if ground:
+        lib.shadow_catcher(12)
     w, h = size
     lib.camera(w, h, target=center)
     ax, ay = lib.pixel_of(anchor_point)
     img = lib.frame(tmp)
+    lib.RIM = True
     lib.check_edges(img, key)
     path = os.path.join(OUT, ART, f"{key}.png")
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -88,8 +97,51 @@ def still(key, build, size, anchor_point, tmp, center=(0, 0, 0)):
 
 ANIMAL_FRAME = (180, 150)
 ANIMAL_ANCHOR = (86, 104)
+HORSES = {"scout", "cavalry", "heavy_cavalry", "cataphract", "horse_archer", "heavy_horse_archer"}
+ELEPHANTS = {"war_elephant", "armored_elephant", "elephant_archer"}
+CHARIOTS = {"chariot", "scythe_chariot", "chariot_archer"}
+
+
+ENGINE_ANIMS = [("idle", "idle", 1, 1), ("walk", "walk", 8, 10), ("attack", "attack", 10, 10)]
+SHIP_ANIMS = [("idle", "idle", 6, 4), ("walk", "walk", 8, 8)]
+ENGINES = {
+    "stone_thrower": (lambda: machines.Catapult(0.85, "stone_thrower"), (260, 240), (126, 160)),
+    "catapult": (lambda: machines.Catapult(1.0), (280, 260), (136, 172)),
+    "heavy_catapult": (lambda: machines.Catapult(1.2), (320, 300), (156, 196)),
+    "ballista": (machines.Ballista, (260, 220), (126, 150)),
+    "helepolis": (machines.Helepolis, (260, 330), (126, 250)),
+}
+SHIPS = ("fishing_boat", "fishing_ship", "trade_boat", "merchant_ship", "light_transport", "heavy_transport",
+         "scout_ship", "war_galley", "fire_galley", "trireme", "catapult_trireme", "juggernaught")
+
+
+def unit_spec(unit):
+    """How to make a unit's figure, its animations, frame and anchor."""
+    if unit in ENGINES:
+        make, frame, anchor = ENGINES[unit]
+        return make, ENGINE_ANIMS, frame, anchor
+    if unit in SHIPS:
+        return (lambda: machines.Ship(unit)), SHIP_ANIMS, (380, 330), (186, 210)
+    weapon = soldiers.KITS[unit][3]
+    attack = soldiers.attack_of(weapon)
+    anims = [("idle", "idle", 4, 3), ("walk", "walk", 12, 14), ("attack", attack, 10, 10)]
+    if unit in HORSES:
+        return (lambda: soldiers.mounted(unit, "horse")), anims, (300, 250), (146, 178)
+    if unit == "camel_rider":
+        return (lambda: soldiers.mounted(unit, "camel")), anims, (300, 270), (146, 196)
+    if unit in ELEPHANTS:
+        return (lambda: soldiers.mounted(unit, "elephant")), anims, (480, 470), (236, 330)
+    if unit in CHARIOTS:
+        return (lambda: soldiers.Chariot(unit)), anims, (330, 260), (160, 184)
+    big = weapon in soldiers.SPEARS
+    return (lambda: soldiers.Soldier(unit)), anims, ((240, 200) if big else (200, 168)), ((116, 140) if big else (96, 118))
+
+
 VILLAGER_FRAME = (200, 168)
 VILLAGER_ANCHOR = (96, 118)
+# The angler's rod reaches high and far: a bigger frame, the feet at the same place in it.
+ANGLER_FRAME = (280, 260)
+ANGLER_ANCHOR = (136, 190)
 
 
 def main():
@@ -103,16 +155,32 @@ def main():
                                        [("idle", "idle", 6, 4), ("walk", "walk", 12, 14)],
                                        VILLAGER_FRAME, VILLAGER_ANCHOR, quick, tmp)
     # A villager by job: the game picks "villager:<tool>" for the work in hand.
-    for tool, work, frames, fps in (("axe", "chop", 12, 11), ("pick", "mine", 12, 11), ("hammer", "hammer", 10, 12),
-                                    ("basket", "forage", 16, 10), ("butcher", "butcher", 14, 10)):
+    # The fisher's sheet keeps the name "net", the tool the game and art packs know fishing by; it is drawn
+    # angling with a rod.
+    for tool, rig_tool, work, frames, fps in (("axe", "axe", "chop", 12, 11), ("pick", "pick", "mine", 12, 11),
+                                              ("hammer", "hammer", "hammer", 10, 12), ("basket", "basket", "forage", 16, 10),
+                                              ("butcher", "butcher", "butcher", 14, 10), ("hoe", "hoe", "hoe", 10, 10),
+                                              ("spear", "spear", "throw", 12, 12), ("net", "rod", "angle", 20, 8)):
         if want("villager") or want(f"villager:{tool}"):
-            units[f"villager:{tool}"] = unit_sheet(f"villager:{tool}", lambda tool=tool: villager.Rig(tool),
+            units[f"villager:{tool}"] = unit_sheet(f"villager:{tool}", lambda rig_tool=rig_tool: villager.Rig(rig_tool),
                                                    [("idle", "idle", 6, 4), ("walk", "walk", 12, 14), ("work", work, frames, fps)],
-                                                   VILLAGER_FRAME, VILLAGER_ANCHOR, quick, tmp)
-    if want("town_center"):
+                                                   *((ANGLER_FRAME, ANGLER_ANCHOR) if rig_tool == "rod" else (VILLAGER_FRAME, VILLAGER_ANCHOR)),
+                                                   quick, tmp)
+    # Every building in the style of each age from its first; the game falls back to an earlier age's
+    # picture, so the first is enough for the ages before it. --only takes "barracks" or "barracks@bronze".
+    for key, make in blds.BUILDERS.items():
+        ages = blds.AGES[blds.FIRST[key]:] if key not in blds.ONE_LOOK else [blds.AGES[blds.FIRST[key]]]
+        for age in ages:
+            if not (only is None or key in only or f"{key}@{age}" in only):
+                continue
+            size, center, anchor = blds.frame_of(key)
+            spec = still(f"{key}-{age}", lambda make=make, age=age: make(blds.Style(age)), size, anchor, tmp, center,
+                         ground=key != "dock")
+            buildings.setdefault(key, {}).setdefault("default", {})[age] = spec
+    if want("town_center-old"):
         s = models.TOWN_CENTER
         buildings["town_center"] = {"default": {"stone": still("town_center", models.town_center, s["size"], s["anchor"], tmp, s["center"])}}
-    if want("house"):
+    if want("house-old"):
         s = models.HOUSE
         buildings["house"] = {"default": {"stone": still("house", models.house, s["size"], s["anchor"], tmp, s["center"])}}
     if want("tree"):
@@ -131,14 +199,39 @@ def main():
             s = models.MINE
             resources[f"{kind}_mine"] = [still(f"{kind}_mine{v}", lambda v=v, kind=kind: models.mine(kind, v), s["size"], (0, 0, 0), tmp, s["center"])
                                          for v in range(s["variants"])]
-    if want("gazelle"):
-        units["gazelle"] = unit_sheet("gazelle", animals.Gazelle, [("idle", "idle", 10, 5), ("walk", "walk", 10, 16)],
-                                      ANIMAL_FRAME, ANIMAL_ANCHOR, quick, tmp)
-        def carcass():
-            g = animals.Gazelle()
-            g.face(FACING[1])
-            g.pose("dead", 0)
-        resources["carcass_gazelle"] = still("carcass_gazelle", carcass, (170, 120), (0, 0, 0), tmp, (0.15, -0.05, 0.1))
+    for unit in soldiers.KITS:
+        if only is not None and unit not in only and "soldiers" not in only:
+            continue
+        make, anims, frame, anchor = unit_spec(unit)
+        units[unit] = unit_sheet(unit, make, anims, frame, anchor, quick, tmp)
+
+    for unit in [*ENGINES, *SHIPS]:
+        if only is not None and unit not in only and ("machines" if unit in ENGINES else "ships") not in only:
+            continue
+        make, anims, frame, anchor = unit_spec(unit)
+        units[unit] = unit_sheet(unit, make, anims, frame, anchor, quick, tmp)
+
+    # Animals: (class, animations, frame, anchor, carcass picture size).
+    beasts = {
+        "gazelle": (animals.Gazelle, [("idle", "idle", 10, 5), ("walk", "walk", 10, 16)], ANIMAL_FRAME, ANIMAL_ANCHOR, (170, 120)),
+        "lion": (animals.Lion, [("idle", "idle", 8, 4), ("walk", "walk", 10, 14), ("attack", "attack", 8, 10)], ANIMAL_FRAME, ANIMAL_ANCHOR, (190, 130)),
+        "alligator": (animals.Alligator, [("idle", "idle", 8, 4), ("walk", "walk", 10, 12), ("attack", "attack", 8, 10)], (220, 150), (108, 96), (230, 140)),
+        "elephant": (animals.Elephant, [("idle", "idle", 10, 5), ("walk", "walk", 12, 9), ("attack", "attack", 10, 9)], (440, 400), (216, 290), (440, 300)),
+    }
+    for key, (cls, anims, frame, anchor, dead_size) in beasts.items():
+        if not want(key):
+            continue
+        units[key] = unit_sheet(key, cls, anims, frame, anchor, quick, tmp)
+        def carcass(cls=cls):
+            a = cls()
+            a.face(FACING[1])
+            a.pose("dead", 0)
+        resources[f"carcass_{key}"] = still(f"carcass_{key}", carcass, dead_size, (0, 0, 0), tmp, (0.15, -0.05, 0.1))
+
+    if want("fish"):
+        s = models.FISH
+        resources["fish"] = [still(f"fish{v}", lambda v=v: models.fish(v, False), s["size"], (0, 0, 0), tmp, s["center"], ground=False) for v in range(2)]
+        resources["deep_fish"] = [still(f"deep_fish{v}", lambda v=v: models.fish(v, True), s["size"], (0, 0, 0), tmp, s["center"], ground=False) for v in range(2)]
 
     cliffs = {}
     if want("cliff"):
@@ -147,21 +240,46 @@ def main():
             cliffs[str(mask)] = [still(f"cliff{mask}-{v}", lambda mask=mask, v=v: models.cliff(mask, v), s["size"], (0, 0, 0), tmp, s["center"])
                                  for v in range(s["variants"])]
 
-    write_manifest(units, buildings, resources, cliffs)
+    ground = {}
+    if want("terrain"):
+        for kind in terrain.KINDS:
+            files = []
+            for v in range(6):
+                path = os.path.join(OUT, ART, f"ground-{kind}{v}.png")
+                lib.save_png(terrain.tile(kind, v), path)
+                files.append(f"{ART}/ground-{kind}{v}.png")
+            ground[kind] = files
+        print("terrain:", ", ".join(ground))
+
+    write_manifest(units, buildings, resources, cliffs, ground)
 
 
-def write_manifest(units, buildings, resources, cliffs=None):
+def write_manifest(units, buildings, resources, cliffs=None, ground=None):
+    """Adds what was rendered to the manifest. Several renders can run at once (each with its own --only):
+    a lock on the file keeps one from writing over another's entries."""
     path = os.path.join(OUT, "manifest.json")
+    lock = open(path + ".lock", "w")
+    fcntl.flock(lock, fcntl.LOCK_EX)
     m = json.load(open(path)) if os.path.exists(path) else {}
-    for k, v in (("units", units), ("buildings", buildings), ("resources", resources), ("cliffs", cliffs or {})):
+    def merge(into, new):
+        # Buildings nest by style and age: a render of one age keeps the others.
+        for k, v in new.items():
+            if isinstance(v, dict) and isinstance(into.get(k), dict) and "file" not in v:
+                merge(into[k], v)
+            else:
+                into[k] = v
+    for k, v in (("units", units), ("buildings", buildings), ("resources", resources), ("cliffs", cliffs or {}), ("terrain", ground or {})):
         if v:
-            m.setdefault(k, {}).update(v)
+            merge(m.setdefault(k, {}), v)
     credit = {"what": "Sprites in art3d/ (units, animals, buildings, trees, resources, cliffs)", "author": "Bronze Dawn contributors, rendered with Blender from art3d/",
               "license": "Same as the game (made for this project)"}
     m["credits"] = [c for c in m.get("credits", []) if not c.get("what", "").startswith("Sprites in art3d/")] + [credit]
     with open(path, "w") as f:
         json.dump(m, f, indent=1)
         f.write("\n")
+    fcntl.flock(lock, fcntl.LOCK_UN)
+    lock.close()
+    os.remove(path + ".lock")
     print("manifest ->", path)
 
 
