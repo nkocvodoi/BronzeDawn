@@ -3,7 +3,8 @@ import { Building, Entity, GAIA, GameEvent, IDLE, Order, Player, QueueItem, Reso
 import { Fog } from "./fog";
 import { Footprint, RNG, Tile, Vec2 } from "./geom";
 import { buildable, GridMap, sailable, Terrain, walkable } from "./grid";
-import { generateMap, MapType } from "./mapgen";
+import { generateFromSpec, generateMap, MapType } from "./mapgen";
+import { isMapSpec, RandomMapSpec } from "./rmspec";
 import { Pathfinder } from "./path";
 import { hasTag, NodeDef, RES_ALL, RES_KEY, Res, ResBag, Rules, TechDef, UnitDef } from "./rules";
 import { scores } from "./score";
@@ -37,6 +38,9 @@ export interface WorldOptions {
   startAge?: number; resources?: string; popLimit?: number; revealMap?: boolean; victory?: Victory;
   /** Ruins and Artifacts on the map (5 of each), as in the original; on unless turned off. */
   relics?: boolean;
+  /** A map built from these numbers instead of `mapType` (one from a player's art pack). Plain data, so it
+   *  goes to every machine in an online game with the rest of the options. */
+  mapSpec?: RandomMapSpec;
 }
 
 /** How a game is won. Standard: conquest, or a Wonder that stands its time. Conquest: only conquest.
@@ -118,7 +122,8 @@ export class World {
       this.fog.push(new Fog(size, size));
       this.alertTimer.push(0);
     });
-    if (generate) generateMap(this, options.mapType ?? "inland", options.relics !== false);
+    if (generate && isMapSpec(options.mapSpec)) generateFromSpec(this, options.mapSpec, options.relics !== false);
+    else if (generate) generateMap(this, options.mapType ?? "inland", options.relics !== false);
     // A later start: buildings and units are made at their full hit points for the age.
     if (startAge > 0) for (const p of this.players) this.refreshHp(p.id);
     this.refreshPopulation();

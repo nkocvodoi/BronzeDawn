@@ -6,6 +6,7 @@
 // Every file in public/assets/ needs a line in its "credits": only freely licensed or own work there.
 
 import { Rectangle, Texture } from "pixi.js";
+import type { RandomMapSpec } from "../core/rmspec";
 import { loadPacks } from "./packs";
 
 /** A picture: the file, and the point that stands on the ground (a unit's feet, the bottom corner of a
@@ -48,6 +49,9 @@ export interface Manifest {
   sfx?: Record<string, string[]>;
   /** Music tracks, played in turn. */
   music?: string[];
+  /** Random maps described by their numbers (core/rmspec.ts), offered on the start screen beside the
+   *  game's own. No files: plain data. */
+  maps?: RandomMapSpec[];
   /** Who made what, under which licence. Shown in the menu. */
   credits?: { what: string; author: string; license: string; url?: string }[];
 }

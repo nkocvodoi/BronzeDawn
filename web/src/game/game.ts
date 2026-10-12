@@ -7,6 +7,7 @@ import { Res, RES_KEY as RES_NAME, ResBag, Rules } from "../core/rules";
 import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import { MAP_TYPES, MapType } from "../core/mapgen";
+import { isMapSpec, RandomMapSpec } from "../core/rmspec";
 import { SmartResult, Stance, STANCES, Victory, WinHow, World, WorldOptions } from "../core/world";
 import { loadWorld, SaveFile, saveWorld } from "../core/save";
 import { Command as Order, CommandResult, runCommand } from "../core/commands";
@@ -165,6 +166,8 @@ export class Game {
   farmsBlock = store.get("bd-farms-block") === "on";
   /** The kind of map: Inland with lakes, or one with a sea. Remembered. */
   mapType: MapType = MAP_TYPES.some(([id]) => id === store.get("bd-map-type")) ? (store.get("bd-map-type") as MapType) : "inland";
+  /** Or a map from an art pack, by name, played instead of `mapType` while the pack is in use. Remembered. */
+  packMap: string | null = store.get("bd-pack-map") || null;
   /** The rest of the original's game settings, remembered between games. */
   victoryId = remembered("bd-victory", VICTORIES.map(([id]) => id), "standard");
   resources = remembered("bd-resources", RESOURCE_LEVELS.map(([id]) => id), "low");
@@ -276,7 +279,7 @@ export class Game {
     const names = this.watching ? Array.from({ length: n }, (_, i) => `Computer ${i + 1}`)
       : ["You", ...Array.from({ length: n - 1 }, (_, i) => (n === 2 ? "Enemy" : `Enemy ${i + 1}`))];
     this.useWorld(new World(this.rules, seed, names, size, true, {
-      civs, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, startAge: this.startAge, resources: this.resources,
+      civs, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, mapSpec: this.mapSpecNow(), startAge: this.startAge, resources: this.resources,
       popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2],
     }));
   }
@@ -452,7 +455,7 @@ export class Game {
       form([
         field("Your civilization", "civ", `<select id="civ"><option value="">Random</option>${civs}</select>`),
         `<span id="civ-info" class="wide note">A civilization picked at random. Its bonuses show at the top of the screen.</span>`,
-        field("Map", "map-type", `<select id="map-type">${opts(MAP_TYPES.map(([id, n]) => [id, n]), this.mapType)}</select>`),
+        field("Map", "map-type", `<select id="map-type">${opts(this.mapChoices(), this.mapChoice())}</select>`),
         field("Map size", "map-size", `<select id="map-size">${opts(MAP_SIZES.map(([n, t]) => [String(t), `${n} (${t} x ${t})`]), String(this.mapSize))}</select>`, true),
         field("Game speed", "start-speed", `<select id="start-speed">${opts(SPEEDS.map((x) => [String(x), `${x}x`]), String(this.speed))}</select>`, true),
         field("Computer players", "opponents", `<span class="pair"><select id="opponents">${this.computerChoices().map((k) => `<option value="${k}"${k === this.computersShown() ? " selected" : ""}>${k}</option>`).join("")}</select>`
@@ -515,8 +518,7 @@ export class Game {
     const theirs = Array.from({ length: opp }, (_, i) => (civs.length ? civs[(this.seed * 7 + 3 + i * 5) % civs.length].id : null));
     // More players need room: the map grows to fit them.
     const chosenSize = Number((document.querySelector("#map-size") as HTMLSelectElement | null)?.value) || this.mapSize;
-    const mt = (document.querySelector("#map-type") as HTMLSelectElement | null)?.value as MapType | undefined;
-    if (mt && MAP_TYPES.some(([id]) => id === mt)) { this.mapType = mt; store.set("bd-map-type", mt); }
+    this.pickMap((document.querySelector("#map-type") as HTMLSelectElement | null)?.value);
     const size = Math.max(chosenSize, minMapSize(opp + 1));
     // Allied computers share team 1; you are on your own.
     if (this.online?.role === "host" && this.online.friends.length) { this.hostStart(d, mine, theirs, size); return; }
@@ -726,7 +728,7 @@ export class Game {
     const setup: OnlineSetup = {
       seed: this.seed, names, size: Math.max(size, minMapSize(names.length)), reseed: this.reseed, speed: this.speed,
       ais: theirs.map((_, i) => [people + i, d] as [number, Difficulty]),
-      options: { civs: all, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, startAge: this.startAge, resources: this.resources,
+      options: { civs: all, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, mapSpec: this.mapSpecNow(), startAge: this.startAge, resources: this.resources,
         popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2] },
     };
     friends.forEach((f, i) => { f.slot = i + 1; });
@@ -1113,10 +1115,31 @@ export class Game {
     return { code: null, seats, settings: this.lobbySettingsNow(), chat: [] };
   }
 
+  /** The maps on offer: the game's own, then any the art packs in use bring (the last of a name wins). */
+  private packMaps(): RandomMapSpec[] {
+    const byName = new Map<string, RandomMapSpec>();
+    for (const m of ASSETS.manifest.maps ?? []) if (isMapSpec(m)) byName.set(m.name, m);
+    return [...byName.values()];
+  }
+  private mapChoices(): [string, string][] {
+    return [...MAP_TYPES.map(([id, n]) => [id, n] as [string, string]), ...this.packMaps().map((m) => [`pack:${m.name}`, `${m.name} (art pack)`] as [string, string])];
+  }
+  /** The chosen map as the select shows it; a pack's map that is gone falls back to the game's own. */
+  private mapChoice() { return this.mapSpecNow() ? `pack:${this.packMap}` : this.mapType; }
+  private mapSpecNow(): RandomMapSpec | undefined { return this.packMap ? this.packMaps().find((m) => m.name === this.packMap) : undefined; }
+  private pickMap(v: string | undefined) {
+    if (v?.startsWith("pack:") && this.packMaps().some((m) => `pack:${m.name}` === v)) {
+      this.packMap = v.slice(5); store.set("bd-pack-map", this.packMap);
+    } else if (v && MAP_TYPES.some(([id]) => id === v)) {
+      this.mapType = v as MapType; store.set("bd-map-type", v);
+      this.packMap = null; store.set("bd-pack-map", "");
+    }
+  }
+
   /** The game's settings as the lobby shows them. */
   private lobbySettingsNow(): LobbySettings {
     return {
-      mapType: this.mapType, mapTypeName: MAP_TYPES.find(([id]) => id === this.mapType)?.[1] ?? this.mapType,
+      mapType: this.mapChoice(), mapTypeName: this.mapChoices().find(([id]) => id === this.mapChoice())?.[1] ?? this.mapType,
       mapSize: this.mapSize, mapSizeName: `${MAP_SIZES.find(([, t]) => t === this.mapSize)?.[0] ?? ""} (${this.mapSize} x ${this.mapSize})`,
       victory: this.victoryId, victoryName: VICTORIES.find(([id]) => id === this.victoryId)?.[1] ?? "",
       startAge: String(this.startAge), resources: this.resources, popLimit: this.popLimit, reveal: this.exploredStart,
@@ -1241,7 +1264,7 @@ export class Game {
     const opts = (xs: [string, string][], on: string) => xs.map(([id, name]) => `<option value="${id}"${id === on ? " selected" : ""}>${name}</option>`).join("");
     this.hud.showOverlay("Game Settings", [
       form([
-        field("Map", "map-type", `<select id="map-type">${opts(MAP_TYPES.map(([id, n]) => [id, n]), this.mapType)}</select>`),
+        field("Map", "map-type", `<select id="map-type">${opts(this.mapChoices(), this.mapChoice())}</select>`),
         field("Map size", "map-size", `<select id="map-size">${opts(MAP_SIZES.map(([n, t]) => [String(t), `${n} (${t} x ${t})`]), String(this.mapSize))}</select>`, true),
         field("Game speed", "start-speed", `<select id="start-speed">${opts(SPEEDS.map((x) => [String(x), `${x}x`]), String(this.speed))}</select>`, true),
         field("Victory", "victory", `<select id="victory">${opts(VICTORIES.map(([id, name]) => [id, name]), this.victoryId)}</select>`),
@@ -1261,8 +1284,7 @@ export class Game {
   private saveLobbySettings() {
     const v = (sel: string) => (document.querySelector(sel) as HTMLSelectElement | null)?.value;
     const on = (sel: string) => (document.querySelector(sel) as HTMLInputElement | null)?.checked === true;
-    const mt = v("#map-type") as MapType | undefined;
-    if (mt && MAP_TYPES.some(([id]) => id === mt)) { this.mapType = mt; store.set("bd-map-type", mt); }
+    this.pickMap(v("#map-type"));
     const size = Number(v("#map-size")); if (MAP_SIZES.some(([, t]) => t === size)) this.mapSize = size;
     const vic = v("#victory"); if (vic && VICTORIES.some(([id]) => id === vic)) { this.victoryId = vic; store.set("bd-victory", vic); }
     const age = v("#start-age"); if (age !== undefined) { this.startAge = Number(age) || 0; store.set("bd-start-age", age); }
@@ -1288,7 +1310,7 @@ export class Game {
     const ais = players.map(({ seat }, i) => [i, seat.level] as [number, Difficulty]).filter((_, i) => players[i].seat.kind === "computer");
     const setup: OnlineSetup = {
       seed: this.seed, names, size: Math.max(this.mapSize, minMapSize(names.length)), reseed: this.reseed, speed: this.speed, ais,
-      options: { civs: all, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, startAge: this.startAge, resources: this.resources,
+      options: { civs: all, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, mapSpec: this.mapSpecNow(), startAge: this.startAge, resources: this.resources,
         popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2] },
     };
     for (const f of o.friends) f.slot = players.findIndex(({ seat }) => seat.kind === "friend" && seat.friend === f.id);
