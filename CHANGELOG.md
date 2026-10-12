@@ -8,6 +8,10 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-12
 
+- [#75](https://github.com/nkocvodoi/BronzeDawn/pull/75) Người dân cử động khi làm việc với art pack: trình nhập lấy hoạt ảnh hái quả, đào mỏ, cày ruộng, xây, đánh cá từ đúng chỗ của bản gốc (cần nhập lại); pack nhập từ trước thì phát hoạt ảnh đứng ở tốc độ làm việc thay vì đứng im
+- [#73](https://github.com/nkocvodoi/BronzeDawn/pull/73) Ô đất từ art pack không còn đường kẻ sáng quanh mỗi ô (lấy mẫu tránh mép trong suốt của ảnh)
+- [#72](https://github.com/nkocvodoi/BronzeDawn/pull/72) Công trình từ art pack đứng đúng ô của nó: `anchorAt: "center"` cho ảnh có điểm neo ở giữa công trình
+- [#70](https://github.com/nkocvodoi/BronzeDawn/pull/70) Màn Art Packs ghi rõ mỗi pack đang bật hay tắt, và nút nói rõ sẽ làm gì (Turn off / Turn on)
 - [#71](https://github.com/nkocvodoi/BronzeDawn/pull/71) Hotfix: ruộng tự trồng lại chỉ tốn nửa giá xây ruộng mới (38 gỗ thay vì 75, vẫn tính giảm giá theo dân tộc)
 - [#69](https://github.com/nkocvodoi/BronzeDawn/pull/69) Smoke test online không còn hỏng thất thường trên CI: đợi tới khi hai máy cùng dừng ở một bước, và đợi tốc độ game của chủ phòng tới máy khách, rồi mới so
 - [#68](https://github.com/nkocvodoi/BronzeDawn/pull/68) Gói hình (Art Packs): người chơi tự nạp hình và tiếng của mình từ một thư mục hoặc file zip ngay trong trình duyệt (lưu trong trình duyệt, không tải lên đâu cả), thay từng phần; kèm gói mẫu "voi chiến thành khủng long" và hướng dẫn trong replica/art-packs.md
