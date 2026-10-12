@@ -218,6 +218,28 @@ function art(where: ReturnType<typeof locate>, dat: DatFile, out: string): Recor
     }
   }
 
+  // Cliffs: the 3 x 3 rock of "Cliffs_1" (unit 264; 265 to 273 are smaller pieces, all of class 34 "Cliff").
+  // Its frames are the pieces of a cliff by the way the cliff runs: 1 to 5 along x (down to the right on the
+  // screen), 15 to 19 along y (down to the left), 24 where it turns. Bronze Dawn asks for one picture per
+  // cliff tile, by which neighbours are cliffs too; the pieces overlap along the line into one ridge.
+  const cliffs: Record<string, unknown[]> = {};
+  const rock = g(all.get(264)?.standingGraphic);
+  if (rock) {
+    const pieces = (slots: number[]) => slots.flatMap((s) => {
+      const pic = still(lib, rock, { angle: s });
+      if (!pic) return [];
+      const file = `aoe/cliffs/${s}.png`;
+      write(file, pic.png);
+      return [{ file, anchor: pic.anchor }];
+    });
+    const alongX = pieces([1, 2, 3, 4, 5]), alongY = pieces([15, 16, 17, 18, 19]), turn = pieces([24]);
+    for (let joins = 0; joins < 16; joins++) {
+      const x = joins & 3, y = joins & 12;
+      const list = x && !y ? alongX : y && !x ? alongY : turn;
+      if (list.length) cliffs[joins] = list;
+    }
+  }
+
   // Resources: every frame of the object's picture is a variant.
   const resources: Record<string, unknown> = {};
   const variants = (key: string, ids: number[]) => {
@@ -282,8 +304,8 @@ function art(where: ReturnType<typeof locate>, dat: DatFile, out: string): Recor
     write(`aoe/icons/${id}.png`, png);
     icons[id] = `aoe/icons/${id}.png`;
   }
-  console.log(`art: ${Object.keys(units).length} unit sheets, ${Object.keys(buildings).length} buildings, ${Object.keys(resources).length} resources, ${Object.keys(terrain).length} terrains, ${Object.keys(icons).length} icons`);
-  return { units, buildings, resources, terrain, icons };
+  console.log(`art: ${Object.keys(units).length} unit sheets, ${Object.keys(buildings).length} buildings, ${Object.keys(cliffs).length} cliff joins, ${Object.keys(resources).length} resources, ${Object.keys(terrain).length} terrains, ${Object.keys(icons).length} icons`);
+  return { units, buildings, cliffs, resources, terrain, icons };
 }
 
 /**

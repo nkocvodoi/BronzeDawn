@@ -29,14 +29,6 @@ Làm trên PC ở nhà, nơi có cài AoE + Rise of Rome. Khi xong một mục t
   `construction`), và để `buildingPic` trong `web/src/game/art.ts` chọn khung theo tiến độ xây.
 - Ghi khoá mới vào `replica/art-packs.md`.
 
-## 3. Núi / vách đá (cliffs)
-
-- Người dùng báo: art pack không có hình núi/vách đá.
-- `graphics` trong dữ liệu có "Cliffs", "Cliffs 1"..."Cliffs 10", "CliffsB 1"..."CliffsB 7"; đơn vị
-  số 34 là "Cliff".
-- Cần: tìm hình nào ứng với hướng/đoạn vách nào, xuất ra, thêm khoá manifest, và để `cliffPic` trong
-  `art.ts` dùng hình của pack khi có.
-
 ## Sau khi nhập lại
 
 - Đưa pack mới lên Art Packs (thư mục hoặc zip) để thử trên GitHub Pages, hoặc chạy `npm run dev`.
