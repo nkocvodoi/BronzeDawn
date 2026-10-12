@@ -88,7 +88,16 @@ for (const p of [a, b]) await p.evaluate(() => {
 });
 await a.waitForTimeout(8000);
 await a.keyboard.press("F3");
-await a.waitForTimeout(2500);
+// Paused, every machine plays to the last sealed turn and stops there. A page in the background is slowed
+// down by the browser, so wait until both stand still on the same step instead of a fixed time (as
+// smoke-online.mjs does); a step that is still odd means a machine is in the middle of a turn.
+for (let i = 0, last = ""; i < 40; i++) {
+  await a.waitForTimeout(500);
+  const now = (await Promise.all([a, b].map((p) => p.evaluate(() => game.world.tick)))).join(",");
+  const [t1, t2] = now.split(",");
+  if (now === last && t1 === t2) break;
+  last = now;
+}
 const sum = (p) => p.evaluate(() => ({ tick: game.world.tick, units: game.world.units.map((u) => `${u.id}:${u.pos.x.toFixed(3)},${u.pos.y.toFixed(3)}`).join(";"), res: game.world.players.map((x) => x.res.values.join()).join("|") }));
 const [x, y] = [await sum(a), await sum(b)];
 check(x.tick === y.tick && x.units === y.units && x.res === y.res, `with the new host, the same world on both (step ${x.tick}, ${y.tick})`);
