@@ -25,7 +25,7 @@ rồi chấm lại.
 | Chiến đấu | Công thức sát thương gốc, giáp xuyên, công trình nhận 1/5 sát thương, đá văng và né được, voi giẫm, tháp canh 4 cấp, tường kéo dài |
 | Tôn giáo | Thầy tu cải đạo và chữa thương, faith hồi dần, Monotheism |
 | Thắng | Chinh phục, Wonder (đứng 15 phút) |
-| AI | 3 mức, chơi đủ 4 thời đại, săn, nghiên cứu, tập hợp quân trước khi đánh; mức Khó thu nhanh hơn 20% (ghi rõ trên màn hình); chế độ chỉ xem các máy đánh nhau (V đổi góc nhìn, tới 10x) |
+| AI | 5 mức, chơi đủ 4 thời đại, săn, nghiên cứu, tập hợp quân trước khi đánh; mức Khó thu nhanh hơn 15% (ghi rõ trên màn hình); từ mức Moderate chơi theo thế mạnh dân tộc (đọc từ bonus: nhà lính nào xây trước và xây thêm cái thứ hai, loại quân nào được ưu tiên, nâng cấp dòng quân mạnh sớm, thêm tàu nếu giỏi trên biển); chế độ chỉ xem các máy đánh nhau (V đổi góc nhìn, tới 10x) |
 | Giao diện | Bố cục kiểu bản gốc, phím xây B + chữ, phím luyện quân của bản gốc, đối tượng nháy khi giao việc, tốc độ 1x đến 3x, hiển thị dân tộc, tùy chọn ruộng tự trồng lại (kiểu AoE2, bật sẵn, tắt trong Menu), thời gian còn lại khi luyện quân, nghiên cứu, lên đời và xây (thanh trên cùng đếm ngược lúc lên đời) |
 | Hình | Mọi unit, thú, công trình (theo thời đại và kiến trúc), ô đất, cây, mỏ dựng bằng code trong `art3d/` rồi render bằng Blender; hình vẽ bằng code còn làm dự phòng; tường và vách đá nối liền |
 | Gói hình (Art Packs) | Người chơi tự nạp hình, tiếng và bản đồ từ thư mục hoặc zip, lưu trong trình duyệt; `npm run import-aoe` lấy hình, tiếng, số liệu từ bản AoE của chính mình vào `web/assets-local/` (chỉ dev server dùng, không bao giờ vào repo hay bản deploy), kể cả công trường lúc đang xây và vách đá |

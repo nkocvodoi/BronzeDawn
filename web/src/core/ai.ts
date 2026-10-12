@@ -1,8 +1,13 @@
 import { Building, Player, Unit } from "./entities";
 import { Footprint, Tile, Vec2 } from "./geom";
 import { Terrain, walkable } from "./grid";
+import { civBent, type CivBent } from "./civbent";
 import { RES_ALL, Res, ResBag, Rules, UnitDef } from "./rules";
 import type { World } from "./world";
+
+/** A building whose units the civilization makes this much better (a fifth) is its army's own: built
+ *  first among the army buildings of its age, given the first place to train, and a second one later. */
+const FAVOURITE = 0.2;
 
 /** The original's five levels, Easiest to Hardest. "normal" is the one the original calls Moderate. */
 export type Difficulty = "easiest" | "easy" | "normal" | "hard" | "hardest";
@@ -77,10 +82,25 @@ export class AIController {
   /** The soldier sent to take a Ruin or an Artifact, while it is on its way. */
   private relicRunner: number | null = null;
   private level: (typeof LEVEL)[Difficulty];
+  /** What its civilization is good at, read from the bonuses on the first think (a loaded game too). */
+  private bentOf: CivBent | null = null;
 
-  constructor(readonly player: number, readonly difficulty: Difficulty = "normal") {
+  /** `playsToCiv`: false plays every civilization alike, as it did before, to measure the difference. */
+  constructor(readonly player: number, readonly difficulty: Difficulty = "normal", readonly playsToCiv = true) {
     this.level = LEVEL[difficulty];
     this.waveSize = this.level.firstWave;
+  }
+
+  /** Moderate and up play to their civilization; the easy levels, which do not plan, play every one alike. */
+  private bent(w: World): CivBent {
+    return (this.bentOf ??= this.playsToCiv && this.level.counters ? civBent(w.rules, w.players[this.player].civ ?? null) : { unit: new Map(), building: new Map() });
+  }
+
+  /** The best building for the army, and how much better its units are, if the civilization has one. */
+  private favourite(w: World): [string, number] | null {
+    let best: [string, number] | null = null;
+    for (const [id, g] of this.bent(w).building) if (id !== "dock" && id !== "temple" && (!best || g > best[1])) best = [id, g];
+    return best && best[1] >= FAVOURITE ? best : null;
   }
 
   /** Called once when the AI joins a world: applies its open economic bonus, and Hardest's extra stock. */
@@ -165,7 +185,9 @@ export class AIController {
     const enemyShips = w.units.filter((u) => u.alive && u.isBoat && u.isSoldier && !u.isRelic && w.isEnemy(this.player, u.owner)).length;
     // A small fleet: one more than the enemy shows, within a cap by age, and never more than a fifth of
     // the population, so a race of ships does not starve the army that has to finish the game.
-    const want = Math.min([0, 2, 3, 4][Math.min(p.age, 3)], enemyShips + 1, Math.floor(p.popCap / 5));
+    // A civilization good at sea keeps two ships more, and more than the enemy shows by two.
+    const sea = (this.bent(w).building.get("dock") ?? 0) >= 0.3 ? 2 : 0;
+    const want = Math.min([0, 2, 3, 4][Math.min(p.age, 3)] + sea, enemyShips + 1 + sea, Math.floor(p.popCap / 5));
     // Across the sea, the wood goes to a transport first: no war ships until there is one.
     const waitForTransport = this.acrossSea && !w.unitsOf(this.player).some((u) => u.isTransport);
     if (!waitForTransport && navy.length < Math.max(want, Math.min(2, [0, 2, 3, 4][Math.min(p.age, 3)])) && dock.queue.length === 0
@@ -533,6 +555,18 @@ export class AIController {
 
   private count(bs: Building[], type: string) { return bs.filter((b) => b.def.id === type).length; }
 
+  /** The buildings of an age in the order to put them up: what trains no army (the Market, the Government
+   *  Center) as it is, then the army's, the civilization's best first. */
+  private plan(w: World, age: number): string[] {
+    const g = this.bent(w).building;
+    const army = (id: string) => (w.rules.buildings.get(id)?.trains ?? []).some((t) => t !== "villager");
+    const list = PLAN[age];
+    const rest = list.filter((id) => !army(id));
+    const armies = list.filter(army).map((id, i) => [id, i] as const)
+      .sort((a, b) => (g.get(b[0]) ?? 0) - (g.get(a[0]) ?? 0) || a[1] - b[1]).map(([id]) => id);
+    return [...rest, ...armies];
+  }
+
   /** Food and gold held back for the next age once its buildings stand, so other spending does not eat it. */
   private reserve(w: World): ResBag {
     const keep = this.ageReserve(w);
@@ -626,11 +660,17 @@ export class AIController {
     const building = bs.some((b) => !b.complete && !b.isFarm && b.def.id !== "house");
     if (!building) {
       for (let a = 0; a <= p.age; a++) {
-        const want = PLAN[a].find((id) => this.count(bs, id) === 0 && w.blockerBuilding(id, this.player) === null && villagers.length >= 6 + a * 3);
+        const want = this.plan(w, a).find((id) => this.count(bs, id) === 0 && w.blockerBuilding(id, this.player) === null && villagers.length >= 6 + a * 3);
         if (want && this.affordable(w, w.buildingCost(this.player, want))) {
           this.placeNear(w, want, home, 5, 15, villagers);
           break;
         }
+      }
+      // From the Bronze Age a second of the army's own building, to make twice as many of what the civ is good at.
+      const fav = this.favourite(w);
+      if (fav && p.age >= 2 && villagers.length >= 20 && this.count(bs, fav[0]) === 1 && w.blockerBuilding(fav[0], this.player) === null
+        && !bs.some((b) => !b.complete && b.def.id === fav[0]) && this.affordable(w, w.buildingCost(this.player, fav[0]))) {
+        this.placeNear(w, fav[0], home, 5, 15, villagers);
       }
       const tower = w.current(this.player, "watch_tower");
       const towers = bs.filter((b) => b.def.tags?.includes("tower")).length;
@@ -858,7 +898,9 @@ export class AIController {
     if (this.level.slow && (this.thinks / 3) % 3 !== 0) return;
     const p = w.players[this.player];
     // Keep the army's unit lines current, then the list; tower upgrades once towers stand.
-    const uses = new Set(army.map((u) => u.def.id));
+    // The lines the civilization is good at count as in use from the start, so their upgrades come early.
+    const strong = [...this.bent(w).unit].filter(([, g]) => g >= FAVOURITE).map(([id]) => id);
+    const uses = new Set([...army.map((u) => u.def.id), ...strong]);
     const list = [...TECHS];
     for (const t of w.rules.techs.values()) {
       if (t.effects.some((e) => e.type === "upgrade" && uses.has(e.from)) && !list.includes(t.id)) list.unshift(t.id);
@@ -890,7 +932,10 @@ export class AIController {
     let slots = this.level.producers + (p.age >= 2 ? 1 : 0) - producing;
     const siege = army.filter((u) => u.def.class === "siege").length;
     const priests = w.unitsOf(this.player).filter((u) => u.isPriest).length;
-    for (const b of bs) {
+    // The civilization's own army buildings take the free places first.
+    const bent = this.bent(w);
+    const order = [...bs].sort((a, b) => (bent.building.get(b.def.id) ?? 0) - (bent.building.get(a.def.id) ?? 0));
+    for (const b of order) {
       if (!b.complete || !(b.def.trains ?? []).length || b.def.id === "town_center" || b.def.on_water || b.queue.length >= 2) continue;
       if (!b.queue.length) { if (slots <= 0) continue; slots--; }
       let options = (b.def.trains ?? []).filter((t) => w.unitShown(t, this.player) && w.blockerUnit(t, this.player) === null);
@@ -900,8 +945,11 @@ export class AIController {
       let pick: string;
       if (b.def.id === "siege_workshop") pick = options.find((o) => w.rules.units.get(o)?.area) ?? options[0];
       else if (this.level.counters) {
+        // What counters the enemy best, leaning to what the civilization makes better: between two about
+        // as good, its own.
+        const value = (o: string) => { const s = this.score(w, o, enemyArmy); return s + (bent.unit.get(o) ?? 0) * (1 + Math.abs(s)); };
         pick = options[0];
-        for (const o of options) if (this.score(w, o, enemyArmy) > this.score(w, pick, enemyArmy)) pick = o;
+        for (const o of options) if (value(o) > value(pick)) pick = o;
       } else pick = options[Math.floor(this.thinks / 7) % options.length];
       // Below the standing guard for this age, soldiers come before saving for the next age.
       const cost = w.unitCost(this.player, pick);

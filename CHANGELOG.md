@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-12
 
+- [#93](https://github.com/nkocvodoi/BronzeDawn/pull/93) Máy (từ mức Moderate) chơi theo thế mạnh dân tộc, đọc từ bonus: nhà lính hợp dân tộc xây trước và thêm cái thứ hai từ Bronze Age, được luyện quân trước, ưu tiên loại quân được bonus, nâng cấp dòng quân đó sớm, dân tộc giỏi biển có thêm tàu; `npm run sim:civ` đo bằng trận máy đấu máy
 - [#95](https://github.com/nkocvodoi/BronzeDawn/pull/95) Mọi số liệu là của Rise of Rome lấy từ `empires.dat`: thời gian luyện tàu gấp đôi trước, thời gian nạp kỵ binh và xe chiến 1,5 s, Wonder 8000, mỏ đá 250, thú và thịt thối như bản gốc, công nghệ đúng đối tượng và số; thu hoạch và xây không còn nhanh hơn bản gốc; trình nhập sửa đòn của tàu bắn đá và sư tử, lương thực ruộng, tốc độ thối của thịt
 - [#92](https://github.com/nkocvodoi/BronzeDawn/pull/92) Bonus của 16 dân tộc là đúng số của Rise of Rome, lấy thẳng từ `empires.dat` (Assyrian bắn mỗi 1,1 s, Egyptian đào vàng +44% và mang thêm 2, Sumerian ruộng +250, Babylonian hồi faith ×1,375...); hiệu ứng "set" như bản gốc; trình nhập AoE chuyển được mọi bonus dân tộc
 - [#91](https://github.com/nkocvodoi/BronzeDawn/pull/91) Ruins vẽ lại thành vòng đá cổ, Artifact thành rương vàng trên đòn khiêng (Blender), có hình riêng lúc có người giữ; art3d chạy được trên Windows

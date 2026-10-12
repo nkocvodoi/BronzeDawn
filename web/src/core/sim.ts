@@ -15,12 +15,13 @@ export function clock(t: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/** `playsToCiv`: per player, whether its AI plays to its civilization (all do, unless told otherwise). */
 export function runMatch(rules: Rules, seed: number, minutes = 75, levels: Difficulty[] = ["normal", "normal"], mapType: MapType = "inland",
-                         options: WorldOptions = {}): SimReport {
+                         options: WorldOptions = {}, playsToCiv: boolean[] = []): SimReport {
   // Civilizations come from the seed too, so a seed always replays the same match.
-  const civs = levels.map((_, i) => rules.civs.length ? rules.civs[(seed * 7 + i * 5) % rules.civs.length].id : null);
-  const w = new World(rules, seed, levels.map((_, i) => `AI ${i + 1}`), 72, true, { civs, mapType, ...options });
-  w.ais = levels.map((d, i) => new AIController(i, d));
+  const civs = options.civs ?? levels.map((_, i) => rules.civs.length ? rules.civs[(seed * 7 + i * 5) % rules.civs.length].id : null);
+  const w = new World(rules, seed, levels.map((_, i) => `AI ${i + 1}`), 72, true, { mapType, ...options, civs });
+  w.ais = levels.map((d, i) => new AIController(i, d, playsToCiv[i] ?? true));
   for (const ai of w.ais) ai.attach(w);
   const problems: string[] = [];
   const limit = Math.floor((minutes * 60) / World.dt);

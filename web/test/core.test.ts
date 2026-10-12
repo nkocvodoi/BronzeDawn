@@ -8,6 +8,7 @@ import { scores } from "../src/core/score";
 import { runMatch } from "../src/core/sim";
 import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
+import { civBent } from "../src/core/civbent";
 import { Victory, World, WorldOptions } from "../src/core/world";
 import { loadWorld, saveWorld } from "../src/core/save";
 import { delayFor, LockstepGuest, LockstepHost, LockstepState, MIN_DELAY, START_DELAY, TURN_TICKS } from "../src/core/net";
@@ -761,6 +762,23 @@ describe("the original's rules", () => {
     expect(w.players[3].mods.flags.has("free_tribute")).toBe(true);
     const b = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["babylonian", "greek"] });
     expect(b.players[0].mods.conversionRegen).toBeCloseTo(1.375); // faith back at 2.75 a second instead of 2
+  });
+
+  it("the computer reads what its civilization is good at from the bonuses", () => {
+    const bent = (id: string) => civBent(RULES, RULES.civs.find((c) => c.id === id)!);
+    const best = (id: string) => [...bent(id).building].filter(([b]) => b !== "dock").sort((x, y) => y[1] - x[1])[0]?.[0];
+    expect(best("assyrian")).toBe("archery_range"); // archers that fire in 1.1 s
+    expect(best("roman")).toBe("barracks"); // swordsmen
+    expect(best("hittite")).toBe("siege_workshop"); // catapults with twice the hit points
+    expect(bent("phoenician").building.get("dock")).toBeGreaterThan(0.3); // catapult ships that fire sooner
+    expect(bent("shang").building.size).toBe(0); // only cheaper villagers and stronger walls: no army of its own
+    // An AI of a civilization with a favourite army building puts it up first of its age.
+    // Palmyran Camel Riders are faster: the Stable before the Archery Range. The easy levels play alike.
+    const w = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["palmyran", "greek"] });
+    const plan = (ai: AIController) => (ai as unknown as { plan(w: World, a: number): string[] }).plan(w, 1);
+    expect(plan(new AIController(0, "hard"))).toEqual(["market", "stable", "archery_range"]);
+    expect(plan(new AIController(0, "hard", false))).toEqual(["market", "archery_range", "stable"]);
+    expect(plan(new AIController(0, "easy"))).toEqual(["market", "archery_range", "stable"]);
   });
 
   it("fishing boats: five for each finished Dock, counting those in training", () => {
