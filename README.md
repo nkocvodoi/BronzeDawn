@@ -55,7 +55,8 @@ npm run dev
 ```
 
 Máy không cài được game (ví dụ máy Mac) chỉ cần chép nguyên thư mục `web/assets-local/` từ máy đã chạy lệnh trên, rồi chạy
-`npm run dev`. Không được commit hay đăng thư mục đó lên chỗ công khai.
+`npm run dev`. Không được commit hay đăng thư mục đó lên chỗ công khai. Các bước nhập lại và cách đưa sang máy
+khác: [replica/aoe-reimport.md](replica/aoe-reimport.md).
 
 Có `web/assets-local/` thì dev server luôn dùng hình và số liệu trong đó, đè lên hình của game (màn Art Packs không
 liệt kê nó vì nó không phải art pack). Để xem game như bản đã đăng, với hình và luật của chính nó:
