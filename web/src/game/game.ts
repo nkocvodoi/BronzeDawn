@@ -1,7 +1,7 @@
 import { Application, Container, Graphics, Matrix, Sprite, Texture } from "pixi.js";
 import { AIController, DIFFICULTIES, DIFFICULTY_NAME, Difficulty } from "../core/ai";
 import { Building, Entity, ResourceNode, Unit } from "../core/entities";
-import { Tile, Vec2 } from "../core/geom";
+import { Footprint, Tile, Vec2 } from "../core/geom";
 import { Terrain } from "../core/grid";
 import { Res, RES_KEY as RES_NAME, ResBag, Rules } from "../core/rules";
 import { scores } from "../core/score";
@@ -34,7 +34,14 @@ interface View { root: Container; sprite: Sprite; pic: Pic;
   /** Flames on a damaged building, one more at each quarter of its hit points lost. */
   fire?: Container; farm?: boolean;
   /** A resource's place, set once: trees, mines and bushes never move. */
-  placed?: boolean }
+  placed?: boolean;
+  /** How far a gatherer is drawn stepped in to its tree, mine or bush (0 to 1), and when that was last set. */
+  close?: number; closeAt?: number }
+
+/** How far from the edge of a tree, mine or bush a gatherer is drawn while working it, in tiles. The
+ *  simulation stops a gatherer on the tile beside it, often most of a tile away; the picture closes the gap,
+ *  so the axe meets the trunk. Only the drawing moves: the game plays exactly the same. */
+const GATHER_STAND = 0.22;
 
 /** The original's limit on how many units one selection holds. */
 const MAX_SELECTION = 25;
@@ -2216,6 +2223,24 @@ export class Game {
     return buildingPic(b.def, b.owner, b.owner >= 0 ? this.world.players[b.owner].age : 0, stage, farmLeft, this.arch(b.owner), this.civId(b.owner));
   }
 
+  /** Where a gatherer at work is drawn, from where it stands: right at the edge of what it is working,
+   *  eased in over a quarter of a second as the work starts, and back out as it stops. */
+  private stepIn(v: View, u: Unit, at: Vec2): Vec2 {
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - (v.closeAt ?? now)) / 1000);
+    v.closeAt = now;
+    const n = u.busy && u.order.kind === "gather" ? this.world.node(u.order.id) : null;
+    v.close = Math.max(0, Math.min(1, (v.close ?? 0) + (n ? dt * 4 : -dt * 6)));
+    if (!n || !v.close || u.isBoat) return new Vec2(0, 0);
+    const f = new Footprint(n.tile, 1);
+    const near = n.solid ? new Vec2(Math.max(f.minX, Math.min(f.maxX, at.x)), Math.max(f.minY, Math.min(f.maxY, at.y))) : n.at;
+    const to = near.sub(at), len = to.length;
+    const gap = n.distance(at) - GATHER_STAND;
+    if (len < 1e-6 || gap <= 0) return new Vec2(0, 0);
+    const k = v.close * v.close * (3 - 2 * v.close);
+    return to.mul((gap * k) / len);
+  }
+
   private place(v: View, e: Entity, alpha: number) {
     if (e instanceof Unit) {
       let p = e.prevPos.lerp(e.pos, alpha);
@@ -2228,6 +2253,7 @@ export class Game {
         if (pending) { const d = lead.to.sub(p.add(off)); if (d.length > 0.3) heading = d.mul(1 / d.length); }
         p = p.add(off);
       }
+      p = p.add(this.stepIn(v, e, p));
       const s = iso(p);
       v.root.position.set(Math.round(s.x / 2) * 2, Math.round(s.y / 2) * 2);
       v.root.zIndex = depth(p) + 0.3;
