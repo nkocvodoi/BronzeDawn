@@ -158,8 +158,11 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 
 /* ---- start, menu, help and end screens */
 #overlay { position: fixed; inset: 0; display: grid; place-items: center; z-index: 10; background: rgba(0, 0, 0, .35); }
+/* Taller than the screen (a laptop, a phone): the card scrolls inside itself; the page never does. */
 #overlay .card {
-  max-width: min(760px, calc(100vw - 32px)); padding: 26px 36px; text-align: center; color: #fff;
+  max-width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px);
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+  box-sizing: border-box; padding: 26px 36px; text-align: center; color: #fff;
   background: var(--stone) #463c2e; background-size: 64px 64px;
   border: 3px solid; border-color: #c8a462 #1e1208 #1e1208 #c8a462;
   box-shadow: 0 10px 40px rgba(0, 0, 0, .6); animation: card .25s ease-out;
