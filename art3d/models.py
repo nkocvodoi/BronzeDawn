@@ -134,3 +134,92 @@ def lone_tree():
     """A tree standing alone: the same kind, grown bigger."""
     tree(1)
     lib.scale_all(LONE_TREE["scale"])
+
+
+# ---- cliffs. One picture per cliff tile, chosen by which of its four neighbours are cliffs too, so a run
+# of them reads as one ridge of rock. Bits: 1 the game's x - 1, 2 x + 1, 4 y - 1, 8 y + 1.
+
+ROCK = (0.56, 0.48, 0.38)
+ROCK_DARK = (0.36, 0.30, 0.24)
+ROCK_TOP = (0.72, 0.64, 0.50)
+CLIFF = {"size": (230, 230), "center": (0.2, -0.05, 0.45), "variants": 2}
+# Scene direction toward each neighbour: the game's y runs along the scene's -Y.
+NEIGHBOURS = {1: (-1, 0), 2: (1, 0), 4: (0, 1), 8: (0, -1)}
+
+
+def rock_mat():
+    """Rock: light where it faces the sky, darker down the faces, banded with strata."""
+    m = lib.MATS.get(("rockface", False))
+    if m:
+        return m
+    m = lib.mat("rockface", ROCK, 0.95, grain=0.35, grain_size=0.02)
+    nt = m.node_tree
+    bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
+    tex = bsdf.inputs["Base Color"].links[0].from_node   # the grain ramp
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(geo.outputs["Normal"], sep.inputs[0])
+    up = nt.nodes.new("ShaderNodeMapRange")
+    up.inputs["From Min"].default_value, up.inputs["From Max"].default_value = 0.45, 0.85
+    nt.links.new(sep.outputs["Z"], up.inputs["Value"])
+    wave = nt.nodes.new("ShaderNodeTexWave")
+    wave.bands_direction = "Z"
+    wave.inputs["Scale"].default_value = 9
+    wave.inputs["Distortion"].default_value = 4
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    nt.links.new(coord.outputs["Object"], wave.inputs["Vector"])
+    strata = nt.nodes.new("ShaderNodeMix")
+    strata.data_type = "RGBA"
+    strata.blend_type = "MULTIPLY"
+    nt.links.new(wave.outputs["Fac"], strata.inputs["Factor"])
+    strata.inputs["Factor"].default_value = 0.35
+    nt.links.new(tex.outputs["Color"], strata.inputs[6])
+    strata.inputs[7].default_value = (*lib.linear(ROCK_DARK), 1)
+    top = nt.nodes.new("ShaderNodeMix")
+    top.data_type = "RGBA"
+    nt.links.new(up.outputs["Result"], top.inputs["Factor"])
+    nt.links.new(strata.outputs[2], top.inputs[6])
+    top.inputs[7].default_value = (*lib.linear(ROCK_TOP), 1)
+    nt.links.new(top.outputs[2], bsdf.inputs["Base Color"])
+    return m
+
+
+def crag(name, x, y, r, h, seed):
+    """A tapering spur of rock with broken faces."""
+    rnd = random.Random(seed)
+    o = lib.cyl(name, r, h, (x, y, h / 2), rock_mat(), verts=rnd.choice((5, 6, 7)), r2=r * rnd.uniform(0.35, 0.6), smooth_it=False)
+    o.rotation_euler = (rnd.uniform(-0.08, 0.08), rnd.uniform(-0.08, 0.08), rnd.uniform(0, math.pi))
+    o.scale = (rnd.uniform(0.85, 1.2), rnd.uniform(0.85, 1.2), 1)
+    tex = lib.bpy.data.textures.new(f"crag{name}{seed}", "VORONOI")
+    tex.noise_scale = 0.09
+    sub = o.modifiers.new("sub", "SUBSURF")
+    sub.subdivision_type = "SIMPLE"
+    sub.levels = sub.render_levels = 4
+    mod = o.modifiers.new("crags", "DISPLACE")
+    mod.texture = tex
+    mod.strength = 0.07
+    mod.mid_level = 0.55
+    return o
+
+
+def cliff(mask, variant):
+    rnd = random.Random(mask * 31 + variant * 7 + 5)
+    # A peak near the middle, and spurs out toward each neighbour that is a cliff too, a little past the
+    # tile's edge to meet its rock; lower spurs on the open sides, so the ridge has a foot.
+    crag("peak", rnd.uniform(-0.08, 0.08), rnd.uniform(-0.08, 0.08), 0.36, 0.72 + rnd.uniform(-0.08, 0.14), rnd.random())
+    for bit, (dx, dy) in NEIGHBOURS.items():
+        if mask & bit:
+            for k, f in enumerate((0.3, 0.55)):
+                crag(f"ridge{bit}{k}", dx * f + rnd.uniform(-0.06, 0.06), dy * f + rnd.uniform(-0.06, 0.06), 0.3,
+                     0.5 + rnd.uniform(0, 0.25), rnd.random())
+        else:
+            crag(f"foot{bit}", dx * 0.28 + rnd.uniform(-0.05, 0.05), dy * 0.28 + rnd.uniform(-0.05, 0.05), 0.24,
+                 0.25 + rnd.uniform(0, 0.15), rnd.random())
+    stone = lib.mat("scree", ROCK_DARK, 0.95, grain=0.3, grain_size=0.02)
+    for k in range(4):
+        a = rnd.uniform(0, 2 * math.pi)
+        dx, dy = math.cos(a), math.sin(a)
+        if any(mask & bit and dx * nx + dy * ny > 0.5 for bit, (nx, ny) in NEIGHBOURS.items()):
+            continue
+        r = rnd.uniform(0.04, 0.07)
+        lib.ball(f"scree{k}", r, (dx * 0.48, dy * 0.48, r * 0.5), stone, scale=(1.2, 1.0, 0.7), sub=1)

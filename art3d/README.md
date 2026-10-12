@@ -27,7 +27,7 @@ dời tâm (`center`) trong code.
 | --- | --- |
 | `lib.py` | Cảnh, camera isometric 2:1, nắng, vật liệu, render và đóng sheet |
 | `villager.py` | Người dân: khung xương bằng empty; dụng cụ (rìu, cuốc, búa, giỏ quả); các động tác đứng, đi, chặt cây, đào mỏ, đóng búa, hái quả |
-| `models.py` | Công trình (Town Center, nhà Thời đồ đá) và cây |
+| `models.py` | Công trình (Town Center, nhà Thời đồ đá), cây, vách đá |
 | `build.py` | Danh sách cái cần render, kích thước khung, điểm neo, ghi manifest |
 
 ## Quy ước
@@ -44,5 +44,8 @@ dời tâm (`center`) trong code.
   vùng nào là màu người chơi. Vùng đó được tô thành các sắc độ tím #FF00FF, và game đổi sang màu của từng người.
 - **Điểm neo:** người dân và thú neo ở chân. Công trình neo ở góc dưới của hình thoi. Cây neo ở gốc, đặt vào
   giữa ô.
+- **Vách đá:** mỗi ô vách đá một hình, chọn theo bốn ô bên cạnh có phải vách đá không (khóa `cliffs` trong
+  manifest, số 0–15: 1 là x - 1, 2 là x + 1, 4 là y - 1, 8 là y + 1). Đá vươn sang hướng có vách đá bên
+  cạnh, nên một dãy ô thành một sống núi liền.
 - **Bóng:** render sẵn vào hình (game không tự vẽ bóng). Nắng chiếu từ trên bên trái, bóng đổ sang phải.
 - **Màu:** ghi màu đúng như nhìn trên màn hình (sRGB); `lib.mat` tự chuyển sang màu tuyến tính cho Blender.

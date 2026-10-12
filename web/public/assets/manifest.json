@@ -148,7 +148,7 @@
  },
  "credits": [
   {
-   "what": "Sprites in art3d/ (units, buildings, trees)",
+   "what": "Sprites in art3d/ (units, buildings, trees, cliffs)",
    "author": "Bronze Dawn contributors, rendered with Blender from art3d/",
    "license": "Same as the game (made for this project)"
   }
@@ -222,5 +222,295 @@
    ],
    "scale": 1.0
   }
+ },
+ "cliffs": {
+  "0": [
+   {
+    "file": "art3d/cliff0-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff0-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "1": [
+   {
+    "file": "art3d/cliff1-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff1-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "2": [
+   {
+    "file": "art3d/cliff2-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff2-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "3": [
+   {
+    "file": "art3d/cliff3-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff3-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "4": [
+   {
+    "file": "art3d/cliff4-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff4-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "5": [
+   {
+    "file": "art3d/cliff5-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff5-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "6": [
+   {
+    "file": "art3d/cliff6-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff6-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "7": [
+   {
+    "file": "art3d/cliff7-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff7-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "8": [
+   {
+    "file": "art3d/cliff8-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff8-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "9": [
+   {
+    "file": "art3d/cliff9-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff9-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "10": [
+   {
+    "file": "art3d/cliff10-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff10-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "11": [
+   {
+    "file": "art3d/cliff11-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff11-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "12": [
+   {
+    "file": "art3d/cliff12-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff12-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "13": [
+   {
+    "file": "art3d/cliff13-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff13-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "14": [
+   {
+    "file": "art3d/cliff14-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff14-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ],
+  "15": [
+   {
+    "file": "art3d/cliff15-0.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/cliff15-1.png",
+    "anchor": [
+     52.7,
+     71.1
+    ],
+    "scale": 1.0
+   }
+  ]
  }
 }

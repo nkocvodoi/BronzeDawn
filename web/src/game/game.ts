@@ -349,7 +349,10 @@ export class Game {
     for (let i = 0; i < map.terrain.length; i++) {
       if (map.terrain[i] !== Terrain.cliff) continue;
       const at = new Vec2(i % map.width + 0.5, Math.floor(i / map.width) + 0.5);
-      const pic = cliffPic(map.shade[i]);
+      const x = i % map.width, y = Math.floor(i / map.width);
+      const cliffAt = (cx: number, cy: number) => cx >= 0 && cy >= 0 && cx < map.width && cy < map.height && map.terrain[cy * map.width + cx] === Terrain.cliff;
+      const joins = (cliffAt(x - 1, y) ? 1 : 0) | (cliffAt(x + 1, y) ? 2 : 0) | (cliffAt(x, y - 1) ? 4 : 0) | (cliffAt(x, y + 1) ? 8 : 0);
+      const pic = cliffPic(map.shade[i], joins);
       const sp = new Sprite(pic.texture);
       sp.width = pic.w; sp.height = pic.h;
       sp.anchor.set(pic.ax, pic.ay);
