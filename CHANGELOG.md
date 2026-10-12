@@ -8,6 +8,14 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-12
 
+- [#83](https://github.com/nkocvodoi/BronzeDawn/pull/83) Phím tắt tới công trình như bản gốc: H tới Town Center, Ctrl+B Barracks, Ctrl+A Archery Range, Ctrl+L Stable, Ctrl+K Siege Workshop, Ctrl+Y Academy, Ctrl+P Temple, Ctrl+D Dock; bấm lại để sang cái kế tiếp
+- [#82](https://github.com/nkocvodoi/BronzeDawn/pull/82) Vách đá vẽ lại bằng Blender, nối với ô bên cạnh thành một sống núi đá liền thay cho dãy khối lặp lại
+- [#81](https://github.com/nkocvodoi/BronzeDawn/pull/81) Menu và màn cài đặt cuộn được khi cao hơn màn hình (laptop, điện thoại), kể cả khi game đang giữ chuột
+- [#80](https://github.com/nkocvodoi/BronzeDawn/pull/80) Người dân đang làm được vẽ sát cây, mỏ, bụi quả thay vì đứng cách xa (chỉ đổi hình, cách game chạy giữ nguyên)
+- [#79](https://github.com/nkocvodoi/BronzeDawn/pull/79) Sprite kiểu pixel như game cuối thập niên 90 (viền cứng, viền tối, ít màu), và người dân đủ nghề: chặt cây vung ngang, đào mỏ bằng cuốc, đóng búa khi xây, ôm giỏ hái quả
+- [#78](https://github.com/nkocvodoi/BronzeDawn/pull/78) Bộ sprite đầu tiên dựng bằng Blender (art3d/): người dân, Town Center và nhà Thời đồ đá, cây
+- [#76](https://github.com/nkocvodoi/BronzeDawn/pull/76) Ghi lại các việc cần làm trên máy có cài AoE (replica/todo-aoe-import.md)
+- [#74](https://github.com/nkocvodoi/BronzeDawn/pull/74) Bản đồ ngẫu nhiên dựng từ bộ số (RandomMapSpec); art pack có thể mang bản đồ, ô chọn Map hiện chúng với chữ "(art pack)"
 - [#75](https://github.com/nkocvodoi/BronzeDawn/pull/75) Người dân cử động khi làm việc với art pack: trình nhập lấy hoạt ảnh hái quả, đào mỏ, cày ruộng, xây, đánh cá từ đúng chỗ của bản gốc (cần nhập lại); pack nhập từ trước thì phát hoạt ảnh đứng ở tốc độ làm việc thay vì đứng im
 - [#73](https://github.com/nkocvodoi/BronzeDawn/pull/73) Ô đất từ art pack không còn đường kẻ sáng quanh mỗi ô (lấy mẫu tránh mép trong suốt của ảnh)
 - [#72](https://github.com/nkocvodoi/BronzeDawn/pull/72) Công trình từ art pack đứng đúng ô của nó: `anchorAt: "center"` cho ảnh có điểm neo ở giữa công trình

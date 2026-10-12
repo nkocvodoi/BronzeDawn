@@ -43,6 +43,12 @@ interface View { root: Container; sprite: Sprite; pic: Pic;
  *  so the axe meets the trunk. Only the drawing moves: the game plays exactly the same. */
 const GATHER_STAND = 0.22;
 
+/** Ctrl and these keys go to a kind of building, as in the original game and Rise of Rome. By key code, so
+ *  the letter is the same on every keyboard layout. */
+const GO_TO: Record<string, string> = {
+  KeyB: "barracks", KeyA: "archery_range", KeyL: "stable", KeyK: "siege_workshop", KeyY: "academy", KeyP: "temple", KeyD: "dock",
+};
+
 /** The original's limit on how many units one selection holds. */
 const MAX_SELECTION = 25;
 
@@ -1592,7 +1598,7 @@ export class Game {
       "Train: F Fishing Boat at the Dock · C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
       "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
       "Ruins and Artifacts: walk any unit up to one to take it; an Artifact you hold can be moved (right-click) and carried in a transport. Hold all of either for 15 minutes to win",
-      "H town center · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
+      "H town center (again: the next) · Ctrl+B Barracks · Ctrl+A Archery Range · Ctrl+L Stable · Ctrl+K Siege Workshop · Ctrl+Y Academy · Ctrl+P Temple · Ctrl+D Dock · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
       "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · Tab: the next unit of the selection · F4 or S: population, scores or nothing above the minimap · F10: menu",
       "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)",
       "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
@@ -2627,9 +2633,21 @@ export class Game {
   }
 
 
+  /** At the start of a game: the Town Center picked and in view. */
   private selectTownCenter() {
     const tc = this.world.buildingsOf(this.me).find((b) => b.def.id === "town_center");
     if (tc) { this.selection = [tc.id]; this.centerOn(tc.center); }
+  }
+
+  /** Picks one of the player's finished buildings of a kind and looks at it: the first, or, when one of them
+   *  is already the selection, the next (H for Town Centers, Ctrl and a letter for the others). */
+  private cycleBuildings(type: string) {
+    const all = this.world.buildingsOf(this.me).filter((b) => b.def.id === type && b.complete).sort((a, b) => a.id - b.id);
+    if (!all.length) { this.hud.message(`No ${this.rules.buildings.get(type)?.name ?? type}`); return; }
+    const at = this.selection.length === 1 ? all.findIndex((b) => b.id === this.selection[0]) : -1;
+    const next = all[(at + 1) % all.length];
+    this.select([next.id]);
+    this.centerOn(next.center);
   }
 
   private beginPlacing(type: string) {
@@ -3204,6 +3222,9 @@ export class Game {
       }
       return;
     }
+    // Ctrl and a letter go to a kind of building, and again to the next one, as in the original.
+    const goTo = e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey ? GO_TO[e.code] : undefined;
+    if (goTo && this.started) { e.preventDefault(); this.cycleBuildings(goTo); return; }
     if (e.metaKey || e.ctrlKey) return; // leave browser shortcuts alone
     if (key === " ") {
       // Space looks at what is picked, as in the original.
@@ -3213,7 +3234,7 @@ export class Game {
       return;
     }
     switch (ch) {
-      case "H": this.selectTownCenter(); return;
+      case "H": this.cycleBuildings("town_center"); return;
       case ".": this.selectIdleVillager(); return;
       case "F3": case "Pause":
         if (this.net instanceof LockstepGuest) { this.hud.message("Only the host can pause an online game"); return; }
