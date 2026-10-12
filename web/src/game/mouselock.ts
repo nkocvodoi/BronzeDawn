@@ -148,10 +148,23 @@ export class MouseLock {
       }
       case "wheel": {
         const w = e as WheelEvent;
-        this.target().dispatchEvent(new WheelEvent("wheel", { ...this.init(mods), deltaX: w.deltaX, deltaY: w.deltaY, deltaMode: w.deltaMode }));
+        const t = this.target();
+        // A made-up wheel event scrolls nothing: scroll what is under the pointer ourselves (a long menu).
+        const box = scrollable(t);
+        if (box) box.scrollBy({ top: w.deltaY * (w.deltaMode === 1 ? 16 : w.deltaMode === 2 ? box.clientHeight : 1) });
+        else t.dispatchEvent(new WheelEvent("wheel", { ...this.init(mods), deltaX: w.deltaX, deltaY: w.deltaY, deltaMode: w.deltaMode }));
         break;
       }
       // click, dblclick, contextmenu and pointer events are made above, from mousedown and mouseup.
     }
   }
+}
+
+/** The nearest element at or above `el` that scrolls up and down and has more to show. */
+function scrollable(el: Element | null): HTMLElement | null {
+  for (let e = el; e && e !== document.body; e = e.parentElement) {
+    const y = getComputedStyle(e).overflowY;
+    if ((y === "auto" || y === "scroll") && e.scrollHeight > e.clientHeight + 1) return e as HTMLElement;
+  }
+  return null;
 }
