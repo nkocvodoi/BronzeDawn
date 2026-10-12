@@ -62,6 +62,7 @@ Danh sách đầy đủ và kích thước nằm trong `replica/assets-needed.md
 |---|---|---|
 | `units` | đơn vị và thú | id của đơn vị (`war_elephant`, `villager`, `villager:axe`...) |
 | `buildings` | công trình | id, rồi kiểu kiến trúc (`greek`, `egyptian`...) và thời đại |
+| `construction` | công trường lúc đang xây, nhiều hình nối nhau theo tiến độ | id của công trình |
 | `resources` | cây, mỏ, bụi dâu, cá | id |
 | `terrain` | ô đất | `grass`, `dirt`, `sand`, `water` |
 | `cliffs` | vách đá, mỗi ô một hình | số 0–15: ô bên cạnh nào cũng là vách đá (1 x-1, 2 x+1, 4 y-1, 8 y+1) |

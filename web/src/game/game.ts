@@ -2232,7 +2232,7 @@ export class Game {
       return wallPic(tier, b.owner, mask, stage);
     }
     const farmLeft = b.isFarm ? b.food / Math.max(1, this.world.players[b.owner]?.mods.farmFood(b.def.resource?.food ?? 1) ?? 1) : 1;
-    return buildingPic(b.def, b.owner, b.owner >= 0 ? this.world.players[b.owner].age : 0, stage, farmLeft, this.arch(b.owner), this.civId(b.owner));
+    return buildingPic(b.def, b.owner, b.owner >= 0 ? this.world.players[b.owner].age : 0, stage, farmLeft, this.arch(b.owner), this.civId(b.owner), b.progress);
   }
 
   /** Where a gatherer at work is drawn, from where it stands: right at the edge of what it is working. It

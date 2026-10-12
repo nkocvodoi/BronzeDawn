@@ -2295,14 +2295,27 @@ function assetBuildingSpec(id: string, age: number, arch: Arch, civ?: string): I
   return null;
 }
 
-export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3, farmLeft = 1, arch: Arch = "greek", civ?: string): Pic {
+/** A picture anchored at the diamond's centre stands half the diamond's height above its bottom corner,
+ *  which is where a building is placed. */
+function onCorner(spec: ImageSpec, size: number): ImageSpec {
+  return spec.anchorAt === "center" && spec.anchor
+    ? { ...spec, anchor: [spec.anchor[0], spec.anchor[1] + (size * HALF_H) / (spec.scale ?? 1)] }
+    : spec;
+}
+
+/** `progress` (0 to 1) picks the construction site's stage from the assets while it goes up; without it,
+ *  the stage does. */
+export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3, farmLeft = 1, arch: Arch = "greek", civ?: string, progress?: number): Pic {
+  const site = stage < 3 ? ASSETS.manifest.construction?.[def.id] : undefined;
+  if (site?.length) {
+    const part = progress ?? stage / 3;
+    const spec = onCorner(site[clamp(Math.floor(part * site.length), 0, site.length - 1)], def.size);
+    const fromFile = assetPic(`bc-${spec.file}-${def.size}-${owner}`, spec, owner);
+    if (fromFile) return fromFile;
+  }
   if (stage >= 1) {
     const found = assetBuildingSpec(def.id, Math.round(age), arch, civ);
-    // A picture anchored at the diamond's centre stands half the diamond's height above its bottom corner,
-    // which is where a building is placed.
-    const spec = found?.anchorAt === "center" && found.anchor
-      ? { ...found, anchor: [found.anchor[0], found.anchor[1] + (def.size * HALF_H) / (found.scale ?? 1)] as [number, number] }
-      : found;
+    const spec = found && onCorner(found, def.size);
     const fromFile = spec && assetPic(`ba-${spec.file}-${spec.anchorAt ?? "bottom"}-${owner}`, spec, owner);
     // Going up: the finished picture, shown from the ground to the height built so far.
     if (fromFile && stage < 3) return risingPic(fromFile, def.size, stage === 1 ? 0.4 : 0.72, `${spec!.file}-${owner}`);

@@ -13,22 +13,6 @@ Làm trên PC ở nhà, nơi có cài AoE + Rise of Rome. Khi xong một mục t
 3. Nhập lại vào `web/assets-local`:
    `npm run import-aoe -- --aoe "C:/đường/dẫn/tới/AOE"` (thư mục cài, hoặc file `Empires.exe`).
 
-## 1. Hoạt ảnh làm việc của người dân (đã sửa trình nhập ở #75, chỉ cần nhập lại)
-
-- Hái quả, đào vàng/đá, cày ruộng, xây/sửa, đánh cá phải có `work` trong `villager:basket`, `pick`,
-  `hoe`, `hammer`, `net` của manifest (lấy từ `proceedingGraphic`: "Man Forager", "Man Ore",
-  "Man Farm", "Man Builder", "Man Fisher").
-- Kiểm tra trong game: người dân cử động đúng nghề khi làm việc.
-
-## 2. Hình công trình đang xây
-
-- Người dùng báo: lúc đang xây, công trình không có hình các giai đoạn dựng lên.
-- Dữ liệu công trình trong `empires.dat` có `constructionGraphic` (đã đọc trong `web/scripts/aoe/dat.ts`)
-  nhưng `export-aoe.ts` chưa xuất.
-- Cần: xuất hình đó cho từng công trình (theo kiến trúc nếu có), thêm một khoá trong manifest (ví dụ
-  `construction`), và để `buildingPic` trong `web/src/game/art.ts` chọn khung theo tiến độ xây.
-- Ghi khoá mới vào `replica/art-packs.md`.
-
 ## 3. Núi / vách đá (cliffs)
 
 - Người dùng báo: art pack không có hình núi/vách đá.
