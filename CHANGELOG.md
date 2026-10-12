@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-12
 
+- [#69](https://github.com/nkocvodoi/BronzeDawn/pull/69) Smoke test online (chủ phòng rời trận) không còn hỏng thất thường trên CI: đợi tới khi hai máy cùng dừng ở một bước rồi mới so, thay vì đợi cố định 2,5 giây
 - [#66](https://github.com/nkocvodoi/BronzeDawn/pull/66) Đảo phụ của Small Islands có rừng; máy biết chở dân sang đảo khác đốn gỗ khi đảo nhà sắp hết cây, hết rừng thì sang đảo tiếp hoặc về nhà
 
 ## 2026-10-11
