@@ -249,8 +249,11 @@ export function terrainTexture(map: GridMap, forest?: Uint8Array, win?: { x0: nu
       if (tiles) {
         const img = ASSETS.pixels(tiles[Math.floor(hash(tx, ty, 61) * tiles.length)]);
         if (img) {
-          const ix = Math.min(img.w - 1, Math.floor(((fx - fy + 1) / 2) * img.w)), iy = Math.min(img.h - 1, Math.floor(((fx + fy) / 2) * img.h));
-          const i = (iy * img.w + ix) * 4;
+          // Sampled a little inside the diamond: a tile picture's edge (65 x 33 for a 64 x 32 diamond) is
+          // partly transparent, and the drawn ground showing through there drew a light line round every tile.
+          const u = 0.5 + ((fx - fy + 1) / 2 - 0.5) * 0.94, v = 0.5 + ((fx + fy) / 2 - 0.5) * 0.94;
+          let i = (Math.min(img.h - 1, Math.floor(v * img.h)) * img.w + Math.min(img.w - 1, Math.floor(u * img.w))) * 4;
+          if (img.data[i + 3] === 0) i = ((img.h >> 1) * img.w + (img.w >> 1)) * 4; // the tile's own colour, never the drawn one
           if (img.data[i + 3] > 0) {
             const foam = use === Terrain.water && c[0] > 200;
             c = foam ? c : [img.data[i], img.data[i + 1], img.data[i + 2]];
