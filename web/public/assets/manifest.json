@@ -3,14 +3,14 @@
   "villager": {
    "file": "art3d/villager.png",
    "frame": [
-    160,
-    128
+    100,
+    84
    ],
    "anchor": [
-    72,
-    102
+    48.0,
+    59.0
    ],
-   "scale": 0.5,
+   "scale": 1.0,
    "directions": 8,
    "anims": {
     "idle": {
@@ -28,14 +28,14 @@
   "villager:axe": {
    "file": "art3d/villager-axe.png",
    "frame": [
-    160,
-    128
+    100,
+    84
    ],
    "anchor": [
-    72,
-    102
+    48.0,
+    59.0
    ],
-   "scale": 0.5,
+   "scale": 1.0,
    "directions": 8,
    "anims": {
     "idle": {
@@ -54,6 +54,96 @@
      "fps": 11
     }
    }
+  },
+  "villager:pick": {
+   "file": "art3d/villager-pick.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "villager:hammer": {
+   "file": "art3d/villager-hammer.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "villager:basket": {
+   "file": "art3d/villager-basket.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
   }
  },
  "credits": [
@@ -69,10 +159,10 @@
     "stone": {
      "file": "art3d/town_center.png",
      "anchor": [
-      220.0,
-      329.1
+      110.0,
+      164.6
      ],
-     "scale": 0.5
+     "scale": 1.0
     }
    }
   },
@@ -81,10 +171,10 @@
     "stone": {
      "file": "art3d/house.png",
      "anchor": [
-      150.0,
-      226.4
+      75.0,
+      113.2
      ],
-     "scale": 0.5
+     "scale": 1.0
     }
    }
   }
@@ -94,43 +184,43 @@
    {
     "file": "art3d/tree0.png",
     "anchor": [
-     99.0,
-     155.5
+     49.5,
+     77.7
     ],
-    "scale": 0.5
+    "scale": 1.0
    },
    {
     "file": "art3d/tree1.png",
     "anchor": [
-     99.0,
-     155.5
+     49.5,
+     77.7
     ],
-    "scale": 0.5
+    "scale": 1.0
    },
    {
     "file": "art3d/tree2.png",
     "anchor": [
-     99.0,
-     155.5
+     49.5,
+     77.7
     ],
-    "scale": 0.5
+    "scale": 1.0
    },
    {
     "file": "art3d/tree3.png",
     "anchor": [
-     99.0,
-     155.5
+     49.5,
+     77.7
     ],
-    "scale": 0.5
+    "scale": 1.0
    }
   ],
   "lone_tree": {
    "file": "art3d/lone_tree.png",
    "anchor": [
-    154.4,
-    221.0
+    77.2,
+    110.5
    ],
-   "scale": 0.5
+   "scale": 1.0
   }
  }
 }

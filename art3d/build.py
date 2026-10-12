@@ -62,7 +62,8 @@ def unit_sheet(key, build, anims, frame_size, anchor, quick, tmp):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     lib.save_png(lib.sheet(rows), path)
     print(f"{key}: {len(rows)} rows -> {path}")
-    return {"file": f"{ART}/{os.path.basename(path)}", "frame": [w, h], "anchor": list(anchor), "scale": lib.SCALE,
+    k = lib.DOWN
+    return {"file": f"{ART}/{os.path.basename(path)}", "frame": [w // k, h // k], "anchor": [anchor[0] / k, anchor[1] / k], "scale": lib.SCALE,
             "directions": DIRS, "anims": spec_anims}
 
 
@@ -80,11 +81,12 @@ def still(key, build, size, anchor_point, tmp, center=(0, 0, 0)):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     lib.save_png(img, path)
     print(f"{key} -> {path}")
-    return {"file": f"{ART}/{key}.png", "anchor": [round(ax, 1), round(ay, 1)], "scale": lib.SCALE}
+    k = lib.DOWN
+    return {"file": f"{ART}/{key}.png", "anchor": [round(ax / k, 1), round(ay / k, 1)], "scale": lib.SCALE}
 
 
-VILLAGER_FRAME = (160, 128)
-VILLAGER_ANCHOR = (72, 102)
+VILLAGER_FRAME = (200, 168)
+VILLAGER_ANCHOR = (96, 118)
 
 
 def main():
@@ -97,9 +99,13 @@ def main():
         units["villager"] = unit_sheet("villager", lambda: villager.Rig("none"),
                                        [("idle", "idle", 6, 4), ("walk", "walk", 12, 14)],
                                        VILLAGER_FRAME, VILLAGER_ANCHOR, quick, tmp)
-        units["villager:axe"] = unit_sheet("villager:axe", lambda: villager.Rig("axe"),
-                                           [("idle", "idle", 6, 4), ("walk", "walk", 12, 14), ("work", "chop", 12, 11)],
-                                           VILLAGER_FRAME, VILLAGER_ANCHOR, quick, tmp)
+    # A villager by job: the game picks "villager:<tool>" for the work in hand.
+    for tool, work, frames, fps in (("axe", "chop", 12, 11), ("pick", "mine", 12, 11), ("hammer", "hammer", 10, 12),
+                                    ("basket", "forage", 16, 10)):
+        if want("villager") or want(f"villager:{tool}"):
+            units[f"villager:{tool}"] = unit_sheet(f"villager:{tool}", lambda tool=tool: villager.Rig(tool),
+                                                   [("idle", "idle", 6, 4), ("walk", "walk", 12, 14), ("work", work, frames, fps)],
+                                                   VILLAGER_FRAME, VILLAGER_ANCHOR, quick, tmp)
     if want("town_center"):
         s = models.TOWN_CENTER
         buildings["town_center"] = {"default": {"stone": still("town_center", models.town_center, s["size"], s["anchor"], tmp, s["center"])}}

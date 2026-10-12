@@ -26,7 +26,7 @@ dời tâm (`center`) trong code.
 | File | Nội dung |
 | --- | --- |
 | `lib.py` | Cảnh, camera isometric 2:1, nắng, vật liệu, render và đóng sheet |
-| `villager.py` | Người dân: khung xương bằng empty, các tư thế đứng, đi, chặt gỗ |
+| `villager.py` | Người dân: khung xương bằng empty; dụng cụ (rìu, cuốc, búa, giỏ quả); các động tác đứng, đi, chặt cây, đào mỏ, đóng búa, hái quả |
 | `models.py` | Công trình (Town Center, nhà Thời đồ đá) và cây |
 | `build.py` | Danh sách cái cần render, kích thước khung, điểm neo, ghi manifest |
 
@@ -34,8 +34,10 @@ dời tâm (`center`) trong code.
 
 - **Tọa độ:** X của Blender là trục x của bản đồ, -Y là trục y, Z hướng lên; 1 đơn vị là 1 ô. Camera nhìn theo
   hướng (-1, -1) của bản đồ, chếch xuống 30°, nên mỗi ô là hình thoi 2:1 như trong game.
-- **Độ phân giải:** render gấp đôi kích thước game (ô 128 × 64) và ghi `scale: 0.5` trong manifest, để nét trên
-  màn hình mật độ cao.
+- **Kiểu pixel:** render gấp đôi kích thước game (ô 128 × 64), rồi `lib.pixel_art` thu về đúng kích thước game:
+  viền cứng (không bán trong suốt), viền tối 1 px quanh hình, ít bậc màu hơn, bóng một mảng tối phẳng. Game vẽ
+  hình từ file với điểm ảnh sắc nét (nearest), nên phóng to vẫn rõ từng điểm như sprite của game cuối thập niên 90.
+  Chỉnh độ đậm viền, số bậc màu, độ bão hòa ở `OUTLINE`, `LEVELS`, `SATURATE`.
 - **Hướng:** 8 hướng, theo chiều kim đồng hồ từ hướng nhìn ra người xem (S, SW, W, NW, N, NE, E, SE). Mô hình
   dựng quay mặt về -Y.
 - **Màu người chơi:** vật liệu tạo bằng `lib.team_mat()`. Mỗi khung render hai lần: lần thứ hai chỉ để biết
