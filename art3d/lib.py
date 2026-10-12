@@ -51,15 +51,23 @@ def reset():
 
 
 def gpu():
-    try:
-        prefs = bpy.context.preferences.addons["cycles"].preferences
-        prefs.compute_device_type = "METAL"
-        prefs.get_devices()
+    # Metal on a Mac; on Windows and Linux whichever the machine's card speaks.
+    prefs = bpy.context.preferences.addons["cycles"].preferences
+    # CUDA before OptiX: it ships compiled for every card, OptiX compiles on the spot and fails on older drivers.
+    for kind in ("METAL", "CUDA", "OPTIX", "HIP", "ONEAPI"):
+        try:
+            prefs.compute_device_type = kind
+            prefs.get_devices()
+        except Exception:  # not a kind this Blender knows on this system
+            continue
+        cards = [d for d in prefs.devices if d.type == kind]
+        if not cards:
+            continue
         for d in prefs.devices:
-            d.use = True
+            d.use = d.type == kind
         bpy.context.scene.cycles.device = "GPU"
-    except Exception as e:  # no GPU: the CPU is slower, not wrong
-        print("cycles: CPU only", e)
+        return
+    print("cycles: CPU only")  # no GPU: the CPU is slower, not wrong
 
 
 def world():

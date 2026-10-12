@@ -104,6 +104,8 @@ await page.click("[data-pack-remove]");
 await page.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Removed"), null, { timeout: 10000 }).catch(() => {});
 await reload(); // the rest of the test plays with the game's own pictures
 await page.click("#mm-packs");
+// The list comes from the browser's storage a moment after the screen opens.
+await page.waitForFunction(() => /No art packs yet|pack-state/.test(document.querySelector("#overlay")?.innerHTML ?? ""), null, { timeout: 10000 }).catch(() => {});
 check((await page.textContent("#overlay")).includes("No art packs yet"), "and it is gone after removing it and reloading");
 await page.click("#mm-back");
 await page.click("#mm-single");

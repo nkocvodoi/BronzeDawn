@@ -1639,6 +1639,96 @@
      "fps": 10
     }
    }
+  },
+  "ruins": {
+   "file": "art3d/ruins.png",
+   "frame": [
+    150,
+    130
+   ],
+   "anchor": [
+    73.0,
+    82.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 1
+    }
+   }
+  },
+  "ruins:held": {
+   "file": "art3d/ruins-held.png",
+   "frame": [
+    150,
+    130
+   ],
+   "anchor": [
+    73.0,
+    82.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 1
+    }
+   }
+  },
+  "artifact": {
+   "file": "art3d/artifact.png",
+   "frame": [
+    100,
+    85
+   ],
+   "anchor": [
+    48.0,
+    56.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 1
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "artifact:held": {
+   "file": "art3d/artifact-held.png",
+   "frame": [
+    100,
+    85
+   ],
+   "anchor": [
+    48.0,
+    56.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 1
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
   }
  },
  "credits": [
