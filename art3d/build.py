@@ -6,12 +6,29 @@
 #
 # --quick renders two directions and a frame or two of each animation, for a look at the style.
 
-import fcntl
 import json
 import math
 import os
 import sys
 import tempfile
+
+try:
+    import fcntl
+
+    def lock_file(f):
+        fcntl.flock(f, fcntl.LOCK_EX)
+
+    def unlock_file(f):
+        fcntl.flock(f, fcntl.LOCK_UN)
+except ImportError:  # Windows
+    import msvcrt
+
+    def lock_file(f):
+        msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+
+    def unlock_file(f):
+        f.seek(0)
+        msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -21,6 +38,7 @@ import models  # noqa: E402
 import animals  # noqa: E402
 import buildings as blds  # noqa: E402
 import machines  # noqa: E402
+import relics  # noqa: E402
 import soldiers  # noqa: E402
 import terrain  # noqa: E402
 import villager  # noqa: E402
@@ -228,6 +246,16 @@ def main():
             a.pose("dead", 0)
         resources[f"carcass_{key}"] = still(f"carcass_{key}", carcass, dead_size, (0, 0, 0), tmp, (0.15, -0.05, 0.1))
 
+    # Ruins and Artifacts, as found and held: the game shows "<id>:held" while a player holds one.
+    for key, cls, anims, frame, anchor in (
+        ("ruins", relics.Ruins, [("idle", "idle", 1, 1)], relics.RUINS_FRAME, relics.RUINS_ANCHOR),
+        ("artifact", relics.Artifact, [("idle", "idle", 1, 1), ("walk", "walk", 8, 8)], relics.ARTIFACT_FRAME, relics.ARTIFACT_ANCHOR),
+    ):
+        if want(key) or want("relics"):
+            for held in (False, True):
+                name = f"{key}:held" if held else key
+                units[name] = unit_sheet(name, lambda cls=cls, held=held: cls(held), anims, frame, anchor, quick, tmp)
+
     if want("fish"):
         s = models.FISH
         resources["fish"] = [still(f"fish{v}", lambda v=v: models.fish(v, False), s["size"], (0, 0, 0), tmp, s["center"], ground=False) for v in range(2)]
@@ -259,8 +287,8 @@ def write_manifest(units, buildings, resources, cliffs=None, ground=None):
     a lock on the file keeps one from writing over another's entries."""
     path = os.path.join(OUT, "manifest.json")
     lock = open(path + ".lock", "w")
-    fcntl.flock(lock, fcntl.LOCK_EX)
-    m = json.load(open(path)) if os.path.exists(path) else {}
+    lock_file(lock)
+    m = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
     def merge(into, new):
         # Buildings nest by style and age: a render of one age keeps the others.
         for k, v in new.items():
@@ -274,10 +302,10 @@ def write_manifest(units, buildings, resources, cliffs=None, ground=None):
     credit = {"what": "Sprites in art3d/ (units, animals, buildings, trees, resources, cliffs)", "author": "Bronze Dawn contributors, rendered with Blender from art3d/",
               "license": "Same as the game (made for this project)"}
     m["credits"] = [c for c in m.get("credits", []) if not c.get("what", "").startswith("Sprites in art3d/")] + [credit]
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(m, f, indent=1)
         f.write("\n")
-    fcntl.flock(lock, fcntl.LOCK_UN)
+    unlock_file(lock)
     lock.close()
     os.remove(path + ".lock")
     print("manifest ->", path)
