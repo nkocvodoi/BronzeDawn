@@ -1,0 +1,136 @@
+{
+ "units": {
+  "villager": {
+   "file": "art3d/villager.png",
+   "frame": [
+    160,
+    128
+   ],
+   "anchor": [
+    72,
+    102
+   ],
+   "scale": 0.5,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "villager:axe": {
+   "file": "art3d/villager-axe.png",
+   "frame": [
+    160,
+    128
+   ],
+   "anchor": [
+    72,
+    102
+   ],
+   "scale": 0.5,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  }
+ },
+ "credits": [
+  {
+   "what": "Sprites in art3d/ (units, buildings, trees)",
+   "author": "Bronze Dawn contributors, rendered with Blender from art3d/",
+   "license": "Same as the game (made for this project)"
+  }
+ ],
+ "buildings": {
+  "town_center": {
+   "default": {
+    "stone": {
+     "file": "art3d/town_center.png",
+     "anchor": [
+      220.0,
+      329.1
+     ],
+     "scale": 0.5
+    }
+   }
+  },
+  "house": {
+   "default": {
+    "stone": {
+     "file": "art3d/house.png",
+     "anchor": [
+      150.0,
+      226.4
+     ],
+     "scale": 0.5
+    }
+   }
+  }
+ },
+ "resources": {
+  "tree": [
+   {
+    "file": "art3d/tree0.png",
+    "anchor": [
+     99.0,
+     155.5
+    ],
+    "scale": 0.5
+   },
+   {
+    "file": "art3d/tree1.png",
+    "anchor": [
+     99.0,
+     155.5
+    ],
+    "scale": 0.5
+   },
+   {
+    "file": "art3d/tree2.png",
+    "anchor": [
+     99.0,
+     155.5
+    ],
+    "scale": 0.5
+   },
+   {
+    "file": "art3d/tree3.png",
+    "anchor": [
+     99.0,
+     155.5
+    ],
+    "scale": 0.5
+   }
+  ],
+  "lone_tree": {
+   "file": "art3d/lone_tree.png",
+   "anchor": [
+    154.4,
+    221.0
+   ],
+   "scale": 0.5
+  }
+ }
+}

@@ -1,0 +1,46 @@
+# art3d: sprite render bằng Blender
+
+Hình trong `web/public/assets/art3d/` được dựng 3D bằng code rồi render thành sprite 2D, giống cách các game
+chiến thuật cuối thập niên 90 làm. Mọi mô hình đều tự dựng từ khối cơ bản trong các file ở đây: không lấy hình,
+mô hình hay ảnh mẫu của game nào. Vì vậy hình được đưa lên repo và GitHub Pages cùng game.
+
+## Chạy
+
+Cần Blender 4.2 trở lên (`brew install --cask blender` trên Mac).
+
+```
+blender -b --factory-startup -P art3d/build.py                         # tất cả
+blender -b --factory-startup -P art3d/build.py -- --only villager,house # vài thứ
+blender -b --factory-startup -P art3d/build.py -- --only villager --quick
+```
+
+`--quick` chỉ render 2 hướng và vài khung hình, để xem nhanh phong cách. Bản đầy đủ của người dân mất vài phút
+trên Mac chip M. Kết quả ghi vào `web/public/assets/art3d/` và cập nhật `web/public/assets/manifest.json`
+(chỉ các mục vừa render; mục khác giữ nguyên).
+
+Script in `WARNING ... cut off` khi hình hoặc bóng chạm mép khung: nới khung (`size`, `VILLAGER_FRAME`) hoặc
+dời tâm (`center`) trong code.
+
+## Các file
+
+| File | Nội dung |
+| --- | --- |
+| `lib.py` | Cảnh, camera isometric 2:1, nắng, vật liệu, render và đóng sheet |
+| `villager.py` | Người dân: khung xương bằng empty, các tư thế đứng, đi, chặt gỗ |
+| `models.py` | Công trình (Town Center, nhà Thời đồ đá) và cây |
+| `build.py` | Danh sách cái cần render, kích thước khung, điểm neo, ghi manifest |
+
+## Quy ước
+
+- **Tọa độ:** X của Blender là trục x của bản đồ, -Y là trục y, Z hướng lên; 1 đơn vị là 1 ô. Camera nhìn theo
+  hướng (-1, -1) của bản đồ, chếch xuống 30°, nên mỗi ô là hình thoi 2:1 như trong game.
+- **Độ phân giải:** render gấp đôi kích thước game (ô 128 × 64) và ghi `scale: 0.5` trong manifest, để nét trên
+  màn hình mật độ cao.
+- **Hướng:** 8 hướng, theo chiều kim đồng hồ từ hướng nhìn ra người xem (S, SW, W, NW, N, NE, E, SE). Mô hình
+  dựng quay mặt về -Y.
+- **Màu người chơi:** vật liệu tạo bằng `lib.team_mat()`. Mỗi khung render hai lần: lần thứ hai chỉ để biết
+  vùng nào là màu người chơi. Vùng đó được tô thành các sắc độ tím #FF00FF, và game đổi sang màu của từng người.
+- **Điểm neo:** người dân và thú neo ở chân. Công trình neo ở góc dưới của hình thoi. Cây neo ở gốc, đặt vào
+  giữa ô.
+- **Bóng:** render sẵn vào hình (game không tự vẽ bóng). Nắng chiếu từ trên bên trái, bóng đổ sang phải.
+- **Màu:** ghi màu đúng như nhìn trên màn hình (sRGB); `lib.mat` tự chuyển sang màu tuyến tính cho Blender.
