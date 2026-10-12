@@ -2114,7 +2114,7 @@ export class Game {
     const moving = !!heading || u.prevPos.distance(u.pos) > 0.001;
     const pose: Pose = u.busy && !heading ? "work" : moving ? "walk" : "idle";
     const frame = pose === "walk" ? Math.floor(time * 8 + u.id) % 4 : pose === "work" ? Math.floor(time * 5 + u.id) % 3 : 0;
-    let tool: Tool = "none";
+    let tool: Tool = "none", job: string | undefined;
     if (u.isVillager) {
       const o = u.order;
       const node = u.lastNodeType ?? "";
@@ -2123,12 +2123,12 @@ export class Game {
       else if (o.kind === "gather" || o.kind === "return") {
         if (node === "farm") tool = "hoe";
         else if (node === "fish") tool = "net";
-        else if (node.startsWith("carcass_")) tool = "spear";
+        else if (node.startsWith("carcass_")) { tool = "spear"; job = "butcher"; }
         else tool = u.lastGather === Res.wood ? "axe" : u.lastGather === Res.food ? "basket" : u.lastGather === null ? "none" : "pick";
       }
     }
     const carry = u.isVillager && u.carry >= 1 && u.carryRes !== null && pose !== "work" ? u.carryRes : null;
-    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry, dir: screenDirection(face.x, face.y), t: time + u.id * 0.37, civ: this.civId(u.owner) };
+    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry, dir: screenDirection(face.x, face.y), t: time + u.id * 0.37, civ: this.civId(u.owner), job };
   }
 
   private puff(at: Vec2, big: boolean) {

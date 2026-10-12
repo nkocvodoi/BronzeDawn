@@ -301,14 +301,16 @@ export type Tool = "none" | "axe" | "pick" | "basket" | "hoe" | "hammer" | "spea
 
 /** `dir` (0-7, clockwise from facing the viewer) and `t` (seconds) are for sprite sheets from files. */
 /** `civ` is the owner's civilization id, for sprite sheets drawn for one civilization ("lac_viet/bowman"). */
-export interface UnitLook { type: string; owner: number; facing: Facing; pose: Pose; frame: number; tool: Tool; carry: number | null; dir?: number; t?: number; civ?: string }
+/** `job`: a finer name for the work than the tool, tried first for a sprite sheet ("villager:butcher" for
+ *  cutting up a carcass, which is drawn with the spear when there is no such sheet). */
+export interface UnitLook { type: string; owner: number; facing: Facing; pose: Pose; frame: number; tool: Tool; carry: number | null; dir?: number; t?: number; civ?: string; job?: string }
 
 /** A unit's frame from its sprite sheet, if the assets have one: the civilization's own first
  *  ("lac_viet/villager:axe", "lac_viet/villager"), then by its tool ("villager:axe"), then the unit. */
 function assetUnitPic(look: UnitLook): Pic | null {
   const units = ASSETS.manifest.units;
   if (!units) return null;
-  const names = [look.tool !== "none" ? `${look.type}:${look.tool}` : null, look.type].filter((n): n is string => n !== null);
+  const names = [look.job ? `${look.type}:${look.job}` : null, look.tool !== "none" ? `${look.type}:${look.tool}` : null, look.type].filter((n): n is string => n !== null);
   const keys = [...(look.civ ? names.map((n) => `${look.civ}/${n}`) : []), ...names];
   const spec = keys.map((k) => units[k]).find((u) => u !== undefined);
   if (!spec) return null;

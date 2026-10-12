@@ -26,8 +26,9 @@ dời tâm (`center`) trong code.
 | File | Nội dung |
 | --- | --- |
 | `lib.py` | Cảnh, camera isometric 2:1, nắng, vật liệu, render và đóng sheet |
-| `villager.py` | Người dân: khung xương bằng empty; dụng cụ (rìu, cuốc, búa, giỏ quả); các động tác đứng, đi, chặt cây, đào mỏ, đóng búa, hái quả |
-| `models.py` | Công trình (Town Center, nhà Thời đồ đá), cây, vách đá |
+| `villager.py` | Người dân: khung xương bằng empty; dụng cụ (rìu, cuốc, búa, giỏ quả, dao); các động tác đứng, đi, chặt cây, đào mỏ, đóng búa, hái quả, ngồi xẻ thịt |
+| `animals.py` | Thú: linh dương (gặm cỏ, chạy) và xác của nó |
+| `models.py` | Công trình (Town Center, nhà Thời đồ đá), cây, bụi quả, mỏ vàng, mỏ đá, vách đá |
 | `build.py` | Danh sách cái cần render, kích thước khung, điểm neo, ghi manifest |
 
 ## Quy ước

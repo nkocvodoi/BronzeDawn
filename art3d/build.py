@@ -17,6 +17,7 @@ sys.path.insert(0, HERE)
 
 import lib  # noqa: E402
 import models  # noqa: E402
+import animals  # noqa: E402
 import villager  # noqa: E402
 
 OUT = os.path.join(HERE, "..", "web", "public", "assets")
@@ -85,6 +86,8 @@ def still(key, build, size, anchor_point, tmp, center=(0, 0, 0)):
     return {"file": f"{ART}/{key}.png", "anchor": [round(ax / k, 1), round(ay / k, 1)], "scale": lib.SCALE}
 
 
+ANIMAL_FRAME = (180, 150)
+ANIMAL_ANCHOR = (86, 104)
 VILLAGER_FRAME = (200, 168)
 VILLAGER_ANCHOR = (96, 118)
 
@@ -101,7 +104,7 @@ def main():
                                        VILLAGER_FRAME, VILLAGER_ANCHOR, quick, tmp)
     # A villager by job: the game picks "villager:<tool>" for the work in hand.
     for tool, work, frames, fps in (("axe", "chop", 12, 11), ("pick", "mine", 12, 11), ("hammer", "hammer", 10, 12),
-                                    ("basket", "forage", 16, 10)):
+                                    ("basket", "forage", 16, 10), ("butcher", "butcher", 14, 10)):
         if want("villager") or want(f"villager:{tool}"):
             units[f"villager:{tool}"] = unit_sheet(f"villager:{tool}", lambda tool=tool: villager.Rig(tool),
                                                    [("idle", "idle", 6, 4), ("walk", "walk", 12, 14), ("work", work, frames, fps)],
@@ -120,6 +123,23 @@ def main():
         s = models.LONE_TREE
         resources["lone_tree"] = still("lone_tree", models.lone_tree, s["size"], (0, 0, 0), tmp, s["center"])
 
+    if want("berry_bush"):
+        s = models.BUSH
+        resources["berry_bush"] = [still(f"berry_bush{v}", lambda v=v: models.berry_bush(v), s["size"], (0, 0, 0), tmp, s["center"]) for v in range(s["variants"])]
+    for kind in ("gold", "stone"):
+        if want(f"{kind}_mine"):
+            s = models.MINE
+            resources[f"{kind}_mine"] = [still(f"{kind}_mine{v}", lambda v=v, kind=kind: models.mine(kind, v), s["size"], (0, 0, 0), tmp, s["center"])
+                                         for v in range(s["variants"])]
+    if want("gazelle"):
+        units["gazelle"] = unit_sheet("gazelle", animals.Gazelle, [("idle", "idle", 10, 5), ("walk", "walk", 10, 16)],
+                                      ANIMAL_FRAME, ANIMAL_ANCHOR, quick, tmp)
+        def carcass():
+            g = animals.Gazelle()
+            g.face(FACING[1])
+            g.pose("dead", 0)
+        resources["carcass_gazelle"] = still("carcass_gazelle", carcass, (170, 120), (0, 0, 0), tmp, (0.15, -0.05, 0.1))
+
     cliffs = {}
     if want("cliff"):
         s = models.CLIFF
@@ -136,7 +156,7 @@ def write_manifest(units, buildings, resources, cliffs=None):
     for k, v in (("units", units), ("buildings", buildings), ("resources", resources), ("cliffs", cliffs or {})):
         if v:
             m.setdefault(k, {}).update(v)
-    credit = {"what": "Sprites in art3d/ (units, buildings, trees, cliffs)", "author": "Bronze Dawn contributors, rendered with Blender from art3d/",
+    credit = {"what": "Sprites in art3d/ (units, animals, buildings, trees, resources, cliffs)", "author": "Bronze Dawn contributors, rendered with Blender from art3d/",
               "license": "Same as the game (made for this project)"}
     m["credits"] = [c for c in m.get("credits", []) if not c.get("what", "").startswith("Sprites in art3d/")] + [credit]
     with open(path, "w") as f:

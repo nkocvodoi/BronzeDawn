@@ -223,3 +223,51 @@ def cliff(mask, variant):
             continue
         r = rnd.uniform(0.04, 0.07)
         lib.ball(f"scree{k}", r, (dx * 0.48, dy * 0.48, r * 0.5), stone, scale=(1.2, 1.0, 0.7), sub=1)
+
+
+# ---- resources beside a base: berry bushes and mines. Each a node on one tile, placed by its centre.
+
+BUSH = {"size": (150, 130), "center": (0.15, -0.05, 0.2), "variants": 3}
+MINE = {"size": (170, 140), "center": (0.15, -0.05, 0.2), "variants": 3}
+GOLD = (0.95, 0.74, 0.18)
+STONE_LIGHT = (0.62, 0.60, 0.56)
+
+
+def berry_bush(variant):
+    rnd = random.Random(variant * 13 + 2)
+    leaf = [lib.mat(f"bleaf{i}", c, 0.8) for i, c in enumerate(((0.18, 0.38, 0.10), (0.24, 0.44, 0.12), (0.14, 0.30, 0.08)))]
+    berry = lib.mat("berry", (0.85, 0.10, 0.14), 0.35, grain=0)
+    clumps = [(0, 0, 0.17, 0.2)] + [(math.cos(a) * 0.15, math.sin(a) * 0.15, 0.11 + rnd.uniform(0, 0.05), rnd.uniform(0.12, 0.16))
+                                   for a in [2 * math.pi * k / 5 + rnd.uniform(0, 0.6) for k in range(5)]]
+    for i, (x, y, z, r) in enumerate(clumps):
+        b = lib.ball(f"bush{i}", r, (x, y, z), leaf[i % 3], scale=(1, 1, 0.8), sub=3)
+        lib.lumpy(b, r * 0.3, r * 0.3)
+        # Berries in bunches on the outside of each clump, more on top.
+        for k in range(8):
+            a, up = rnd.uniform(0, 2 * math.pi), rnd.uniform(0.1, 0.9)
+            rr = r * 0.95
+            lib.ball(f"berry{i}-{k}", 0.03, (x + math.cos(a) * rr * math.cos(up), y + math.sin(a) * rr * math.cos(up), z + rr * 0.8 * math.sin(up)),
+                     berry, sub=1)
+
+
+def mine(kind, variant):
+    """A heap of rock; for gold, veins and nuggets of it showing through."""
+    rnd = random.Random(variant * 29 + (7 if kind == "gold" else 3))
+    rock = lib.mat("minerock", (0.50, 0.46, 0.40) if kind == "gold" else STONE_LIGHT, 0.9, grain=0.35, grain_size=0.02)
+    gold = lib.mat("gold", GOLD, 0.25, metal=1.0, grain=0.2, grain_size=0.01)
+    rocks = [(0, 0, 0.26, 0.24)] + [(math.cos(a) * 0.22, math.sin(a) * 0.22, rnd.uniform(0.15, 0.2), rnd.uniform(0.12, 0.17))
+                                   for a in [2 * math.pi * k / 6 + rnd.uniform(0, 0.5) for k in range(6)]]
+    for i, (x, y, r, h) in enumerate(rocks):
+        o = lib.cyl(f"rock{i}", r, h * 2, (x, y, h * 0.6), rock, verts=rnd.choice((5, 6, 7)), r2=r * rnd.uniform(0.3, 0.6), smooth_it=False)
+        o.rotation_euler = (rnd.uniform(-0.25, 0.25), rnd.uniform(-0.25, 0.25), rnd.uniform(0, math.pi))
+        lib.lumpy(o, 0.03, 0.06)
+        if kind == "gold":
+            for k in range(6):
+                a = rnd.uniform(0, 2 * math.pi)
+                lib.ball(f"nugget{i}-{k}", rnd.uniform(0.035, 0.06), (x + math.cos(a) * r * 0.8, y + math.sin(a) * r * 0.8, h * rnd.uniform(0.4, 1.2)),
+                         gold, scale=(1.2, 1, 0.8), sub=1)
+    if kind == "stone":
+        # Squared blocks among the rubble: stone ready to be cut.
+        for k in range(3):
+            a = rnd.uniform(0, 2 * math.pi)
+            lib.box(f"block{k}", (0.12, 0.09, 0.08), (math.cos(a) * 0.3, math.sin(a) * 0.3, 0.04), rock, rot=(0, 0, a), bevel=0.012)
