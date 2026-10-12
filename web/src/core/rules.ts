@@ -148,8 +148,10 @@ export interface BuildingDef {
 
 /** What an effect applies to. Unit tags must all match; building tags match any, "!tag" excludes, "*" is every building. */
 export interface Target { tags?: string[]; units?: string[]; buildings?: string[]; buildings_tags?: string[] }
+/** A stat effect adds to the value, multiplies it, or sets it outright ("set": the last one set wins, and
+ *  adds and multiplies then count from it), as the original's "set attribute" does. */
 export type Effect =
-  | { type: "stat"; stat: string; op: "add" | "mul"; value: number; target: Target }
+  | { type: "stat"; stat: string; op: "add" | "mul" | "set"; value: number; target: Target }
   | { type: "gather"; resource: string; rate: number; carry: number; kind?: "farm" | "hunt" | "forage" | "fish" }
   | { type: "upgrade"; from: string; to: string }
   | { type: "farm_food"; op: "add" | "mul"; value: number }

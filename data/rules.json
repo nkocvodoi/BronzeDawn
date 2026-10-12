@@ -3721,19 +3721,24 @@
     {
      "type": "stat",
      "stat": "attack_cooldown",
-     "op": "mul",
-     "value": 0.7142857142857143,
+     "op": "set",
+     "value": 1.1,
      "target": {
-      "tags": [
-       "archery"
+      "units": [
+       "horse_archer",
+       "chariot_archer",
+       "bowman",
+       "improved_bowman",
+       "composite_bowman",
+       "heavy_horse_archer"
       ]
      }
     },
     {
      "type": "stat",
      "stat": "speed",
-     "op": "mul",
-     "value": 1.3,
+     "op": "add",
+     "value": 0.2,
      "target": {
       "units": [
        "villager"
@@ -3777,27 +3782,32 @@
    "arch": "babylonian",
    "effects": [
     {
+     "type": "conversion",
+     "stat": "regen",
+     "value": 1.375
+    },
+    {
+     "type": "gather",
+     "resource": "stone",
+     "rate": 1.44444,
+     "carry": 3
+    },
+    {
      "type": "stat",
      "stat": "hp",
      "op": "mul",
      "value": 2,
      "target": {
-      "buildings_tags": [
-       "wall",
-       "tower"
+      "buildings": [
+       "small_wall",
+       "medium_wall",
+       "fortification",
+       "watch_tower",
+       "ballista_tower",
+       "sentry_tower",
+       "guard_tower"
       ]
      }
-    },
-    {
-     "type": "conversion",
-     "stat": "regen",
-     "value": 1.3
-    },
-    {
-     "type": "gather",
-     "resource": "stone",
-     "rate": 1.3,
-     "carry": 0
     }
    ],
    "disabled": [
@@ -3835,13 +3845,12 @@
    "effects": [
     {
      "type": "stat",
-     "stat": "hp",
-     "op": "add",
-     "value": 80,
+     "stat": "cost",
+     "op": "mul",
+     "value": 0.68,
      "target": {
       "units": [
-       "long_swordsman",
-       "legion"
+       "priest"
       ]
      }
     },
@@ -3851,19 +3860,37 @@
      "op": "add",
      "value": 2,
      "target": {
-      "buildings_tags": [
-       "tower"
+      "buildings": [
+       "guard_tower",
+       "sentry_tower",
+       "watch_tower",
+       "ballista_tower"
       ]
      }
     },
     {
      "type": "stat",
-     "stat": "cost",
-     "op": "mul",
-     "value": 0.7,
+     "stat": "los",
+     "op": "add",
+     "value": 2,
+     "target": {
+      "buildings": [
+       "guard_tower",
+       "sentry_tower",
+       "watch_tower",
+       "ballista_tower"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "hp",
+     "op": "add",
+     "value": 80,
      "target": {
       "units": [
-       "priest"
+       "long_swordsman",
+       "legion"
       ]
      }
     }
@@ -3911,10 +3938,32 @@
    "arch": "egyptian",
    "effects": [
     {
+     "type": "stat",
+     "stat": "range",
+     "op": "add",
+     "value": 3,
+     "target": {
+      "units": [
+       "priest"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "los",
+     "op": "add",
+     "value": 3,
+     "target": {
+      "units": [
+       "priest"
+      ]
+     }
+    },
+    {
      "type": "gather",
      "resource": "gold",
-     "rate": 1.2,
-     "carry": 0
+     "rate": 1.4444444444444444,
+     "carry": 2
     },
     {
      "type": "stat",
@@ -3922,19 +3971,10 @@
      "op": "mul",
      "value": 1.33,
      "target": {
-      "tags": [
-       "chariot"
-      ]
-     }
-    },
-    {
-     "type": "stat",
-     "stat": "range",
-     "op": "add",
-     "value": 3,
-     "target": {
-      "tags": [
-       "priest"
+      "units": [
+       "chariot",
+       "chariot_archer",
+       "scythe_chariot"
       ]
      }
     }
@@ -3982,22 +4022,19 @@
     {
      "type": "stat",
      "stat": "speed",
-     "op": "mul",
-     "value": 1.3,
+     "op": "add",
+     "value": 0.3,
      "target": {
-      "tags": [
-       "academy"
-      ]
-     }
-    },
-    {
-     "type": "stat",
-     "stat": "speed",
-     "op": "mul",
-     "value": 1.3,
-     "target": {
-      "tags": [
-       "warship"
+      "units": [
+       "hoplite",
+       "phalanx",
+       "centurion",
+       "scout_ship",
+       "war_galley",
+       "trireme",
+       "catapult_trireme",
+       "juggernaught",
+       "fire_galley"
       ]
      }
     }
@@ -4043,8 +4080,12 @@
      "op": "mul",
      "value": 2,
      "target": {
-      "tags": [
-       "catapult"
+      "units": [
+       "stone_thrower",
+       "catapult",
+       "heavy_catapult",
+       "ballista",
+       "helepolis"
       ]
      }
     },
@@ -4054,8 +4095,14 @@
      "op": "add",
      "value": 1,
      "target": {
-      "tags": [
-       "archery"
+      "units": [
+       "bowman",
+       "improved_bowman",
+       "composite_bowman",
+       "chariot_archer",
+       "horse_archer",
+       "heavy_horse_archer",
+       "elephant_archer"
       ]
      }
     },
@@ -4065,8 +4112,21 @@
      "op": "add",
      "value": 4,
      "target": {
-      "tags": [
-       "warship"
+      "units": [
+       "war_galley",
+       "scout_ship"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "los",
+     "op": "add",
+     "value": 4,
+     "target": {
+      "units": [
+       "war_galley",
+       "scout_ship"
       ]
      }
     }
@@ -4120,8 +4180,19 @@
      "op": "mul",
      "value": 0.7,
      "target": {
-      "tags": [
-       "boat"
+      "units": [
+       "scout_ship",
+       "war_galley",
+       "trireme",
+       "catapult_trireme",
+       "juggernaught",
+       "fire_galley",
+       "trade_boat",
+       "merchant_ship",
+       "fishing_boat",
+       "fishing_ship",
+       "light_transport",
+       "heavy_transport"
       ]
      }
     },
@@ -4137,9 +4208,20 @@
      }
     },
     {
+     "type": "stat",
+     "stat": "los",
+     "op": "add",
+     "value": 2,
+     "target": {
+      "units": [
+       "composite_bowman"
+      ]
+     }
+    },
+    {
      "type": "farm_food",
-     "op": "mul",
-     "value": 1.25
+     "op": "add",
+     "value": 60
     }
    ],
    "disabled": [
@@ -4183,26 +4265,28 @@
     {
      "type": "gather",
      "resource": "food",
-     "rate": 1.3,
-     "carry": 0,
+     "rate": 1.66667,
+     "carry": 3,
      "kind": "hunt"
     },
     {
      "type": "stat",
      "stat": "speed",
-     "op": "mul",
-     "value": 1.5,
+     "op": "add",
+     "value": 0.5,
      "target": {
-      "tags": [
-       "elephant"
+      "units": [
+       "elephant_archer",
+       "war_elephant",
+       "armored_elephant"
       ]
      }
     },
     {
      "type": "stat",
      "stat": "attack_cooldown",
-     "op": "mul",
-     "value": 0.6666666666666666,
+     "op": "set",
+     "value": 1.3,
      "target": {
       "units": [
        "trireme"
@@ -4246,27 +4330,30 @@
      "op": "mul",
      "value": 0.75,
      "target": {
-      "tags": [
-       "elephant"
+      "units": [
+       "war_elephant",
+       "elephant_archer",
+       "armored_elephant"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "attack_cooldown",
+     "op": "set",
+     "value": 2.9,
+     "target": {
+      "units": [
+       "catapult_trireme",
+       "juggernaught"
       ]
      }
     },
     {
      "type": "gather",
      "resource": "wood",
-     "rate": 1.3,
-     "carry": 0
-    },
-    {
-     "type": "stat",
-     "stat": "attack_cooldown",
-     "op": "mul",
-     "value": 0.6060606060606061,
-     "target": {
-      "tags": [
-       "catapult_ship"
-      ]
-     }
+     "rate": 1.36364,
+     "carry": 3
     }
    ],
    "disabled": [
@@ -4315,8 +4402,10 @@
      "op": "mul",
      "value": 2,
      "target": {
-      "buildings_tags": [
-       "wall"
+      "buildings": [
+       "small_wall",
+       "medium_wall",
+       "fortification"
       ]
      }
     }
@@ -4356,6 +4445,11 @@
    "arch": "egyptian",
    "effects": [
     {
+     "type": "farm_food",
+     "op": "add",
+     "value": 250
+    },
+    {
      "type": "stat",
      "stat": "hp",
      "op": "add",
@@ -4369,18 +4463,17 @@
     {
      "type": "stat",
      "stat": "attack_cooldown",
-     "op": "mul",
-     "value": 0.6666666666666666,
+     "op": "set",
+     "value": 3.5,
      "target": {
-      "tags": [
-       "catapult"
+      "units": [
+       "stone_thrower",
+       "catapult",
+       "heavy_catapult",
+       "ballista",
+       "helepolis"
       ]
      }
-    },
-    {
-     "type": "farm_food",
-     "op": "mul",
-     "value": 2
     }
    ],
    "disabled": [
@@ -4427,31 +4520,13 @@
      "op": "mul",
      "value": 0.75,
      "target": {
-      "tags": [
-       "cavalry"
-      ]
-     }
-    },
-    {
-     "type": "stat",
-     "stat": "cost",
-     "op": "mul",
-     "value": 0.75,
-     "target": {
       "units": [
+       "cavalry",
+       "heavy_cavalry",
+       "cataphract",
+       "scout",
        "horse_archer",
        "heavy_horse_archer"
-      ]
-     }
-    },
-    {
-     "type": "stat",
-     "stat": "speed",
-     "op": "mul",
-     "value": 1.3,
-     "target": {
-      "units": [
-       "villager"
       ]
      }
     },
@@ -4461,8 +4536,40 @@
      "op": "mul",
      "value": 1.3,
      "target": {
-      "tags": [
-       "boat"
+      "units": [
+       "trade_boat",
+       "merchant_ship",
+       "light_transport",
+       "heavy_transport",
+       "scout_ship",
+       "war_galley",
+       "trireme",
+       "catapult_trireme",
+       "juggernaught",
+       "fire_galley"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "hp",
+     "op": "mul",
+     "value": 1.33,
+     "target": {
+      "units": [
+       "fishing_boat",
+       "fishing_ship"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "speed",
+     "op": "add",
+     "value": 0.2,
+     "target": {
+      "units": [
+       "villager"
       ]
      }
     }
@@ -4513,31 +4620,20 @@
    "effects": [
     {
      "type": "stat",
-     "stat": "hp",
-     "op": "mul",
-     "value": 1.25,
+     "stat": "speed",
+     "op": "add",
+     "value": 0.75,
      "target": {
-      "tags": [
-       "academy"
-      ]
-     }
-    },
-    {
-     "type": "stat",
-     "stat": "hp",
-     "op": "mul",
-     "value": 1.25,
-     "target": {
-      "tags": [
-       "elephant"
+      "units": [
+       "heavy_transport"
       ]
      }
     },
     {
      "type": "stat",
      "stat": "attack",
-     "op": "mul",
-     "value": 1.25,
+     "op": "add",
+     "value": 6,
      "target": {
       "units": [
        "fire_galley"
@@ -4546,12 +4642,28 @@
     },
     {
      "type": "stat",
-     "stat": "speed",
+     "stat": "hp",
      "op": "mul",
-     "value": 1.3,
+     "value": 1.25,
      "target": {
-      "tags": [
-       "transport"
+      "units": [
+       "hoplite",
+       "phalanx",
+       "centurion",
+       "war_elephant",
+       "armored_elephant",
+       "elephant_archer"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "speed",
+     "op": "add",
+     "value": 0.35,
+     "target": {
+      "units": [
+       "light_transport"
       ]
      }
     }
@@ -4600,8 +4712,10 @@
      "op": "add",
      "value": 2,
      "target": {
-      "tags": [
-       "academy"
+      "units": [
+       "hoplite",
+       "phalanx",
+       "centurion"
       ]
      }
     },
@@ -4611,8 +4725,30 @@
      "op": "add",
      "value": 2,
      "target": {
-      "tags": [
-       "melee"
+      "units": [
+       "war_elephant",
+       "armored_elephant",
+       "clubman",
+       "axeman",
+       "short_swordsman",
+       "broad_swordsman",
+       "long_swordsman",
+       "legion",
+       "scout",
+       "cavalry",
+       "heavy_cavalry",
+       "cataphract",
+       "camel_rider",
+       "hoplite",
+       "phalanx",
+       "centurion",
+       "villager",
+       "fishing_boat",
+       "fishing_ship",
+       "trade_boat",
+       "merchant_ship",
+       "light_transport",
+       "heavy_transport"
       ]
      }
     },
@@ -4622,8 +4758,12 @@
      "op": "mul",
      "value": 0.5,
      "target": {
-      "tags": [
-       "siege"
+      "units": [
+       "stone_thrower",
+       "catapult",
+       "heavy_catapult",
+       "ballista",
+       "helepolis"
       ]
      }
     },
@@ -4675,6 +4815,10 @@
    "arch": "roman",
    "effects": [
     {
+     "type": "flag",
+     "flag": "free_tribute"
+    },
+    {
      "type": "stat",
      "stat": "cost",
      "op": "mul",
@@ -4684,6 +4828,27 @@
        "villager"
       ]
      }
+    },
+    {
+     "type": "gather",
+     "resource": "food",
+     "rate": 1.44444,
+     "carry": 0,
+     "kind": "forage"
+    },
+    {
+     "type": "gather",
+     "resource": "food",
+     "rate": 1.33333,
+     "carry": 0,
+     "kind": "fish"
+    },
+    {
+     "type": "gather",
+     "resource": "food",
+     "rate": 1.44444,
+     "carry": 0,
+     "kind": "hunt"
     },
     {
      "type": "stat",
@@ -4709,8 +4874,20 @@
     },
     {
      "type": "gather",
-     "resource": "all",
-     "rate": 1.2,
+     "resource": "wood",
+     "rate": 1.36364,
+     "carry": 0
+    },
+    {
+     "type": "gather",
+     "resource": "gold",
+     "rate": 1.44444,
+     "carry": 0
+    },
+    {
+     "type": "gather",
+     "resource": "stone",
+     "rate": 1.44444,
      "carry": 0
     },
     {
@@ -4725,8 +4902,11 @@
      }
     },
     {
-     "type": "flag",
-     "flag": "free_tribute"
+     "type": "gather",
+     "resource": "food",
+     "rate": 1.5,
+     "carry": 0,
+     "kind": "farm"
     }
    ],
    "disabled": [
@@ -4767,12 +4947,11 @@
      "type": "stat",
      "stat": "cost",
      "op": "mul",
-     "value": 0.85,
+     "value": 0.5,
      "target": {
-      "buildings_tags": [
-       "!tower",
-       "!wall",
-       "!wonder"
+      "buildings": [
+       "watch_tower",
+       "sentry_tower"
       ]
      }
     },
@@ -4780,21 +4959,37 @@
      "type": "stat",
      "stat": "cost",
      "op": "mul",
-     "value": 0.5,
+     "value": 0.85,
      "target": {
-      "buildings_tags": [
-       "tower"
+      "buildings": [
+       "academy",
+       "barracks",
+       "archery_range",
+       "siege_workshop",
+       "stable",
+       "temple",
+       "dock",
+       "government_center",
+       "farm",
+       "granary",
+       "house",
+       "market",
+       "storage_pit",
+       "town_center"
       ]
      }
     },
     {
      "type": "stat",
      "stat": "attack_cooldown",
-     "op": "mul",
-     "value": 0.7518796992481203,
+     "op": "set",
+     "value": 1,
      "target": {
-      "tags": [
-       "swordsman"
+      "units": [
+       "short_swordsman",
+       "broad_swordsman",
+       "long_swordsman",
+       "legion"
       ]
      }
     }
