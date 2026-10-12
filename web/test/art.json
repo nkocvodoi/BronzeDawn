@@ -2189,5 +2189,5 @@
  "walls/wall tier 2: masks 0..15 (bits 1 x-1, 2 x+1, 4 y-1, 8 y+1)/stage 3 mask 12": "64x88:51f629de",
  "walls/wall tier 2: masks 0..15 (bits 1 x-1, 2 x+1, 4 y-1, 8 y+1)/stage 3 mask 15": "64x88:48db80ac",
  "walls/wall tier 2: masks 0..15 (bits 1 x-1, 2 x+1, 4 y-1, 8 y+1)/stage 3 mask 3": "64x88:8e684637",
- "walls/walls laid out on the map: lines, corners, a T and a cross/tiers 0, 1, 2": "900x200:d99cc333"
+ "walls/walls laid out on the map: lines, corners, a T and a cross/tiers 0, 1, 2": "900x200:324e144d"
 }
