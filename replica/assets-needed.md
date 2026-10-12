@@ -264,7 +264,11 @@ tiếng vẽ bằng code, nên có thể thay từng phần.
   các hướng tiếp theo nằm ở các hàng ngay dưới. `anchor` là điểm chân unit trong một khung.
 - **Công trình:** tìm theo dân tộc nếu có (`lac_viet`), rồi kiểu kiến trúc, rồi thời đại (`stone`, `tool`, `bronze`, `iron`); thiếu thì lùi về thời
   đại trước, rồi kiểu `greek`, rồi `default`. `anchor` mặc định là giữa cạnh dưới (đỉnh dưới của hình thoi).
-  Giai đoạn đang xây vẫn dùng hình vẽ bằng code.
+  Lúc đang xây: có `construction` thì hiện công trường theo tiến độ; không có thì hiện phần đã xây của hình
+  xong, còn nền móng vẽ bằng code.
+- **Công trường (`construction`):** theo id công trình, một danh sách hình từ nền trống tới gần xong; tiến độ
+  xây chia đều cho các hình. Ví dụ `"construction": { "house": [{ "file": "buildings/house-site-0.png" },
+  { "file": "buildings/house-site-1.png" }] }`. Nhận `anchor` và `anchorAt` như hình công trình.
 - **Màu người chơi:** vùng tô bằng các sắc tím `#FF00FF` được đổi sang màu phe, giữ sáng tối.
 - **Âm thanh:** tên hiệu ứng giống trong `sound.ts` (`chop`, `mine`, `sword`, `bow`, `collapse`, `complete`,
   `alarm`, `ageUp`, `click`...). Giọng unit: `voice-villager`, `voice-soldier`, `voice-rider`, `voice-priest`,

@@ -218,6 +218,30 @@ function art(where: ReturnType<typeof locate>, dat: DatFile, out: string): Recor
     }
   }
 
+  // Construction sites: the building's construction graphic ("Build 3x3", "Build House", "Wonder Con"...),
+  // one picture per stage, kept in its angles. The same in every civilization, and shared by buildings of
+  // one size, so each graphic is written once.
+  const construction: Record<string, unknown[]> = {};
+  const sites = new Map<number, unknown[]>();
+  for (const [id, aoe] of Object.entries(BUILDING_MAP)) {
+    if (id.endsWith("_wall") || id === "fortification") continue; // walls draw their own stages
+    const gr = g(all.get(aoe)?.building?.constructionGraphic);
+    if (!gr) continue;
+    let list = sites.get(gr.id);
+    if (!list) {
+      list = [];
+      for (let a = 0; a < Math.max(1, gr.angleCount); a++) {
+        const pic = still(lib, gr, { angle: a });
+        if (!pic) continue;
+        const file = `aoe/construction/${gr.id}-${a}.png`;
+        write(file, pic.png);
+        list.push({ file, anchor: pic.anchor, anchorAt: "center" });
+      }
+      sites.set(gr.id, list);
+    }
+    if (list.length) construction[id] = list;
+  }
+
   // Cliffs: the 3 x 3 rock of "Cliffs_1" (unit 264; 265 to 273 are smaller pieces, all of class 34 "Cliff").
   // Its frames are the pieces of a cliff by the way the cliff runs: 1 to 5 along x (down to the right on the
   // screen), 15 to 19 along y (down to the left), 24 where it turns. Bronze Dawn asks for one picture per
@@ -304,8 +328,8 @@ function art(where: ReturnType<typeof locate>, dat: DatFile, out: string): Recor
     write(`aoe/icons/${id}.png`, png);
     icons[id] = `aoe/icons/${id}.png`;
   }
-  console.log(`art: ${Object.keys(units).length} unit sheets, ${Object.keys(buildings).length} buildings, ${Object.keys(cliffs).length} cliff joins, ${Object.keys(resources).length} resources, ${Object.keys(terrain).length} terrains, ${Object.keys(icons).length} icons`);
-  return { units, buildings, cliffs, resources, terrain, icons };
+  console.log(`art: ${Object.keys(units).length} unit sheets, ${Object.keys(buildings).length} buildings, ${Object.keys(construction).length} construction sites, ${Object.keys(cliffs).length} cliff joins, ${Object.keys(resources).length} resources, ${Object.keys(terrain).length} terrains, ${Object.keys(icons).length} icons`);
+  return { units, buildings, construction, cliffs, resources, terrain, icons };
 }
 
 /**
