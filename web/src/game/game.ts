@@ -14,6 +14,7 @@ import { Link, LockstepGuest, LockstepHost, LockstepState, TURN_TICKS } from "..
 import { Conn, HAS_RELAY, joinRoom, Peer, Room } from "./rtc";
 import { canStart, CHAT_MAX, cleanName, LobbySettings, LobbyState, lobbyHtml, Seat, seated, SEATS } from "./lobby";
 import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
+import { addPack, folderFiles, listPacks, PackInfo, removePack, setEnabled, zipFiles } from "./packs";
 import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, forestFloorPic, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors } from "./cursors";
 import { drawTimeline } from "./timeline";
@@ -399,6 +400,7 @@ export class Game {
         + `<button id="mm-single">Single Player</button>`
         + `<button id="mm-multi">Multiplayer</button>`
         + `<button id="saves-open">Saved Games</button>`
+        + `<button id="mm-packs">Art Packs</button>`
         + `<button id="mm-help">Help</button>`
         + `</span>`,
       `<span class="small">Press ? at any time in a game for the controls</span>`,
@@ -415,6 +417,19 @@ export class Game {
     if (id === "mm-single") { if (this.online) this.leaveOnline(); this.showStart(); return true; }
     if (id === "mm-multi") { this.showOnline(); return true; }
     if (id === "mm-help") { this.showHelp(); return true; }
+    if (id === "mm-packs") { void this.showPacks(); return true; }
+    if (id === "packs-folder") { (document.querySelector("#pack-folder") as HTMLInputElement | null)?.click(); return true; }
+    if (id === "packs-zip") { (document.querySelector("#pack-zip") as HTMLInputElement | null)?.click(); return true; }
+    if (id === "packs-reload") { location.reload(); return true; }
+    const toggle = t.closest("[data-pack-toggle]") as HTMLElement | null;
+    if (toggle) { void setEnabled(toggle.dataset.packToggle!, toggle.dataset.on !== "1").then(() => this.showPacks("Changed: reload to use it.")); return true; }
+    const del = t.closest("[data-pack-remove]") as HTMLElement | null;
+    if (del) {
+      if (confirm(`Remove the art pack "${del.dataset.name}" from this browser? The files on your disk stay where they are.`)) {
+        void removePack(del.dataset.packRemove!).then(() => this.showPacks("Removed: reload to see the game without it."));
+      }
+      return true;
+    }
     if (id === "mm-back") { this.showMainMenu(); return true; }
     if (id === "setup-back") { if (this.online?.role === "host") this.showHostLobby(); else this.showMainMenu(); return true; }
     return false;
@@ -1609,6 +1624,45 @@ export class Game {
     if (c && r) drawTimeline(c, r, this.world);
   }
 
+  /** Art packs: a player's own pictures and sounds, from a folder or a zip on their disk, kept in this
+   *  browser. They replace the game's own piece by piece, and reach no one else. */
+  private async showPacks(note = "") {
+    const esc = (x: string) => x.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]!);
+    let packs: PackInfo[] = [];
+    let error = "";
+    try { packs = await listPacks(); } catch (e) { error = `This browser will not keep packs: ${(e as Error).message}`; }
+    const inUse = new Set(ASSETS.packs.map((p) => p.id));
+    const rows = packs.map((p) => `<tr><td><b>${esc(p.name)}</b>${inUse.has(p.id) ? "" : p.enabled ? " · on after reload" : ""}</td>`
+      + `<td>${p.files} files, ${(p.bytes / 1e6).toFixed(1)} MB${p.missing.length ? ` · <span title="${esc(p.missing.slice(0, 20).join(", "))}">${p.missing.length} named but missing</span>` : ""}</td>`
+      + `<td><button class="toggle${p.enabled ? "" : " off"}" data-pack-toggle="${p.id}" data-on="${p.enabled ? 1 : 0}">In use</button>`
+      + ` <button data-pack-remove="${p.id}" data-name="${esc(p.name)}">Remove</button></td></tr>`).join("");
+    this.hud.showOverlay("Art Packs", [
+      "Your own pictures and sounds in place of the game's: a folder (or a zip of one) with a manifest.json. "
+        + "They stay in this browser and on your disk; nothing is uploaded. A later pack covers an earlier one.",
+      rows ? `<table>${rows}</table>` : "No art packs yet.",
+      error, note,
+      `<span class="choices"><button id="packs-folder">Add a folder</button><button id="packs-zip">Add a zip</button>`
+        + `${packs.length ? `<button id="packs-reload">Reload to apply</button>` : ""}<button id="mm-back">Back</button></span>`,
+      `<span class="small">How to make one: replica/art-packs.md in the game's repository (sizes, directions, player colour, an example).</span>`,
+      `<input type="file" id="pack-folder" webkitdirectory multiple hidden><input type="file" id="pack-zip" accept=".zip,application/zip" hidden>`,
+    ], "menu");
+  }
+
+  /** A pack picked from the disk: kept, then the list again with how it went. */
+  private async addPackFrom(input: HTMLInputElement) {
+    const list = input.files;
+    if (!list?.length) return;
+    this.hud.message("Reading the pack…");
+    try {
+      const files = input.id === "pack-zip" ? await zipFiles(list[0]) : folderFiles(list);
+      const info = await addPack(files, input.id === "pack-zip" ? list[0].name.replace(/\.zip$/i, "") : "Art pack");
+      const miss = info.missing.length ? ` ${info.missing.length} files the manifest names are not in it: the game draws those itself.` : "";
+      await this.showPacks(`Added "${info.name}" (${info.files} files).${miss} Reload to use it.`);
+    } catch (e) {
+      await this.showPacks(`Not added: ${(e as Error).message}`);
+    }
+  }
+
   /** Who made the art and sound from files, and under which licence; required by CC-BY. */
   private showCredits() {
     const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]!);
@@ -1617,6 +1671,7 @@ export class Game {
     this.hud.showOverlay("Credits", [
       "Game, code, and everything not listed here: drawn and composed in code for Bronze Dawn.",
       rows ? `<table>${rows}</table>` : "No art or sound from files is in use.",
+      ASSETS.packs.length ? `Your art packs in use (in this browser only): ${ASSETS.packs.map((p) => esc(p.name)).join(", ")}` : "",
       `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`,
     ], "menu");
   }
@@ -2668,6 +2723,7 @@ export class Game {
     document.addEventListener("change", (e) => {
       const t = e.target as HTMLSelectElement;
       if (this.lobbyChange(t)) return;
+      if (t.id === "pack-folder" || t.id === "pack-zip") { void this.addPackFrom(t as unknown as HTMLInputElement); return; }
       if (t.id === "load-file") {
         const f = (t as unknown as HTMLInputElement).files?.[0];
         if (f) unpack(f).then((s) => this.loadGame(s), (err) => this.hud.message(`Could not read that file: ${err.message}`));

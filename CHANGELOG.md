@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-12
 
+- [#68](https://github.com/nkocvodoi/BronzeDawn/pull/68) Gói hình (Art Packs): người chơi tự nạp hình và tiếng của mình từ một thư mục hoặc file zip ngay trong trình duyệt (lưu trong trình duyệt, không tải lên đâu cả), thay từng phần; kèm gói mẫu "voi chiến thành khủng long" và hướng dẫn trong replica/art-packs.md
 - [#66](https://github.com/nkocvodoi/BronzeDawn/pull/66) Đảo phụ của Small Islands có rừng; máy biết chở dân sang đảo khác đốn gỗ khi đảo nhà sắp hết cây, hết rừng thì sang đảo tiếp hoặc về nhà
 
 ## 2026-10-11

@@ -1,0 +1,78 @@
+{
+  "name": "War dinosaurs (example)",
+  "units": {
+    "war_elephant": {
+      "file": "war_dinosaur.png",
+      "frame": [
+        72,
+        60
+      ],
+      "anchor": [
+        36,
+        56
+      ],
+      "directions": 5,
+      "anims": {
+        "idle": {
+          "row": 0,
+          "frames": 1
+        },
+        "walk": {
+          "row": 5,
+          "frames": 4,
+          "fps": 8
+        },
+        "work": {
+          "row": 10,
+          "frames": 3,
+          "fps": 6
+        },
+        "attack": {
+          "row": 10,
+          "frames": 3,
+          "fps": 6
+        }
+      }
+    },
+    "armored_elephant": {
+      "file": "war_dinosaur.png",
+      "frame": [
+        72,
+        60
+      ],
+      "anchor": [
+        36,
+        56
+      ],
+      "directions": 5,
+      "anims": {
+        "idle": {
+          "row": 0,
+          "frames": 1
+        },
+        "walk": {
+          "row": 5,
+          "frames": 4,
+          "fps": 8
+        },
+        "work": {
+          "row": 10,
+          "frames": 3,
+          "fps": 6
+        },
+        "attack": {
+          "row": 10,
+          "frames": 3,
+          "fps": 6
+        }
+      }
+    }
+  },
+  "credits": [
+    {
+      "what": "War dinosaur",
+      "author": "Bronze Dawn example pack",
+      "license": "CC0"
+    }
+  ]
+}

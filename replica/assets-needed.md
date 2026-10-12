@@ -226,6 +226,9 @@ Lưu ý: đừng dùng bản thu của game gốc.
 
 ## 9. Bộ nạp asset (đã có: `web/src/game/assets.ts`)
 
+Người chơi cũng tự nạp được gói hình của riêng mình ngay trong trình duyệt (menu chính → Art Packs), cùng
+định dạng manifest dưới đây: xem [art-packs.md](art-packs.md).
+
 Bỏ file vào `web/public/assets/` (công khai, lên GitHub Pages) hoặc `web/assets-local/` (chỉ dev server trên
 máy này, không commit), cùng một file `manifest.json` ở gốc thư mục đó. Đường dẫn trong manifest tính từ gốc
 thư mục. Có cả hai thì `assets-local` thêm vào / ghi đè lên `assets`. Thiếu mục nào thì game dùng hình hoặc

@@ -38,11 +38,22 @@ const at = async (id) => g((id) => { const e = game.world.entity(id); game.look(
 await page.goto(`http://localhost:${port}/?seed=5`);
 await page.waitForFunction(() => window.game, null, { timeout: 120000 }); // a CI runner with three browsers open is slow to start one
 const menu = await page.$$eval(".mainmenu-list button", (b) => b.map((x) => x.textContent));
-check(menu.join("|") === "Single Player|Multiplayer|Saved Games|Help", `the main menu offers ${menu.join(", ")}`);
+check(menu.join("|") === "Single Player|Multiplayer|Saved Games|Art Packs|Help", `the main menu offers ${menu.join(", ")}`);
 await page.keyboard.press("3");
 check(!(await g(() => game.started)), "a digit on the main menu does not start a game");
 await page.click("#mm-help");
 check(await page.isVisible("#overlay .help"), "Help opens from the main menu");
+await page.click("#mm-back");
+// Art packs: the example pack, picked as a folder, is kept in the browser; then removed again.
+await page.click("#mm-packs");
+await page.waitForSelector("#pack-folder", { state: "attached" });
+await page.setInputFiles("#pack-folder", fileURLToPath(new URL("../examples/dino-pack", import.meta.url)));
+await page.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Added"), null, { timeout: 10000 }).catch(() => {});
+check((await page.textContent("#overlay")).includes("War dinosaurs (example)"), "Art Packs keeps a pack picked as a folder");
+page.once("dialog", (d) => d.accept());
+await page.click("[data-pack-remove]");
+await page.waitForFunction(() => document.querySelector("#overlay")?.textContent?.includes("Removed"), null, { timeout: 10000 }).catch(() => {});
+check((await page.textContent("#overlay")).includes("No art packs yet"), "and removes it");
 await page.click("#mm-back");
 await page.click("#mm-single");
 check(await page.isVisible("#overlay [data-start]"), "Single Player leads to the settings and the difficulty choice");

@@ -6,6 +6,7 @@
 // Every file in public/assets/ needs a line in its "credits": only freely licensed or own work there.
 
 import { Rectangle, Texture } from "pixi.js";
+import { loadPacks } from "./packs";
 
 /** A picture: the file, and the point that stands on the ground (a unit's feet, the bottom corner of a
  *  building's diamond), in the image's own pixels. `scale` is screen units per image pixel. */
@@ -60,6 +61,10 @@ export class Assets {
   private images = new Map<string, HTMLImageElement>();
   private textures = new Map<string, Texture>();
   private base = new Map<string, string>(); // file -> the root it came from
+  /** Files from a player's art packs, by their renamed path ("pack/<id>/..."), as blob URLs. */
+  private packUrls = new Map<string, string>();
+  /** The art packs in use, for the menu and the credits. */
+  packs: { id: string; name: string }[] = [];
   private sounds = new Map<string, AudioBuffer>();
   private soundBytes = new Map<string, Promise<ArrayBuffer | null>>();
   private frames = new Map<string, { texture: Texture; canvas: HTMLCanvasElement }>();
@@ -79,12 +84,20 @@ export class Assets {
       for (const f of filesOf(m)) this.base.set(f, root);
       this.manifest = merge(this.manifest, m);
     }
-    const pictures = [...this.base.keys()].filter((f) => /\.(png|webp|gif|jpe?g)$/i.test(f));
+    // Then the player's own packs, from this browser's storage: each laid over what came before.
+    try {
+      for (const p of await loadPacks()) {
+        for (const [f, u] of p.urls) this.packUrls.set(f, u);
+        this.manifest = merge(this.manifest, p.manifest);
+        this.packs.push({ id: p.info.id, name: p.info.name });
+      }
+    } catch (e) { console.warn("Art packs not loaded", e); }
+    const pictures = [...this.base.keys(), ...this.packUrls.keys()].filter((f) => /\.(png|webp|gif|jpe?g)$/i.test(f));
     await Promise.all(pictures.map((f) => this.loadImage(f)));
     if (this.failures.length) console.warn(`Assets not loaded: ${this.failures.join(", ")}`);
   }
 
-  url(file: string) { return `${this.base.get(file) ?? "assets/"}${file}`; }
+  url(file: string) { return this.packUrls.get(file) ?? `${this.base.get(file) ?? "assets/"}${file}`; }
 
   private loadImage(file: string) {
     return new Promise<void>((done) => {
