@@ -145,6 +145,8 @@ check(await host.evaluate(() => game.net.desync === null), "no disagreement foun
 // Play on at 3x for a while, the computer and both players busy, then compare again.
 await host.keyboard.press("F3");
 await host.keyboard.press("+"); await host.keyboard.press("+"); await host.keyboard.press("+");
+// The speed travels to the friend as a message: give it a moment to arrive, rather than asking at once.
+await guest.waitForFunction(() => game.speed === 3, null, { timeout: 5000 }).catch(() => {});
 check((await guest.evaluate(() => game.speed)) === 3, "the host's speed reaches the friend");
 for (const page of [host, guest]) await page.evaluate(() => {
   const vs = game.world.unitsOf(game.me).filter((u) => u.isVillager).map((u) => u.id);
