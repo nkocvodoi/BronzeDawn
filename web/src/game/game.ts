@@ -2766,7 +2766,7 @@ export class Game {
         store.set("bd-reseed", this.reseed ? "on" : "off");
         this.applyReseed();
         document.querySelector("#reseed-btn")?.classList.toggle("off", !this.reseed);
-        this.hud.message(this.reseed ? "Spent farms are sown again for a farm's price in wood, while there is the wood" : "Spent farms are gone, as in the original: build new ones");
+        this.hud.message(this.reseed ? "Spent farms are sown again for half a new farm's price in wood, while there is the wood" : "Spent farms are gone, as in the original: build new ones");
         return;
       }
       if (t.closest("#fs-btn")) { this.toggleFullscreen(); return; }

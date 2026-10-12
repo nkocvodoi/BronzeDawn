@@ -95,6 +95,8 @@ export interface EconomyDef {
   build_speed?: number;
   /** What a full bar of repair costs, as a share of the building's price. */
   repair_cost?: number;
+  /** What sowing a spent farm again costs, as a share of a new farm's price. */
+  reseed_cost?: number;
 }
 export interface UnitDef {
   id: string; name: string; class: string; age: string; trained_at: string;
