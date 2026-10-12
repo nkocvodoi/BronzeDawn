@@ -55,7 +55,11 @@ npm run dev
 ```
 
 Máy không cài được game (ví dụ máy Mac) chỉ cần chép nguyên thư mục `web/assets-local/` từ máy đã chạy lệnh trên, rồi chạy
-`npm run dev`. Không được commit hay đăng thư mục đó lên chỗ công khai. Chi tiết về định dạng file, cơ chế và AI của game gốc
+`npm run dev`. Không được commit hay đăng thư mục đó lên chỗ công khai.
+
+Có `web/assets-local/` thì dev server luôn dùng hình và số liệu trong đó, đè lên hình của game (màn Art Packs không
+liệt kê nó vì nó không phải art pack). Để xem game như bản đã đăng, với hình và luật của chính nó:
+`BD_ASSETS=default BD_RULES=default npm run dev`. Chi tiết về định dạng file, cơ chế và AI của game gốc
 nằm trong [replica/game/aoe1-engine-spec.md](replica/game/aoe1-engine-spec.md).
 
 ## Cách chơi

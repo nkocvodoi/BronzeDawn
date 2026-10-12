@@ -2109,9 +2109,10 @@ export class World {
     if (a && a.owner >= 0 && a.owner !== t.owner && !(t instanceof Unit && t.isAnimal)) {
       if (t instanceof Building) this.players[a.owner].stats.razed++; else this.players[a.owner].stats.kills++;
     }
-    this.events.push({ kind: "died", id: t.id, owner: t.owner, at: t.center, wasBuilding: t instanceof Building, deleted });
     // Only a villager's kill leaves meat; soldiers' kills are wasted, as in the original.
-    if (t instanceof Unit && t.isAnimal && a instanceof Unit && a.isVillager) {
+    const meaty = t instanceof Unit && t.isAnimal && a instanceof Unit && a.isVillager;
+    this.events.push({ kind: "died", id: t.id, owner: t.owner, at: t.center, wasBuilding: t instanceof Building, deleted, carcass: meaty });
+    if (meaty) {
       const meat = this.addCarcass(t);
       for (const u of this.units) {
         if (u.alive && u.isVillager && u.order.kind === "attack" && u.order.id === t.id) {

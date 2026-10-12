@@ -285,6 +285,33 @@ const doomed = await g(() => { const v = game.world.unitsOf(0).find((u) => u.isV
 await page.keyboard.press("Delete");
 await wait(400);
 check(await g((id) => !game.world.unit(id), doomed), "Delete removes the selected unit");
+check(await g((id) => !game.views.has(id), doomed), "and its picture: nothing of it is left standing");
+// Deleted between two steps of the game (the order acts at once), a unit is still in the world's list
+// until the next step. A frame that runs no step handles the event, then draws: the picture must not be
+// made again from it. That frame is played here by hand, the game paused so that no step comes first.
+const between = await g(() => {
+  game.paused = true;
+  const v = game.world.unitsOf(0).find((u) => u.isVillager);
+  game.selection = [v.id];
+  return v.id;
+});
+await page.keyboard.press("Delete");
+await g(() => { game.handleEvents(); game.sync(1); game.paused = false; });
+await wait(400);
+check(await g((id) => !game.world.unit(id) && !game.views.has(id), between), "a unit deleted between two steps leaves no picture behind");
+
+// A hunter's kill is the carcass to cut up, and nothing else: no fading body of the animal beside it.
+const prey = await g(() => {
+  const w = game.world, v = w.unitsOf(0).find((u) => u.isVillager);
+  const a = w.spawnAnimal("gazelle", new v.center.constructor(v.center.x + 2.5, v.center.y + 2.5));
+  game.look(a.center);
+  return [a.id, v.id];
+});
+await wait(400);
+await g(([aid, vid]) => game.world.kill(game.world.unit(aid), vid), prey);
+await wait(500);
+check(await g(() => game.world.nodes.some((n) => n.def.id === "carcass_gazelle") && !game.entities.children.some((c) => c.tint === 0x9a8a7a && c.visible)),
+  "a gazelle killed by a villager leaves its carcass, and no body fading beside it");
 
 // Save to a file, then load that file: the game is back as it was.
 await page.click("#menu-btn");

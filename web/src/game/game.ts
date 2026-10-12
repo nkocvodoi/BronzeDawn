@@ -35,8 +35,9 @@ interface View { root: Container; sprite: Sprite; pic: Pic;
   fire?: Container; farm?: boolean;
   /** A resource's place, set once: trees, mines and bushes never move. */
   placed?: boolean;
-  /** How far a gatherer is drawn stepped in to its tree, mine or bush (0 to 1), and when that was last set. */
-  close?: number; closeAt?: number }
+  /** Where a gatherer is drawn from where it stands, stepped in to its tree, mine or bush (tiles), and when
+   *  that was last moved. */
+  stepped?: Vec2; steppedAt?: number }
 
 /** How far from the edge of a tree, mine or bush a gatherer is drawn while working it, in tiles. The
  *  simulation stops a gatherer on the tile beside it, often most of a tile away; the picture closes the gap,
@@ -2033,8 +2034,9 @@ export class Game {
           if (e.wasBuilding) { if (v && this.anyVisible(v.tiles)) this.sfx("collapse", e.at, 1, 0.3); }
           else if (v?.isUnit && v.root.visible) this.sfx(e.owner >= 0 ? "die" : "thud", e.at, 0.8, 0.15);
           if (v) {
-            // Deleted on purpose, it is just gone in a puff: no body, no rubble.
-            if (v.isUnit && v.root.visible && !e.deleted) this.corpse(v);
+            // Deleted on purpose, it is just gone in a puff: no body, no rubble. An animal that leaves a
+            // carcass to cut up is that carcass now: no fading body as well.
+            if (v.isUnit && v.root.visible && !e.deleted && !e.carcass) this.corpse(v);
             if (e.wasBuilding && this.explored(e.at.tile) && !e.deleted) this.rubble(v);
             v.root.destroy({ children: true });
             this.views.delete(e.id);
@@ -2232,22 +2234,28 @@ export class Game {
     return buildingPic(b.def, b.owner, b.owner >= 0 ? this.world.players[b.owner].age : 0, stage, farmLeft, this.arch(b.owner), this.civId(b.owner));
   }
 
-  /** Where a gatherer at work is drawn, from where it stands: right at the edge of what it is working,
-   *  eased in over a quarter of a second as the work starts, and back out as it stops. */
-  private stepIn(v: View, u: Unit, at: Vec2): Vec2 {
+  /** Where a gatherer at work is drawn, from where it stands: right at the edge of what it is working. It
+   *  walks the last of the way there at its own pace as the work starts, and back as it stops; while it
+   *  does, `heading` is the way it walks, so it is drawn walking, not working. */
+  private stepIn(v: View, u: Unit, at: Vec2): { off: Vec2; heading: Vec2 | null } {
     const now = performance.now();
-    const dt = Math.min(0.1, (now - (v.closeAt ?? now)) / 1000);
-    v.closeAt = now;
-    const n = u.busy && u.order.kind === "gather" ? this.world.node(u.order.id) : null;
-    v.close = Math.max(0, Math.min(1, (v.close ?? 0) + (n ? dt * 4 : -dt * 6)));
-    if (!n || !v.close || u.isBoat) return new Vec2(0, 0);
-    const f = new Footprint(n.tile, 1);
-    const near = n.solid ? new Vec2(Math.max(f.minX, Math.min(f.maxX, at.x)), Math.max(f.minY, Math.min(f.maxY, at.y))) : n.at;
-    const to = near.sub(at), len = to.length;
-    const gap = n.distance(at) - GATHER_STAND;
-    if (len < 1e-6 || gap <= 0) return new Vec2(0, 0);
-    const k = v.close * v.close * (3 - 2 * v.close);
-    return to.mul((gap * k) / len);
+    const dt = this.paused ? 0 : Math.min(0.1, (now - (v.steppedAt ?? now)) / 1000) * this.speed;
+    v.steppedAt = now;
+    const n = u.busy && u.order.kind === "gather" && !u.isBoat ? this.world.node(u.order.id) : null;
+    let target = new Vec2(0, 0);
+    if (n) {
+      const f = new Footprint(n.tile, 1);
+      const near = n.solid ? new Vec2(Math.max(f.minX, Math.min(f.maxX, at.x)), Math.max(f.minY, Math.min(f.maxY, at.y))) : n.at;
+      const to = near.sub(at), len = to.length, gap = n.distance(at) - GATHER_STAND;
+      if (len > 1e-6 && gap > 0) target = to.mul(gap / len);
+    }
+    const cur = v.stepped ?? new Vec2(0, 0);
+    const d = target.sub(cur), left = d.length, step = Math.max(0.2, u.def.speed) * dt;
+    if (left <= step || left < 1e-4) { v.stepped = target; return { off: target, heading: null }; }
+    v.stepped = cur.add(d.mul(step / left));
+    // Walking it out while the game already walks it elsewhere: that walk shows.
+    const away = !n && u.prevPos.distance(u.pos) > 0.001;
+    return { off: v.stepped, heading: away ? null : d.mul(1 / left) };
   }
 
   private place(v: View, e: Entity, alpha: number) {
@@ -2262,7 +2270,9 @@ export class Game {
         if (pending) { const d = lead.to.sub(p.add(off)); if (d.length > 0.3) heading = d.mul(1 / d.length); }
         p = p.add(off);
       }
-      p = p.add(this.stepIn(v, e, p));
+      const stepped = this.stepIn(v, e, p);
+      p = p.add(stepped.off);
+      heading ??= stepped.heading;
       const s = iso(p);
       v.root.position.set(Math.round(s.x / 2) * 2, Math.round(s.y / 2) * 2);
       v.root.zIndex = depth(p) + 0.3;
@@ -2381,7 +2391,11 @@ export class Game {
     // Off the screen, out of the scene altogether: the renderer neither walks nor sorts what is not in it.
     const off = (e: Entity) => { const v = this.views.get(e.id); if (v) { v.root.visible = false; if (v.root.parent) this.entities.removeChild(v.root); } };
     const show = (e: Entity, vis: boolean, frozen = false) => {
+      // Killed since the last step (the Delete key acts at once, between steps), it stays in the world's
+      // lists until the next one: its view is gone or going (hidden here while the game is paused), and must
+      // not be made again.
       let v = this.views.get(e.id);
+      if (!e.alive) { if (v) v.root.visible = false; return; }
       if (!vis) { if (v) v.root.visible = false; return; }
       if (!v) v = this.makeView(e);
       v.root.visible = true;
