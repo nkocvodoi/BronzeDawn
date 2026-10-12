@@ -17,13 +17,20 @@ Contents:
 7. How Bronze Dawn uses the result
 8. What is not bit-exact, and why
 9. Where it lives in the binary
+10. Checked against saved games from the original
 
 ---
 
 ## 1. The numbers
 
-`data/aoe-maps.json` holds the nine Rise of Rome maps (ids 0..8 of `randomMaps`). It is made from the converter's dump of
-`empires.dat`:
+`data/aoe-maps.json` holds the nine Rise of Rome maps: the first nine records of `randomMaps`, **in file order**. The
+generator takes a map by its place in the file: the map type (0 Small Islands, 1 Large Islands, 2 Coastal, 3 Inland,
+4 Highland, 5 Continental, 6 Mediterranean, 7 Hill Country, 8 Narrows, the order of strings 10602..10610 in
+`language.dll`) indexes the table it loaded record by record, and the same number picks the type's own rules
+(6 the central sea, 7 the fivefold hills) [obs]. Each record also carries an id, which is **not** the type: the
+Mediterranean is the 7th record, whose id says 2. Taking the records by that id (as Bronze Dawn first did) gave
+eight of the nine maps another map's numbers; saved games from the original settled it (§10). The file is made
+from the converter's dump of `empires.dat`:
 
 ```
 cd web
@@ -188,3 +195,40 @@ These addresses are from Empiresx.exe with MD5 52e8ae9f4262b2ccf679f806c86e7c46.
 | Terrain patches, beaches | 4742b0 / 4748d0, 474380 |
 | Objects | 4719a0 (candidates 471af0, loose 4725b0, tight 472780) |
 | `rand` / `srand` | 528420 / 528410 |
+
+## 10. Checked against saved games from the original
+
+A game saved at the very start (Single Player, Random Map) holds the whole map: `web/scripts/aoe/gmx.ts` reads a
+Rise of Rome `.gmx` (one raw deflate stream: the size at 106, 9-byte tiles with terrain and elevation first, then
+object records of type, owner, unit id and position), and `web/scripts/aoe/compare-maps.ts` sets one beside Bronze
+Dawn's maps of the same kind, size and players:
+
+```
+cd web
+npx tsx scripts/aoe/compare-maps.ts assets-local/saves/Coastal-1.gmx coastal
+```
+
+The saves used here (Large, 144 × 144, 4 or 5 players) are kept with the rest of the original's data in the private
+`BronzeDawn-aoe-data` repo, under `saves/`, so the check runs on a machine without the game.
+
+What they showed (2026-10-13), Bronze Dawn as the mean of 8 maps:
+
+| | Coastal | Inland | Mediterranean | Hill Country | Small Islands |
+|---|---|---|---|---|---|
+| water %, original / ours | 36.9 / 36.3 | 16.0 / 18.1 | 21.2 / 23.3 | 0 / 0 | 68.3 / 68.8 |
+| map edge that is water % | 84.5 / 87.6 | 47.8 / 74.7 | 0 / 4.4 | 0 / 0 | 89.0 / 90.2 |
+| bases joined by land | yes / yes | yes / yes | yes / yes | yes / yes | no / no |
+| gold, stone within 20 tiles of a TC | 8, 7 / 8, 7.1 | 6, 7 / 8.1, 7 | 8, 7.2 / 8, 7.2 | 8, 7 / 8, 7.1 | 9, 9.5 / 9.5, 7.4 |
+| berries within 17 | 4.8 / 5.8 | 6.3 / 6.3 | 5.8 / 5.5 | 6 / 6.1 | 6 / 6.2 |
+
+With the maps taken by id instead (§1), Inland had no water at all, Hill Country a sea, the Mediterranean 39% water
+and water along every edge: those numbers were wrong, not the generator.
+
+- **Forests and deserts.** Inland's and Hill Country's saves both fell on the one map in four with the "dry" ground
+  (twice the desert, three times the palms, half the forests: `terrainInit`, `rand() < 0x1fff`), so their forest and
+  desert shares match our dry maps, not our mean. Forest near the Town Centers swings a lot between maps; more saves
+  would tell whether ours is a little nearer [open].
+- **Alligators.** The original has about twice as many (9 to 12 on these maps against our 4 to 6), and 5 on Hill
+  Country, which has neither beach nor shallows, their host terrains in the data. Where those come from was not found
+  [gap]. The terrains' own unit lists in the dat (grass tufts, rocks, trees on forest and palm ground) hold none.
+- Not yet checked against a save: Large Islands, Highland, Continental, Narrows.

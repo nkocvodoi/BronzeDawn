@@ -2,7 +2,7 @@ import { Building, Player, Unit } from "./entities";
 import { Footprint, Tile, Vec2 } from "./geom";
 import { Terrain, walkable } from "./grid";
 import { civBent, type CivBent } from "./civbent";
-import { RES_ALL, Res, ResBag, Rules, UnitDef } from "./rules";
+import { RES_ALL, RES_KEY, Res, ResBag, Rules, UnitDef } from "./rules";
 import type { World } from "./world";
 
 /** A building whose units the civilization makes this much better (a fifth) is its army's own: built
@@ -644,16 +644,29 @@ export class AIController {
       if (gold && !bs.some((b) => b.def.id === "storage_pit" && b.distance(gold.center) < 8)) this.placeNear(w, "storage_pit", gold.center, 2, 6, villagers, false);
     }
 
-    // Across the sea the wood is an island's rim of trees, far from the town: when most woodcutters walk
-    // more than eight tiles to drop their wood, a Storage Pit goes up by the trees they cut.
-    if (this.acrossSea && this.count(bs, "storage_pit") < 5 && this.thinks % 5 === 0) {
-      const drops = bs.filter((b) => b.complete && b.dropsOff(Res.wood));
-      const cutting = villagers.map((u) => (u.order.kind === "gather" ? w.node(u.order.id) : null)).filter((n): n is NonNullable<typeof n> => !!n && n.res === Res.wood);
-      const far = cutting.filter((n) => !drops.some((b) => b.distance(n.center) <= 8));
-      if (far.length >= 3 && far.length * 2 >= cutting.length && !bs.some((b) => !b.complete && b.def.id === "storage_pit")) {
-        const at = far[Math.floor(far.length / 2)].center;
-        const cost = w.buildingCost(this.player, "storage_pit");
-        if (p.res.covers(cost)) this.placeNear(w, "storage_pit", at, 2, 5, villagers, false);
+    // The original's woods and herds are often well away from the Town Center (an island's rim of trees, the
+    // forests of Inland, gazelles 10 to 24 tiles out): when most of those working one of them walk more than
+    // eight tiles to drop what they carry, a building that takes it goes up by them: a Granary for berries and
+    // the like, a Storage Pit for wood, meat, the shore fish villagers catch from land, gold and stone.
+    if (this.thinks % 5 === 0) {
+      const at = (u: Unit) => (u.order.kind === "gather" ? w.node(u.order.id) : null);
+      const work = villagers.map(at).filter((n): n is NonNullable<typeof n> => !!n && !n.def.boats_only);
+      const groups = new Map<string, typeof work>();
+      for (const n of work) { const k = `${n.res}:${n.foodKind}`; groups.set(k, [...(groups.get(k) ?? []), n]); }
+      for (const list of groups.values()) {
+        const { res, foodKind } = list[0];
+        const far = list.filter((n) => !bs.some((b) => b.complete && b.dropsOff(res, foodKind) && b.distance(n.center) <= 8) && this.safeAt(w, n.center, home));
+        if (far.length < 3 || far.length * 2 < list.length) continue;
+        const takes = (id: string) => {
+          const d = w.rules.buildings.get(id);
+          return !!d && (d.drop_off ?? []).includes(RES_KEY[res]) && (res !== Res.food || !d.food_kinds || !foodKind || d.food_kinds.includes(foodKind));
+        };
+        const type = (foodKind === "plant" ? ["granary", "storage_pit"] : ["storage_pit", "granary"]).find(takes);
+        if (!type || this.count(bs, type) >= (type === "granary" ? 3 : 5) || bs.some((b) => !b.complete && b.def.id === type)) continue;
+        if (w.blockerBuilding(type, this.player) === null && p.res.covers(w.buildingCost(this.player, type))) {
+          this.placeNear(w, type, far[Math.floor(far.length / 2)].center, 2, 5, villagers, false);
+          break;
+        }
       }
     }
 
@@ -733,6 +746,13 @@ export class AIController {
   }
 
   /** Puts a villager on a resource: a free farm, meat on the ground, berries, game to hunt, or the nearest node. */
+  /** Whether a spot is on our side: near home, or nearer home than any enemy Town Center. The original's maps
+   *  put woods, shore fish and herds all over, some by the enemy; a villager sent there is lost to its guards. */
+  private safeAt(w: World, at: Vec2, home: Vec2) {
+    const d = at.distance(home);
+    return d <= 16 || w.buildings.every((b) => b.def.id !== "town_center" || !w.isEnemy(this.player, b.owner) || b.center.distance(at) > d);
+  }
+
   private sendTo(w: World, u: Unit, r: Res, home: Vec2): boolean {
     // A villager taken to another island works there: what its own island has, near where it stands.
     if (this.acrossSea && u.aboard === null && !this.onIsland(w, home, u.pos)) {
@@ -755,7 +775,7 @@ export class AIController {
     // villager sent there would only come back idle, again and again.
     const radius = r === Res.gold || r === Res.stone ? FAR : 30;
     const n = minBy(w.nodes.filter((x) => x.alive && x.res === r && !x.def.boats_only && x.amount > 0 && x.center.distance(home) <= radius
-      && w.mayTry(this.player, x) && (!this.acrossSea || this.byLand(w, home, x.center))), (x) => x.center.distance(home));
+      && w.mayTry(this.player, x) && (!this.acrossSea || this.byLand(w, home, x.center)) && this.safeAt(w, x.center, home)), (x) => x.center.distance(home));
     if (n) { w.gather(this.player, [u.id], n.id); return true; }
     // Nothing nearer to eat: a farm if the wood is there, else a herd further out. The original's maps keep
     // the gazelles beyond the berries, a herd for each player 10 to 24 tiles out and more past 26; a hunter
@@ -763,7 +783,7 @@ export class AIController {
     if (r === Res.food) {
       if (this.farmFor(w, u, home)) return true;
       const herd = minBy(w.units.filter((x) => x.alive && x.isAnimal && x.animal!.behavior === "flee" && x.pos.distance(home) < 32
-        && (!this.acrossSea || this.byLand(w, home, x.pos))), (x) => x.pos.distance(home));
+        && (!this.acrossSea || this.byLand(w, home, x.pos)) && this.safeAt(w, x.pos, home)), (x) => x.pos.distance(home));
       if (herd) { w.attack(this.player, [u.id], herd.id); return true; }
     }
     return false;
