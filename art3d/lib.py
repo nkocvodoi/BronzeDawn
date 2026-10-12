@@ -32,7 +32,7 @@ def reset():
     MATS.clear()
     s = bpy.context.scene
     s.render.engine = "CYCLES"
-    s.cycles.samples = 24
+    s.cycles.samples = 12  # the picture ends up as pixel art: more samples would not show
     s.cycles.use_denoising = True
     s.cycles.max_bounces = 4
     s.render.film_transparent = True
@@ -191,7 +191,7 @@ def mask_mode(on):
         g.hide_render = on
     s = bpy.context.scene
     s.world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.0 if on else SKY
-    s.cycles.samples = 4 if on else 24
+    s.cycles.samples = 4 if on else 12
     s.cycles.use_denoising = not on
 
 
@@ -387,6 +387,7 @@ def check_edges(arr, what):
 LEVELS = 20        # steps per colour channel
 SATURATE = 1.18
 OUTLINE = 0.55     # how dark the outermost pixels of the model are made
+RIM = True         # off for things on water, whose thin light rings would all turn to rim
 
 
 def down(a, k):
@@ -420,5 +421,6 @@ def pixel_art(rgba, mask):
     pad = np.pad(model, 1, constant_values=False)
     for dy, dx in ((0, 1), (2, 1), (1, 0), (1, 2)):
         edge |= model & ~pad[dy:dy + model.shape[0], dx:dx + model.shape[1]]
-    out[:, :, :3] = np.where(edge[:, :, None], out[:, :, :3] * OUTLINE, out[:, :, :3])
+    if RIM:
+        out[:, :, :3] = np.where(edge[:, :, None], out[:, :, :3] * OUTLINE, out[:, :, :3])
     return teamify(out, np.where(model, m, 0))

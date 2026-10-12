@@ -1863,6 +1863,7 @@ export class Game {
     if (Math.floor(w.tick / 10) !== this.minimapStamp) { this.updateMinimap(); this.minimapStamp = Math.floor(w.tick / 10); }
     this.selection = this.selection.filter((id) => w.entity(id));
     const sel = this.selectedEntities();
+    this.hud.setIconLook(Math.round(w.players[this.me].age), this.arch(this.me), this.civId(this.me));
     this.hud.update(w, this.me, sel);
     // The status box shows the first of a group, so its picture too.
     const one = sel.length ? this.views.get(sel[0].id) : undefined;

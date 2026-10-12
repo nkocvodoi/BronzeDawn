@@ -199,6 +199,1446 @@
      "fps": 10
     }
    }
+  },
+  "alligator": {
+   "file": "art3d/alligator.png",
+   "frame": [
+    110,
+    75
+   ],
+   "anchor": [
+    54.0,
+    48.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 10,
+     "fps": 12
+    },
+    "attack": {
+     "row": 16,
+     "frames": 8,
+     "fps": 10
+    }
+   }
+  },
+  "lion": {
+   "file": "art3d/lion.png",
+   "frame": [
+    90,
+    75
+   ],
+   "anchor": [
+    43.0,
+    52.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 10,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 8,
+     "fps": 10
+    }
+   }
+  },
+  "elephant": {
+   "file": "art3d/elephant.png",
+   "frame": [
+    220,
+    200
+   ],
+   "anchor": [
+    108.0,
+    145.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 10,
+     "fps": 5
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 9
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 9
+    }
+   }
+  },
+  "villager:hoe": {
+   "file": "art3d/villager-hoe.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "villager:spear": {
+   "file": "art3d/villager-spear.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "villager:net": {
+   "file": "art3d/villager-net.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    95.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "clubman": {
+   "file": "art3d/clubman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "hoplite": {
+   "file": "art3d/hoplite.png",
+   "frame": [
+    120,
+    100
+   ],
+   "anchor": [
+    58.0,
+    70.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "cavalry": {
+   "file": "art3d/cavalry.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "scythe_chariot": {
+   "file": "art3d/scythe_chariot.png",
+   "frame": [
+    165,
+    130
+   ],
+   "anchor": [
+    80.0,
+    92.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "war_elephant": {
+   "file": "art3d/war_elephant.png",
+   "frame": [
+    240,
+    235
+   ],
+   "anchor": [
+    118.0,
+    165.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "catapult": {
+   "file": "art3d/catapult.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    86.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 1
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 10
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "helepolis": {
+   "file": "art3d/helepolis.png",
+   "frame": [
+    130,
+    165
+   ],
+   "anchor": [
+    63.0,
+    125.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 1
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 10
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "trireme": {
+   "file": "art3d/trireme.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "phalanx": {
+   "file": "art3d/phalanx.png",
+   "frame": [
+    120,
+    100
+   ],
+   "anchor": [
+    58.0,
+    70.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centurion": {
+   "file": "art3d/centurion.png",
+   "frame": [
+    120,
+    100
+   ],
+   "anchor": [
+    58.0,
+    70.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "bowman": {
+   "file": "art3d/bowman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "improved_bowman": {
+   "file": "art3d/improved_bowman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "composite_bowman": {
+   "file": "art3d/composite_bowman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "priest": {
+   "file": "art3d/priest.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "stone_thrower": {
+   "file": "art3d/stone_thrower.png",
+   "frame": [
+    130,
+    120
+   ],
+   "anchor": [
+    63.0,
+    80.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 1
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 10
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "heavy_catapult": {
+   "file": "art3d/heavy_catapult.png",
+   "frame": [
+    160,
+    150
+   ],
+   "anchor": [
+    78.0,
+    98.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 1
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 10
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "ballista": {
+   "file": "art3d/ballista.png",
+   "frame": [
+    130,
+    110
+   ],
+   "anchor": [
+    63.0,
+    75.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 1
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 10
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "fishing_boat": {
+   "file": "art3d/fishing_boat.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "fishing_ship": {
+   "file": "art3d/fishing_ship.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "trade_boat": {
+   "file": "art3d/trade_boat.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "merchant_ship": {
+   "file": "art3d/merchant_ship.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "light_transport": {
+   "file": "art3d/light_transport.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "heavy_transport": {
+   "file": "art3d/heavy_transport.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "scout_ship": {
+   "file": "art3d/scout_ship.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "war_galley": {
+   "file": "art3d/war_galley.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "fire_galley": {
+   "file": "art3d/fire_galley.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "catapult_trireme": {
+   "file": "art3d/catapult_trireme.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "juggernaught": {
+   "file": "art3d/juggernaught.png",
+   "frame": [
+    190,
+    165
+   ],
+   "anchor": [
+    93.0,
+    105.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 8,
+     "fps": 8
+    }
+   }
+  },
+  "scout": {
+   "file": "art3d/scout.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "heavy_cavalry": {
+   "file": "art3d/heavy_cavalry.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "cataphract": {
+   "file": "art3d/cataphract.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "horse_archer": {
+   "file": "art3d/horse_archer.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "heavy_horse_archer": {
+   "file": "art3d/heavy_horse_archer.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "camel_rider": {
+   "file": "art3d/camel_rider.png",
+   "frame": [
+    150,
+    135
+   ],
+   "anchor": [
+    73.0,
+    98.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "chariot": {
+   "file": "art3d/chariot.png",
+   "frame": [
+    165,
+    130
+   ],
+   "anchor": [
+    80.0,
+    92.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "chariot_archer": {
+   "file": "art3d/chariot_archer.png",
+   "frame": [
+    165,
+    130
+   ],
+   "anchor": [
+    80.0,
+    92.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "armored_elephant": {
+   "file": "art3d/armored_elephant.png",
+   "frame": [
+    240,
+    235
+   ],
+   "anchor": [
+    118.0,
+    165.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elephant_archer": {
+   "file": "art3d/elephant_archer.png",
+   "frame": [
+    240,
+    235
+   ],
+   "anchor": [
+    118.0,
+    165.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "axeman": {
+   "file": "art3d/axeman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "slinger": {
+   "file": "art3d/slinger.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "short_swordsman": {
+   "file": "art3d/short_swordsman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "broad_swordsman": {
+   "file": "art3d/broad_swordsman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "long_swordsman": {
+   "file": "art3d/long_swordsman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "legion": {
+   "file": "art3d/legion.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
   }
  },
  "credits": [
@@ -212,10 +1652,34 @@
   "town_center": {
    "default": {
     "stone": {
-     "file": "art3d/town_center.png",
+     "file": "art3d/town_center-stone.png",
      "anchor": [
-      110.0,
-      164.6
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/town_center-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/town_center-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/town_center-iron.png",
+     "anchor": [
+      126.0,
+      176.7
      ],
      "scale": 1.0
     }
@@ -224,10 +1688,414 @@
   "house": {
    "default": {
     "stone": {
-     "file": "art3d/house.png",
+     "file": "art3d/house-stone.png",
      "anchor": [
-      75.0,
-      113.2
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/house-tool.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/house-bronze.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/house-iron.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "granary": {
+   "default": {
+    "stone": {
+     "file": "art3d/granary-stone.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/granary-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/granary-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/granary-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "barracks": {
+   "default": {
+    "stone": {
+     "file": "art3d/barracks-stone.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/barracks-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/barracks-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/barracks-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "dock": {
+   "default": {
+    "stone": {
+     "file": "art3d/dock-stone.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/dock-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/dock-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/dock-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "temple": {
+   "default": {
+    "bronze": {
+     "file": "art3d/temple-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/temple-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "wonder": {
+   "default": {
+    "bronze": {
+     "file": "art3d/wonder-bronze.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/wonder-iron.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "watch_tower": {
+   "default": {
+    "tool": {
+     "file": "art3d/watch_tower-tool.png",
+     "anchor": [
+      94.0,
+      170.8
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "sentry_tower": {
+   "default": {
+    "bronze": {
+     "file": "art3d/sentry_tower-bronze.png",
+     "anchor": [
+      94.0,
+      163.3
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "guard_tower": {
+   "default": {
+    "iron": {
+     "file": "art3d/guard_tower-iron.png",
+     "anchor": [
+      94.0,
+      174.3
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "ballista_tower": {
+   "default": {
+    "iron": {
+     "file": "art3d/ballista_tower-iron.png",
+     "anchor": [
+      94.0,
+      181.9
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "government_center": {
+   "default": {
+    "bronze": {
+     "file": "art3d/government_center-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/government_center-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "academy": {
+   "default": {
+    "bronze": {
+     "file": "art3d/academy-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/academy-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "siege_workshop": {
+   "default": {
+    "iron": {
+     "file": "art3d/siege_workshop-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "archery_range": {
+   "default": {
+    "tool": {
+     "file": "art3d/archery_range-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/archery_range-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/archery_range-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "stable": {
+   "default": {
+    "tool": {
+     "file": "art3d/stable-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/stable-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/stable-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "market": {
+   "default": {
+    "tool": {
+     "file": "art3d/market-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/market-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/market-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "farm": {
+   "default": {
+    "tool": {
+     "file": "art3d/farm-tool.png",
+     "anchor": [
+      126.0,
+      124.5
+     ],
+     "scale": 1.0
+    }
+   }
+  },
+  "storage_pit": {
+   "default": {
+    "stone": {
+     "file": "art3d/storage_pit-stone.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/storage_pit-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/storage_pit-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/storage_pit-iron.png",
+     "anchor": [
+      126.0,
+      176.7
      ],
      "scale": 1.0
     }
@@ -362,7 +2230,67 @@
     30.7
    ],
    "scale": 1.0
-  }
+  },
+  "carcass_alligator": {
+   "file": "art3d/carcass_alligator.png",
+   "anchor": [
+    54.3,
+    35.7
+   ],
+   "scale": 1.0
+  },
+  "carcass_lion": {
+   "file": "art3d/carcass_lion.png",
+   "anchor": [
+    44.3,
+    33.2
+   ],
+   "scale": 1.0
+  },
+  "carcass_elephant": {
+   "file": "art3d/carcass_elephant.png",
+   "anchor": [
+    106.8,
+    75.7
+   ],
+   "scale": 1.0
+  },
+  "fish": [
+   {
+    "file": "art3d/fish0.png",
+    "anchor": [
+     30.9,
+     23.7
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/fish1.png",
+    "anchor": [
+     30.9,
+     23.7
+    ],
+    "scale": 1.0
+   }
+  ],
+  "deep_fish": [
+   {
+    "file": "art3d/deep_fish0.png",
+    "anchor": [
+     30.9,
+     23.7
+    ],
+    "scale": 1.0
+   },
+   {
+    "file": "art3d/deep_fish1.png",
+    "anchor": [
+     30.9,
+     23.7
+    ],
+    "scale": 1.0
+   }
+  ]
  },
  "cliffs": {
   "0": [
@@ -652,6 +2580,40 @@
     ],
     "scale": 1.0
    }
+  ]
+ },
+ "terrain": {
+  "grass": [
+   "art3d/ground-grass0.png",
+   "art3d/ground-grass1.png",
+   "art3d/ground-grass2.png",
+   "art3d/ground-grass3.png",
+   "art3d/ground-grass4.png",
+   "art3d/ground-grass5.png"
+  ],
+  "dirt": [
+   "art3d/ground-dirt0.png",
+   "art3d/ground-dirt1.png",
+   "art3d/ground-dirt2.png",
+   "art3d/ground-dirt3.png",
+   "art3d/ground-dirt4.png",
+   "art3d/ground-dirt5.png"
+  ],
+  "sand": [
+   "art3d/ground-sand0.png",
+   "art3d/ground-sand1.png",
+   "art3d/ground-sand2.png",
+   "art3d/ground-sand3.png",
+   "art3d/ground-sand4.png",
+   "art3d/ground-sand5.png"
+  ],
+  "water": [
+   "art3d/ground-water0.png",
+   "art3d/ground-water1.png",
+   "art3d/ground-water2.png",
+   "art3d/ground-water3.png",
+   "art3d/ground-water4.png",
+   "art3d/ground-water5.png"
   ]
  }
 }
