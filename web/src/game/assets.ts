@@ -10,7 +10,12 @@ import { loadPacks } from "./packs";
 
 /** A picture: the file, and the point that stands on the ground (a unit's feet, the bottom corner of a
  *  building's diamond), in the image's own pixels. `scale` is screen units per image pixel. */
-export interface ImageSpec { file: string; anchor?: [number, number]; scale?: number }
+export interface ImageSpec {
+  file: string; anchor?: [number, number]; scale?: number;
+  /** For a building: whether `anchor` is the bottom corner of its diamond (the default) or the diamond's
+   *  centre, where the original's pictures have their hotspot. */
+  anchorAt?: "bottom" | "center";
+}
 
 /** One animation on a unit's sheet: the first row (direction 0), how many frames, how fast. Each further
  *  direction is the next row down. */

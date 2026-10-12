@@ -2249,8 +2249,13 @@ function assetBuildingSpec(id: string, age: number, arch: Arch, civ?: string): I
 
 export function buildingPic(def: BuildingDef, owner: number, age = 0, stage = 3, farmLeft = 1, arch: Arch = "greek", civ?: string): Pic {
   if (stage >= 3) {
-    const spec = assetBuildingSpec(def.id, Math.round(age), arch, civ);
-    const fromFile = spec && assetPic(`ba-${spec.file}-${owner}`, spec, owner);
+    const found = assetBuildingSpec(def.id, Math.round(age), arch, civ);
+    // A picture anchored at the diamond's centre stands half the diamond's height above its bottom corner,
+    // which is where a building is placed.
+    const spec = found?.anchorAt === "center" && found.anchor
+      ? { ...found, anchor: [found.anchor[0], found.anchor[1] + (def.size * HALF_H) / (found.scale ?? 1)] as [number, number] }
+      : found;
+    const fromFile = spec && assetPic(`ba-${spec.file}-${spec.anchorAt ?? "bottom"}-${owner}`, spec, owner);
     if (fromFile) return fromFile;
   }
   const s = def.size;
