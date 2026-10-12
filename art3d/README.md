@@ -6,7 +6,10 @@ mô hình hay ảnh mẫu của game nào. Vì vậy hình được đưa lên r
 
 ## Chạy
 
-Cần Blender 4.2 trở lên (`brew install --cask blender` trên Mac).
+Cần Blender 4.2 trở lên (`brew install --cask blender` trên Mac, `winget install BlenderFoundation.Blender` trên
+Windows; trên Windows gọi `"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe"` thay cho `blender`).
+Cycles dùng card đồ họa nếu có: Metal trên Mac, CUDA (rồi OptiX, HIP, oneAPI) trên Windows và Linux; không có
+thì chạy bằng CPU, chậm hơn nhưng ra cùng hình.
 
 ```
 blender -b --factory-startup -P art3d/build.py                         # tất cả
@@ -29,6 +32,7 @@ dời tâm (`center`) trong code.
 | `villager.py` | Người dân: khung xương bằng empty; dụng cụ (rìu, cuốc, búa, giỏ quả, dao, cuốc ruộng, giáo, cần câu); các động tác đứng, đi, chặt cây, đào mỏ, đóng búa, hái quả, ngồi xẻ thịt, cày ruộng, phóng giáo, đứng câu cá (giỏ cá đặt bên cạnh, dây câu và phao, giật cần khi cá cắn) |
 | `animals.py` | Thú: linh dương (gặm cỏ, chạy) và xác của nó |
 | `models.py` | Cây, bụi quả, mỏ vàng, mỏ đá, vách đá |
+| `relics.py` | Ruins (vòng đá cổ có xà ngang và phiến đá tế) và Artifact (rương vàng trên hai đòn khiêng, nhún nhẹ khi đi); mỗi thứ hai hình: lúc chưa ai giữ (không có màu người chơi) và lúc có người giữ (`ruins:held`, `artifact:held`: cờ hoặc tấm vải màu người giữ) |
 | `buildings.py` | Mọi công trình theo từng thời đại (Tool, Bronze, Iron) |
 | `stoneage.py` | Công trình Thời đồ đá: chòi tròn và nhà dài vách đất trên móng đá, mái rơm nhiều lớp có dây buộc, sân đất và đồ vật quanh nhà (củi, chum, giỏ, giá phơi da, hàng rào, cột cờ) |
 | `soldiers.py`, `machines.py` | Lính bộ, cung thủ, thầy tu, quân cưỡi; máy công thành và tàu |

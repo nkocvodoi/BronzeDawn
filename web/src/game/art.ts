@@ -418,7 +418,9 @@ const ELEPHANTS = new Set(["war_elephant", "armored_elephant", "elephant_archer"
 const SIEGE = new Set(["stone_thrower", "catapult", "heavy_catapult", "ballista", "helepolis"]);
 
 export function unitPic(look: UnitLook): Pic {
-  const fromFile = assetUnitPic(look);
+  // A Ruin or Artifact someone holds shows their colour ("ruins:held"); as found, it has none.
+  const held = (look.type === "ruins" || look.type === "artifact") && look.owner >= 0;
+  const fromFile = assetUnitPic(held ? { ...look, job: "held" } : look); // a pack with only "ruins" falls back to it
   if (fromFile) return fromFile;
   const { type, owner, facing, pose, frame, tool, carry } = look;
   const key = `u-${type}-${owner}-${facing}-${pose}-${frame}-${tool}-${carry}`;
