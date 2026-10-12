@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-12
 
+- [#84](https://github.com/nkocvodoi/BronzeDawn/pull/84) Vẽ lại bằng Blender: bụi quả, mỏ vàng, mỏ đá, linh dương (gặm cỏ, chạy) và xác của nó; người dân ngồi xổm xẻ thịt, bỏ vào giỏ đặt cạnh
 - [#83](https://github.com/nkocvodoi/BronzeDawn/pull/83) Phím tắt tới công trình như bản gốc: H tới Town Center, Ctrl+B Barracks, Ctrl+A Archery Range, Ctrl+L Stable, Ctrl+K Siege Workshop, Ctrl+Y Academy, Ctrl+P Temple, Ctrl+D Dock; bấm lại để sang cái kế tiếp
 - [#82](https://github.com/nkocvodoi/BronzeDawn/pull/82) Vách đá vẽ lại bằng Blender, nối với ô bên cạnh thành một sống núi đá liền thay cho dãy khối lặp lại
 - [#81](https://github.com/nkocvodoi/BronzeDawn/pull/81) Menu và màn cài đặt cuộn được khi cao hơn màn hình (laptop, điện thoại), kể cả khi game đang giữ chuột
