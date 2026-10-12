@@ -75,6 +75,9 @@ const RES_KEYS: Record<number, string> = { 0: "food", 1: "wood", 2: "stone", 3: 
 /** Melee attack/armour class and pierce class. */
 const MELEE = 4;
 const PIERCE = 3;
+/** Player resources in empires.dat (names.ts RESOURCES). */
+const FAITH_RATE = 35;
+const TRIBUTE_FEE = 46;
 
 export interface Converted {
   rules: RulesFile;
@@ -164,12 +167,15 @@ export function convert(dat: DatFile, base: RulesFile): Converted {
     a.hp = live.hitPoints;
     a.speed = live.speed ?? a.speed;
     a.los = live.lineOfSight;
-    a.attack = amountOf(live.combat?.attacks, MELEE) ?? 0;
+    // The lion's claws are a blow of class 12 of their own, not melee.
+    a.attack = amountOf(live.combat?.attacks, MELEE) || Math.max(0, ...(live.combat?.attacks ?? []).map((x) => x.amount));
     a.armor = amountOf(live.combat?.armors, MELEE) ?? 0;
     if (live.combat && live.combat.reloadTime > 0) a.attack_cooldown = live.combat.reloadTime;
     const food = live.resourceStorages.find((r) => r.type === 0);
     if (food) a.food = food.amount;
-    a.decay = dead.resourceDecay;
+    // How fast the meat rots is the living animal's decay (gazelle 0.3, elephant 0.2, lion 1 food a
+    // second); the carcass unit's own is 1 for every animal.
+    a.decay = live.resourceDecay || dead.resourceDecay;
   }
 
   // Units.
@@ -201,9 +207,10 @@ export function convert(dat: DatFile, base: RulesFile): Converted {
     const parm = amountOf(u.combat?.armors, PIERCE);
     if (arm !== undefined && arm !== 0) b.armor = arm;
     if (parm !== undefined && parm !== 0) b.pierce_armor = parm;
+    // A Farm's food is the player's "farm food amount" (resource 36, 250), not the 15 the Farm unit holds.
     if (b.id === "farm") {
-      const food = u.resourceStorages.find((r) => r.type === 0);
-      if (food) b.resource = { food: food.amount };
+      const food = dat.civs[1].resources[36];
+      if (food > 0) b.resource = { food };
     }
   }
 
@@ -269,6 +276,12 @@ function applyUnit(def: UnitDef, u: DatUnit, notes: string[]): void {
     if (c.maxRange > 0) def.damage = "melee";
   } else if (!def.converts) {
     def.attack = 0;
+  }
+  // A blow of another class only (the catapult ships' stones, class 6; the lion's claws, class 12), with no
+  // melee or pierce of its own, or only a zero one: that blow is the attack.
+  if (!def.converts && !(def.attack > 0)) {
+    const other = Math.max(0, ...c.attacks.filter((a) => a.class !== MELEE && a.class !== PIERCE).map((a) => a.amount));
+    if (other > 0) def.attack = other;
   }
   def.armor = amountOf(c.armors, MELEE) ?? 0;
   def.pierce_armor = amountOf(c.armors, PIERCE) ?? 0;
@@ -339,11 +352,26 @@ function convertCommands(cmds: DatEffectCommand[], ctx: Ctx): { effects: Effect[
       continue;
     }
     if (k.type === 2) { miss(k, true); continue; } // unlocks: Bronze Dawn's tech tree handles these
-    if (k.type !== 4 && k.type !== 5) { miss(k); continue; }
+    // Resources the game keeps per player: how fast a priest's faith comes back (2 a second unless changed),
+    // and what a tribute costs on top (a quarter unless changed).
+    if (k.type === 1 && k.a === FAITH_RATE) {
+      const base = ctx.dat.civs[1].resources[FAITH_RATE] || 2;
+      effects.push({ type: "conversion", stat: "regen", value: round((k.b ? base + k.d : k.d) / base) });
+      continue;
+    }
+    if (k.type === 1 && k.a === TRIBUTE_FEE && !k.b && k.d === 0) { effects.push({ type: "flag", flag: "free_tribute" }); continue; }
+    if (k.type !== 0 && k.type !== 4 && k.type !== 5) { miss(k); continue; }
+
+    // A Farm's own work rate is how fast it is farmed.
+    if (k.c === 13 && ctx.buildingByAoe.get(k.a) === "farm" && k.type !== 0) {
+      const base = ctx.unit(k.a).action?.workRate || 0.4;
+      effects.push({ type: "gather", resource: "food", rate: round(k.type === 4 ? (base + k.d) / base : k.d), carry: 0, kind: "farm" });
+      continue;
+    }
 
     // Gather work rate and carry capacity on the villager jobs.
     const jobRes = jobOf(k.a);
-    if (jobRes && (k.c === 13 || k.c === 14)) {
+    if (jobRes && (k.c === 13 || k.c === 14) && k.type !== 0) {
       const base = jobRes.kind ? ctx.eco.gather_kind_rates?.[jobRes.kind] ?? ctx.eco.gather_rates[jobRes.res] : ctx.eco.gather_rates[jobRes.res];
       const rate = k.c === 13 ? (k.type === 4 ? (base + k.d) / base : k.d) : 1;
       const carry = k.c === 14 && k.type === 4 ? k.d : 0;
@@ -355,10 +383,25 @@ function convertCommands(cmds: DatEffectCommand[], ctx: Ctx): { effects: Effect[
     }
 
     const target = targetOf(k.a, k.b, ctx);
-    if (!target) { miss(k, k.a >= 0 && isNonGameUnit(k.a, ctx)); continue; }
-    const op = k.type === 4 ? "add" : "mul";
+    // A unit or a class Bronze Dawn does not have (heroes, domestic animals) has nothing to change.
+    if (!target) { miss(k, (k.a >= 0 && isNonGameUnit(k.a, ctx)) || (k.a < 0 && k.b >= 0)); continue; }
+    const op = k.type === 0 ? "set" : k.type === 4 ? "add" : "mul";
     let stat: string | null = null;
     let value = k.d;
+    // A cost set outright becomes the same cost as a share of each unit's own ("Civilian cost 35": 35 of 50).
+    if (k.c === 100 && op === "set") {
+      for (const id of target.units ?? []) {
+        const total = Object.values(ctx.rules.units?.find((u) => u.id === id)?.cost ?? {}).reduce((a, b) => a + (b ?? 0), 0);
+        if (total > 0) effects.push({ type: "stat", stat: "cost", op: "mul", value: round(k.d / total), target: { units: [id] } });
+      }
+      continue;
+    }
+    // Base armor counts against every kind of attack the unit has no armor of its own for: for the
+    // villager, which has none, both melee and pierce.
+    if (k.c === 15 && op === "add") {
+      for (const s of ["armor", "pierce_armor"]) effects.push({ type: "stat", stat: s, op, value: k.d, target });
+      continue;
+    }
     switch (k.c) {
       case 0: stat = "hp"; break;
       case 1: stat = "los"; break;
@@ -437,10 +480,13 @@ function mergeTargets(list: Effect[]): Effect[] {
 }
 
 /** Bronze Dawn names its unit upgrades itself; keep its upgrade effects and use the data for the rest. */
+// The original upgrades from a line's first unit ("Scout Ship → Trireme"); Bronze Dawn upgrades the units
+// standing as the one before ("War Galley → Trireme"), which is what makes the ships on the water change.
+// The data's own upgrades are taken only where Bronze Dawn has none (Battle Axe: Clubman → Axeman).
 function mergeUpgrades(old: Effect[], fresh: Effect[]): Effect[] {
   const ups = old.filter((e) => e.type === "upgrade");
   const freshUps = fresh.filter((e) => e.type === "upgrade");
-  return [...fresh.filter((e) => e.type !== "upgrade"), ...(freshUps.length ? freshUps : ups)];
+  return [...fresh.filter((e) => e.type !== "upgrade"), ...(ups.length ? ups : freshUps)];
 }
 
 function disabledFor(aoeTechs: number[], ctx: Ctx, keep: string[]): string[] {

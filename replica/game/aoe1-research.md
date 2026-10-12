@@ -422,6 +422,16 @@ DE swaps the Hittites and Sumerians between the Egyptian and Mesopotamian sets (
 
 Each civilization also has its own missing techs and units. F-Civilizations lists them for the DE tree.
 
+The bonuses in `data/rules.json` are no longer the rounded figures of this table: since 2026-10-12 they are the
+Rise of Rome 1.0 data itself, each civilization's bonus effect in `empires.dat` as `npm run import-aoe` converts it
+(`web/scripts/aoe/convert.ts`). Where the two differ, the data wins: Assyrian archers reload in 1.1 s (set, not
+40% faster); Egyptian gold miners work 44% faster and carry 2 more; Sumerian farms hold 250 more food (not twice
+as much) and the 3.5 s reload is set for the whole siege class, the Ballista and Helepolis too, so theirs slow
+down as in the original; Babylonian faith comes back at 2.75 a second instead of 2; and so on. The data also gives
+line of sight with several range bonuses (Egyptian priests +3, Minoan Composite Bowmen +2, Choson towers +2,
+Hittite War Galleys and Scout Ships +4). One bonus is in the original's engine, not its data, and is kept by
+hand: Macedonian units 4× harder to convert. The tech trees (what each civilization lacks) still follow DE, as below.
+
 | Civ | Bonuses (O manual; R changes noted) | Src |
 |---|---|---|
 | Assyrian | Archery Range units fire 40% faster. Villagers 30% faster | S1, S5 |

@@ -413,7 +413,7 @@ describe("the original's rules", () => {
     w.players[0].res.set(Res.food, 1000);
     expect(w.unitStats(0, "clubman").attack).toBe(3);
     expect(w.research(0, sp.id, "toolworking")).toBeNull();
-    run(w, 31);
+    run(w, RULES.techs.get("toolworking")!.time + 1);
     expect(w.unitStats(0, "clubman").attack).toBe(5);
     expect(w.unitStats(0, "bowman").attack).toBe(3);   // not a melee unit
   });
@@ -486,16 +486,16 @@ describe("the original's rules", () => {
     expect(w.players[0].stats.gathered.food).toBeGreaterThan(200);
   });
 
-  it("everything gathers and builds a quarter faster than the original's times", () => {
+  it("everything gathers and builds at the original's own pace", () => {
     const w = blank();
-    expect(w.buildingStats(0, "house").build_time).toBeCloseTo(RULES.buildings.get("house")!.build_time * 0.75, 2);
+    expect(w.buildingStats(0, "house").build_time).toBeCloseTo(RULES.buildings.get("house")!.build_time, 2);
     const tree = w.addNode("tree", new Tile(10, 6))!;
     const v = w.spawnUnit("villager", 0, new Tile(9, 6).center);
     w.gather(0, [v.id], tree.id);
     run(w, 3); // walk up and start
     const before = tree.amount;
     run(w, 10);
-    expect(before - tree.amount).toBeCloseTo(RULES.gatherRate(Res.wood) * 4 / 3 * 10, 0);
+    expect(before - tree.amount).toBeCloseTo(RULES.gatherRate(Res.wood) * 10, 0);
   });
 
   it("a soldier's kill leaves no meat", () => {
@@ -704,7 +704,7 @@ describe("the original's rules", () => {
     const fish = w.addNode("deep_fish", new Tile(22, 6))!;
     w.players[0].res.set(Res.wood, 200);
     w.train(0, dock.id, "fishing_boat");
-    run(w, 25);
+    run(w, RULES.units.get("fishing_boat")!.train_time + 5);
     const boat = w.unitsOf(0).find((u) => u.def.id === "fishing_boat")!;
     expect(boat).toBeDefined();
     expect(w.map.terrainAt(boat.pos.tile)).toBe(Terrain.water);
@@ -748,10 +748,24 @@ describe("the original's rules", () => {
     expect(cat.order.kind).toBe("attackGround");
     const c = new World(RULES, 1, ["A", "B", "C", "D"], 24, false, { civs: ["minoan", "greek", "yamato", "babylonian"] });
     expect(c.unitCost(0, "scout_ship").wood).toBe(Math.round(135 * 0.7));
-    expect(c.unitStats(1, "war_galley").speed).toBeCloseTo(1.8 * 1.3);
+    expect(c.unitStats(1, "war_galley").speed).toBeCloseTo(RULES.units.get("war_galley")!.speed + 0.3); // the original adds 0.3 to Greek war ships
     expect(c.unitStats(2, "trireme").hp).toBe(Math.round(200 * 1.3));
     expect(c.blockerTech("trireme_tech", 3)).toContain("Not available"); // no Trireme for Babylon
     expect(RULES.units.get("trireme")!.convert_resist).toBe(2);
+  });
+
+  it("civilization bonuses are the original's numbers, a reload time set outright among them", () => {
+    const w = new World(RULES, 1, ["A", "B", "C", "D"], 24, false, { civs: ["assyrian", "sumerian", "shang", "palmyran"] });
+    expect(w.unitStats(0, "bowman").attack_cooldown).toBeCloseTo(1.1); // set, not scaled
+    expect(w.unitStats(1, "stone_thrower").attack_cooldown).toBeCloseTo(3.5);
+    expect(w.unitStats(1, "helepolis").attack_cooldown).toBeCloseTo(3.5); // the whole siege class, as in the original
+    expect(w.unitCost(2, "villager").food).toBe(35);
+    expect(w.unitCost(3, "villager").food).toBe(75);
+    expect(w.unitStats(3, "villager").armor).toBe(1);
+    expect(w.unitStats(3, "villager").pierce_armor).toBe(1);
+    expect(w.players[3].mods.flags.has("free_tribute")).toBe(true);
+    const b = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["babylonian", "greek"] });
+    expect(b.players[0].mods.conversionRegen).toBeCloseTo(1.375); // faith back at 2.75 a second instead of 2
   });
 
   it("fishing boats: five for each finished Dock, counting those in training", () => {

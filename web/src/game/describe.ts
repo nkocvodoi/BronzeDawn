@@ -29,6 +29,8 @@ export function describeEffects(effects: Effect[], rules: Rules): string[] {
     switch (e.type) {
       case "stat": {
         if (e.stat === "attack_cooldown" && e.op === "mul") return `${who(e)} attack ${pct(1 / e.value - 1)} faster`;
+        if (e.stat === "attack_cooldown" && e.op === "set") return `${who(e)} attack every ${e.value} s`;
+        if (e.op === "set") return `${{ hp: "hit points", pierce_armor: "pierce armor", los: "line of sight" }[e.stat] ?? e.stat} ${e.value} for ${who(e)}`;
         if (e.stat === "cost" && e.op === "mul") return `${who(e)} cost ${pct(1 - e.value)} ${e.value < 1 ? "less" : "more"}`;
         if (e.stat === "train_time" && e.op === "mul" && e.value < 1) return `${who(e)} trained ${pct(1 / e.value - 1)} faster`;
         if (e.stat === "pop" && e.op === "mul") return `${who(e)} take ${e.value === 0.5 ? "half" : pct(e.value)} the population room`;
@@ -37,14 +39,15 @@ export function describeEffects(effects: Effect[], rules: Rules): string[] {
         return `${v} ${stat} for ${who(e)}`;
       }
       case "gather": {
-        const what = e.resource === "all" ? "all gathering" : e.kind === "hunt" ? "hunting" : e.kind === "forage" ? "foraging" : `${e.resource} gathering`;
+        const what = e.resource === "all" ? "all gathering" : e.kind === "hunt" ? "hunting" : e.kind === "forage" ? "foraging"
+          : e.kind === "farm" ? "farming" : e.kind === "fish" ? "fishing" : `${e.resource} gathering`;
         return `${what} ${e.rate >= 1 ? "+" : "-"}${pct(e.rate - 1)}${e.carry ? `, carry +${e.carry}` : ""}`;
       }
       case "upgrade": return `${name(e.from)} becomes ${name(e.to)}`;
       case "farm_food": return `farms ${e.op === "add" ? `+${e.value}` : `x${e.value}`} food`;
       case "mine_yield": return `gold mines yield +${Math.round((e.value - 1) * 100)}%`;
       case "flag": return e.flag === "ballistics" ? "siege leads moving targets" : e.flag === "martyrdom" ? "a priest can give its life to convert at once"
-        : "priests convert buildings and priests";
+        : e.flag === "free_tribute" ? "tribute costs nothing extra" : "priests convert buildings and priests";
       case "conversion":
         return e.stat === "resist" ? `units ${e.value}x harder to convert` : e.stat === "regen" ? `priests regain faith ${pct(e.value - 1)} faster` : `conversion ${pct(e.value - 1)} faster`;
       case "carry": return `villagers carry ${e.value}`;

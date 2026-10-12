@@ -125,11 +125,11 @@ check((await page.textContent("#players-info")).includes("4 players"), "the star
 await page.selectOption("#opponents", "1");
 await page.selectOption("#civ", "greek");   // a fixed civilization: some change costs
 await page.selectOption("#start-speed", "1.5");
-check((await page.textContent("#civ-info")).includes("Academy units"), "choosing a civilization shows its bonuses");
+check((await page.textContent("#civ-info")).includes("+0.3 speed for Hoplite"), "choosing a civilization shows its bonuses");
 await page.click("[data-start=normal]");
 await page.click("#diplomacy-btn");
 const diplomacy = await page.textContent("#overlay");
-check(diplomacy.includes("Greek") && diplomacy.includes("Academy units") && diplomacy.includes("Enemy"), "Diplomacy lists your civilization with its bonuses, and the enemy's");
+check(diplomacy.includes("Greek") && diplomacy.includes("+0.3 speed for Hoplite") && diplomacy.includes("Enemy"), "Diplomacy lists your civilization with its bonuses, and the enemy's");
 await page.click("[data-stance='1:neutral']");
 check(await g(() => game.world.stance[0][1] === "neutral" && game.world.stance[1][0] === "enemy"), "Diplomacy sets you neutral toward the computer; it stays your enemy");
 await page.click("[data-stance='1:enemy']");

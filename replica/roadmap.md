@@ -99,8 +99,12 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 | Farm | Chặn đường đi | Mặc định đi xuyên qua được, như bản Definitive Edition | Tùy chọn "Farms block the way" ở màn hình bắt đầu để chơi đúng luật gốc |
 | Rally point, attack-move | Không có | Có | Tiện lợi kiểu hiện đại; có thể làm thành tùy chọn |
 | Tốc độ 3x | Tối đa 2x | Có thêm 3x | |
-| AI mức Khó | Hardest được thêm tài nguyên | Thu nhanh hơn 20% | Cùng ý tưởng là AI được lợi thế, cách thực hiện khác |
-| Lượng thức ăn mỗi lần mang, lượng vàng và đá mỗi mỏ | Chưa xác nhận được | 10 / 400 / 300 | Đánh dấu (?) trong bản nghiên cứu |
+| AI mức Khó | Hardest được thêm tài nguyên | Thu nhanh hơn 15% | Cùng ý tưởng là AI được lợi thế, cách thực hiện khác |
+
+Số liệu (`data/rules.json`) là số của Rise of Rome lấy thẳng từ `empires.dat` (2026-10-12): máu, giáp, đòn,
+tầm, tốc độ, thời gian nạp, thời gian luyện và xây, giá, tốc độ thu hoạch, sức mang, lượng tài nguyên mỗi mỏ
+(vàng 400, đá 250), cá, thú (tốc độ thối của thịt), công nghệ và bonus dân tộc. Tốc độ thu hoạch và xây không
+còn nhanh hơn bản gốc 1/3 như ở #65. Những chỗ còn chưa mang sang được: `replica/game/aoe1-engine-spec.md`, mục 8.
 
 ## Ranh giới (sẽ không làm)
 
