@@ -3,7 +3,7 @@
 //
 // The file is one raw deflate stream. Inside, the map size is at 106 (twice, width then height). The tiles are
 // 9-byte records, terrain then elevation first; they are found as the first run of width x height records that
-// all look like tiles (terrain <= 24, elevation <= 7, the fifth byte a multiple of 32). Objects are records
+// all look like tiles (terrain <= 24, elevation <= 7, the fifth byte a multiple of 32 bar a few). Objects are records
 // of: type (10 static, 20 moving, 30 resource, 70 living, 80 building...), owner (0 nature), unit id (u16),
 // then x, y, z as floats at +23, +27, +31. They are found by that shape, so the odd stray match is possible:
 // count by unit id and type, not one by one.
@@ -20,10 +20,12 @@ export function readGmx(path: string): SavedMap {
   const N = W * W;
   let at = -1;
   for (let i = 114; i < b.length - N * 9 && at < 0; i++) {
-    let ok = true;
+    // A tile or two can have the fifth byte off (one in 20 736 on Large Islands and Narrows): a few are let
+    // through, not the other arrays, where half are.
+    let ok = true, odd = 0;
     for (let k = 0; k < N; k++) {
       const p = i + k * 9;
-      if (b[p] > 24 || b[p + 1] > 7 || b[p + 4] % 32 !== 0) { ok = false; break; }
+      if (b[p] > 24 || b[p + 1] > 7 || (b[p + 4] % 32 !== 0 && ++odd > 16)) { ok = false; break; }
     }
     if (ok) at = i;
   }

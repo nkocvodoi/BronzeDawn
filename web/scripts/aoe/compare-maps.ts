@@ -2,14 +2,14 @@
 // size of map and the same number of players: water, ground, hills, what lies where round each Town Center.
 // Save a game right at the start (Single Player, Random Map), then:
 //
-//   npx tsx scripts/aoe/compare-maps.ts <save.gmx> <map type> [seeds] [maps.json]
-//   npx tsx scripts/aoe/compare-maps.ts assets-local/saves/Inland-1.gmx inland
+//   npx tsx scripts/aoe/compare-maps.ts <map type> <save.gmx>... [--seeds 8] [--maps maps.json]
+//   npx tsx scripts/aoe/compare-maps.ts inland assets-local/saves/Inland-1.gmx assets-local/saves/Inland-2.gmx
 //
-// Map types are Bronze Dawn's (inland, hill_country, small_islands...). maps.json, to try other map data, is
-// data/aoe-maps.json by default. A row ends in "x" when Bronze Dawn's average is more than a quarter off.
-// One saved game is one map: forests and deserts swing a lot from map to map (and one map in four has the
-// original's "dry" ground, twice the desert and half the forest), so look at several saves before reading much
-// into one row.
+// Map types are Bronze Dawn's (inland, hill_country, small_islands...). Each save gets --seeds of Bronze Dawn's
+// maps at its size and players. --maps, to try other map data, is data/aoe-maps.json by default. A row ends in
+// "x" when the two means are more than a quarter apart and the two ranges do not even meet. One saved game is one
+// map: forests and deserts swing a lot from map to map (and one map in four has the original's "dry" ground,
+// twice the desert and half the forest), so give it several saves of each kind.
 import { readFileSync } from "node:fs";
 import { AOE_MAP_IDS, AOE_MAPS, AoeMapGen } from "../../src/core/aoemap";
 import { readGmx } from "./gmx";
@@ -60,33 +60,44 @@ function stats(m: Map): Stats {
   return s;
 }
 
-const [file, type, seedsArg = "8", mapsPath] = process.argv.slice(2).filter((a) => a !== "--");
-if (!file || !(type in AOE_MAP_IDS)) {
-  console.error(`usage: npx tsx scripts/aoe/compare-maps.ts <save.gmx> <${Object.keys(AOE_MAP_IDS).join("|")}> [seeds] [maps.json]`);
+const argv = process.argv.slice(2).filter((a) => a !== "--");
+const opt = (name: string, dflt: string) => { const i = argv.indexOf(name); if (i < 0) return dflt; const v = argv[i + 1]; argv.splice(i, 2); return v; };
+const seeds = Number(opt("--seeds", "8")), mapsPath = opt("--maps", "");
+const [type, ...files] = argv;
+if (!files.length || !(type in AOE_MAP_IDS)) {
+  console.error(`usage: npx tsx scripts/aoe/compare-maps.ts <${Object.keys(AOE_MAP_IDS).join("|")}> <save.gmx>... [--seeds 8] [--maps maps.json]`);
   process.exit(1);
 }
 if (mapsPath) JSON.parse(readFileSync(mapsPath, "utf8")).maps.forEach((m: object, i: number) => Object.assign(AOE_MAPS[i], m));
-const save = readGmx(file);
-// Animals are type 70; id 1 is the alligator only as one of them.
-const real: Map = {
-  W: save.W, terrain: save.terrain, elevation: save.elevation,
-  objects: save.objects.filter((o) => AOE_UNITS[o.id] && (o.id !== 1 || o.type === 70) && (o.id === 109 ? o.owner > 0 : o.owner === 0))
-    .map((o) => ({ kind: AOE_UNITS[o.id], x: o.x, y: o.y })),
-};
-const players = real.objects.filter((o) => o.kind === "tc").length;
-const ours = Array.from({ length: Number(seedsArg) }, (_, i) => {
-  const g = new AoeMapGen(AOE_MAPS[AOE_MAP_IDS[type]], save.W, players, i + 1).generate();
-  return stats({
-    W: save.W, terrain: g.terrain, elevation: g.elevation,
-    objects: g.placed.filter((p) => BD_UNITS[p.unit] && (p.unit !== "town_center" || p.player > 0)).map((p) => ({ kind: BD_UNITS[p.unit], x: p.x, y: p.y })),
-  });
-});
-const theirs = stats(real);
+const theirs: Stats[] = [], ours: Stats[] = [];
+const sizes: string[] = [];
+for (const file of files) {
+  const save = readGmx(file);
+  // Animals are type 70; id 1 is the alligator only as one of them.
+  const real: Map = {
+    W: save.W, terrain: save.terrain, elevation: save.elevation,
+    objects: save.objects.filter((o) => AOE_UNITS[o.id] && (o.id !== 1 || o.type === 70) && (o.id === 109 ? o.owner > 0 : o.owner === 0))
+      .map((o) => ({ kind: AOE_UNITS[o.id], x: o.x, y: o.y })),
+  };
+  const players = real.objects.filter((o) => o.kind === "tc").length;
+  sizes.push(`${save.W}x${save.W}, ${players} players`);
+  theirs.push(stats(real));
+  // As many of ours for each save, at its size and with its players.
+  for (let i = 0; i < seeds; i++) {
+    const g = new AoeMapGen(AOE_MAPS[AOE_MAP_IDS[type]], save.W, players, theirs.length * 1000 + i + 1).generate();
+    ours.push(stats({
+      W: save.W, terrain: g.terrain, elevation: g.elevation,
+      objects: g.placed.filter((p) => BD_UNITS[p.unit] && (p.unit !== "town_center" || p.player > 0)).map((p) => ({ kind: BD_UNITS[p.unit], x: p.x, y: p.y })),
+    }));
+  }
+}
 const f = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
-console.log(`${type}, ${save.W} x ${save.W}, ${players} players: the original's map against ${ours.length} of Bronze Dawn's`);
-console.log("".padEnd(30), "original".padStart(9), "  Bronze Dawn: mean (lowest-highest)");
-for (const k of Object.keys(theirs)) {
-  const vs = ours.map((s) => s[k]), mean = vs.reduce((a, b) => a + b, 0) / vs.length;
-  const off = Math.abs(mean - theirs[k]) > Math.max(1.5, Math.abs(theirs[k]) * 0.25) ? "  x" : "";
-  console.log(k.padEnd(30), f(theirs[k]).padStart(9), `  ${f(mean)} (${f(Math.min(...vs))}-${f(Math.max(...vs))})${off}`);
+const sum = (xs: Stats[], k: string) => { const vs = xs.map((s) => s[k]); return { mean: vs.reduce((a, b) => a + b, 0) / vs.length, lo: Math.min(...vs), hi: Math.max(...vs) }; };
+console.log(`${type}: ${files.length} of the original's maps (${sizes.join("; ")}) against ${ours.length} of Bronze Dawn's`);
+console.log("".padEnd(30), "original: mean (lowest-highest)".padEnd(34), "Bronze Dawn: mean (lowest-highest)");
+// "x": the means are more than a quarter apart and the two ranges do not even meet.
+for (const k of Object.keys(theirs[0])) {
+  const a = sum(theirs, k), b = sum(ours, k);
+  const off = Math.abs(b.mean - a.mean) > Math.max(1.5, Math.abs(a.mean) * 0.25) && (b.lo > a.hi || b.hi < a.lo) ? "  x" : "";
+  console.log(k.padEnd(30), `${f(a.mean)} (${f(a.lo)}-${f(a.hi)})`.padEnd(34), `${f(b.mean)} (${f(b.lo)}-${f(b.hi)})${off}`);
 }

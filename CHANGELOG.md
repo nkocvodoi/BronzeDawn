@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-13
 
+- [#115](https://github.com/nkocvodoi/BronzeDawn/pull/115) Bản đồ: mỏ, bụi quả, thú, nhà chính chỉ đặt trên loại đất mà bản gốc cho phép (bảng terrain restriction của `empires.dat`), nên trên đảo không còn nằm ở bãi biển mép đảo. So cả 9 kiểu bản đồ với 2 file save mỗi kiểu, tìm được seed thật của từng file (`scripts/aoe/find-seed.ts`), phần đặt vùng đất khớp bản gốc tới từng ô. Máy chỉ dựng thêm Storage Pit/Granary khi đã có Barracks
 - [#97](https://github.com/nkocvodoi/BronzeDawn/pull/97) Bản đồ lấy đúng số liệu của từng kiểu: bản gốc lấy bản đồ theo vị trí trong `empires.dat`, không theo id ghi trong bản ghi, nên trước đây 8/9 kiểu dùng nhầm số của kiểu khác (Mediterranean 39% nước thay vì ~21%, Inland không có nước, Hill Country có biển). So bằng file save của game gốc (`scripts/aoe/gmx.ts`, `compare-maps.ts`). Máy dựng Storage Pit/Granary cạnh rừng, đàn thú, bụi quả ở xa trên mọi bản đồ
 
 ## 2026-10-12
