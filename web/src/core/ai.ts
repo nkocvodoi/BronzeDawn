@@ -735,14 +735,17 @@ export class AIController {
    *  up), one moves at every think. */
   private rebalance(w: World, villagers: Unit[], home: Vec2, slack = 1.5) {
     const want = this.shares(w.players[this.player], this.reserve(w));
+    // Everyone at work counts, loaded or not: counting only the empty-handed left out farmers, who are nearly
+    // always carrying, and a town at its population limit kept 32 on farms over 2,700 food with 78 wood.
+    // The one that moves is the one carrying least, so little is lost.
     const on: Unit[][] = [[], [], [], []];
-    for (const u of villagers) if (u.order.kind === "gather" && u.lastGather !== null && u.carry < 1) on[u.lastGather].push(u);
+    for (const u of villagers) if (u.order.kind === "gather" && u.lastGather !== null) on[u.lastGather].push(u);
     const total = villagers.length;
     const gap = (r: Res) => want[r] * total - on[r].length;
     let need = Res.food, spare = Res.food;
     for (const r of RES_ALL) { if (gap(r) > gap(need)) need = r; if (gap(r) < gap(spare)) spare = r; }
     if (gap(need) < slack || gap(spare) > -slack || !on[spare].length) return;
-    this.sendTo(w, on[spare][0], need, home);
+    this.sendTo(w, minBy(on[spare], (u) => u.carry)!, need, home);
   }
 
   /** Puts a villager on a resource: a free farm, meat on the ground, berries, game to hunt, or the nearest node. */

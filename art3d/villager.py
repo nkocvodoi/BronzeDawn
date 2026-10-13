@@ -364,6 +364,27 @@ class Rig:
                 self.arms[side].rotation_euler = (R(a), R(y), 0)
                 self.elbows[side].rotation_euler = (R(-22), 0, 0)
             self.stance(16, 12)
+        elif anim == "thrust":
+            # Fighting with the spear: held low in both hands, point toward the foe; drawn back with the
+            # weight on the back foot, then a lunge that drives the point forward, and back on guard.
+            if t < 0.45:
+                k = ease(t / 0.45)
+                reach, lean, step = -k, -4 * k, 0.0
+            elif t < 0.6:
+                k = ((t - 0.45) / 0.15) ** 0.7
+                reach, lean, step = -1 + 2 * k, -4 + 16 * k, k
+            else:
+                k = ease((t - 0.6) / 0.4)
+                reach, lean, step = 1 - k, 12 - 12 * k, 1 - k
+            self.torso.rotation_euler = (R(lean), 0, R(-14 + 6 * reach))
+            arm, elbow = -42 - 22 * reach, -48 + 30 * reach
+            self.arms["R"].rotation_euler = (R(arm), 0, R(12))
+            self.elbows["R"].rotation_euler = (R(elbow), 0, 0)
+            self.arms["L"].rotation_euler = (R(arm - 12), 0, R(-26))
+            self.elbows["L"].rotation_euler = (R(elbow + 8), 0, 0)
+            # The spear level with the ground whatever the arm does, pointing a little down at the lunge.
+            self.grip.rotation_euler = (R(-(arm + elbow) - 4 * step), 0, 0)
+            self.stance(12 + 10 * step, 18 + 8 * step)
         elif anim == "throw":
             # A hunter's throw: the spear drawn back over the shoulder, the body turning, then let fly.
             if t < 0.5:

@@ -178,7 +178,8 @@ def main():
     for tool, rig_tool, work, frames, fps in (("axe", "axe", "chop", 12, 11), ("pick", "pick", "mine", 12, 11),
                                               ("hammer", "hammer", "hammer", 10, 12), ("basket", "basket", "forage", 16, 10),
                                               ("butcher", "butcher", "butcher", 14, 10), ("hoe", "hoe", "hoe", 10, 10),
-                                              ("spear", "spear", "throw", 12, 12), ("net", "rod", "angle", 20, 8)):
+                                              ("spear", "spear", "throw", 12, 12), ("net", "rod", "angle", 20, 8),
+                                              ("fight", "spear", "thrust", 10, 11)):
         if want("villager") or want(f"villager:{tool}"):
             units[f"villager:{tool}"] = unit_sheet(f"villager:{tool}", lambda rig_tool=rig_tool: villager.Rig(rig_tool),
                                                    [("idle", "idle", 6, 4), ("walk", "walk", 12, 14), ("work", work, frames, fps)],
