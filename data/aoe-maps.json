@@ -630,6 +630,9 @@
    "hill": 0,
    "facing": 1,
    "type": 70,
+   "frames": 1,
+   "sequence": 6,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -666,6 +669,9 @@
    "hill": 0,
    "facing": 1,
    "type": 70,
+   "frames": 10,
+   "sequence": 7,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -695,6 +701,9 @@
    "hill": 0,
    "facing": 0,
    "type": 20,
+   "frames": 30,
+   "sequence": 7,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -731,6 +740,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -759,6 +771,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -795,6 +810,9 @@
    "hill": 0,
    "facing": 1,
    "type": 70,
+   "frames": 12,
+   "sequence": 3,
+   "run": 1,
    "building": 0,
    "buildOn": 0
   },
@@ -823,6 +841,9 @@
    "hill": 0,
    "facing": 1,
    "type": 30,
+   "frames": 1,
+   "sequence": 2,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -863,6 +884,9 @@
    "hill": 2,
    "facing": 1,
    "type": 30,
+   "frames": 1,
+   "sequence": 6,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -901,6 +925,9 @@
    "hill": 0,
    "facing": 1,
    "type": 70,
+   "frames": 6,
+   "sequence": 7,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -941,6 +968,9 @@
    "hill": 2,
    "facing": 1,
    "type": 40,
+   "frames": 1,
+   "sequence": 3,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -981,6 +1011,9 @@
    "hill": 2,
    "facing": 1,
    "type": 40,
+   "frames": 1,
+   "sequence": 3,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1009,6 +1042,9 @@
    "hill": 0,
    "facing": 1,
    "type": 30,
+   "frames": 1,
+   "sequence": 2,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -1045,6 +1081,9 @@
    "hill": 2,
    "facing": 1,
    "type": 80,
+   "frames": 1,
+   "sequence": 1,
+   "run": 0,
    "building": 1,
    "buildOn": 0
   },
@@ -1081,6 +1120,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -1117,6 +1159,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -1153,6 +1198,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -1189,6 +1237,9 @@
    "hill": 0,
    "facing": 1,
    "type": 70,
+   "frames": 10,
+   "sequence": 7,
+   "run": 1,
    "building": 0,
    "buildOn": 0
   },
@@ -1225,6 +1276,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -1261,6 +1315,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1297,6 +1354,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1333,6 +1393,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1369,6 +1432,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1405,6 +1471,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1441,6 +1510,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1477,6 +1549,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1513,6 +1588,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1549,6 +1627,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1585,6 +1666,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1621,6 +1705,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1657,6 +1744,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1693,6 +1783,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -1731,6 +1824,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1769,6 +1865,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1807,6 +1906,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1843,6 +1945,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1881,6 +1986,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1917,6 +2025,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1953,6 +2064,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -1989,6 +2103,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2025,6 +2142,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2061,6 +2181,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2097,6 +2220,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2135,6 +2261,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2173,6 +2302,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2211,6 +2343,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2249,6 +2384,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2287,6 +2425,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2325,6 +2466,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2361,6 +2505,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2397,6 +2544,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2433,6 +2583,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2469,6 +2622,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2505,6 +2661,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2541,6 +2700,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2577,6 +2739,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -2613,6 +2778,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -2649,6 +2817,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -2685,6 +2856,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -2714,6 +2888,9 @@
    "hill": 0,
    "facing": 1,
    "type": 30,
+   "frames": 15,
+   "sequence": 7,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2743,6 +2920,9 @@
    "hill": 0,
    "facing": 1,
    "type": 30,
+   "frames": 15,
+   "sequence": 7,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -2783,6 +2963,9 @@
    "hill": 2,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -2823,6 +3006,9 @@
    "hill": 2,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -2863,6 +3049,9 @@
    "hill": 2,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -2903,6 +3092,9 @@
    "hill": 2,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -2943,6 +3135,9 @@
    "hill": 2,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -2983,6 +3178,9 @@
    "hill": 2,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -3023,6 +3221,9 @@
    "hill": 2,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -3063,6 +3264,9 @@
    "hill": 2,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -3103,6 +3307,9 @@
    "hill": 2,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -3139,6 +3346,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3175,6 +3385,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3211,6 +3424,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3247,6 +3463,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3283,6 +3502,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3319,6 +3541,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3355,6 +3580,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3384,6 +3612,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3413,6 +3644,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3442,6 +3676,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3471,6 +3708,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3500,6 +3740,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3529,6 +3772,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3558,6 +3804,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3587,6 +3836,9 @@
    "hill": 0,
    "facing": 0,
    "type": 10,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3623,6 +3875,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -3659,6 +3914,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -3695,6 +3953,9 @@
    "hill": 0,
    "facing": 0,
    "type": 90,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 0
   },
@@ -3724,6 +3985,9 @@
    "hill": 0,
    "facing": 1,
    "type": 30,
+   "frames": 34,
+   "sequence": 7,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3762,6 +4026,9 @@
    "hill": 0,
    "facing": 1,
    "type": 30,
+   "frames": 1,
+   "sequence": 6,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3798,6 +4065,9 @@
    "hill": 0,
    "facing": 0,
    "type": 30,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3834,6 +4104,9 @@
    "hill": 0,
    "facing": 0,
    "type": 30,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   },
@@ -3870,6 +4143,9 @@
    "hill": 0,
    "facing": 0,
    "type": 30,
+   "frames": 1,
+   "sequence": 0,
+   "run": 0,
    "building": 0,
    "buildOn": 1
   }

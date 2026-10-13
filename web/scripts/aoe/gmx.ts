@@ -36,7 +36,8 @@ export function readGmx(path: string): SavedMap {
     const id = b.readUInt16LE(r + 2);
     if (id > 900) continue;
     const x = b.readFloatLE(r + 23), y = b.readFloatLE(r + 27), z = b.readFloatLE(r + 31);
-    if (!(x > 0 && x < W && y > 0 && y < W && z >= 0 && z < 8)) continue;
+    // Stray matches have tiny numbers here (1e-36 and the like); nothing real stands within 1e-5 of the edge.
+    if (!(x > 1e-5 && x < W && y > 1e-5 && y < W && z >= 0 && z < 8)) continue;
     objects.push({ type: b[r], owner: b[r + 1], id, x, y });
   }
   return { W, terrain, elevation, objects };
