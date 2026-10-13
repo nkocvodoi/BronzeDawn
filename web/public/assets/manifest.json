@@ -1729,6 +1729,36 @@
      "fps": 8
     }
    }
+  },
+  "villager:fight": {
+   "file": "art3d/villager-fight.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
   }
  },
  "credits": [

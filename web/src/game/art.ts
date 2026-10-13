@@ -333,7 +333,8 @@ export type Tool = "none" | "axe" | "pick" | "basket" | "hoe" | "hammer" | "spea
 /** `dir` (0-7, clockwise from facing the viewer) and `t` (seconds) are for sprite sheets from files. */
 /** `civ` is the owner's civilization id, for sprite sheets drawn for one civilization ("lac_viet/bowman"). */
 /** `job`: a finer name for the work than the tool, tried first for a sprite sheet ("villager:butcher" for
- *  cutting up a carcass, which is drawn with the spear when there is no such sheet). */
+ *  cutting up a carcass, which is drawn with the spear when there is no such sheet). "fight" is a villager
+ *  fighting: its own sheet, else the plain villager's attack, never the hunter's work. */
 export interface UnitLook { type: string; owner: number; facing: Facing; pose: Pose; frame: number; tool: Tool; carry: number | null; dir?: number; t?: number; civ?: string; job?: string }
 
 /** A unit's frame from its sprite sheet, if the assets have one: the civilization's own first
@@ -341,12 +342,13 @@ export interface UnitLook { type: string; owner: number; facing: Facing; pose: P
 function assetUnitPic(look: UnitLook): Pic | null {
   const units = ASSETS.manifest.units;
   if (!units) return null;
-  const names = [look.job ? `${look.type}:${look.job}` : null, look.tool !== "none" ? `${look.type}:${look.tool}` : null, look.type].filter((n): n is string => n !== null);
+  const fight = look.job === "fight";
+  const names = [look.job ? `${look.type}:${look.job}` : null, look.tool !== "none" && !fight ? `${look.type}:${look.tool}` : null, look.type].filter((n): n is string => n !== null);
   const keys = [...(look.civ ? names.map((n) => `${look.civ}/${n}`) : []), ...names];
   const spec = keys.map((k) => units[k]).find((u) => u !== undefined);
   if (!spec) return null;
   const a = spec.anims;
-  const anim = look.pose === "work" ? a.work ?? a.attack ?? a.idle : look.pose === "walk" ? a.walk ?? a.idle : a.idle ?? a.walk;
+  const anim = look.pose === "work" ? (fight ? a.attack ?? a.work : a.work ?? a.attack) ?? a.idle : look.pose === "walk" ? a.walk ?? a.idle : a.idle ?? a.walk;
   if (!anim) return null;
   let dir = look.dir ?? 0, flip = false;
   if (spec.directions === 5 && dir > 4) { dir = 8 - dir; flip = true; } // NE, E, SE are NW, W, SW mirrored
