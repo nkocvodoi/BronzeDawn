@@ -620,6 +620,13 @@ export class AIController {
       w.train(this.player, tc.id, "villager");
     }
 
+    // A hunted gazelle runs, and its hunters with it: once the chase reaches the enemy's side of the map they
+    // are put on other food. On a small map the enemy's guards were there, and took the hunters one by one.
+    for (const v of villagers) {
+      const prey = v.order.kind === "attack" ? w.unit(v.order.id) : null;
+      if (prey?.isAnimal && !this.safeAt(w, prey.pos, home) && !this.sendTo(w, v, Res.food, home)) w.move(this.player, [v.id], home);
+    }
+
     // Houses before we are capped.
     const houseBuilding = bs.some((b) => b.def.id === "house" && !b.complete);
     const room = p.popCap - p.pop - queued;
@@ -772,7 +779,7 @@ export class AIController {
     if (r === Res.food) {
       const farm = w.freeFarm(this.player, home);
       if (farm) { w.gather(this.player, [u.id], farm.id); return true; }
-      const meat = w.nodes.find((n) => n.alive && n.decay > 0 && n.at.distance(home) < 24);
+      const meat = w.nodes.find((n) => n.alive && n.decay > 0 && n.at.distance(home) < 24 && this.safeAt(w, n.at, home));
       if (meat) { w.gather(this.player, [u.id], meat.id); return true; }
       const berry = w.nearestNode(Res.food, home, 23, null, "berry_bush", null, this.player);
       if (berry) { w.gather(this.player, [u.id], berry.id); return true; }
@@ -1037,7 +1044,9 @@ export class AIController {
       const cost = w.unitCost(this.player, pick);
       // Short of guards, the food and wood saved for the next age may go on them, never the gold:
       // a long war would otherwise keep the Iron Age out of reach.
-      const short = army.length < this.level.guard[Math.min(p.age, 3)];
+      // One that sizes up the enemy (Moderate up) is short too while the enemy has more soldiers than it:
+      // on the original's maps a poor start puts it behind, and saving for the next age then lost the town.
+      const short = army.length < this.level.guard[Math.min(p.age, 3)] || (this.level.counters && army.length < enemyArmy.length);
       const goldFree = p.res.gold - this.reserve(w).gold >= cost.gold;
       if (short ? p.res.covers(cost) && goldFree : this.affordable(w, cost)) w.train(this.player, b.id, pick);
     }

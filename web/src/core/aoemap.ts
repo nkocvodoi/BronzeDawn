@@ -21,11 +21,6 @@ export const T = { grass: 0, water: 1, beach: 2, shallows: 4, desert: 6, forest:
 /** What may stand next to each terrain in a patch (the dat's "impassable" field): 16 is the cliff line. */
 const IMPASSABLE: Record<number, number> = { 0: 16, 1: 15, 2: 14, 4: 255, 6: 14, 10: 16, 13: 14, 19: 16, 20: 16, 22: 15 };
 
-/** Maps whose "shallows" setup (half of them: the lands put in zones apart, rivers left between, fords across)
- *  is left out for now: Inland. The one saved game of the original to compare with (replica/game/aoe1-mapgen.md
- *  §10) fell on a map without it, so the rivers have not been checked, and they cut every base off from its
- *  neighbours but for the fords. The rolls are still drawn, so the rest of the setup goes as before. */
-const RIVERS_OFF = new Set<number>([]);
 
 export interface AoeLand {
   landId: number; terrain: number; spacing: number; baseSize: number; zone: number; placement: number;
@@ -124,7 +119,7 @@ export interface Placed { unit: string; player: number; x: number; y: number; gr
 /** What the original asks of a thing when it puts one down (data/aoe-maps.json, from empires.dat). */
 interface AoeUnit {
   size: [number, number, number]; clearance: [number, number]; on: Set<number>;
-  onTerrain: [number, number]; besideTerrain: [number, number]; hill: number; facing: number; building: number; buildOn: number; type: number; frames: number; sequence: number; run: number;
+  onTerrain: [number, number]; besideTerrain: [number, number]; hill: number; facing: number; building: number; buildOn: number; type: number; frames: number; sequence: number; run: number; tree: number;
 }
 const DATA = maps as unknown as {
   units?: Record<string, Omit<AoeUnit, "on"> & { on: number[] }>; terrainUnits?: Record<string, [number, number, number][]>;
@@ -239,11 +234,10 @@ export class AoeMapGen {
     if ((id >= 2 && id <= 6) || id === 8) {
       if (r.rand() < 0x3fff) {
         const even = r.rand() < 0x3fff, odd = r.rand() < 0x3fff;
-        if (!RIVERS_OFF.has(id)) {
-          this.slots.forEach((s, i) => { if (i % 2 === 0) s.zone = even ? 0 : i; else s.zone = odd ? 1 : i; });
-          this.shallowsOn = true;
-          this.shallowPoints = this.slots.map((s) => ({ x: s.x, y: s.y }));
-        }
+        // Half of these maps: the lands in zones apart (rivers between them, on Inland too), shallows across.
+        this.slots.forEach((s, i) => { if (i % 2 === 0) s.zone = even ? 0 : i; else s.zone = odd ? 1 : i; });
+        this.shallowsOn = true;
+        this.shallowPoints = this.slots.map((s) => ({ x: s.x, y: s.y }));
         r.rand(); // "shallows initialization"
       } else if (id === 4) { each((s) => { s.zone = 0; }); this.baseTerrain = T.grass; }
       else if (id >= 5) each((s) => { s.zone = 0; });
@@ -520,7 +514,7 @@ export class AoeMapGen {
         if (centred === 0) { fx = f32(x - r.rand() * INV); fy = f32(y - r.rand() * INV); }
         else if (centred === 1 || !all) { fx = f32(x - HALF); fy = f32(y - HALF); }
         const roll = k < 1000 ? Math.trunc((r.rand() * 1000) / 0x7fff) < k : true;
-        if (roll && this.canPlace(id, fx, fy, true, false) === 0) this.create(id, "-", 0, fx, fy);
+        if (roll && this.canPlace(id, fx, fy, true, false) === 0) this.create(id, UNITS.get(id)?.tree ? "tree" : "-", 0, fx, fy);
       }
     }
   }
@@ -1424,6 +1418,14 @@ export class AoeMapGen {
 
   /** Makes one of an entry's things. A building comes finished, which draws once more (FUN_004ae500). */
   private make(e: AoeObject, player: number, fx: number, fy: number) {
+    // What can be built over (the tufts, rocks and trees of the ground) goes from under its footprint: so the
+    // saves show it, no random number involved.
+    const r = UNITS.get(e.id)?.size ?? [0, 0, 0];
+    for (let b = Math.max(0, Math.trunc(fy - 3)); b <= Math.min(this.H - 1, Math.trunc(fy + 3)); b++)
+      for (let a = Math.max(0, Math.trunc(fx - 3)); a <= Math.min(this.W - 1, Math.trunc(fx + 3)); a++)
+        for (const p of this.grid.get(this.at(a, b)) ?? []) {
+          if (!p.gone && p.id !== undefined && UNITS.get(p.id)?.buildOn === 1 && Math.abs(p.x - fx) < r[0] && Math.abs(p.y - fy) < r[1]) p.gone = true;
+        }
     this.create(e.id, e.unit, player, fx, fy);
     if (UNITS.get(e.id)?.building) this.rng.srand(this.rng.rand());
   }
@@ -1572,6 +1574,7 @@ export function fillWorld(w: World, gen: AoeMapGen) {
   const herds = new Map<number, number>();
   const starts: Tile[] = w.players.map(() => new Tile(0, 0));
   for (const p of gen.placed) {
+    if (p.gone) continue;
     const at = new Vec2(p.x, p.y), tile = new Tile(Math.floor(p.x), Math.floor(p.y));
     // The original's players are 1 to n, 0 being nature's; Bronze Dawn's are 0 to n-1.
     const owner = p.player - 1;

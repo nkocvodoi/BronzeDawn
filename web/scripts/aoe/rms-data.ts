@@ -13,7 +13,7 @@ import type { DatGraphic, DatMap, DatTerrain } from "./dat";
 interface DatUnit {
   name: string; type: number; terrainRestriction: number; collisionSize: number[]; clearanceSize: number[];
   placementTerrain: number[]; placementSideTerrain: number[]; hillMode: number; standingGraphic: number; canBeBuiltOn: number;
-  moving?: { runningGraphic: number };
+  moving?: { runningGraphic: number }; class: number;
 }
 
 /** The original's units on its maps, by id: Bronze Dawn's name for each, or "-" for those it has no use for. */
@@ -104,6 +104,8 @@ for (const id of [...ids].sort((a, b) => a - b)) {
     frames: g ? g.frameCount : 1, sequence: g ? g.sequenceType : 0,
     // A running picture, which a moving thing draws for when made.
     run: (u.moving?.runningGraphic ?? -1) >= 0 ? 1 : 0,
+    // A tree (class 15): wood in Bronze Dawn, the rest of the terrains' own things only decoration.
+    tree: u.class === 15 ? 1 : 0,
     // A building is made finished, which draws one more (genie type 80); whether it may stand on things that
     // can be built over.
     building: u.type === 80 ? 1 : 0, buildOn: u.canBeBuiltOn,
