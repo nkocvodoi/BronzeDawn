@@ -87,6 +87,13 @@ export class Assets {
 
   get any() { return Object.keys(this.manifest).length > 0; }
 
+  /** Which layer each unit sheet came from: 0 the game's own, then assets-local, then each pack in turn. A
+   *  unit is drawn from the topmost layer that has any sheet for it, so a pack's villager is not mixed with
+   *  the game's own for the one job the pack has no sheet of. */
+  private unitLayers = new Map<string, number>();
+  unitLayer(key: string) { return this.unitLayers.get(key) ?? -1; }
+  private layer(m: Manifest, n: number) { for (const k of Object.keys(m.units ?? {})) this.unitLayers.set(k, n); }
+
   /** Reads the manifests and every picture they name. Missing or broken files are noted and skipped. */
   async load() {
     for (const root of ROOTS) {
@@ -97,12 +104,14 @@ export class Assets {
       } catch { /* none here */ }
       if (!m) continue;
       for (const f of filesOf(m)) this.base.set(f, root);
+      this.layer(m, ROOTS.indexOf(root));
       this.manifest = merge(this.manifest, m);
     }
     // Then the player's own packs, from this browser's storage: each laid over what came before.
     try {
       for (const p of await loadPacks()) {
         for (const [f, u] of p.urls) this.packUrls.set(f, u);
+        this.layer(p.manifest, ROOTS.length + this.packs.length);
         this.manifest = merge(this.manifest, p.manifest);
         this.packs.push({ id: p.info.id, name: p.info.name });
       }

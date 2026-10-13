@@ -345,7 +345,12 @@ function assetUnitPic(look: UnitLook): Pic | null {
   const fight = look.job === "fight";
   const names = [look.job ? `${look.type}:${look.job}` : null, look.tool !== "none" && !fight ? `${look.type}:${look.tool}` : null, look.type].filter((n): n is string => n !== null);
   const keys = [...(look.civ ? names.map((n) => `${look.civ}/${n}`) : []), ...names];
-  const spec = keys.map((k) => units[k]).find((u) => u !== undefined);
+  // From the topmost layer that has any of them (a pack over the game's own), and in that layer the first
+  // name: a pack's hunter cutting up a kill, not the game's own butcher among the pack's villagers.
+  const found = keys.filter((k) => units[k] !== undefined);
+  const top = Math.max(...found.map((k) => ASSETS.unitLayer(k)));
+  const sheet = found.find((k) => ASSETS.unitLayer(k) === top);
+  const spec = sheet !== undefined ? units[sheet] : undefined;
   if (!spec) return null;
   const a = spec.anims;
   const anim = look.pose === "work" ? (fight ? a.attack ?? a.work : a.work ?? a.attack) ?? a.idle : look.pose === "walk" ? a.walk ?? a.idle : a.idle ?? a.walk;
