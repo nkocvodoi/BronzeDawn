@@ -593,6 +593,7 @@ describe("the original's rules", () => {
     run(w, 30);
     expect(herd.every((g) => g.alive)).toBe(true);
     expect(herd[0].pos.distance(at)).toBeLessThan(0.5);
+    expect(spread(herd.slice(1))).toBeLessThan(6); // the rest of the herd grazes on together
   });
 
   it("lions hunt gazelles when no one is near, and gazelles run from lions", () => {
