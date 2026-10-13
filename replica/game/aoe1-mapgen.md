@@ -47,8 +47,16 @@ Each map has:
 - `objects`: unit, host terrain, single/loose/tight, scale flag, per group, fluctuation, groups, area, owner, land
   selector, and min/max distance.
 
+Beside the maps, from the rest of `empires.dat`:
+- `terrainUnits`: each terrain's own things, [unit, density in thousandths, centred], as the generator puts them on a
+  tile it sets (rocks in the water, tufts on the grass, the trees of a forest).
+- `units`: what the generator asks of each thing it puts down: footprint and clearance, the terrains it may stand on
+  (its terrain restriction), the terrain it must be on or beside, hill mode, whether it can be built over, and what
+  making it draws (§6).
+
 Unit ids become Bronze Dawn ids through the table in `rms-data.ts` (109 → town_center, 66 → gold_mine, 59 →
-berry_bush, 65 → gazelle, and so on). Entries Bronze Dawn has no unit for (95, 96, 303) are dropped.
+berry_bush, 65 → gazelle, and so on). Entries Bronze Dawn has no unit for (95, 96, 303: pigeons) are still placed,
+as "-", so that the generator draws its numbers for them; Bronze Dawn makes nothing of them.
 
 The dat's elevation block is **not used**: the executable hard-codes the hills (§4) [obs].
 
@@ -74,7 +82,9 @@ The dat's elevation block is **not used**: the executable hard-codes the hills (
   - with a margin as large as Large Islands' 30, the lands overlap on Tiny maps.
 
   Bronze Dawn caps the tries at 100 000, where the original can loop forever [obs; cap is ours].
-- **Team order.** Unless positions are fixed, teammates are put on neighbouring origins [obs].
+- **Team order.** Allies are put on neighbouring origins: each origin's list of the others, nearest first, and each
+  team in turn takes the free origins nearest the first free one; with no allies nothing moves. No random number
+  [obs]. `AoeMapGen` takes World's teams (allies share a number above 0).
 - **Growth.** Every land starts as a square of its base size and grows one tile per turn, round-robin, from a priority
   list (lowest first; a new entry goes in front of equal ones).
   - Before a tile is taken, a border check: `roll100 < (distance past the border) × borderUsage` turns it into a
@@ -91,9 +101,13 @@ The dat's elevation block is **not used**: the executable hard-codes the hills (
 
 - **Shallows** (Coastal, Inland, Highland, Continental, Mediterranean, Narrows, when the land-setup roll is < 0x3fff,
   about half the time):
-  - an A* path between land centres;
-  - water tiles on the path become shallows (terrain 4);
-  - plus 2 extra paths [obs].
+  - an A* path between land centres (grass and beach cost 1, shallows 2, water 7, deep water 14). Its costs so far
+    are floats: each step's is rounded to a float before the distance still to go is added [obs];
+  - walked back from the target: each tile stepped onto (so the start, never the target) adds the water round it,
+    a box of random size on water (4 `rand`s), its four sides on land; at the end these become shallows [obs];
+  - plus 2 extra paths between random dry tiles [obs].
+
+  Inland gets them too: rivers between the bases, crossed by the shallows.
 - **Hills**, hard-coded per map:
   - 4 layers covering 10, 8, 6 and 4% of the land tiles;
   - × a factor 0.7–1.3 (one roll);
@@ -106,8 +120,14 @@ The dat's elevation block is **not used**: the executable hard-codes the hills (
     Hill Country 3 more and 4 tiles longer;
   - Small Islands never has any.
 
-  Each cliff is drawn as a line of temporary terrain 16 [obs]. Bronze Dawn draws a straight line between the walk's
-  points; the original's exact sample points and piece shapes are a **[gap]** (§8).
+  Each cliff is drawn as a line of temporary terrain 16 from its last cell back to its first [obs], and gets a cliff
+  piece in every cell it passes (units 264 to 272). Each cell knows which of its four sides the cliff leaves by, and
+  how (which side is high); a step from cell to cell gives both cells that side, keeping at most one other, and a
+  piece is put down again whenever its sides change. Straight pieces have two pictures, one drawn at random. The
+  table of pieces is the map's own, built in its constructor [obs]. Clearing round a drawn cell leaves the cells
+  already in the cliff alone [obs]; the walk forgets the cell it was in only when a new cliff starts [inf: the only
+  reading the saves allow]. The module exists only when the map has cliffs at all: Small Islands draws the cliff
+  roll and nothing else [obs].
 
 ## 5. Terrain patches and beaches
 
@@ -116,7 +136,7 @@ The dat's elevation block is **not used**: the executable hard-codes the hills (
   - `edgeSpacing` away from other terrain;
   - grown by priority like the lands, with `clumpiness`.
 
-  A forest becomes trees in the objects module (one tree per forest tile, before any other object) [obs].
+  Forests become trees in the objects module (§6).
 - A patch may not cut through: each terrain has a terrain it may not border, which `IMPASSABLE` in `aoemap.ts` lists
   [obs].
 - **Beaches.** At the end, every land tile 8-adjacent to water becomes beach [obs].
@@ -133,8 +153,26 @@ Each entry is placed in order:
 - `scale` entries: `groups × w × h / 20736` (20736 = 144², Large) [obs].
 - **Single** puts one object. **Loose** scatters the group inside `area`. **Tight** grows it tile by tile. Fluctuation
   adds `R(fluctuation)` objects [obs].
+- Whether a thing may go somewhere (`canPlace`): its box (clearance, or footprint) on the map; the terrain it must
+  be on or have beside it (no corners); every tile of the box on ground its terrain restriction allows; the slope
+  (hill mode 1: no steep tile, 2: flat); then no overlap with what stands there, among things of the same kind of
+  height. A land's own things pass over what can be built over (the trees of a forest, tufts) [obs].
+- A thing on a land must be reachable from its origin: one map of connected ground per terrain restriction, made the
+  first time it is asked for [obs].
 - Every object creation calls `rand()` and then `srand()` with the result. That is why one changed object shifts
-  everything after it [obs].
+  everything after it [obs]. Making a thing draws more round that, as the saves show (§10) [inf]:
+  - one before, if its standing picture has several frames and sequence flag 4 (the frame it starts on);
+  - one after, for a facing, if it moves (genie type 30 and up) and its picture has several angles;
+  - one more for a unit (type 70: villagers and animals), and one more again for one with a running picture
+    (lion, gazelle);
+  - a building is made finished: one more `rand` and `srand` [obs].
+- What can be built over goes from under a map's thing as it is put down (the tufts, rocks and trees inside its
+  footprint) [inf: the saves].
+- **First, each tile's own things.** The objects module starts by going over the whole map, row by row: for each of
+  the tile's terrain's units, a spot (random, or the tile's middle), a roll against its density, and the thing if
+  it fits: the trees of a forest, the tufts and rocks of grass and desert, the rocks along a beach, a ripple on the
+  shallows [obs]. The land cleanup does the same for each tile it sets, which on a water map draws three numbers
+  per water rock and puts none down, as they need a beach beside them [obs].
 - Inland, as an example for each player:
   - TC and 3 villagers;
   - stone at 10–18 and 20–35;
@@ -152,7 +190,8 @@ Each entry is placed in order:
 - **Terrain.** Water and deep water become water; shallows become shallows; desert, beach and palm desert become
   sand; everything else becomes grass. Cliff tiles become `Terrain.cliff`. Elevation is copied over.
 - **Objects.** TC at the land origin for each player; villagers; resource nodes (fish on deep water become deep fish);
-  animals (gazelle herds by group).
+  animals (gazelle herds by group). The trees of the forests come from the terrains' own things (class 15, one per
+  forest tile); the rest of those (tufts, rocks, bones, cliff pieces) are decoration Bronze Dawn does not draw.
 - **Additions.** The ruins and artifacts (Bronze Dawn's own, `relics()` in `mapgen.ts`) and the free-roaming animals
   are added after.
 
@@ -161,21 +200,27 @@ Map choices, by Bronze Dawn id: `small_islands` 0, `large_islands` 1, `coastal` 
 `generateFromSpec`.
 
 The AI had to learn the original's distances: berries out to 23 tiles, and gazelle herds beyond its own are 26 or
-more tiles away (`ai.ts`).
+more tiles away (`ai.ts`). On a Tiny map a hunted gazelle may lead its hunters to the enemy's side: they are put on
+other food there, and meat on the enemy's side is left. An AI that sizes up the enemy keeps its army as big as the
+enemy's before it saves for the next age.
 
-## 8. What is not bit-exact
+## 8. What is bit-exact, and what is not
 
-Bronze Dawn follows the same algorithm with the same numbers, but a given seed **does not** give the same map as the
-original, for these reasons:
-- **Cliffs.** The cliff-piece state machine and the exact points sampled along the walk come from x87 code that
-  Ghidra garbles. A straight line is used [gap].
-- **Terrain units.** A terrain whose dat record lists auto-placed units calls `rand()` when it is set. Which terrains
-  do this was not checked [gap].
-- **Facing.** A random facing for each new object, which depends on graphic flags in the dat [gap].
-- **Rounding.** x87 rounding at exact integer edges is assumed to be 53-bit [inf].
-
-Each of these shifts the random sequence from that point on, so everything after it differs in detail. The rules
-(sizes, distances, counts, spacing) do not change.
+Against the 18 saves of §10, a given seed gives the original's map: every tile's terrain and elevation, the
+shallows, the cliff pieces, each terrain's own things and the map's own, on the same spot to the float. What rests on
+what Bronze Dawn could not read in the code, and what has not been checked:
+- **What making a thing draws.** The draws before and after each creation (§6) come from the saves, not the code:
+  where the starting frame, the unit's and the running picture's numbers are drawn was not found [inf]. Things the
+  saves have none of (a unit with an animated picture without flag 4, buildings other than the Town Center) follow
+  the same rules untested.
+- **The cliff walk's memory.** That it forgets the last cell only at a cliff's start is the one reading the saves
+  allow; the map function that walks the line for the pieces (4f0c70) is not decompiled [inf].
+- **Decorations under things.** That what can be built over goes from under a map's thing is read from the saves
+  [inf]; it draws no number either way.
+- **Other sizes.** The saves are all Large (144) with 4 or 5 players. Tiny to Gigantic follow the same code: the
+  cliff count for maps of 251 tiles or more reads an unset value in the original [obs], which Bronze Dawn takes as
+  the 200-tile one.
+- **Rounding.** x87 is taken to run at 53 bits; the A* path and the cliffs depend on it and come out right on all 18.
 
 ## 9. Where it lives in Empiresx.exe
 
@@ -191,7 +236,9 @@ These addresses are from Empiresx.exe with MD5 52e8ae9f4262b2ccf679f806c86e7c46.
 | Cleanup | 446930 |
 | Shallows | 472b50 |
 | Elevation, smoothing | 4703c0 / 470960, 446360 |
-| Cliffs | 46e0c0 (pieces 4f0490 / 4f0130 / 4f0300) |
+| Cliffs | 46e0c0 (walk 46e3c0, clearing 46e770); pieces 4f0ab0 / 4f0490 / 4f0300 / 4f0170, their table 4efef0 |
+| Setting a tile, its terrain's own things | 449010 → 448600; over the whole map in the objects module 449110 → 4481b0 |
+| canPlace, a tile's slope | 443700, 4493a0 |
 | Terrain patches, beaches | 4742b0 / 4748d0, 474380 |
 | Objects | 4719a0 (candidates 471af0, loose 4725b0, tight 472780) |
 | `rand` / `srand` | 528420 / 528410 |
@@ -199,66 +246,62 @@ These addresses are from Empiresx.exe with MD5 52e8ae9f4262b2ccf679f806c86e7c46.
 ## 10. Checked against saved games from the original
 
 A game saved at the very start (Single Player, Random Map) holds the whole map: `web/scripts/aoe/gmx.ts` reads a
-Rise of Rome `.gmx` (one raw deflate stream: the size at 106, 9-byte tiles with terrain and elevation first, then
-object records of type, owner, unit id and position). Two tools use it:
+Rise of Rome `.gmx`. It is one raw deflate stream: the size at 106; then a 9-byte record per tile, which starts with
+where the tile is drawn (x as a short, (x + y) × 32, which is how the records are found) and has the terrain at +5
+and the elevation at +6; then object records of type, owner, unit id and position. Two tools use it:
 
 ```
 cd web
 # the original's maps of one kind beside Bronze Dawn's of the same size and players
 npx tsx scripts/aoe/compare-maps.ts coastal assets-local/saves/Coastal-1.gmx assets-local/saves/Coastal-2.gmx
-# the seed the original used, and how much of our map from that seed is the same, tile for tile
+# the seed the original used (and the teams, if it had allies), and how much of our map from it is the same
 npx tsx scripts/aoe/find-seed.ts coastal assets-local/saves/Coastal-1.gmx
 ```
 
 The saves (Large, 144 × 144, 4 or 5 players, two of each of the nine kinds) are kept with the rest of the
 original's data in the private `BronzeDawn-aoe-data` repo, under `saves/`, so both run on a machine without the game.
 
-### What they show (2026-10-13)
+### The original's seeds, and how far ours follows them (2026-10-13)
 
-Two of the original's maps of each kind against 12 of ours (`compare-maps.ts`): water, the map's edges, whether the
-bases meet by land, beach, desert, forest, palms, hills, gold, stone, berries, gazelles, elephants, lions and fish,
-on the map and round each Town Center, are all within the original's range on all nine. What is not:
+The original seeds the generator with a `rand()`, so 0 to 32767. Trying every seed until the Town Centers stand on
+the land origins finds it: one, and only one, for each save. Three were played with allies (players 3 and 4 on
+Coastal 1 and Hill Country 1, two teams on Mediterranean 1), whose origins the team order hands out again; the tool
+finds those teams too. Bronze Dawn's map from that seed:
 
-- **Alligators.** The original has 5 to 12 on every map but Highland and Continental, ours 0 to 5.5, though our
-  count per group follows the code (§6). Hill Country has 5 with neither beach nor shallows, the host terrains the
-  data gives them, so they come from somewhere other than the map's object list [gap]. The terrains' own unit
-  lists in the dat (grass tufts, rocks, trees) hold none.
-- **Hill Country's forests** lie further from the Town Centers in the original (19 forest tiles 12 to 20 tiles out,
-  against our 89; both its saves agree). Its elevation is also where our maps from the original's seed part most
-  (below) [open].
+| Save | Seed | tiles alike (land/water, shallows, elevation, forest, desert, every tile) | cliff pieces | terrains' own things | the map's own things | gold |
+|---|---|---|---|---|---|---|
+| Small Islands 1, 2 | 6730, 19828 | 100 | -, - | 1080/1080, 1065/1069 | 353/354, 340/340 | 80/80, 72/72 |
+| Large Islands 1, 2 | 26850, 31865 | 100 | 12/12, 17/17 | 2257/2258, 2138/2139 | 326/326, 331/331 | 72/72, 63/63 |
+| Coastal 1, 2 | 16643, 29455 | 100 | -, 21/21 | 2882/2882, 3039/3040 | 351/351, 353/354 | 76/76, 75/75 |
+| Inland 1, 2 | 8491, 18036 | 100 | 46/46, - | 3786/3796, 4079/4084 | 305/305, 310/311 | 68/68, 75/75 |
+| Highland 1, 2 | 28666, 26769 | 100 | -, 33/33 | 5133/5133, 4511/4511 | 260/260, 302/304 | 76/76, 76/76 |
+| Continental 1, 2 | 19238, 23745 | 100 | 15/15, 57/57 | 1920/1923, 1858/1869 | 333/333, 329/329 | 72/72, 72/72 |
+| Mediterranean 1, 2 | 12914, 16572 | 100 | 62/62, - | 4510/4512, 4484/4487 | 401/401, 352/352 | 91/91, 76/76 |
+| Hill Country 1, 2 | 28418, 23981 | 100 | 75/75, 81/81 | 4034/4039, 4058/4059 | 257/257, 260/260 | 75/75, 74/74 |
+| Narrows 1, 2 | 23362, 8281 | 100 | 25/25, 38/38 | 2156/2159, 1828/1829 | 353/354, 346/347 | 75/75, 69/69 |
 
-Two things these saves turned up and that are now as the original does them:
-- **The maps by their place in the file** (§1): taken by the id each record carries, Inland had no water, Hill
-  Country a sea, the Mediterranean 39% water instead of about 21%.
-- **What may stand where.** A thing goes only on the ground its terrain restriction in the dat allows (`standOn`
-  in `data/aoe-maps.json`, from `terrainRestrictions`): mines and berries on grass or desert, animals and Town
-  Centers not on beaches, the alligator and villagers on beaches and shallows too. Without it, on the small
-  islands, our mines and herds stood on the beach rim, the far edge from the Town Center (Large Islands' stone
-  within 20 tiles: 5, the original's 7.5, now 7.2).
+(things: how many of ours stand on the very spot of one of the save's, to the float; the map's own are the Town
+Centers, player 1's villagers, mines, berries, fish and lone trees). What is not on its spot had gone or moved in
+the minutes before the save: a fish caught, a decoration under a house the computer built. The rest of the map's
+things, the computer players' villagers, the animals and the birds, are on their spots where they had not moved yet
+(two in three or more).
 
-### The original's seeds, and how far ours follows them
+### What the saves turned up, in the order the map is made
 
-The original seeds the generator with a `rand()`, so 0 to 32767. The land origins come before anything Bronze Dawn
-does not do bit for bit, so trying every seed until the Town Centers stand where the save has them finds it
-(`find-seed.ts`). It found one, and only one, for each of the 18 saves. Bronze Dawn's map from that seed, tile for
-tile:
+1. **The save reader** took each tile's terrain from the previous tile's record, and on three saves started six
+   records early: the land and water were taken as ours shifted by one tile.
+2. **Allies** move the land origins (§3), on the saves played with them.
+3. **Inland's rivers** had been left out; with them, Inland's lands are the original's.
+4. **The cleanup draws numbers** (§6): each tile it sets runs that terrain's own things.
+5. **No cliff module on Small Islands**, so no number drawn after it.
+6. **The A* path's floats and the walk back** (§4).
+7. **The cliff walk and its pieces** (§4).
+8. **canPlace and the zones** (§6), and **what making a thing draws** (§6): with these the Town Centers, the mines and
+   all after them stand where the original's do.
+9. **The "extra alligators"** were the reader's: stray records with positions like 1e-36. The original has as many
+   alligators as Bronze Dawn on every save, none on Hill Country.
 
-| Save | Seed | land / water | elevation | forest | desert | every tile | gold on the same tile |
-|---|---|---|---|---|---|---|---|
-| Small Islands 1, 2 | 6730, 19828 | 96.7, 100 | 94.1, 94.9 | 95.3, 95.8 | 91.6, 92.0 | 59.4, 70.6 | 0, 0 |
-| Large Islands 1, 2 | 26850, 31865 | 100, 96.1 | 92.3, 91.8 | 89.7, 91.0 | 86.4, 84.4 | 78.1, 65.9 | 0, 0 |
-| Coastal 1, 2 | 16643, 29455 | 69.3, 95.7 | 85.4, 91.9 | 85.7, 85.7 | 81.7, 81.2 | 35.2, 59.7 | 1, 0 |
-| Inland 1, 2 | 8491, 18036 | 88.5, 80.9 | 83.9, 81.8 | 79.5, 80.2 | 73.8, 76.8 | 43.0, 36.3 | 3, 0 |
-| Highland 1, 2 | 28666, 26769 | 100, 96.4 | 95.3, 82.1 | 96.8, 79.6 | 95.4, 62.0 | 94.1, 41.2 | 0, 5 |
-| Continental 1, 2 | 19238, 23745 | 96.7, 98.6 | 93.3, 93.1 | 91.3, 90.4 | 88.7, 87.6 | 66.3, 64.0 | 0, 11 |
-| Mediterranean 1, 2 | 12914, 16572 | 83.3, 99.4 | 84.2, 84.0 | 76.6, 74.6 | 74.4, 73.4 | 36.2, 52.4 | 1, 0 |
-| Hill Country 1, 2 | 28418, 23981 | 100, 100 | 28.1, 67.2 | 83.3, 81.0 | 69.7, 73.5 | 54.7, 57.6 | 0, 0 |
-| Narrows 1, 2 | 23362, 8281 | 99.6, 100 | 89.5, 92.7 | 91.9, 90.5 | 87.6, 87.5 | 81.0, 78.9 | 4, 2 |
-
-(shares in %, gold as mines). Read from the left: the lands are often the original's to the tile (100% on six of
-the saves); where they are not, something in the lands' growth or shallows still draws its numbers differently.
-Hills part next, most on Hill Country. The gold mines almost never stand on the same tile: by the objects the
-random numbers have parted, as §8 expects (the cliffs, the terrains' own units, the facings). The "dry" ground is
-not one of the differences: on the five saves that have it, ours from the same seed has it too, palms to within a
-few tiles (Highland 1: 1891 against 1891). With the seeds known, each step can now be checked against the
-original's map until it is the same.
+Two of the original's maps of each kind against 16 of ours (`compare-maps.ts`) still differ on one row: Hill
+Country's forests 12 to 20 tiles from the Town Centers (24 against our 98). Both its saves are "dry" maps (one in
+four: half the forest, twice the desert), and our maps from their seeds are theirs to the tile, so this is the two
+saves, not the generator.

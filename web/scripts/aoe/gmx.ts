@@ -2,8 +2,8 @@
 // on it, for checking Bronze Dawn's random maps against the original's (scripts/aoe/compare-maps.ts).
 //
 // The file is one raw deflate stream. Inside, the map size is at 106 (twice, width then height). The tiles are
-// 9-byte records, terrain then elevation first; they are found as the first run of width x height records that
-// all look like tiles (terrain <= 24, elevation <= 7, the fifth byte a multiple of 32 bar a few). Objects are records
+// 9-byte records, row by row, each starting with where the tile is drawn: x as a short, (x + y) * 32, which no
+// other run of the file repeats width x height times; terrain and elevation are bytes 5 and 6. Objects are records
 // of: type (10 static, 20 moving, 30 resource, 70 living, 80 building...), owner (0 nature), unit id (u16),
 // then x, y, z as floats at +23, +27, +31. They are found by that shape, so the odd stray match is possible:
 // count by unit id and type, not one by one.
