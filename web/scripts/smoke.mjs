@@ -118,7 +118,9 @@ await page.click("#mm-single");
 check(await page.isVisible("#overlay [data-start]"), "Single Player leads to the settings and the difficulty choice");
 check((await page.$$eval("[data-start]", (b) => b.map((x) => x.textContent))).join("|") === "1 · Easiest|2 · Easy|3 · Moderate|4 · Hard|5 · Hardest", "the five levels of the original, Easiest to Hardest");
 
-check((await page.$$eval("#map-type option", (o) => o.length)) === 9, "the start screen offers nine kinds of map");
+check((await page.$$eval("#map-type option", (o) => o.length)) === 9, "the start screen lists the nine kinds of map");
+check((await page.$$eval("#map-type option:disabled", (o) => o.map((x) => x.value).sort().join()))
+  === "continental,highland,large_islands,narrows", "and offers only those checked against the original: the other four are not to be picked yet");
 check((await page.$$eval("#map-size option", (o) => o.map((x) => x.textContent))).some((t) => t.startsWith("Gigantic")), "and five sizes, up to Gigantic");
 await page.selectOption("#opponents", "3");
 check((await page.textContent("#players-info")).includes("4 players"), "the start screen counts the players chosen");
