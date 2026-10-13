@@ -26,7 +26,7 @@ const IMPASSABLE: Record<number, number> = { 0: 16, 1: 15, 2: 14, 4: 255, 6: 14,
  *  is left out for now: Inland. The one saved game of the original to compare with (replica/game/aoe1-mapgen.md
  *  §10) fell on a map without it, so the rivers have not been checked, and they cut every base off from its
  *  neighbours but for the fords. The rolls are still drawn, so the rest of the setup goes as before. */
-const RIVERS_OFF = new Set<number>([3]);
+const RIVERS_OFF = new Set<number>([]);
 
 export interface AoeLand {
   landId: number; terrain: number; spacing: number; baseSize: number; zone: number; placement: number;
@@ -148,7 +148,8 @@ export class AoeMapGen {
   private extraObjects: AoeObject[] = [];
   private objectLands: { x: number; y: number; landId: number; player: number }[] = [];
 
-  constructor(readonly map: AoeMap, readonly size: number, readonly players: number, readonly seed: number) {
+  /** `teams`: a team number per player, as World has them (allies share a number above 0). */
+  constructor(readonly map: AoeMap, readonly size: number, readonly players: number, readonly seed: number, readonly teams: number[] = []) {
     this.W = this.H = size;
     const N = size * size;
     this.terrain = new Uint8Array(N);
@@ -195,6 +196,7 @@ export class AoeMapGen {
     let margin = m.margin;
     if ((id === 5 || id === 8) && W < 100) margin = W >= 80 ? 25 : 20;
     this.fillSlots(margin);
+    this.teamOrder();
     const each = (f: (s: Slot) => void) => this.slots.forEach(f);
     if (id < 5) {
       if (r.rand() < 0x3fff) { this.borders[0] = -1; each((s) => { s.xMin = -1; }); }
@@ -259,6 +261,68 @@ export class AoeMapGen {
         this.origins(start, margin, this.players, l);
       }
     }
+  }
+
+  /** Allies' lands next to each other (the end of FUN_0046f6e0): the lands' origins handed out again, each team
+   *  taking the free origins nearest the first free one. No random numbers. With no allies nothing moves. */
+  private teamOrder() {
+    const S0 = this.slots, n = S0.length, tm = this.teams;
+    const ally = (p: number, q: number) => p !== q && p < this.players && q < this.players && (tm[p] ?? 0) > 0 && tm[p] === tm[q];
+    // Every origin's list of all the others, nearest first (a bubble sort, so ties keep their order).
+    const S = S0.map((a) => {
+      const D = S0.map((b) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2), s = S0.map((_, j) => j);
+      for (let sw = true; sw;) {
+        sw = false;
+        for (let j = 1; j < n; j++) if (D[j] < D[j - 1]) { [D[j], D[j - 1]] = [D[j - 1], D[j]]; [s[j], s[j - 1]] = [s[j - 1], s[j]]; sw = true; }
+      }
+      return s;
+    });
+    const team = new Array<number>(n).fill(-1), size: number[] = [];
+    let teams = 0;
+    for (let p = 0; p < n; p++) if (team[p] === -1) {
+      team[p] = teams; size[teams] = 1;
+      for (let q = 0; q < n; q++) if (ally(p, q)) { team[q] = teams; size[teams]++; }
+      teams++;
+    }
+    if (teams === n) return; // every land its own team: each keeps its own origin
+    // owner[origin] = team. A team that finds no free origin near enough takes one from another team, which
+    // moves its own to free ones (as the original does; with the teams Bronze Dawn allows it always ends).
+    const owner = new Array<number>(n).fill(-1);
+    let lf = -1, v = -1;
+    for (let t = 0; t < teams; t++) {
+      let s = owner.indexOf(-1); if (s < 0) s = n;
+      let w = size[t], placed = 0;
+      for (let guard = 0; placed < size[t] && guard < 1000; guard++) {
+        let e = 0;
+        for (; e < w; e++) if (owner[S[s][e]] === -1) { owner[S[s][e]] = t; break; }
+        if (e < w) { placed++; continue; }
+        if (w < n) w++;
+        for (let k = n - 1; k >= 0; k--) if (owner[S[s][k]] === -1) { lf = S[s][k]; break; }
+        let u = -1;
+        for (let k = 0; k < n; k++) {
+          const c = owner[S[lf][k]];
+          if (c !== t && c >= 0) {
+            u = c; v = S[lf][k];
+            for (let k2 = 0; k2 < w; k2++) if (owner[S[s][k2]] === u) { v = S[s][k2]; break; }
+            break;
+          }
+        }
+        if (u < 0) return;
+        owner[lf] = u; owner[v] = -1;
+        for (let k = n - 1; k >= 0; k--) {
+          const pos = S[u][k]; // indexed by the team's number, as in the original
+          if (owner[pos] === u) for (let k2 = 0; k2 < n; k2++) {
+            const p2 = S[lf][k2];
+            if (owner[p2] === -1 && p2 !== v) { owner[pos] = -1; owner[p2] = u; break; }
+          }
+        }
+      }
+    }
+    const from = new Array<number>(n).fill(-1);
+    for (let p = 0; p < n; p++) for (let q = 0; q < n; q++) if (from[q] === -1 && team[q] === owner[p]) { from[q] = p; break; }
+    if (from.some((f) => f < 0)) return;
+    const xy = S0.map((s) => [s.x, s.y]);
+    S0.forEach((s, c) => { [s.x, s.y] = xy[from[c]]; });
   }
 
   /** Where each land starts (FUN_0046f300): random spots off the edge, away from the middle and from each other. */

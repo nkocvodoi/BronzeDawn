@@ -18,20 +18,17 @@ export function readGmx(path: string): SavedMap {
   const W = b.readUInt32LE(106);
   if (b.readUInt32LE(110) !== W || W < 40 || W > 256) throw new Error(`${path}: no map size where a Rise of Rome save has it`);
   const N = W * W;
+  // A tile's record starts with where it is drawn, x as a short: (x + y) * 32, which nothing else in the file
+  // repeats 20 736 times. Terrain and elevation are the record's sixth and seventh bytes.
   let at = -1;
-  for (let i = 114; i < b.length - N * 9 && at < 0; i++) {
-    // A tile or two can have the fifth byte off (one in 20 736 on Large Islands and Narrows): a few are let
-    // through, not the other arrays, where half are.
-    let ok = true, odd = 0;
-    for (let k = 0; k < N; k++) {
-      const p = i + k * 9;
-      if (b[p] > 24 || b[p + 1] > 7 || (b[p + 4] % 32 !== 0 && ++odd > 16)) { ok = false; break; }
-    }
+  for (let i = 114; i + N * 9 <= b.length && at < 0; i++) {
+    let ok = true;
+    for (let k = 0; k < N && ok; k++) { const x = k % W; if (b.readInt16LE(i + k * 9) !== (x + (k - x) / W) * 32) ok = false; }
     if (ok) at = i;
   }
   if (at < 0) throw new Error(`${path}: no tiles found`);
   const terrain = new Uint8Array(N), elevation = new Uint8Array(N);
-  for (let k = 0; k < N; k++) { terrain[k] = b[at + k * 9]; elevation[k] = b[at + k * 9 + 1]; }
+  for (let k = 0; k < N; k++) { terrain[k] = b[at + k * 9 + 5]; elevation[k] = b[at + k * 9 + 6]; }
   const TYPES = new Set([10, 20, 25, 30, 40, 50, 60, 70, 80]);
   const objects: SaveObject[] = [];
   for (let r = at + N * 9; r < b.length - 40; r++) {
