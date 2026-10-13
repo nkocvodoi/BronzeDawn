@@ -6,6 +6,10 @@ liệu đo, cách kiểm tra) nằm trong mô tả của từng PR. Danh sách t
 
 Mỗi PR mới thêm một dòng vào đầu danh sách.
 
+## 2026-10-14
+
+- [#118](https://github.com/nkocvodoi/BronzeDawn/pull/118) Thuyền, sư tử, cá sấu (bộ hình 3D) to gấp 1,5 lần, render lại cho sắc nét; nghiên cứu Catapult Trireme cần Trireme trước như trong `empires.dat` (trước đây mở ngay ở Iron Age)
+
 ## 2026-10-13
 
 - [#117](https://github.com/nkocvodoi/BronzeDawn/pull/117) AI trên đảo ít gỗ (Tiny Small Islands của bản gốc gần như không có rừng, kiểm bằng 4 file save Tiny): giữ gỗ cho thuyền vận tải và Storage Pit ở đảo khác, thời Đồ Đá chỉ xây Dock và Barracks, ít dân làng hơn, không để dành cho đời sau khi dân đã hết việc; Hard thắng Easy 9/24 thay vì 7/24 (chưa đạt mục tiêu)
