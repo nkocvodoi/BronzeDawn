@@ -25,6 +25,7 @@ import { Command, HUD } from "./hud";
 import { ASSETS, screenDirection } from "./assets";
 import { FogFilter } from "./fog";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
+import { SWEEP_RADIUS } from "../core/world";
 import { MouseLock } from "./mouselock";
 import { Sfx, Sound, VoiceKind } from "./sound";
 
@@ -228,6 +229,10 @@ export class Game {
   private repairPending = false;
   /** Attack Ground was chosen: the next click is the spot the stone throwers hit. */
   private groundPending = false;
+  /** Choosing where to plant the Flag: the ring and flag follow the pointer. */
+  private flagPending = false;
+  /** The ring and flag under the pointer while placing, and each held flag of the selected soldiers. */
+  private flags = new Graphics();
   /** Sacrifice was chosen: the next click on an enemy is where a priest gives its life (Martyrdom). */
   private sacrificePending = false;
   private dragStart: { x: number; y: number } | null = null;
@@ -1863,6 +1868,7 @@ export class Game {
     this.fogFilter.update(this.worldLayer.x, this.worldLayer.y, this.worldLayer.scale.x, this.app.canvas.height);
     this.sync(alpha);
     this.drawRoutes();
+    this.drawFlags();
     if (w.tick !== this.fogStamp && (w.tick % 5 === 0 || this.fogStamp < 0)) { this.updateFog(); this.fogStamp = w.tick; }
     if (Math.floor(w.tick / 10) !== this.minimapStamp) { this.updateMinimap(); this.minimapStamp = Math.floor(w.tick / 10); }
     this.selection = this.selection.filter((id) => w.entity(id));
@@ -1884,7 +1890,7 @@ export class Game {
     if (!this.started || this.hud.overlayShown || this.placing || !this.mouse.inside) return "arrow";
     if (this.attackMovePending) return "sword";
     if (this.repairPending) return "hammer";
-    if (this.groundPending) return "sword";
+    if (this.groundPending || this.flagPending) return "sword";
     if (this.sacrificePending) return "staff";
     const units = this.selectedEntities().filter((x): x is Unit => x instanceof Unit && x.owner === this.me);
     if (!units.length) return "arrow";
@@ -1919,6 +1925,7 @@ export class Game {
     if (this.attackMovePending) return "Click where to attack-move.";
     if (this.repairPending) return "Click a damaged building of yours to repair it.";
     if (this.groundPending) return "Click the ground to bombard.";
+    if (this.flagPending) return "Click to plant the flag: they clear the ground round it. Right-click to cancel.";
     if (this.sacrificePending) return "Click an enemy for a priest to convert by giving its life.";
     const t = this.pick(this.mouse.x, this.mouse.y);
     const verb: Partial<Record<CursorKind, string>> = {
@@ -2598,6 +2605,8 @@ export class Game {
         out.push({ key: "A", title: "Attack-move", detail: "click a point", blocker: null, icon: "attack_move", action: () => { this.attackMovePending = true; this.hud.message("Click where to attack-move"); } });
       }
       if (soldiers.length) {
+        out.push({ key: "F", title: "Flag", detail: "plant a flag: they fight every enemy round it, towers first, then soldiers, then buildings", blocker: null, icon: "flag",
+          action: () => { this.flagPending = true; this.hud.message("Click where to plant the flag"); } });
         const on = soldiers.every((u) => u.standGround);
         out.push({ key: "D", title: on ? "Stand ground: on" : "Stand ground", detail: on ? "press again to let them chase" : "hold this spot, strike only what comes in reach",
           blocker: null, icon: "stand_ground", action: () => { this.issue({ k: "standGround", ids: [...this.selection], on: !on }); this.hud.message(on ? "Units will chase enemies again" : "Standing ground"); } });
@@ -3010,6 +3019,14 @@ export class Game {
       else this.hud.message("Choose an enemy that is not a priest", "warn");
       return;
     }
+    if (this.flagPending) {
+      this.flagPending = false;
+      const g = this.toWorld(e.clientX, e.clientY);
+      this.issue({ k: "sweep", ids: [...this.selection], x: g.x, y: g.y });
+      this.selectSound(true);
+      this.marker(e.clientX, e.clientY, playerColor(this.me));
+      return;
+    }
     if (this.groundPending) {
       this.groundPending = false;
       const g = this.toWorld(e.clientX, e.clientY);
@@ -3087,6 +3104,7 @@ export class Game {
   private rightClick(e: MouseEvent) {
     if (this.world.winner !== null || this.watching) return;
     if (this.placing) { this.cancelPlacing(); return; }
+    if (this.flagPending) { this.flagPending = false; return; } // right-click puts the flag away
     this.attackMovePending = false;
     this.repairPending = false;
     this.groundPending = false;
@@ -3151,6 +3169,26 @@ export class Game {
       }
     };
     this.app.ticker.add(tick);
+  }
+
+  /** A flag in a ring of the order's reach: under the pointer while it is being placed, and where each selected
+   *  soldier of yours holds one. */
+  private drawFlags() {
+    const g = this.flags;
+    if (!g.parent) this.effects.addChild(g);
+    g.clear();
+    const color = playerColor(this.me);
+    const one = (p: Vec2, alpha: number) => {
+      const s = iso(p);
+      // The ring is a circle on the ground, so an ellipse on the screen.
+      g.ellipse(s.x, s.y, SWEEP_RADIUS * HALF_W * Math.SQRT2, SWEEP_RADIUS * HALF_H * Math.SQRT2).stroke({ width: 1.5, color, alpha });
+      g.moveTo(s.x, s.y).lineTo(s.x, s.y - 22).stroke({ width: 2, color: 0x3a2a1a, alpha: Math.min(1, alpha * 2) });
+      g.poly([s.x, s.y - 22, s.x + 12, s.y - 18, s.x, s.y - 13]).fill({ color, alpha: Math.min(1, alpha * 2) });
+    };
+    if (this.flagPending && this.mouse.inside) one(this.toWorld(this.mouse.x, this.mouse.y), 0.6);
+    const held = new Map<string, Vec2>();
+    for (const e of this.selectedEntities()) if (e instanceof Unit && e.owner === this.me && e.order.kind === "sweep") held.set(`${e.order.at.x},${e.order.at.y}`, e.order.at);
+    for (const p of held.values()) one(p, 0.35);
   }
 
   /** A waypoint where the mouse is, for the selected units (Shift + click, left or right). */
@@ -3250,10 +3288,10 @@ export class Game {
     if (key === "Escape") {
       if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; return; }
       const cancel = this.hud.commands.find((c) => c.key === "Escape");
-      const pending = this.attackMovePending || this.repairPending || this.groundPending || this.sacrificePending;
+      const pending = this.attackMovePending || this.repairPending || this.groundPending || this.sacrificePending || this.flagPending;
       if (!this.placing && !pending && cancel) { cancel.action(); return; }
       if (this.placing) this.cancelPlacing();
-      else if (pending) this.attackMovePending = this.repairPending = this.groundPending = this.sacrificePending = false;
+      else if (pending) this.attackMovePending = this.repairPending = this.groundPending = this.sacrificePending = this.flagPending = false;
       else this.selection = [];
       return;
     }

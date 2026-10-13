@@ -15,6 +15,9 @@ export type Order =
   | { kind: "trade"; with: number; home: number | null; loaded: boolean }
   | { kind: "attack"; id: number; auto?: boolean }
   | { kind: "attackGround"; at: Vec2 }
+  /** Clear the ground round a flag: fight every enemy within SWEEP_RADIUS of `at`, towers first, then
+   *  soldiers, villagers, buildings; `target` is the one being fought (0: none yet), `next` when to look again. */
+  | { kind: "sweep"; at: Vec2; target: number; next: number }
   | { kind: "convert"; id: number; sacrifice?: boolean }
   | { kind: "heal"; id: number };
 

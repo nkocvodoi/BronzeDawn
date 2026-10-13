@@ -596,6 +596,28 @@ describe("the original's rules", () => {
     expect(spread(herd.slice(1))).toBeLessThan(6); // the rest of the herd grazes on together
   });
 
+  it("the Flag order clears the ground round the flag: the tower first, then soldiers, then buildings", () => {
+    const w = blank(40);
+    w.players[0].age = w.players[1].age = 1;
+    const tower = w.addBuilding("watch_tower", 1, new Tile(20, 18), true);
+    const house = w.addBuilding("house", 1, new Tile(16, 21), true);
+    const away = w.addBuilding("house", 1, new Tile(32, 32), true); // beyond the flag's reach
+    const foe = w.spawnUnit("clubman", 1, new Tile(18, 22).center);
+    foe.standGround = true;
+    const army = Array.from({ length: 8 }, (_, i) => w.spawnUnit("axeman", 0, new Tile(4 + (i % 4), 4 + Math.floor(i / 4)).center));
+    w.sweep(0, army.map((u) => u.id), new Tile(18, 20).center);
+    run(w, 1);
+    const first = army.map((u) => u.order.kind === "sweep" ? u.order.target : -1);
+    expect(first.every((t) => t === tower.id)).toBe(true); // the tower, though the clubman is as near
+    run(w, 240);
+    expect(tower.alive || foe.alive || house.alive).toBe(false);
+    expect(away.alive).toBe(true);
+    const by = army.filter((u) => u.alive);
+    expect(by.length).toBeGreaterThan(0);
+    // Then they stand by the flag, still holding it.
+    expect(by.every((u) => u.order.kind === "sweep" && u.pos.distance(new Tile(18, 20).center) < 4)).toBe(true);
+  });
+
   it("lions hunt gazelles when no one is near, and gazelles run from lions", () => {
     const w = blank();
     const herd = gazelles(w, new Tile(12, 12), 4);
