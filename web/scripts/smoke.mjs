@@ -326,6 +326,29 @@ await page.mouse.click(sp.x + 120, sp.y + 90, { button: "right" });
 await page.keyboard.up("Shift");
 check(await g((id) => { const u = game.world.unit(id); return u.order.kind === "move" && u.waypoints.length === 1; }, soldier), "Shift + right-click lays a waypoint after the first point");
 
+// Shift held with a villager selected: the pointer is a flag; let go, it is not.
+const flagger = await g(() => { const v = game.world.unitsOf(0).find((u) => u.isVillager); game.selection = [v.id]; return v.id; });
+await at(flagger);
+// Over bare ground: on one of your own, Shift + click picks it, and the pointer says so.
+const bare = await g((id) => {
+  const w = game.world, u = w.unit(id);
+  for (let r = 3; r <= 8; r++) for (let a = 0; a < 16; a++) {
+    const p = new u.pos.constructor(u.pos.x + r * Math.cos(a * Math.PI / 8), u.pos.y + r * Math.sin(a * Math.PI / 8));
+    if (w.map.inside(p.tile) && w.map.passable(p.tile) && ![...w.units, ...w.nodes, ...w.buildings].some((e) => e.alive && e.center.distance(p) < 2.5)) return game.screenOf(p);
+  }
+  return null;
+}, flagger);
+const fq = bare ?? { x: 640, y: 400 };
+await page.mouse.move(fq.x, fq.y);
+await page.keyboard.down("Shift");
+await page.mouse.move(fq.x + 2, fq.y + 1);
+await wait(150);
+const flagCursor = await g(() => game.cursor);
+await page.keyboard.up("Shift");
+await page.mouse.move(fq.x, fq.y);
+await wait(150);
+check(flagCursor === "flag" && (await g(() => game.cursor)) !== "flag", `Shift held with a villager selected turns the pointer to a flag (${flagCursor}), and back when let go`);
+
 // Shift + left click on the ground lays flags too: a scout walks to each in turn, and stays selected.
 const scout = await g(() => { const v = game.world.unitsOf(0).find((u) => u.isVillager); game.selection = [v.id]; return v.id; });
 await at(scout);
@@ -351,6 +374,8 @@ check(spots.length === 3 && await g((id) => { const u = game.world.unit(id); ret
 await page.waitForFunction(() => game.routes.parent !== null && game.routes.bounds.width > 0, null, { timeout: 3000 }).catch(() => {});
 const route = await g((id) => { const u = game.world.unit(id); return { drawn: game.routes.parent !== null && game.routes.bounds.width > 0, order: u?.order.kind, waypoints: u?.waypoints.length, selected: game.selection.join() }; }, scout);
 check(route.drawn, `and its route is drawn, with a flag at each point${route.drawn ? "" : ` (${JSON.stringify(route)})`}`);
+check(await g(() => game.routes.parent === game.overFog && game.worldLayer.children.indexOf(game.overFog) > game.worldLayer.children.indexOf(game.fogSprite)),
+  "the flags are drawn over the fog, so one laid in the unknown shows");
 
 // A group laid a walk with Shift + click: one flag per click, not one per unit. A plain right-click: none.
 const band = await g(() => { const vs = game.world.unitsOf(0).filter((u) => u.isVillager).slice(0, 3).map((u) => u.id); game.selection = vs; return vs; });

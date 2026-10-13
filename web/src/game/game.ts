@@ -18,7 +18,7 @@ import { canStart, CHAT_MAX, cleanName, LobbySettings, LobbyState, lobbyHtml, Se
 import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
 import { addPack, folderFiles, listPacks, PackInfo, removePack, setEnabled, zipFiles } from "./packs";
 import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, forestFloorPic, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
-import { CursorKind, cursors } from "./cursors";
+import { CursorKind, cursors, setFlagColor } from "./cursors";
 import { drawTimeline } from "./timeline";
 import { describe, describeCiv } from "./describe";
 import { Command, HUD } from "./hud";
@@ -240,6 +240,10 @@ export class Game {
   private sacrificePending = false;
   private dragStart: { x: number; y: number } | null = null;
   private mouse = { x: -1, y: -1, inside: false };
+  /** Whether Shift is held: with your units selected, the pointer is a flag for a waypoint. */
+  private shiftHeld = false;
+  /** Drawn over the fog: the flags you lay are seen where you laid them, explored or not. */
+  private overFog = new Container();
   private keys = new Set<string>();
   private accumulator = 0;
   /** Playing online: the lockstep that runs the world, as host or guest. Null when playing alone. */
@@ -279,7 +283,7 @@ export class Game {
     this.popLimit = Number(remembered("bd-pop-limit", (rules.economy.pop_limits ?? []).map(String), String(rules.economy.pop_max)));
     this.world = new World(rules, seed, ["You", "Enemy"]);
     this.entities.sortableChildren = true;
-    this.worldLayer.addChild(this.terrain, this.floors, this.entities, this.effects, this.fogSprite);
+    this.worldLayer.addChild(this.terrain, this.floors, this.entities, this.effects, this.fogSprite, this.overFog);
     // Hard black edges and a stipple over explored ground, drawn on the GPU from the smooth fog texture.
     this.fogFilter = new FogFilter(app.renderer.resolution);
     this.fogSprite.filters = [this.fogFilter.filter];
@@ -1917,6 +1921,11 @@ export class Game {
     const units = this.selectedEntities().filter((x): x is Unit => x instanceof Unit && x.owner === this.me);
     if (!units.length) return "arrow";
     const t = this.pick(sx, sy);
+    // Shift held: a click on the ground lays a flag (on one of your own, it picks it instead).
+    if (this.shiftHeld) {
+      setFlagColor(playerColor(this.me));
+      return t && t.owner === this.me ? "arrow" : "flag";
+    }
     const villagers = units.some((u) => u.isVillager), priests = units.some((u) => u.isPriest);
     if (villagers) {
       const at = this.toWorld(sx, sy);
@@ -2935,6 +2944,7 @@ export class Game {
     });
     window.addEventListener("mousemove", (e) => {
       this.mouse = { x: e.clientX, y: e.clientY, inside: true };
+      if (e.shiftKey !== this.shiftHeld) { this.shiftHeld = e.shiftKey; this.cursorAt = 0; }
       if (this.dragStart) {
         const a = this.dragStart;
         const r = { x: Math.min(a.x, e.clientX), y: Math.min(a.y, e.clientY), w: Math.abs(a.x - e.clientX), h: Math.abs(a.y - e.clientY) };
@@ -2970,6 +2980,10 @@ export class Game {
     window.addEventListener("keydown", (e) => this.keyDown(e));
     window.addEventListener("keyup", (e) => this.keys.delete(e.key));
     window.addEventListener("blur", () => this.keys.clear());
+    const shift = (on: boolean) => { if (on !== this.shiftHeld) { this.shiftHeld = on; this.cursorAt = 0; } };
+    window.addEventListener("keydown", (e) => { if (e.key === "Shift") shift(true); });
+    window.addEventListener("keyup", (e) => { if (e.key === "Shift") shift(false); });
+    window.addEventListener("blur", () => shift(false));
     document.body.style.cursor = cursors().arrow;
     document.addEventListener("fullscreenchange", () => {
       // In full screen Chrome lets the game have Esc (hold it to leave), so Esc still cancels orders.
@@ -3197,7 +3211,7 @@ export class Game {
    *  soldier of yours holds one. */
   private drawFlags() {
     const g = this.flags;
-    if (!g.parent) this.effects.addChild(g);
+    if (!g.parent) this.overFog.addChild(g);
     g.clear();
     const color = playerColor(this.me);
     const one = (p: Vec2, alpha: number) => {
@@ -3226,7 +3240,7 @@ export class Game {
    *  laid. A plain move shows none. */
   private drawRoutes() {
     const g = this.routes;
-    if (!g.parent) this.effects.addChild(g);
+    if (!g.parent) this.overFog.addChild(g);
     g.clear();
     const color = playerColor(this.me), picked = new Set(this.selection);
     for (const [k, r] of this.flagRoutes) {

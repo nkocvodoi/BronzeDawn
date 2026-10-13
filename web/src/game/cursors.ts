@@ -1,9 +1,18 @@
 // Mouse pointers that tell you what a right-click will do, drawn here in pixel art:
 // a sword over an enemy, an axe over trees, a pick over mines, a basket over food,
-// a hammer over a foundation and a staff for priests.
+// a hammer over a foundation and a staff for priests; with Shift held, a flag in your colour, to lay a waypoint.
 import { ASSETS } from "./assets";
 
-export type CursorKind = "arrow" | "sword" | "axe" | "pick" | "basket" | "hammer" | "staff";
+export type CursorKind = "arrow" | "sword" | "axe" | "pick" | "basket" | "hammer" | "staff" | "flag";
+
+/** The player's colour, for the flag pointer (CSS). */
+let flagColor = "#3a7bd5";
+/** Sets the flag pointer's colour to the player's; the pointers are drawn again only when it changes. */
+export function setFlagColor(css: string) {
+  if (css === flagColor) return;
+  flagColor = css;
+  art = null; cache = null;
+}
 
 const SIZE = 32;
 const OUTLINE = "#140c06";
@@ -83,6 +92,12 @@ const DRAW: Record<CursorKind, { hot: [number, number]; draw: (px: Px) => void }
     line(px, 23, 27, 11, 10, WOOD, 2);
     // A mallet: a long block of wood across the handle, with a bronze band.
     fill(px, [[3, 10], [14, 2], [18, 7], [7, 15]], (x, y) => (Math.abs((x - 10.5) * 0.8 - (y - 8.5) * 0.6) < 1.2 ? "#c99a3c" : (x + y) < 17 ? "#b07a42" : "#7a4f24"));
+  } },
+  flag: { hot: [5, 29], draw: (px) => {
+    line(px, 5, 4, 5, 29, WOOD, 2);                   // the pole, its foot on the spot
+    fill(px, [[7, 4], [25, 9], [7, 15]], (x, y) => (y < 7 ? "#ffffff" : flagColor));
+    line(px, 7, 5, 22, 9, flagColor);
+    px(5, 3, "#f3d27a"); px(6, 3, "#f3d27a");         // a knob on top
   } },
   staff: { hot: [10, 3], draw: (px) => {
     line(px, 10, 8, 22, 28, WOOD, 2);
