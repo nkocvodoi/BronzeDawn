@@ -3644,7 +3644,9 @@
     "wood": 100
    },
    "time": 100,
-   "requires": [],
+   "requires": [
+    "trireme_tech"
+   ],
    "effects": []
   },
   {

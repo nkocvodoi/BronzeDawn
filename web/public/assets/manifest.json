@@ -203,12 +203,12 @@
   "alligator": {
    "file": "art3d/alligator.png",
    "frame": [
-    110,
-    75
+    165,
+    112
    ],
    "anchor": [
-    54.0,
-    48.0
+    81.0,
+    72.0
    ],
    "scale": 1.0,
    "directions": 8,
@@ -233,12 +233,12 @@
   "lion": {
    "file": "art3d/lion.png",
    "frame": [
-    90,
-    75
+    135,
+    112
    ],
    "anchor": [
-    43.0,
-    52.0
+    64.5,
+    78.0
    ],
    "scale": 1.0,
    "directions": 8,
@@ -593,12 +593,12 @@
   "trireme": {
    "file": "art3d/trireme.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -888,12 +888,12 @@
   "fishing_boat": {
    "file": "art3d/fishing_boat.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -913,12 +913,12 @@
   "fishing_ship": {
    "file": "art3d/fishing_ship.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -938,12 +938,12 @@
   "trade_boat": {
    "file": "art3d/trade_boat.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -963,12 +963,12 @@
   "merchant_ship": {
    "file": "art3d/merchant_ship.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -988,12 +988,12 @@
   "light_transport": {
    "file": "art3d/light_transport.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -1013,12 +1013,12 @@
   "heavy_transport": {
    "file": "art3d/heavy_transport.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -1038,12 +1038,12 @@
   "scout_ship": {
    "file": "art3d/scout_ship.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -1063,12 +1063,12 @@
   "war_galley": {
    "file": "art3d/war_galley.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -1088,12 +1088,12 @@
   "fire_galley": {
    "file": "art3d/fire_galley.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -1113,12 +1113,12 @@
   "catapult_trireme": {
    "file": "art3d/catapult_trireme.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -1138,12 +1138,12 @@
   "juggernaught": {
    "file": "art3d/juggernaught.png",
    "frame": [
-    190,
-    165
+    285,
+    247
    ],
    "anchor": [
-    93.0,
-    105.0
+    139.5,
+    157.5
    ],
    "scale": 1.0,
    "directions": 8,
@@ -2354,16 +2354,16 @@
   "carcass_alligator": {
    "file": "art3d/carcass_alligator.png",
    "anchor": [
-    54.3,
-    35.7
+    81.4,
+    53.6
    ],
    "scale": 1.0
   },
   "carcass_lion": {
    "file": "art3d/carcass_lion.png",
    "anchor": [
-    44.3,
-    33.2
+    66.4,
+    49.8
    ],
    "scale": 1.0
   },

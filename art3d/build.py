@@ -59,9 +59,30 @@ def args():
     return only, "--quick" in a
 
 
+def bigger(key):
+    """How much larger than the rest a figure is drawn: the ships, the lion and the alligator were hard to
+    make out beside the villagers. Its frame and anchor grow with it."""
+    return 1.5 if key in SHIPS or key in ("lion", "alligator", "carcass_lion", "carcass_alligator") else 1
+
+
+def grown(key, size, point):
+    k = bigger(key)
+    return (round(size[0] * k), round(size[1] * k)), (round(point[0] * k), round(point[1] * k))
+
+
 def unit_sheet(key, build, anims, frame_size, anchor, quick, tmp):
     """Renders every direction of every animation of one figure into a sheet. `anims` is a list of
     (name in the manifest, pose name, frames, fps)."""
+    ppu = lib.PPU
+    lib.PPU = ppu * bigger(key)
+    frame_size, anchor = grown(key, frame_size, anchor)
+    try:
+        return _unit_sheet(key, build, anims, frame_size, anchor, quick, tmp)
+    finally:
+        lib.PPU = ppu
+
+
+def _unit_sheet(key, build, anims, frame_size, anchor, quick, tmp):
     lib.reset()
     rig = build()
     lib.shadow_catcher(4)
@@ -94,6 +115,16 @@ def unit_sheet(key, build, anims, frame_size, anchor, quick, tmp):
 def still(key, build, size, anchor_point, tmp, center=(0, 0, 0), ground=True):
     """One picture of a model; `anchor_point` is the point in the scene that stands on the ground spot.
     `ground`: whether it casts a shadow on the ground (not on water)."""
+    ppu = lib.PPU
+    lib.PPU = ppu * bigger(key)
+    size, _ = grown(key, size, (0, 0))
+    try:
+        return _still(key, build, size, anchor_point, tmp, center, ground)
+    finally:
+        lib.PPU = ppu
+
+
+def _still(key, build, size, anchor_point, tmp, center, ground):
     lib.reset()
     build()
     lib.RIM = ground
