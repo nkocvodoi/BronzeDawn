@@ -17,7 +17,7 @@ import type { World } from "./world";
 
 /** The original's terrain ids, as its maps name them. */
 export const T = { grass: 0, water: 1, beach: 2, shallows: 4, desert: 6, forest: 10, palm: 13, pine: 19, jungle: 20, deep: 22, temp: 16 } as const;
-const FOREST = new Set<number>([T.forest, T.palm, T.pine, T.jungle]);
+
 const WET = new Set<number>([T.water, T.deep]);
 /** What may stand next to each terrain in a patch (the dat's "impassable" field): 16 is the cliff line. */
 const IMPASSABLE: Record<number, number> = { 0: 16, 1: 15, 2: 14, 4: 255, 6: 14, 10: 16, 13: 14, 19: 16, 20: 16, 22: 15 };
@@ -119,7 +119,7 @@ interface Slot {
 
 /** A thing to put on the map, as the generator places it: where, whose. Bronze Dawn makes them afterwards.
  *  `id` is the original's unit, when the generator knows it; `gone`, one a later step took away again. */
-export interface Placed { unit: string; player: number; x: number; y: number; group: number; id?: number; gone?: boolean }
+export interface Placed { unit: string; player: number; x: number; y: number; group: number; id?: number; gone?: boolean; frame?: number }
 
 /** How big each kind of thing is on the ground, as a half-width, and what it stands on: the collision test. */
 const SIZE: Record<string, number> = {
@@ -144,6 +144,25 @@ const UNITS = new Map<number, AoeUnit>(Object.entries(DATA.units ?? {}).map(([k,
 /** Each terrain's own things: [unit id, density in thousandths, centred]. */
 const TERRAIN_UNITS: [number, number, number][][] = Array.from({ length: 32 }, (_, t) => DATA.terrainUnits?.[t] ?? []);
 const f32 = Math.fround;
+/** The cliff pieces, by the sides a cell's cliff goes out of (+x, +y, -x, -y: 1, -1 or 0): unit, frame, the other
+ *  unit and frame a straight piece may take instead, and where in the cell it stands (the original's table, built
+ *  in its map's constructor from FUN_004efef0). */
+const CLIFF_PIECES: [number[], [number, number, number, number, number, number]][] = [
+  [[1, 0, 0, 0], [264, 16, -1, -1, 1.5, 1.5]], [[0, 1, 0, 0], [264, 18, -1, -1, 1.5, 1.5]],
+  [[0, 0, 1, 0], [264, 17, -1, -1, 1.5, 1.5]], [[0, 0, 0, 1], [264, 19, -1, -1, 1.5, 1.5]],
+  [[-1, 0, 0, 0], [266, 20, -1, -1, 1.5, 1.5]], [[0, -1, 0, 0], [265, 22, -1, -1, 1.5, 1.5]],
+  [[0, 0, -1, 0], [266, 21, -1, -1, 1.5, 1.5]], [[0, 0, 0, -1], [265, 23, -1, -1, 1.5, 1.5]],
+  [[-1, 1, 0, 0], [270, 0, -1, -1, 1.5, 2]], [[0, -1, -1, 0], [272, 9, -1, -1, 1, 2]],
+  [[0, 0, 1, -1], [268, 6, -1, -1, 1, 1.5]], [[1, 0, 0, 1], [264, 3, -1, -1, 1.5, 1.5]],
+  [[1, -1, 0, 0], [267, 12, -1, -1, 2, 1.5]], [[0, 1, 1, 0], [264, 15, -1, -1, 1.5, 1.5]],
+  [[0, 0, -1, 1], [269, 14, -1, -1, 1.5, 1]], [[-1, 0, 0, -1], [271, 13, -1, -1, 2, 1]],
+  [[1, 0, 1, 0], [264, 4, 264, 5, 1.5, 1.5]], [[0, 1, 0, 1], [264, 1, 264, 2, 1.5, 1.5]],
+  [[-1, 0, -1, 0], [266, 11, 266, 10, 1.5, 1.5]], [[0, -1, 0, -1], [265, 8, 265, 7, 1.5, 1.5]],
+];
+const CLIFF_TABLE = new Map(CLIFF_PIECES.map(([f, e]) => [f.join(","), e]));
+const cliffPiece = (f: number[]) => CLIFF_TABLE.get(f.join(","));
+/** Whether the line walk forgets the last cell before each stretch of cliff (not read in the code: see the spec). */
+const CLIFF_RESET = true;
 /** -1/32767 and -0.5, as the original keeps them (a float). */
 const INV = f32(-1 / 32767), HALF = f32(-0.5), MILLI = f32(0.001);
 
@@ -511,7 +530,7 @@ export class AoeMapGen {
         if (centred === 0) { fx = f32(x - r.rand() * INV); fy = f32(y - r.rand() * INV); }
         else if (centred === 1 || !all) { fx = f32(x - HALF); fy = f32(y - HALF); }
         const roll = k < 1000 ? Math.trunc((r.rand() * 1000) / 0x7fff) < k : true;
-        if (roll && this.canPlace(id, fx, fy, false, false) === 0) this.create(id, "-", 0, fx, fy);
+        if (roll && this.canPlace(id, fx, fy, true, false) === 0) this.create(id, "-", 0, fx, fy);
       }
     }
   }
@@ -565,6 +584,34 @@ export class AoeMapGen {
       if (Math.abs(p.x - fx) < m.size[0] + sx && Math.abs(p.y - fy) < m.size[1] + sy) return 6;
     }
     return 0;
+  }
+
+  /** Each tile's slope from the elevation round it (FUN_004493a0): 0 flat, 5 to 8 one side up, 13 to 16 two
+   *  sides, 1 to 4 and 9 to 12 a corner. */
+  private slopes() {
+    const W = this.W, H = this.H, e = this.elevation, out = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const h = e[this.at(x, y)], up = h + 1, dn = h - 1;
+      const at = (a: number, b: number, ok: boolean) => (ok ? e[this.at(a, b)] : h);
+      const NE = at(x + 1, y - 1, y > 0 && x < W - 1), N = at(x, y - 1, y > 0), E = at(x + 1, y, x < W - 1);
+      const SW = at(x - 1, y + 1, x > 0 && y < H - 1), Wv = at(x - 1, y, x > 0), S = at(x, y + 1, y < H - 1);
+      const NW = at(x - 1, y - 1, y > 0 && x > 0), SE = at(x + 1, y + 1, y < H - 1 && x < W - 1);
+      let s = 0;
+      if (N === up && E === up) s = 14;
+      else if (Wv === up && S === up) s = 13;
+      else if (N === up && Wv === up) s = 16;
+      else if (E === up && S === up) s = 15;
+      else if (N === up) s = 6;
+      else if (E === up) s = 8;
+      else if (Wv === up) s = 5;
+      else if (S === up) s = 7;
+      else if (NE === up) s = Wv === dn && S === dn ? 2 : 10;
+      else if (SW === up) s = N === dn && E === dn ? 1 : 9;
+      else if (NW === up) s = E === dn && S === dn ? 3 : 11;
+      else if (SE === up) s = N === dn && Wv === dn ? 4 : 12;
+      out[this.at(x, y)] = s;
+    }
+    return out;
   }
 
   /** The slope of a tile (the original's tile shape): 0 flat. Worked out from the elevation once it is set. */
@@ -1056,7 +1103,7 @@ export class AoeMapGen {
     const g = (cx: number, cy: number) => grid[cy * MW + cx];
     const clearCells = (cx: number, cy: number, rr: number) => {
       const x1 = Math.min(MW - 1, cx + rr), y1 = x1 > MH - 1 ? Math.min(MH - 1, cy + rr) : cy + rr;
-      for (let y = Math.max(0, cy - rr); y <= Math.min(y1, MH - 1); y++) for (let x = Math.max(0, cx - rr); x <= x1; x++) { grid[y * MW + x] = 0; L.unlink(cell(x, y)); }
+      for (let y = Math.max(0, cy - rr); y <= Math.min(y1, MH - 1); y++) for (let x = Math.max(0, cx - rr); x <= x1; x++) if (grid[y * MW + x]) { grid[y * MW + x] = 0; L.unlink(cell(x, y)); }
     };
     for (let cy = 0; cy < MH; cy++) for (let cx = 0; cx < MW; cx++) {
       let uniform = true, water = false, lev = -1;
@@ -1125,10 +1172,107 @@ export class AoeMapGen {
         const mx = m % W, my = Math.trunc(m / W);
         if (prev < 0) prev = m;
         this.cliffLine(3 * (prev % W) + 1, 3 * Math.trunc(prev / W) + 1, 3 * mx + 1, 3 * my + 1);
+        // The pieces of cliff, one per cell, as the walk along the line goes from cell to cell (FUN_004f0ab0).
+        if (CLIFF_RESET) this.cliffLast = null;
+        this.cliffStep(prev % W, Math.trunc(prev / W));
+        this.cliffStep(mx, my);
         clearCells(mx, my, 2);
         prev = m;
       }
     }
+  }
+
+  // ---- the pieces of cliff (the map's own cliff tool: FUN_004f0ab0, 004f0490, 004f0170, 004f0300)
+
+  /** The piece in each 3 x 3 cell: which of its four sides (+x, +y, -x, -y) the cliff goes out of, and how
+   *  (1 or -1, the side that is high), and the thing that stands for it. */
+  private cliffCells = new Map<number, { f: number[]; p: Placed }>();
+  private cliffLast: { cx: number; cy: number; dir: number } | null = null;
+
+  /** The line walk reaching cell (cx, cy): from the cell it was in, each of the two gets the side between them. */
+  private cliffStep(cx: number, cy: number) {
+    if (cx * 3 + 2 >= this.W || cy * 3 + 2 >= this.H || cx < 0 || cy < 0) return;
+    const last = this.cliffLast;
+    if (last && last.cx === cx && last.cy === cy) return;
+    if (!last) { this.cliffLast = { cx, cy, dir: -1 }; return; }
+    const dir = last.cx < cx ? 0 : cx < last.cx ? 2 : cy <= last.cy ? 3 : 1;
+    const v = this.cliffSide(last.cx, last.cy, dir, 0, last.dir);
+    const back = dir + 2 > 3 ? dir - 2 : dir + 2;
+    this.cliffLast = { cx, cy, dir: back };
+    this.cliffSide(cx, cy, back, v, -1);
+  }
+
+  /** Gives a cell's piece a side `dir` (`v` 0: whichever of 1 and -1 makes a piece), keeping at most one other
+   *  side (`keep`, or the two it had when it had two), and puts the piece down again (FUN_004f0490). */
+  private cliffSide(cx: number, cy: number, dir: number, v: number, keep: number): number {
+    const k = cy * this.W + cx, had = this.cliffCells.get(k), f = had ? [...had.f] : [0, 0, 0, 0];
+    if (f[dir] !== 0) { if (v === 0) return f[dir]; if (v === f[dir]) return v; }
+    if (had) this.cliffRemove(k);
+    if (keep === dir) keep = -1;
+    let a = -1, av = 0, b = -1, bv = 0;
+    if (keep < 0) {
+      if (f.filter((x, i) => x !== 0 && i !== dir).length === 2) for (let i = 0; i < 4; i++) if (f[i] !== 0 && i !== dir) {
+        if (a < 0) { a = i; av = f[i]; } else { b = i; bv = f[i]; }
+        f[i] = 0;
+      }
+    } else for (let i = 0; i < 4; i++) if (i !== keep) { this.cliffDrop(cx, cy, i); f[i] = 0; }
+    const ok = () => cliffPiece(f) !== undefined;
+    const tryKeep = () => {
+      if (a >= 0) { f[a] = av; if (ok()) { av = 0; return true; } f[a] = 0; }
+      if (b >= 0) { f[b] = bv; if (ok()) { bv = 0; return true; } f[b] = 0; }
+      return false;
+    };
+    if (v === 0) {
+      v = 1; f[dir] = 1;
+      if (!tryKeep() && !ok()) {
+        v = -1; f[dir] = -1;
+        if (!tryKeep() && !ok()) for (let i = 0; i < 4; i++) if (i !== dir && f[i] !== 0) { this.cliffDrop(cx, cy, i); f[i] = 0; }
+      }
+      if (av !== 0) this.cliffDrop(cx, cy, a);
+      if (bv !== 0) this.cliffDrop(cx, cy, b);
+    } else {
+      f[dir] = v;
+      if (a >= 0) { f[a] = av; if (!ok()) { f[a] = 0; this.cliffDrop(cx, cy, a); } }
+      if (b >= 0) { f[b] = bv; if (!ok()) { f[b] = 0; this.cliffDrop(cx, cy, b); } }
+      if (!ok()) for (let i = 0; i < 4; i++) if (i !== dir && f[i] !== 0) { this.cliffDrop(cx, cy, i); f[i] = 0; }
+    }
+    this.cliffPut(cx, cy, f);
+    return v;
+  }
+
+  /** The neighbour across side `dir` loses its side facing this cell, and is put down again (FUN_004f0300). */
+  private cliffDrop(cx: number, cy: number, dir: number) {
+    const nx = cx + (dir === 0 ? 1 : dir === 2 ? -1 : 0), ny = cy + (dir === 1 ? 1 : dir === 3 ? -1 : 0);
+    // The original bounds the cell by the map's size in tiles.
+    if (dir === 0 && nx >= this.W) return;
+    if (dir === 1 && ny >= this.H) return;
+    if (nx < 0 || ny < 0) return;
+    const k = ny * this.W + nx, had = this.cliffCells.get(k);
+    if (!had) return;
+    this.cliffRemove(k);
+    const f = [...had.f];
+    f[dir + 2 > 3 ? dir - 2 : dir + 2] = 0;
+    this.cliffPut(nx, ny, f);
+  }
+
+  private cliffRemove(k: number) {
+    const had = this.cliffCells.get(k);
+    if (!had) return;
+    had.p.gone = true;
+    this.cliffCells.delete(k);
+  }
+
+  /** The piece for these sides, if there is one: one of two for a straight piece (a random number), then the thing
+   *  itself (FUN_004f0170). */
+  private cliffPut(cx: number, cy: number, f: number[]) {
+    const e = cliffPiece(f);
+    if (!e) return;
+    let [unit, frame] = [e[0], e[1]];
+    if (e[2] >= 0 && this.rng.rand() * 2 > 0x7fff) [unit, frame] = [e[2], e[3]];
+    if (unit < 0) return;
+    const p = this.create(unit, "cliff", 0, f32(cx * 3 + e[4]), f32(cy * 3 + e[5]));
+    p.frame = frame;
+    this.cliffCells.set(cy * this.W + cx, { f: [...f], p });
   }
 
   /** A line of single tiles from (x0, y0) to (x1, y1) (the original's own sample points are not worked out). */
@@ -1196,10 +1340,10 @@ export class AoeMapGen {
 
   private runObjects() {
     const W = this.W, H = this.H;
-    // Trees first, on every forest tile, row by row, as the original makes its terrain's own objects.
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      if (FOREST.has(this.terrain[this.at(x, y)])) this.place("tree", 0, x + 0.5, y + 0.5);
-    }
+    // First every tile's own things, row by row (FUN_00449110 over the whole map): the trees of a forest, the
+    // tufts and rocks of grass and desert, the rocks along a beach, a shallows' ripple.
+    this.shapes = this.slopes();
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) this.terrainUnits(x, y, true);
     this.lists.clearLinks();
     const lands = this.objectLands;
     for (const o of [...this.map.objects, ...this.extraObjects]) {

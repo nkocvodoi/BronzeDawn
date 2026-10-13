@@ -87,7 +87,8 @@ dat.map.terrains.forEach((t, i) => {
 // beside it, whether it needs flat ground (1: no steep slope, 2: flat), and whether making it draws one random
 // number more for a facing (a moving thing whose standing picture has several angles: genie type 30 and up,
 // sequence flag 2).
-const ids = new Set<number>([...Object.values(terrainUnits).flat().map((u) => u[0]), ...dat.randomMaps.slice(0, 9).flatMap((m) => m.units.map((u) => u.unit))]);
+// With the cliff pieces (264 to 272), which the cliffs put down before the objects.
+const ids = new Set<number>([...Object.values(terrainUnits).flat().map((u) => u[0]), ...dat.randomMaps.slice(0, 9).flatMap((m) => m.units.map((u) => u.unit)), 264, 265, 266, 267, 268, 269, 270, 271, 272]);
 const units: Record<number, object> = {};
 for (const id of [...ids].sort((a, b) => a - b)) {
   const u = gaia[id] ?? (dat.civs[1].units[id] as DatUnit | null);
