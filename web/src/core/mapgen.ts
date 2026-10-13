@@ -18,6 +18,10 @@ export const MAP_TYPES: [MapType, string][] = [
   ["highland", "Highland (lands apart in the sea, or all land)"], ["hill_country", "Hill Country (many hills and cliffs)"],
   ["narrows", "Narrows (shores close together across the water)"],
 ];
+/** The kinds checked against saved games of the original (replica/game/aoe1-mapgen.md §10). The others are
+ *  still made, and saved games on them still load, but the start screen does not offer them until a saved
+ *  game of each has been compared: Large Islands, Highland, Continental, Narrows. */
+export const MAP_CHECKED: ReadonlySet<MapType> = new Set<MapType>(["inland", "coastal", "mediterranean", "small_islands", "hill_country"]);
 /** One of the original's nine maps, made as the original makes it (aoemap.ts), from the world's seed. Ruins and
  *  Artifacts are Bronze Dawn's own afterwards: the original places them apart from the map generator. */
 export function generateMap(w: World, type: MapType = "inland", withRelics = true) {
