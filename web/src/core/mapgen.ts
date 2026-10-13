@@ -23,7 +23,7 @@ export const MAP_TYPES: [MapType, string][] = [
 export function generateMap(w: World, type: MapType = "inland", withRelics = true) {
   const map = w.map;
   for (let i = 0; i < map.shade.length; i++) map.shade[i] = w.rng.int(0, 255);
-  const gen = new AoeMapGen(AOE_MAPS[AOE_MAP_IDS[type]], map.width, w.players.length, w.seed >>> 0).generate();
+  const gen = new AoeMapGen(AOE_MAPS[AOE_MAP_IDS[type]], map.width, w.players.length, w.seed >>> 0, w.teams).generate();
   const starts = fillWorld(w, gen);
   w.nodes = w.nodes.filter((x) => x.alive);
   if (withRelics) relics(w, starts);
