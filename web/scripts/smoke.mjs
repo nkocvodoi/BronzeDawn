@@ -377,9 +377,12 @@ check(await g((c) => game.selection.join() === c.join(), crew), "Ctrl + 1 keeps 
 // Delete removes what is selected.
 const doomed = await g(() => { const v = game.world.unitsOf(0).find((u) => u.isVillager); game.selection = [v.id]; return v.id; });
 await page.keyboard.press("Delete");
-await wait(400);
+// Gone from the game at once; its picture with the next frame that handles the game's events, which on a
+// slow CI runner can be well after 400 ms: waited for, up to 3 s, rather than looked at once.
+await page.waitForFunction((id) => !game.world.unit(id) && !game.views.has(id), doomed, { timeout: 3000 }).catch(() => {});
 check(await g((id) => !game.world.unit(id), doomed), "Delete removes the selected unit");
-check(await g((id) => !game.views.has(id), doomed), "and its picture: nothing of it is left standing");
+const left = await g((id) => { const v = game.views.get(id); return v ? `still drawn (shown ${v.root.visible}, in the scene ${!!v.root.parent})` : ""; }, doomed);
+check(!left, `and its picture: nothing of it is left standing${left ? ` (${left})` : ""}`);
 // Deleted between two steps of the game (the order acts at once), a unit is still in the world's list
 // until the next step. A frame that runs no step handles the event, then draws: the picture must not be
 // made again from it. That frame is played here by hand, the game paused so that no step comes first.
