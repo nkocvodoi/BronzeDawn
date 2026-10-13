@@ -83,15 +83,9 @@ kèm cài đặt trận cho mọi máy).
 Bản đồ của pack hiện trong ô chọn Map với chữ "(art pack)" phía sau. Tắt pack thì game quay về bản đồ
 của chính nó.
 
-Có bản gốc của game trên máy thì `npm run import-aoe` tự ghi `maps` từ dữ liệu bản đồ của game vào
-`assets-local/manifest.json`. Với manifest đã nhập từ trước:
-
-```
-npm run aoe-maps -- assets-local/aoe-data/empires-ror.json assets-local/aoe-data/strings.json assets-local/manifest.json
-```
-
-Cũng như ảnh và tiếng nhập từ game, các bản đồ này chỉ nằm trên máy bạn hoặc trong pack của bạn, không
-đưa vào repo hay bản deploy.
+9 bản đồ của bản gốc không cần pack: game tự sinh chúng bằng số liệu của bản gốc (`web/src/core/aoemap.ts`,
+`data/aoe-maps.json`) và đã so với file save thật. `npm run import-aoe` vì vậy không ghi `maps` nữa, và xoá
+`maps` mà lần nhập trước đã ghi vào `assets-local/manifest.json`. `maps` của pack dành cho bản đồ của riêng bạn.
 
 ## Về bản quyền
 
