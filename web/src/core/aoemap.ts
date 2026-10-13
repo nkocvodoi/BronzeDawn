@@ -117,8 +117,9 @@ interface Slot {
   startRadius: number; edgeFade: number;
 }
 
-/** A thing to put on the map, as the generator places it: where, whose. Bronze Dawn makes them afterwards. */
-export interface Placed { unit: string; player: number; x: number; y: number; group: number }
+/** A thing to put on the map, as the generator places it: where, whose. Bronze Dawn makes them afterwards.
+ *  `id` is the original's unit, when the generator knows it; `gone`, one a later step took away again. */
+export interface Placed { unit: string; player: number; x: number; y: number; group: number; id?: number; gone?: boolean }
 
 /** How big each kind of thing is on the ground, as a half-width, and what it stands on: the collision test. */
 const SIZE: Record<string, number> = {
@@ -128,6 +129,23 @@ const SIZE: Record<string, number> = {
 const ON_WATER = new Set(["fish", "deep_fish"]);
 /** The terrains each thing may stand on (empires.dat's terrain restrictions, in data/aoe-maps.json). */
 const STAND_ON = new Map(Object.entries((maps as unknown as { standOn?: Record<string, number[]> }).standOn ?? {}).map(([k, v]) => [k, new Set(v)]));
+
+/** What the original asks of a thing when it puts one down (data/aoe-maps.json, from empires.dat). */
+interface AoeUnit {
+  size: [number, number, number]; clearance: [number, number]; on: Set<number>;
+  onTerrain: [number, number]; besideTerrain: [number, number]; hill: number; facing: number;
+}
+const DATA = maps as unknown as {
+  units?: Record<string, Omit<AoeUnit, "on"> & { on: number[] }>; terrainUnits?: Record<string, [number, number, number][]>;
+};
+const UNITS = new Map<number, AoeUnit>(Object.entries(DATA.units ?? {}).map(([k, u]) => [
+  Number(k), { ...u, size: u.size.map(Math.fround) as AoeUnit["size"], clearance: u.clearance.map(Math.fround) as AoeUnit["clearance"], on: new Set(u.on) },
+]));
+/** Each terrain's own things: [unit id, density in thousandths, centred]. */
+const TERRAIN_UNITS: [number, number, number][][] = Array.from({ length: 32 }, (_, t) => DATA.terrainUnits?.[t] ?? []);
+const f32 = Math.fround;
+/** -1/32767 and -0.5, as the original keeps them (a float). */
+const INV = f32(-1 / 32767), HALF = f32(-0.5), MILLI = f32(0.001);
 
 export class AoeMapGen {
   readonly W: number;
@@ -171,8 +189,9 @@ export class AoeMapGen {
     this.terrainInit();
     this.objectInit();
     this.elevationInit();
-    const cliffs = r.rand() > 0x1fff;
-    if (cliffs) this.planCliffs();
+    // The cliff module, three maps in four, and only when the map has cliffs at all (not Small Islands).
+    if (r.rand() > 0x1fff) this.planCliffs();
+    const cliffs = this.cliffPlan !== null;
     r.srand(this.seed);
     r.rand(); // "map started"
     this.runLands(); r.rand();
@@ -473,9 +492,95 @@ export class AoeMapGen {
           if (!chg && DR) chg = (UR && !R) || (U && !UR) || (DL && !D) || (L && !DL) || (UL && !L && !U);
           if (!chg && DL) chg = (UL && !L) || (U && !UL) || (DR && !D) || (R && !DR) || (UR && !R && !U);
         }
-        if (chg) { t[this.at(x, y)] = base; changed = true; }
+        // A tile set this way gets its new terrain's own things, as every tile the game sets does (FUN_00449010).
+        if (chg) { t[this.at(x, y)] = base; this.terrainUnits(x, y, false); changed = true; }
       }
     }
+  }
+
+  // ---- a terrain's own things, and whether a thing may stand somewhere
+
+  /** The things a tile's terrain brings (FUN_00448600 when a tile is set; FUN_004481b0, `all`, when the objects
+   *  step goes over the whole map): for each, a spot (random, or the middle of the tile), then a roll against its
+   *  density, then the thing if it fits. Each roll is drawn whether or not anything comes of it. */
+  private terrainUnits(x: number, y: number, all: boolean) {
+    const r = this.rng;
+    let fx = f32(0), fy = f32(0);
+    for (const [id, density, centred] of TERRAIN_UNITS[this.terrain[this.at(x, y)]]) {
+      for (let k = density; k > 0; k -= 1000) {
+        if (centred === 0) { fx = f32(x - r.rand() * INV); fy = f32(y - r.rand() * INV); }
+        else if (centred === 1 || !all) { fx = f32(x - HALF); fy = f32(y - HALF); }
+        const roll = k < 1000 ? Math.trunc((r.rand() * 1000) / 0x7fff) < k : true;
+        if (roll && this.canPlace(id, fx, fy, false, false) === 0) this.create(id, "-", 0, fx, fy);
+      }
+    }
+  }
+
+  /** Whether a thing of unit `id` may be put at (fx, fy): 0 if so (the original's FUN_00443700, its arguments
+   *  as the generator passes them: the ground's slope looked at, nothing explored asked for). `clearance`: the
+   *  thing's clearance for its size, else its footprint; `others`: as the lands' own objects do, test against
+   *  things that stand on the ground even when this one does not. */
+  canPlace(id: number, fx: number, fy: number, clearance: boolean, others: boolean): number {
+    const u = UNITS.get(id);
+    if (!u) return 7;
+    const W = this.W, H = this.H, t = this.terrain;
+    const sx = clearance ? u.clearance[0] : u.size[0], sy = clearance ? u.clearance[1] : u.size[1];
+    const L = f32(fx - sx), R = f32(fx + sx - MILLI), T = f32(fy - sy), B = f32(fy + sy - MILLI);
+    if (L < 0 || W <= R || T < 0 || H <= B) return 7;
+    const tx0 = Math.trunc(L), tx1 = Math.trunc(R), ty0 = Math.trunc(T), ty1 = Math.trunc(B);
+    let bx0 = tx0, bx1 = tx1, by0 = ty0, by1 = ty1;
+    const [p0, p1] = u.onTerrain;
+    if (p0 >= 0 || p1 >= 0) {
+      const cx = Math.trunc(fx), cy = Math.trunc(fy), c = t[this.at(cx, cy)];
+      if (c !== p0 && c !== p1) return 1;
+      bx0 = bx1 = cx; by0 = by1 = cy;
+    }
+    const [s0, s1] = u.besideTerrain;
+    if (s0 >= 0 || s1 >= 0) {
+      // The row above, the column to the right, the row below, the column to the left: no corners.
+      let near = false;
+      const see = (a: number, b: number) => { const v = t[this.at(a, b)]; if (v === s0 || v === s1) near = true; };
+      if (by0 - 1 >= 0) for (let a = bx0; a <= bx1; a++) see(a, by0 - 1);
+      if (bx1 + 1 < W) for (let b = by0; b <= by1; b++) see(bx1 + 1, b);
+      if (by1 + 1 < H) for (let a = bx1; a >= bx0; a--) see(a, by1 + 1);
+      if (bx0 - 1 >= 0) for (let b = by1; b >= by0; b--) see(bx0 - 1, b);
+      if (!near) return 1;
+    }
+    for (let a = tx0; a <= tx1; a++) for (let b = ty0; b <= ty1; b++) {
+      if (!u.on.has(t[this.at(a, b)])) return 2;
+      const s = this.shapeAt(a, b);
+      if (u.hill === 1 && s !== 0 && s !== 5 && s !== 6 && s !== 7 && s !== 8) return 3;
+      if (u.hill === 2 && s !== 0) return 3;
+    }
+    if (sx <= 0 && sy <= 0) return 0;
+    if (!others && u.size[2] <= 0) return 0;
+    const x0 = Math.max(0, Math.trunc(f32(fx - 3))), x1 = Math.min(W - 1, Math.trunc(f32(fx + 3)));
+    const y0 = Math.max(0, Math.trunc(f32(fy - 3))), y1 = Math.min(H - 1, Math.trunc(f32(fy + 3)));
+    for (let b = y0; b <= y1; b++) for (let a = x0; a <= x1; a++) for (const p of this.grid.get(this.at(a, b)) ?? []) {
+      if (p.gone) continue;
+      const m = p.id === undefined ? undefined : UNITS.get(p.id);
+      if (!m || m.size[0] <= 0 || m.size[1] <= 0) continue;
+      if ((m.size[2] > 0) !== (u.size[2] > 0)) continue;
+      // Worked out on the FPU's stack, so not rounded to a float.
+      if (Math.abs(p.x - fx) < m.size[0] + sx && Math.abs(p.y - fy) < m.size[1] + sy) return 6;
+    }
+    return 0;
+  }
+
+  /** The slope of a tile (the original's tile shape): 0 flat. Worked out from the elevation once it is set. */
+  private shapes: Uint8Array | null = null;
+  private shapeAt(x: number, y: number) { return this.shapes ? this.shapes[this.at(x, y)] : 0; }
+
+  /** Makes a thing. As in the original, every thing made leaves the random numbers where it found them (one
+   *  drawn, then the generator set to it), and a moving thing with several facings draws one more for its own. */
+  private create(id: number, unit: string, player: number, fx: number, fy: number) {
+    const p: Placed = { unit, player, x: fx, y: fy, group: this.groupId, id };
+    this.placed.push(p);
+    const k = this.at(Math.trunc(fx), Math.trunc(fy));
+    (this.grid.get(k) ?? this.grid.set(k, []).get(k)!).push(p);
+    this.rng.srand(this.rng.rand());
+    if (UNITS.get(id)?.facing) this.rng.rand();
+    return p;
   }
 
   // ---- start zones: kept free of patches and hills, a ring round each land with a start radius
@@ -835,12 +940,13 @@ export class AoeMapGen {
         L.release(local);
         return;
       }
-      if (water(this.terrain[this.at(cx, cy)])) {
-        const x0 = Math.max(0, cx - r.R(2) - 1), y0 = Math.max(0, cy - r.R(2) - 1);
-        const x1 = Math.min(W - 1, r.R(2) + 1 + cx), y1 = Math.min(H - 1, r.R(3) + 1 + cy);
+      // The tile stepped onto is the one looked at: so the start is, the target never (asm 472e4c).
+      if (water(this.terrain[this.at(nx, ny)])) {
+        const x0 = Math.max(0, nx - r.R(2) - 1), y0 = Math.max(0, ny - r.R(2) - 1);
+        const x1 = Math.min(W - 1, r.R(2) + 1 + nx), y1 = Math.min(H - 1, r.R(3) + 1 + ny);
         for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (water(this.terrain[this.at(x, y)])) L.insertSorted(local, this.at(x, y), 0);
       } else {
-        for (const [x, y] of [[cx - 1, cy], [cx + 1, cy], [cx, cy - 1], [cx, cy + 1]]) {
+        for (const [x, y] of [[nx - 1, ny], [nx + 1, ny], [nx, ny - 1], [nx, ny + 1]]) {
           if (x >= 0 && y >= 0 && x < W && y < H && water(this.terrain[this.at(x, y)])) L.insertSorted(local, this.at(x, y), 0);
         }
       }
@@ -896,21 +1002,21 @@ export class AoeMapGen {
     while (d !== 0 && !found) {
       let bS = false, bN = false, bW = false, bE = false;
       const res = (v: boolean | "found") => { if (v === "found") found = true; return v === true; };
-      if (y < H - 1) { const s = y < ty ? 1 : -1, gg = g + cost(x, y + 1); bS = res(visit(x, y + 1, 7, gg, gg + (d - s))); }
-      if (!found && y > 0) { const s = ty < y ? 1 : -1, gg = g + cost(x, y - 1); bN = res(visit(x, y - 1, 6, gg, gg + (d - s))); }
+      if (y < H - 1) { const s = y < ty ? 1 : -1, gg = Math.fround(g + cost(x, y + 1)); bS = res(visit(x, y + 1, 7, gg, gg + (d - s))); }
+      if (!found && y > 0) { const s = ty < y ? 1 : -1, gg = Math.fround(g + cost(x, y - 1)); bN = res(visit(x, y - 1, 6, gg, gg + (d - s))); }
       if (!found && x > 0) {
-        const s = tx < x ? 1 : -1, dW = Math.fround(d - s), gg = g + cost(x - 1, y);
+        const s = tx < x ? 1 : -1, dW = Math.fround(d - s), gg = Math.fround(g + cost(x - 1, y));
         bW = res(visit(x - 1, y, 4, gg, gg + dW));
-        if (!found && y > 0) { const g2 = g + Math.fround(1.36) * cost(x - 1, y - 1); res(diag(x - 1, y - 1, 8, bN && bW, g2, g2 + (dW - (ty < y ? Math.fround(0.41) : -Math.fround(0.41))))); }
-        if (!found && y < H - 1) { const g2 = g + Math.fround(1.36) * cost(x - 1, y + 1); res(diag(x - 1, y + 1, 9, bS && bW, g2, g2 + (dW - (y < ty ? Math.fround(0.41) : -Math.fround(0.41))))); }
+        if (!found && y > 0) { const g2 = Math.fround(g + Math.fround(1.36) * cost(x - 1, y - 1)); res(diag(x - 1, y - 1, 8, bN && bW, g2, g2 + (dW - (ty < y ? Math.fround(0.41) : -Math.fround(0.41))))); }
+        if (!found && y < H - 1) { const g2 = Math.fround(g + Math.fround(1.36) * cost(x - 1, y + 1)); res(diag(x - 1, y + 1, 9, bS && bW, g2, g2 + (dW - (y < ty ? Math.fround(0.41) : -Math.fround(0.41))))); }
       }
       if (!found && x < W - 1) {
         const s = x < tx ? 1 : -1;
         d = Math.fround(d - s);
-        const gg = g + cost(x + 1, y);
+        const gg = Math.fround(g + cost(x + 1, y));
         bE = res(visit(x + 1, y, 5, gg, gg + d));
-        if (!found && y > 0) { const g2 = g + Math.fround(1.36) * cost(x + 1, y - 1); res(diag(x + 1, y - 1, 10, bN && bE, g2, g2 + (d - (ty < y ? Math.fround(0.4) : -Math.fround(0.4))))); }
-        if (!found && y < H - 1) { const g2 = g + Math.fround(1.36) * cost(x + 1, y + 1); res(diag(x + 1, y + 1, 11, bS && bE, g2, g2 + (d - (y < ty ? Math.fround(0.4) : -Math.fround(0.4))))); }
+        if (!found && y > 0) { const g2 = Math.fround(g + Math.fround(1.36) * cost(x + 1, y - 1)); res(diag(x + 1, y - 1, 10, bN && bE, g2, g2 + (d - (ty < y ? Math.fround(0.4) : -Math.fround(0.4))))); }
+        if (!found && y < H - 1) { const g2 = Math.fround(g + Math.fround(1.36) * cost(x + 1, y + 1)); res(diag(x + 1, y + 1, 11, bS && bE, g2, g2 + (d - (y < ty ? Math.fround(0.4) : -Math.fround(0.4))))); }
       }
       if (found) break;
       const n = L.pop(open);
