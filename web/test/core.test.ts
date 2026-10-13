@@ -1175,6 +1175,16 @@ describe("the original's rules", () => {
     expect(w.blockerTech("phalanx_tech", 1)).not.toContain("Not available");
   });
 
+  it("the Catapult Trireme comes after the Trireme, as in the original's data", () => {
+    const w = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["greek", "greek"] });
+    const p = w.players[0];
+    p.age = 3;
+    p.res.set(Res.food, 5000); p.res.set(Res.wood, 5000);
+    expect(w.blockerTech("catapult_trireme_tech", 0)).toContain("Research Trireme first");
+    const learn = (id: string) => (w as unknown as { applyTech(p: unknown, t: unknown): void }).applyTech(p, RULES.techs.get(id));
+    learn("war_galley_tech"); learn("trireme_tech");
+    expect(w.blockerTech("catapult_trireme_tech", 0)).toBeNull();
+  });
   it("each civilization lacks what its tech tree lacks", () => {
     const w = new World(RULES, 1, ["A", "B", "C"], 24, false, { civs: ["egyptian", "greek", "roman"] });
     expect(w.blockerUnit("cavalry", 0)).toContain("Not available");      // no Cavalry for the Egyptians
