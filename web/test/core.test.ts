@@ -618,6 +618,19 @@ describe("the original's rules", () => {
     expect(by.every((u) => u.order.kind === "sweep" && u.pos.distance(new Tile(18, 20).center) < 4)).toBe(true);
   });
 
+  it("no building goes up where someone stands: people and animals are not pushed aside for it", () => {
+    const w = blank(30);
+    const v = w.spawnUnit("villager", 0, new Tile(10, 10).center);
+    w.spawnAnimal("gazelle", new Tile(20, 10).center);
+    expect(w.canPlace("house", new Tile(10, 10))).toBe(false); // a villager on its tiles
+    expect(w.canPlace("house", new Tile(9, 9))).toBe(false); // the villager on its far corner
+    expect(w.canPlace("house", new Tile(19, 10))).toBe(false); // a gazelle there
+    expect(w.canPlace("house", new Tile(12, 12))).toBe(true); // beside them, it can
+    run(w, 2);
+    expect(v.pos.distance(new Tile(10, 10).center)).toBeLessThan(0.01); // nobody was moved
+    expect(w.canPlace("house", new Tile(10, 10))).toBe(false);
+  });
+
   it("lions hunt gazelles when no one is near, and gazelles run from lions", () => {
     const w = blank();
     const herd = gazelles(w, new Tile(12, 12), 4);
