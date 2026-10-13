@@ -960,8 +960,12 @@ export class AIController {
    *  shared 3 farms over 1,800 unspent wood. */
   private placeFarm(w: World, home: Vec2, villagers: Unit[]) {
     const granary = w.buildingsOf(this.player).find((b) => b.def.id === "granary" && b.complete)?.center;
+    // By the granary, else the Town Center; with both full (a big town has its buildings, fields and woods
+    // within 10 tiles of them by 20 minutes), further out. Kept to 10, a town of 23 had 6 farms at 40 minutes,
+    // 1,700 of 1,800 tries finding no room, and starved with 1,000 wood in hand.
     const near = granary && this.findSpot(w, "farm", granary, 3, 10, false) ? granary : home;
-    this.placeNear(w, "farm", near, 3, 10, villagers, false);
+    const far = near === home && !this.findSpot(w, "farm", home, 3, 10, false) ? 18 : 10;
+    this.placeNear(w, "farm", near, 3, far, villagers, false);
   }
 
   // ---- research
