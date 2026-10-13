@@ -360,11 +360,16 @@ export class Game {
     // Cliffs stand up from the ground: a rock sprite on each cliff tile, drawn in depth order with everything else.
     for (const c of this.cliffs) c.destroy();
     this.cliffs = [];
+    // Pieces about three tiles across (the original's art) go on the line the map drew only: the rock's foot on
+    // either side is theirs already. Pieces of a tile or so go on every cliff tile. (A save from before the
+    // foot was kept has no cliffRim: every tile its line.)
+    const wide = cliffPic(0, 0).w > 2.4 * 2 * HALF_W;
+    const line = (j: number) => map.terrain[j] === Terrain.cliff && !(wide && map.cliffRim?.[j]);
     for (let i = 0; i < map.terrain.length; i++) {
-      if (map.terrain[i] !== Terrain.cliff) continue;
+      if (!line(i)) continue;
       const at = new Vec2(i % map.width + 0.5, Math.floor(i / map.width) + 0.5);
       const x = i % map.width, y = Math.floor(i / map.width);
-      const cliffAt = (cx: number, cy: number) => cx >= 0 && cy >= 0 && cx < map.width && cy < map.height && map.terrain[cy * map.width + cx] === Terrain.cliff;
+      const cliffAt = (cx: number, cy: number) => cx >= 0 && cy >= 0 && cx < map.width && cy < map.height && line(cy * map.width + cx);
       const joins = (cliffAt(x - 1, y) ? 1 : 0) | (cliffAt(x + 1, y) ? 2 : 0) | (cliffAt(x, y - 1) ? 4 : 0) | (cliffAt(x, y + 1) ? 8 : 0);
       const pic = cliffPic(map.shade[i], joins);
       const sp = new Sprite(pic.texture);

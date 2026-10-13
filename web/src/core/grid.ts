@@ -24,7 +24,11 @@ export class GridMap {
    *  turn and puts it back; every passability question below answers for it. */
   naval = false;
 
+  /** 1 on a cliff tile that is only the rock's foot, beside the line the map drew: it blocks as cliff does, and
+   *  art whose cliff pieces are three tiles across draws none of its own there. */
+  cliffRim: Uint8Array;
   constructor(readonly width: number, readonly height: number) {
+    this.cliffRim = new Uint8Array(width * height);
     this.terrain = new Uint8Array(width * height);
     this.occupant = new Int32Array(width * height);
     this.solid = new Uint8Array(width * height);

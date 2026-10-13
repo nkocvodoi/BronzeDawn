@@ -1282,6 +1282,35 @@ export function fillWorld(w: World, gen: AoeMapGen) {
       default: break; // pigeons and the like: nothing in Bronze Dawn
     }
   }
+  widenCliffs(w, gen);
   w.startTiles = starts;
   return starts;
+}
+
+/** The generator draws a cliff as a line one tile wide, but a piece of the original's cliff art is about three
+ *  tiles across: people stood on its rock on either side. So each cliff tile also takes the land on all sides
+ *  of it, once everything is placed: never water, nor a tile with a building, a tree, a mine or anyone on it, nor
+ *  one next to a building (a Town Center is not walled in). */
+function widenCliffs(w: World, gen: AoeMapGen) {
+  const map = w.map, W = gen.W, H = gen.H;
+  const taken = new Set<number>();
+  for (const u of w.units) taken.add(Math.floor(u.pos.y) * W + Math.floor(u.pos.x));
+  const nearBuilding = new Set<number>();
+  for (const b of w.buildings) {
+    const f = b.footprint;
+    for (let y = f.minY - 1; y <= f.maxY + 1; y++) for (let x = f.minX - 1; x <= f.maxX + 1; x++) nearBuilding.add(y * W + x);
+  }
+  const add: number[] = [];
+  for (const i of gen.cliff) {
+    const cx = i % W, cy = Math.floor(i / W);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const x = cx + dx, y = cy + dy, j = y * W + x;
+      if (x < 0 || y < 0 || x >= W || y >= H || map.terrain[j] === Terrain.cliff) continue;
+      const t = map.terrain[j];
+      if (t !== Terrain.grass && t !== Terrain.sand && t !== Terrain.dirt) continue;
+      if (taken.has(j) || nearBuilding.has(j) || map.occupant[j] !== 0) continue;
+      add.push(j);
+    }
+  }
+  for (const j of add) { map.terrain[j] = Terrain.cliff; map.cliffRim[j] = 1; }
 }
