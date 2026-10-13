@@ -22,6 +22,12 @@ const WET = new Set<number>([T.water, T.deep]);
 /** What may stand next to each terrain in a patch (the dat's "impassable" field): 16 is the cliff line. */
 const IMPASSABLE: Record<number, number> = { 0: 16, 1: 15, 2: 14, 4: 255, 6: 14, 10: 16, 13: 14, 19: 16, 20: 16, 22: 15 };
 
+/** Maps whose "shallows" setup (half of them: the lands put in zones apart, rivers left between, fords across)
+ *  is left out for now: Inland. The one saved game of the original to compare with (replica/game/aoe1-mapgen.md
+ *  §10) fell on a map without it, so the rivers have not been checked, and they cut every base off from its
+ *  neighbours but for the fords. The rolls are still drawn, so the rest of the setup goes as before. */
+const RIVERS_OFF = new Set<number>([3]);
+
 export interface AoeLand {
   landId: number; terrain: number; spacing: number; baseSize: number; zone: number; placement: number;
   baseX: number; baseY: number; proportion: number; byPlayer: number; startRadius: number; edgeFade: number; clumpiness: number;
@@ -201,9 +207,11 @@ export class AoeMapGen {
     if ((id >= 2 && id <= 6) || id === 8) {
       if (r.rand() < 0x3fff) {
         const even = r.rand() < 0x3fff, odd = r.rand() < 0x3fff;
-        this.slots.forEach((s, i) => { if (i % 2 === 0) s.zone = even ? 0 : i; else s.zone = odd ? 1 : i; });
-        this.shallowsOn = true;
-        this.shallowPoints = this.slots.map((s) => ({ x: s.x, y: s.y }));
+        if (!RIVERS_OFF.has(id)) {
+          this.slots.forEach((s, i) => { if (i % 2 === 0) s.zone = even ? 0 : i; else s.zone = odd ? 1 : i; });
+          this.shallowsOn = true;
+          this.shallowPoints = this.slots.map((s) => ({ x: s.x, y: s.y }));
+        }
         r.rand(); // "shallows initialization"
       } else if (id === 4) { each((s) => { s.zone = 0; }); this.baseTerrain = T.grass; }
       else if (id >= 5) each((s) => { s.zone = 0; });
