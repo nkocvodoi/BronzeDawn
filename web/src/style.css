@@ -44,6 +44,7 @@ canvas#game { position: fixed; inset: 0; display: block; }
   background: no-repeat calc(var(--u) * 2) center / calc(var(--u) * 16) calc(var(--u) * 16); image-rendering: pixelated;
 }
 #pop { margin-left: calc(var(--u) * 6); }
+#match-time { margin-left: calc(var(--u) * 14); white-space: nowrap; }
 #pop.warn, #clock.warn { color: #b00000; }
 #topbar button {
   font: inherit; color: #000; cursor: pointer; width: calc(var(--u) * 115); padding: 0;
