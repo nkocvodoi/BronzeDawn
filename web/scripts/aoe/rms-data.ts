@@ -98,7 +98,7 @@ for (const id of [...ids].sort((a, b) => a - b)) {
     size: u.collisionSize, clearance: u.clearanceSize,
     on: (dat.terrainRestrictions[u.terrainRestriction] ?? []).map((v, t) => (v > 0 ? t : -1)).filter((t) => t >= 0),
     onTerrain: u.placementTerrain, besideTerrain: u.placementSideTerrain, hill: u.hillMode,
-    facing: u.type >= 30 && g && (g.sequenceType & 2) !== 0 && g.angleCount > 1 ? 1 : 0,
+    facing: u.type >= 30 && g && g.angleCount > 1 ? 1 : 0, type: u.type,
     // A building is made finished, which draws one more (genie type 80); whether it may stand on things that
     // can be built over.
     building: u.type === 80 ? 1 : 0, buildOn: u.canBeBuiltOn,

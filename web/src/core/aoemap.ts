@@ -124,7 +124,7 @@ export interface Placed { unit: string; player: number; x: number; y: number; gr
 /** What the original asks of a thing when it puts one down (data/aoe-maps.json, from empires.dat). */
 interface AoeUnit {
   size: [number, number, number]; clearance: [number, number]; on: Set<number>;
-  onTerrain: [number, number]; besideTerrain: [number, number]; hill: number; facing: number; building: number; buildOn: number;
+  onTerrain: [number, number]; besideTerrain: [number, number]; hill: number; facing: number; building: number; buildOn: number; type: number;
 }
 const DATA = maps as unknown as {
   units?: Record<string, Omit<AoeUnit, "on"> & { on: number[] }>; terrainUnits?: Record<string, [number, number, number][]>;
@@ -611,14 +611,18 @@ export class AoeMapGen {
   private shapeAt(x: number, y: number) { return this.shapes ? this.shapes[this.at(x, y)] : 0; }
 
   /** Makes a thing. As in the original, every thing made leaves the random numbers where it found them (one
-   *  drawn, then the generator set to it), and a moving thing with several facings draws one more for its own. */
+   *  drawn, then the generator set to it), and a moving thing with several facings draws one more for its own.
+   *  A unit (genie type 70: villagers, animals) draws one more before all that and one after: the saves show
+   *  both (the stone and gold round each Town Center come out only so), the code read so far does not say where. */
   private create(id: number, unit: string, player: number, fx: number, fy: number) {
+    if (UNITS.get(id)?.type === 70) this.rng.rand();
     const p: Placed = { unit, player, x: fx, y: fy, group: this.groupId, id };
     this.placed.push(p);
     const k = this.at(Math.trunc(fx), Math.trunc(fy));
     (this.grid.get(k) ?? this.grid.set(k, []).get(k)!).push(p);
     this.rng.srand(this.rng.rand());
     if (UNITS.get(id)?.facing) this.rng.rand();
+    if (UNITS.get(id)?.type === 70) this.rng.rand();
     return p;
   }
 
