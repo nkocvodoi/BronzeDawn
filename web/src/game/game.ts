@@ -2122,7 +2122,13 @@ export class Game {
       const o = u.order;
       const node = u.lastNodeType ?? "";
       if (o.kind === "build" || o.kind === "repair") tool = "hammer";
-      else if (o.kind === "attack") tool = "spear"; // hunting
+      else if (o.kind === "attack") {
+        tool = "spear";
+        // Hunting keeps the hunter's sheet; anyone or anything else is fought with the plain villager's attack
+        // (the hunter's work is squatting over the kill, which a fight is not).
+        const target = this.world.entity(o.id);
+        if (!(target instanceof Unit && target.isAnimal)) job = "fight";
+      }
       else if (o.kind === "gather" || o.kind === "return") {
         if (node === "farm") tool = "hoe";
         else if (node === "fish") tool = "net";
