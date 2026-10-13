@@ -352,6 +352,20 @@ await page.waitForFunction(() => game.routes.parent !== null && game.routes.boun
 const route = await g((id) => { const u = game.world.unit(id); return { drawn: game.routes.parent !== null && game.routes.bounds.width > 0, order: u?.order.kind, waypoints: u?.waypoints.length, selected: game.selection.join() }; }, scout);
 check(route.drawn, `and its route is drawn, with a flag at each point${route.drawn ? "" : ` (${JSON.stringify(route)})`}`);
 
+// A group laid a walk with Shift + click: one flag per click, not one per unit. A plain right-click: none.
+const band = await g(() => { const vs = game.world.unitsOf(0).filter((u) => u.isVillager).slice(0, 3).map((u) => u.id); game.selection = vs; return vs; });
+const bp = await at(band[0]);
+await page.mouse.click(bp.x + 30, bp.y + 90, { button: "right" });
+await wait(300);
+check(await g((ids) => ![...game.flagRoutes.values()].some((r) => r.ids.some((id) => ids.includes(id))) && game.routes.bounds.width === 0, band),
+  "a plain right-click sends a group off with no flags drawn");
+await page.keyboard.down("Shift");
+for (const [dx, dy] of [[-90, 120], [90, 120]]) await g(([x, y]) => game.issue({ k: "waypoint", ids: [...game.selection], ...game.toWorld(x, y) }), [bp.x + dx, bp.y + dy]);
+await page.keyboard.up("Shift");
+await wait(300);
+check(await g((ids) => { const rs = [...game.flagRoutes.values()].filter((r) => r.ids.some((id) => ids.includes(id))); return rs.length === 1 && rs[0].points.length === 2; }, band),
+  "Shift-clicks for a group of three lay one route, one flag per click");
+
 const pair = await g(() => { const vs = game.world.unitsOf(0).filter((u) => u.isVillager).slice(0, 2).map((u) => u.id); game.selection = vs; return vs; });
 await page.keyboard.press("Tab");
 check(await g((p) => game.selection[0] === p[1] && game.selection[1] === p[0], pair), "Tab brings the next unit of the selection forward");
