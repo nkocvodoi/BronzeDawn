@@ -58,6 +58,9 @@ export type WinHow = "conquest" | "wonder" | "score" | "time" | "ruins" | "artif
  * The whole simulation. No rendering in here: it runs the same in the browser,
  * in tests, and in a headless AI-versus-AI match.
  */
+/** How near someone on foot comes before a gazelle steps out of the way, in tiles. */
+const SHY = 2;
+
 /** How far round a flag soldiers clear the ground (the Flag order), in tiles. */
 export const SWEEP_RADIUS = 6;
 
@@ -76,7 +79,7 @@ export class World {
   winner: number | null = null;
   events: GameEvent[] = [];
   ais: AIController[] = [];
-  /** Where each herd of gazelles is grazing, by herd: its members keep near it, and it moves now and then. */
+  /** Where each herd of gazelles was set down, by herd (the map keeps herds on open land with it). */
   herdGoals = new Map<number, Vec2>();
   private nextHerd = 1;
   /** Start tile of each player's town center. */
@@ -1706,17 +1709,22 @@ export class World {
     }
     if (u.scanTimer > 0) return;
     u.scanTimer = 0.5 + (u.id % 5) * 0.05;
-    const flees = a.behavior === "flee";
-    // Gazelles run from people and from lions; lions hunt people, and gazelles when no one is near.
-    const near = this.nearestPlayerUnit(u.pos, flees ? 3 : a.los) ?? (flees ? this.nearestAnimal(u.pos, 3, "aggressive") : null);
+    if (a.behavior === "flee") {
+      // A gazelle grazes where it stands, as in the original: it runs from a lion, and steps out of the way
+      // of anyone walking up to it, stopping again a little further on, so villagers can drive it home.
+      const lion = this.nearestAnimal(u.pos, 3, "aggressive");
+      if (lion) { this.flee(u, lion.pos); return; }
+      const walker = this.nearestWalker(u.pos, SHY);
+      if (walker) this.stepAside(u, walker.pos);
+      return;
+    }
+    // Lions hunt people, and gazelles when no one is near.
+    const near = this.nearestPlayerUnit(u.pos, a.los);
     if (near && a.behavior === "aggressive") { u.order = { kind: "attack", id: near.id }; return; }
-    if (near && flees) { this.flee(u, near.pos); return; }
     if (a.behavior === "aggressive" && a.id === "lion") {
       const prey = this.nearestAnimal(u.pos, a.los + 2, "flee"); // a lion spots a herd before it is seen
       if (prey) { u.order = { kind: "attack", id: prey.id }; return; }
     }
-    const goal = u.herd ? this.herdGoals?.get(u.herd) : undefined;
-    if (goal) { this.graze(u, goal); return; }
     // Wander a little, now and then.
     if (this.rng.unit() < 0.08) {
       const t = new Vec2(u.pos.x + this.rng.int(-3, 3), u.pos.y + this.rng.int(-3, 3));
@@ -1724,23 +1732,28 @@ export class World {
     }
   }
 
-  /** A gazelle with its herd: it strays back if it is far from where the herd grazes, and wanders about
-   *  there now and then; once in a while the herd moves on a few tiles, all of it. */
-  private graze(u: Unit, goal: Vec2) {
-    const herd = this.herdGoals;
-    if (this.rng.unit() < 0.01) {
-      const t = new Vec2(goal.x + this.rng.int(-4, 4), goal.y + this.rng.int(-4, 4));
-      if (this.map.inside(t.tile) && this.map.passable(t.tile) && this.openLand(t.tile)) { herd.set(u.herd, t); goal = t; }
-    }
-    const far = u.pos.distance(goal) > 2.5;
-    if (!far && this.rng.unit() >= 0.08) return;
-    const t = new Vec2(goal.x + (this.rng.unit() * 3 - 1.5), goal.y + (this.rng.unit() * 3 - 1.5));
-    if (this.map.passable(t.tile)) this.move(GAIA, [u.id], t);
+  /** A gazelle steps away from someone come within SHY tiles, to stand SHY + 1 from them, and grazes on there. */
+  private stepAside(u: Unit, from: Vec2) {
+    const d = u.pos.sub(from), len = Math.max(0.1, d.length);
+    let to = u.pos.add(d.mul(Math.max(0.8, SHY + 1 - len) / len));
+    if (!this.map.passable(to.tile)) { const t = this.map.nearestPassable(to.tile, 2); if (!t) return; to = t.center; }
+    this.move(GAIA, [u.id], to);
   }
 
-  /** A gazelle runs from a threat: the one struck or come near, as in the original, not the whole herd
-   *  (a stampede at every spear made hunting a chase, and the hard AI lost half its games); it goes back to
-   *  its herd once the threat is gone. */
+  /** The nearest player's unit on foot (not a boat, a passenger or an Artifact) within r, if any. */
+  private nearestWalker(p: Vec2, r: number): Unit | null {
+    let best: Unit | null = null, bestD = r;
+    this.eachUnitNear(p, r, (o) => {
+      if (!o.alive || o.owner < 0 || o.isBoat || o.isRelic || o.aboard !== null) return;
+      const d = o.pos.distance(p);
+      if (d <= bestD) { bestD = d; best = o; }
+    });
+    return best;
+  }
+
+  /** A gazelle runs from a threat: the one struck, or a lion come near, as in the original, not the whole
+   *  herd (a stampede at every spear made hunting a chase, and the hard AI lost half its games); it grazes
+   *  where it stops. */
   private flee(u: Unit, from: Vec2) {
     const d = u.pos.sub(from);
     const len = Math.max(0.1, d.length);
