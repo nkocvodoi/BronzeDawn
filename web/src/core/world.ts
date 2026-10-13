@@ -393,6 +393,8 @@ export class World {
       if (!this.map.inside(t) || (def.on_water ? ground !== Terrain.water : !buildable(ground)) || this.map.occupantAt(t) !== 0) return false;
       if (player !== null && !this.fog[player].isExplored(t)) return false;
     }
+    // Nor where anyone stands, people or animals, as in the original: they are not pushed aside for it.
+    if (this.standingIn(fp)) return false;
     if (def.on_water) {
       // ...at the shore, so villagers can build it from the land beside it.
       let shore = false;
@@ -405,6 +407,15 @@ export class World {
       if (!shore) return false;
     }
     return true;
+  }
+
+  /** Whether any unit on the map (not one aboard a boat) stands on a tile of `fp`. */
+  private standingIn(fp: Footprint) {
+    let found = false;
+    this.eachUnitNear(fp.center, fp.size * 0.75 + 1, (u) => {
+      if (!found && u.alive && u.aboard === null && fp.contains(u.pos.tile)) found = true;
+    });
+    return found;
   }
 
   /** Why the player cannot place this building now, or null when they can. */
