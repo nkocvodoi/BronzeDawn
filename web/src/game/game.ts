@@ -7,7 +7,7 @@ import { Res, RES_KEY as RES_NAME, ResBag, Rules } from "../core/rules";
 import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import { AOE_SIZES } from "../core/aoemap";
-import { MAP_CHECKED, MAP_TYPES, MapType } from "../core/mapgen";
+import { MAP_TYPES, MapType } from "../core/mapgen";
 import { isMapSpec, RandomMapSpec } from "../core/rmspec";
 import { SmartResult, Stance, STANCES, Victory, WinHow, World, WorldOptions } from "../core/world";
 import { loadWorld, SaveFile, saveWorld } from "../core/save";
@@ -180,7 +180,7 @@ export class Game {
   /** Farms block the way, as in the original; off, they are walked over as in the remaster. Remembered. */
   farmsBlock = store.get("bd-farms-block") === "on";
   /** The kind of map: Inland with lakes, or one with a sea. Remembered. */
-  mapType: MapType = MAP_CHECKED.has(store.get("bd-map-type") as MapType) ? (store.get("bd-map-type") as MapType) : "inland";
+  mapType: MapType = MAP_TYPES.some(([id]) => id === store.get("bd-map-type")) ? (store.get("bd-map-type") as MapType) : "inland";
   /** Or a map from an art pack, by name, played instead of `mapType` while the pack is in use. Remembered. */
   packMap: string | null = store.get("bd-pack-map") || null;
   /** The rest of the original's game settings, remembered between games. */
@@ -472,7 +472,7 @@ export class Game {
     this.started = false;
     this.hud.playing(false);
     const civs = this.rules.civs.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
-    const opts = (xs: [string, string, boolean?][], on: string) => xs.map(([id, name, off]) => `<option value="${id}"${id === on ? " selected" : ""}${off ? " disabled" : ""}>${name}</option>`).join("");
+    const opts = (xs: [string, string][], on: string) => xs.map(([id, name]) => `<option value="${id}"${id === on ? " selected" : ""}>${name}</option>`).join("");
     const hosting = this.online?.role === "host" && this.online.friends.length > 0;
     this.hud.showOverlay(hosting ? "Multiplayer" : "Single Player", [
       hosting ? "Choose the settings for everyone, then start at a level for the computer players." : "Lead a people from the Stone Age to the Iron Age: gather, build, research, and destroy the enemy, or raise a Wonder.",
@@ -1145,10 +1145,8 @@ export class Game {
     for (const m of ASSETS.manifest.maps ?? []) if (isMapSpec(m)) byName.set(m.name, m);
     return [...byName.values()];
   }
-  /** Every kind of map, those not yet checked against the original shown but not to be picked. */
-  private mapChoices(): [string, string, boolean?][] {
-    return [...MAP_TYPES.map(([id, n]) => (MAP_CHECKED.has(id) ? [id, n] : [id, `${n} (not checked yet)`, true]) as [string, string, boolean?]),
-      ...this.packMaps().map((m) => [`pack:${m.name}`, `${m.name} (art pack)`] as [string, string])];
+  private mapChoices(): [string, string][] {
+    return [...MAP_TYPES.map(([id, n]) => [id, n] as [string, string]), ...this.packMaps().map((m) => [`pack:${m.name}`, `${m.name} (art pack)`] as [string, string])];
   }
   /** The chosen map as the select shows it; a pack's map that is gone falls back to the game's own. */
   private mapChoice() { return this.mapSpecNow() ? `pack:${this.packMap}` : this.mapType; }
@@ -1156,7 +1154,7 @@ export class Game {
   private pickMap(v: string | undefined) {
     if (v?.startsWith("pack:") && this.packMaps().some((m) => `pack:${m.name}` === v)) {
       this.packMap = v.slice(5); store.set("bd-pack-map", this.packMap);
-    } else if (v && MAP_CHECKED.has(v as MapType)) {
+    } else if (v && MAP_TYPES.some(([id]) => id === v)) {
       this.mapType = v as MapType; store.set("bd-map-type", v);
       this.packMap = null; store.set("bd-pack-map", "");
     }
@@ -1287,7 +1285,7 @@ export class Game {
 
   /** The host's settings for everyone, from the lobby's Settings button. */
   private showLobbySettings() {
-    const opts = (xs: [string, string, boolean?][], on: string) => xs.map(([id, name, off]) => `<option value="${id}"${id === on ? " selected" : ""}${off ? " disabled" : ""}>${name}</option>`).join("");
+    const opts = (xs: [string, string][], on: string) => xs.map(([id, name]) => `<option value="${id}"${id === on ? " selected" : ""}>${name}</option>`).join("");
     this.hud.showOverlay("Game Settings", [
       form([
         field("Map", "map-type", `<select id="map-type">${opts(this.mapChoices(), this.mapChoice())}</select>`),
