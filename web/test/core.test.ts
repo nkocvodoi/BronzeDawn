@@ -652,8 +652,8 @@ describe("the original's rules", () => {
     expect(new Set(eight).size).toBe(8);
   });
 
-  it("map types: the sea maps have a sea and fish for boats, Inland is all land, every base has its Town Center", () => {
-    for (const mapType of ["coastal", "continental", "mediterranean", "narrows", "small_islands", "large_islands"] as const) {
+  it("map types: the sea maps have a sea and fish for boats, Hill Country is all land, every base has its Town Center", () => {
+    for (const mapType of ["coastal", "inland", "continental", "mediterranean", "narrows", "small_islands", "large_islands"] as const) {
       for (const seed of [1, 2]) {
         const w = new World(RULES, seed, ["A", "B"], 96, true, { mapType });
         const water = w.map.terrain.filter((t) => t === Terrain.water).length;
@@ -662,10 +662,13 @@ describe("the original's rules", () => {
         for (const p of w.players) expect(w.buildingsOf(p.id).some((b) => b.def.id === "town_center"), mapType).toBe(true);
       }
     }
-    // The original's Inland: land everywhere, no lakes (its fish have no water to go in).
-    const inland = new World(RULES, 1, ["A", "B"], 72, true);
-    expect(inland.map.terrain.some((t) => t === Terrain.water)).toBe(false);
-    for (const p of inland.players) expect(inland.buildingsOf(p.id).some((b) => b.def.id === "town_center")).toBe(true);
+    // The original's Hill Country: land everywhere, no water at all (as a save from the game shows). Its Inland
+    // has some sea, along the edges, but its bases meet by land (the next test).
+    for (const seed of [1, 2]) {
+      const hills = new World(RULES, seed, ["A", "B"], 72, true, { mapType: "hill_country" });
+      expect(hills.map.terrain.some((t) => t === Terrain.water)).toBe(false);
+      for (const p of hills.players) expect(hills.buildingsOf(p.id).some((b) => b.def.id === "town_center")).toBe(true);
+    }
   });
 
   it("Hill Country is far hillier than Inland and has the most cliffs; the land maps link their bases by land", () => {
@@ -676,9 +679,9 @@ describe("the original's rules", () => {
     expect(share("hill_country", high)).toBeGreaterThan(share("inland", high) * 2);
     expect(share("hill_country", cliffs)).toBeGreaterThan(share("inland", cliffs));
     expect(share("small_islands", cliffs)).toBe(0); // no cliffs on Small Islands
-    // Inland is grass under the lands, so they always meet. (Hill Country is water under them: each player's land
-    // keeps its 3 tiles from the others', and a channel of water runs between, as in the original.)
-    for (const mapType of ["inland"] as const) {
+    // Hill Country is grass under the lands, so they always meet; Inland's lands are joined (one zone), so they
+    // grow into each other, as in the saves from the game.
+    for (const mapType of ["inland", "hill_country"] as const) {
       for (const seed of [1, 2, 3]) {
         const w = new World(RULES, seed, ["A", "B", "C", "D"], 96, true, { mapType });
         const s0 = w.startTiles[0];

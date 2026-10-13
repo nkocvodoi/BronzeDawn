@@ -27,8 +27,12 @@ if (!datPath || !outPath) {
 }
 const dat = JSON.parse(readFileSync(datPath, "utf8")) as { randomMaps: DatMap[]; civs: { units: ({ name: string } | null)[] }[] };
 const name = (id: number) => UNITS[id] ?? `aoe_${id}_${(dat.civs[0].units[id] ?? dat.civs[1].units[id])?.name ?? "unknown"}`.toLowerCase();
-const maps = dat.randomMaps.filter((m) => m.id >= 0 && m.id <= 8).sort((a, b) => a.id - b.id).map((m) => ({
-  id: m.id,
+// The generator takes a map by its place in the file, not by the id each record carries: the map type indexes
+// the table it loaded in file order, and the same number picks the type's own rules (6 adds the central sea,
+// 7 the extra hills). So Mediterranean is the 7th record (whose id says 2), not the record with id 6.
+const maps = dat.randomMaps.slice(0, 9).map((m, index) => ({
+  id: index,
+  datId: m.id,
   // b1..b4 as the generator names them: the x and y margins at the low and the high side.
   borders: [m.borders.southWest, m.borders.northWest, m.borders.northEast, m.borders.southEast],
   borderUsage: m.borders.usage,

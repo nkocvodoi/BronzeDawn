@@ -6,6 +6,10 @@ liệu đo, cách kiểm tra) nằm trong mô tả của từng PR. Danh sách t
 
 Mỗi PR mới thêm một dòng vào đầu danh sách.
 
+## 2026-10-13
+
+- [#97](https://github.com/nkocvodoi/BronzeDawn/pull/97) Bản đồ lấy đúng số liệu của từng kiểu: bản gốc lấy bản đồ theo vị trí trong `empires.dat`, không theo id ghi trong bản ghi, nên trước đây 8/9 kiểu dùng nhầm số của kiểu khác (Mediterranean 39% nước thay vì ~21%, Inland không có nước, Hill Country có biển). So bằng file save của game gốc (`scripts/aoe/gmx.ts`, `compare-maps.ts`). Máy dựng Storage Pit/Granary cạnh rừng, đàn thú, bụi quả ở xa trên mọi bản đồ
+
 ## 2026-10-12
 
 - [#96](https://github.com/nkocvodoi/BronzeDawn/pull/96) Bản đồ ngẫu nhiên sinh theo đúng thuật toán của Empiresx.exe, số liệu 9 kiểu bản đồ lấy từ empires.dat (vị trí và khoảng cách vàng, đá, bụi quả, linh dương, cá, rừng, đồi, vách đá, nước nông như bản gốc; cỡ bản đồ đúng bản gốc); AI tìm quả và săn xa hơn theo khoảng cách của bản gốc
