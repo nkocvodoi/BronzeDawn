@@ -57,6 +57,9 @@ export class HUD {
   private pop = $("#pop");
   private age = $("#age");
   private time = $("#clock");
+  /** Always shown: how long the match has gone, in game time, and the speed it runs at. */
+  private matchTime = $("#match-time");
+  private speedNow = 1;
   private title = $("#info-title");
   private owner = $("#owner-line");
   private stats = $("#stats");
@@ -168,6 +171,7 @@ export class HUD {
 
   /** The speed switch lives in the menu; it is updated when the menu is open. */
   speed(x: number) {
+    this.speedNow = x;
     const s = document.querySelector("#speed");
     if (s) s.textContent = `Game speed ${x}x`;
   }
@@ -186,12 +190,14 @@ export class HUD {
     RES_ALL.forEach((r, i) => { this.res[i].textContent = String(Math.floor(p.res.get(r))); });
     this.pop.textContent = `${Math.ceil(p.pop - 1e-9)}/${p.popCap}`;
     this.pop.classList.toggle("warn", p.pop >= p.popCap);
+    const t = `${clock(w.time)} · x${this.speedNow}`;
+    if (this.matchTime.textContent !== t) this.matchTime.textContent = t;
     // While a Town Center advances, the top bar counts it down, as the age is what everyone waits for.
     const up = w.buildingsOf(me).find((b) => b.complete && b.queue[0]?.kind === "age");
     this.age.textContent = up ? `${w.rules.ages[p.age].name} → ${w.rules.ages[Number(up.queue[0].id)].name} ${clock(w.queueTimeLeft(up).current)}`
       : w.rules.ages[p.age].name;
-    // The original shows no clock, only the countdown while a Wonder stands.
-    // A time limit counts down too, and a score target shows what it is.
+    // Beside the age, the original shows only the countdown while a Wonder stands (the match time, by the
+    // population, is Bronze Dawn's). A time limit counts down too, and a score target shows what it is.
     // So do all the Ruins or all the Artifacts in one side's hands: the clock nearest to winning shows.
     const v = w.victory;
     const clocks: { what: string; player: number; at: number }[] = [];

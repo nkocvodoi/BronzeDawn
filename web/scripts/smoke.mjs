@@ -137,6 +137,7 @@ await page.click("[data-tribute='1:3']");
 check(await g(() => game.world.players[0].res.stone === 25 && game.world.players[1].res.stone === 250), "tribute: 100 stone sent costs 125");
 await page.keyboard.press("Escape");
 check((await g(() => game.speed)) === 1.5, "the start screen sets the game speed");
+check(/^\d+:\d\d · x1\.5$/.test(await page.textContent("#match-time")), `the top bar shows the match time and the speed (${await page.textContent("#match-time")})`);
 check(await g(() => game.started && game.world.ais.length === 1), "clicking Normal starts the game against one AI");
 check(await g(() => game.world.units.filter((u) => u.isRelic).length === 10), "the map has five Ruins and five Artifacts");
 // The ground is drawn piece by piece: every piece has ground in it, and together they cover the map's diamond
