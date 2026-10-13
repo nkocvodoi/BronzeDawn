@@ -18,7 +18,6 @@ import type { World } from "./world";
 /** The original's terrain ids, as its maps name them. */
 export const T = { grass: 0, water: 1, beach: 2, shallows: 4, desert: 6, forest: 10, palm: 13, pine: 19, jungle: 20, deep: 22, temp: 16 } as const;
 
-const WET = new Set<number>([T.water, T.deep]);
 /** What may stand next to each terrain in a patch (the dat's "impassable" field): 16 is the cliff line. */
 const IMPASSABLE: Record<number, number> = { 0: 16, 1: 15, 2: 14, 4: 255, 6: 14, 10: 16, 13: 14, 19: 16, 20: 16, 22: 15 };
 
@@ -34,7 +33,7 @@ export interface AoeLand {
 }
 export interface AoeTerrain { terrain: number; proportion: number; clumps: number; edgeSpacing: number; on: number; clumpiness: number }
 export interface AoeObject {
-  unit: string; host: number; placing: number; scale: number; perGroup: number; fluctuation: number; groups: number;
+  unit: string; id: number; host: number; placing: number; scale: number; perGroup: number; fluctuation: number; groups: number;
   area: number; player: number; land: number; min: number; max: number;
 }
 export interface AoeMap {
@@ -121,19 +120,11 @@ interface Slot {
  *  `id` is the original's unit, when the generator knows it; `gone`, one a later step took away again. */
 export interface Placed { unit: string; player: number; x: number; y: number; group: number; id?: number; gone?: boolean; frame?: number }
 
-/** How big each kind of thing is on the ground, as a half-width, and what it stands on: the collision test. */
-const SIZE: Record<string, number> = {
-  town_center: 1.5, villager: 0.2, gold_mine: 0.5, stone_mine: 0.5, berry_bush: 0.5, lone_tree: 0.5, tree: 0.5,
-  gazelle: 0.3, elephant: 0.5, lion: 0.3, alligator: 0.4, fish: 0.5, deep_fish: 0.5, "-": 0.2,
-};
-const ON_WATER = new Set(["fish", "deep_fish"]);
-/** The terrains each thing may stand on (empires.dat's terrain restrictions, in data/aoe-maps.json). */
-const STAND_ON = new Map(Object.entries((maps as unknown as { standOn?: Record<string, number[]> }).standOn ?? {}).map(([k, v]) => [k, new Set(v)]));
 
 /** What the original asks of a thing when it puts one down (data/aoe-maps.json, from empires.dat). */
 interface AoeUnit {
   size: [number, number, number]; clearance: [number, number]; on: Set<number>;
-  onTerrain: [number, number]; besideTerrain: [number, number]; hill: number; facing: number;
+  onTerrain: [number, number]; besideTerrain: [number, number]; hill: number; facing: number; building: number; buildOn: number;
 }
 const DATA = maps as unknown as {
   units?: Record<string, Omit<AoeUnit, "on"> & { on: number[] }>; terrainUnits?: Record<string, [number, number, number][]>;
@@ -161,8 +152,7 @@ const CLIFF_PIECES: [number[], [number, number, number, number, number, number]]
 ];
 const CLIFF_TABLE = new Map(CLIFF_PIECES.map(([f, e]) => [f.join(","), e]));
 const cliffPiece = (f: number[]) => CLIFF_TABLE.get(f.join(","));
-/** Whether the line walk forgets the last cell before each stretch of cliff (not read in the code: see the spec). */
-const CLIFF_RESET = true;
+
 /** -1/32767 and -0.5, as the original keeps them (a float). */
 const INV = f32(-1 / 32767), HALF = f32(-0.5), MILLI = f32(0.001);
 
@@ -579,6 +569,8 @@ export class AoeMapGen {
       if (p.gone) continue;
       const m = p.id === undefined ? undefined : UNITS.get(p.id);
       if (!m || m.size[0] <= 0 || m.size[1] <= 0) continue;
+      // A land's own things pass over what can be built on (the trees of a forest, tufts), when they cannot be.
+      if (others && m.buildOn === 1 && u.buildOn === 0) continue;
       if ((m.size[2] > 0) !== (u.size[2] > 0)) continue;
       // Worked out on the FPU's stack, so not rounded to a float.
       if (Math.abs(p.x - fx) < m.size[0] + sx && Math.abs(p.y - fy) < m.size[1] + sy) return 6;
@@ -1172,8 +1164,10 @@ export class AoeMapGen {
         const mx = m % W, my = Math.trunc(m / W);
         if (prev < 0) prev = m;
         this.cliffLine(3 * (prev % W) + 1, 3 * Math.trunc(prev / W) + 1, 3 * mx + 1, 3 * my + 1);
-        // The pieces of cliff, one per cell, as the walk along the line goes from cell to cell (FUN_004f0ab0).
-        if (CLIFF_RESET) this.cliffLast = null;
+        // The pieces of cliff, one per cell, as the walk along the line goes from cell to cell (FUN_004f0ab0). The
+        // walk forgets where it was only when a cliff starts (its first, empty stretch): not read in the code (the
+        // map's 4f0c70 is not decompiled), but the only way the saves' pieces all come out.
+        if (prev === m) this.cliffLast = null;
         this.cliffStep(prev % W, Math.trunc(prev / W));
         this.cliffStep(mx, my);
         clearCells(mx, my, 2);
@@ -1321,7 +1315,8 @@ export class AoeMapGen {
           landId: 1000 + j, player: 0, startRadius: -1, edgeFade: 0,
         });
         // A mine on every extra island: stone or gold.
-        this.extraObjects.push({ unit: r.rand() < 0x3fff ? "stone_mine" : "gold_mine", host: -1, placing: 2, scale: 0, perGroup: 8,
+        const stone = r.rand() < 0x3fff;
+        this.extraObjects.push({ unit: stone ? "stone_mine" : "gold_mine", id: stone ? 102 : 66, host: -1, placing: 2, scale: 0, perGroup: 8,
           fluctuation: 0, groups: 1, area: 4, player: 0, land: 1000 + j, min: 0, max: 26 });
         if (!ok) { this.slots.pop(); this.extraObjects.pop(); break; }
         this.objectLands.push({ x, y, landId: 1000 + j, player: 0 });
@@ -1387,51 +1382,28 @@ export class AoeMapGen {
       for (let a = Math.max(0, x - r); a <= Math.min(this.W - 1, x + r); a++) this.lists.unlink(this.at(a, b));
   }
 
-  /** Whether a thing fits: on the map, on ground it may stand on, clear of what is already there. */
-  private fits(unit: string, fx: number, fy: number) {
-    const s = SIZE[unit] ?? 0.5, W = this.W, H = this.H;
-    if (fx - s < 0 || fx + s - 0.001 >= W || fy - s < 0 || fy + s - 0.001 >= H) return false;
-    const water = ON_WATER.has(unit), on = STAND_ON.get(unit);
-    for (let y = Math.trunc(fy - s); y <= Math.trunc(fy + s - 0.001); y++) for (let x = Math.trunc(fx - s); x <= Math.trunc(fx + s - 0.001); x++) {
-      const t = this.terrain[this.at(x, y)];
-      // The ground its terrain restriction allows (mines on grass or desert, no animal on a beach), as the
-      // original's canPlace checks it; a thing the data has no restriction for, anything dry.
-      if (on) { if (!on.has(t)) return false; continue; }
-      if (water ? !WET.has(t) : WET.has(t)) return false;
-      if (!water && unit !== "villager" && unit !== "alligator" && t === T.shallows) return false;
-    }
-    for (const p of this.near(fx, fy)) {
-      const r = SIZE[p.unit] ?? 0.5;
-      if (Math.abs(p.x - fx) < r + s && Math.abs(p.y - fy) < r + s) return false;
-    }
-    return true;
-  }
-
   private grid = new Map<number, Placed[]>();
-  private near(fx: number, fy: number): Placed[] {
-    const out: Placed[] = [];
-    for (let y = Math.max(0, Math.trunc(fy - 3)); y <= Math.min(this.H - 1, Math.trunc(fy + 3)); y++)
-      for (let x = Math.max(0, Math.trunc(fx - 3)); x <= Math.min(this.W - 1, Math.trunc(fx + 3)); x++) {
-        const list = this.grid.get(this.at(x, y));
-        if (list) out.push(...list);
-      }
-    return out;
+  /** Where a thing on tile (x, y) stands: the middle of the tile if its footprint is not a whole number of
+   *  tiles across (a mine, a Town Center, a villager), its corner if it is. */
+  private position(id: number, x: number, y: number): [number, number] {
+    const r = UNITS.get(id)?.size ?? [0.5, 0.5, 0];
+    return [r[0] - Math.trunc(r[0]) > 0 ? f32(x + 0.5) : x, r[1] - Math.trunc(r[1]) > 0 ? f32(y + 0.5) : y];
   }
 
-  /** Makes a thing. As in the original, every thing made leaves the random numbers where it found them (one drawn,
-   *  then the generator set to it). */
-  private place(unit: string, player: number, fx: number, fy: number) {
-    const p = { unit, player, x: fx, y: fy, group: this.groupId };
-    this.placed.push(p);
-    const k = this.at(Math.trunc(fx), Math.trunc(fy));
-    (this.grid.get(k) ?? this.grid.set(k, []).get(k)!).push(p);
-    const r = this.rng.rand();
-    this.rng.srand(r);
-  }
-
-  private position(unit: string, x: number, y: number): [number, number] {
-    const s = SIZE[unit] ?? 0.5;
-    return [s - Math.trunc(s) > 0 ? x + 0.5 : x, s - Math.trunc(s) > 0 ? y + 0.5 : y];
+  /** Moves a spot so that the thing's footprint lies on the map, and on whole tiles where it nearly does
+   *  (FUN_00443e90, as a tight group puts each of its things). */
+  private snap(id: number, fx: number, fy: number): [number, number] {
+    const r = UNITS.get(id)?.size ?? [0.5, 0.5, 0];
+    const one = (v: number, rad: number, max: number) => {
+      let lo = f32(v - rad), hi = f32(v + rad);
+      if (lo < 0) { v = f32(v - lo); lo = f32(v - rad); hi = f32(v + rad); }
+      const top = f32(max - 0.00001);
+      if (hi >= top) { v = f32(v + (top - hi)); lo = f32(v - rad); hi = f32(v + rad); }
+      const fl = f32(lo - Math.floor(lo)), gr = f32(1 - f32(hi - Math.floor(hi)));
+      if (gr + fl >= 1) v = fl > gr ? f32(v + (1 - fl)) : f32(v - (1 - gr));
+      return v;
+    };
+    return [one(fx, r[0], this.W), one(fy, r[1], this.H)];
   }
 
   private groupId = 0;
@@ -1439,7 +1411,13 @@ export class AoeMapGen {
     this.groupId++;
     if (e.placing === 1) this.looseGroup(e, x, y, player);
     else if (e.placing === 2) this.tightGroup(e, x, y, player);
-    else { const [fx, fy] = this.position(e.unit, x, y); this.place(e.unit, player, fx, fy); }
+    else { const [fx, fy] = this.position(e.id, x, y); this.make(e, player, fx, fy); }
+  }
+
+  /** Makes one of an entry's things. A building comes finished, which draws once more (FUN_004ae500). */
+  private make(e: AoeObject, player: number, fx: number, fy: number) {
+    this.create(e.id, e.unit, player, fx, fy);
+    if (UNITS.get(e.id)?.building) this.rng.srand(this.rng.rand());
   }
 
   private count(e: AoeObject) {
@@ -1447,6 +1425,7 @@ export class AoeMapGen {
     return Math.max(1, c);
   }
 
+  /** A group spread over a box round its first thing (FUN_004725b0). */
   private looseGroup(e: AoeObject, cx: number, cy: number, player: number) {
     const L = this.lists, G = this.G;
     this.candidates(G, cx, cy, e.area);
@@ -1454,12 +1433,13 @@ export class AoeMapGen {
     for (let n = L.pop(G); n >= 0 && left > 0; n = L.pop(G)) {
       const x = n % this.W, y = (n - x) / this.W;
       if (e.host >= 0 && this.terrain[n] !== e.host) continue;
-      const [fx, fy] = this.position(e.unit, x, y);
-      if (this.fits(e.unit, fx, fy)) { this.place(e.unit, player, fx, fy); left--; }
+      const [fx, fy] = this.position(e.id, x, y);
+      if (this.canPlace(e.id, fx, fy, true, false) === 0) { this.make(e, player, fx, fy); left--; }
     }
     L.release(G);
   }
 
+  /** A group grown tile by tile from its first thing, the next tile drawn at random (FUN_00472780). */
   private tightGroup(e: AoeObject, cx: number, cy: number, player: number) {
     const L = this.lists, G = this.G, W = this.W, H = this.H, a = e.area;
     L.next[G] = L.prev[G] = -1;
@@ -1469,9 +1449,10 @@ export class AoeMapGen {
     let left = this.count(e);
     for (let n = L.pop(G); n >= 0 && left > 0; n = L.pop(G)) {
       const x = n % W, y = (n - x) / W;
-      const [fx, fy] = this.position(e.unit, x, y);
-      if (!this.fits(e.unit, fx, fy)) continue;
-      this.place(e.unit, player, fx, fy);
+      const [px, py] = this.position(e.id, x, y);
+      const [fx, fy] = this.snap(e.id, px, py);
+      if (this.canPlace(e.id, fx, fy, true, false) !== 0) continue;
+      this.make(e, player, fx, fy);
       left--;
       this.mask[n] = 0;
       if (x > x0 && this.mask[this.at(x - 1, y)]) L.insertSorted(G, this.at(x - 1, y), this.rng.rand());
@@ -1482,6 +1463,7 @@ export class AoeMapGen {
     L.release(G);
   }
 
+  /** Anywhere on the map, or anywhere but near the lands' origins (FUN_00472040, FUN_00471e00). */
   private placeAnywhere(e: AoeObject, spacing: number, awayFrom: { x: number; y: number }[], player: number) {
     const L = this.lists, H0 = this.H0;
     this.mask = new Uint8Array(this.W * this.H).fill(1);
@@ -1491,8 +1473,8 @@ export class AoeMapGen {
     for (let n = L.pop(H0); n >= 0 && left > 0; n = L.pop(H0)) {
       const x = n % this.W, y = (n - x) / this.W;
       if (e.host >= 0 && this.terrain[n] !== e.host) continue;
-      const [fx, fy] = this.position(e.unit, x, y);
-      if (!this.fits(e.unit, fx, fy)) continue;
+      const [fx, fy] = this.position(e.id, x, y);
+      if (this.canPlace(e.id, fx, fy, true, false) !== 0) continue;
       this.clearSpacing(x, y, spacing);
       this.group(e, x, y, player);
       left--;
@@ -1500,44 +1482,54 @@ export class AoeMapGen {
     L.release(H0);
   }
 
+  /** Round a land's origin, between `min` and `max` tiles out, on ground reachable from it (FUN_00472250). */
   private placeOnLand(e: AoeObject, spacing: number, X: number, Y: number, lands: { x: number; y: number }[], player: number) {
-    const L = this.lists, H0 = this.H0, W = this.W;
-    this.mask = new Uint8Array(W * this.H).fill(1);
+    const L = this.lists, H0 = this.H0, W = this.W, H = this.H;
+    const x0 = Math.max(0, X - e.min), x1 = Math.min(W - 1, X + e.min), y0 = Math.max(0, Y - e.min), y1 = Math.min(H - 1, Y + e.min);
+    this.mask = new Uint8Array(W * H).fill(1);
     for (const l of lands) this.maskSquare(l.x, l.y, e.min, 0);
     this.candidates(H0, X, Y, e.max);
-    const zones = this.zones(ON_WATER.has(e.unit));
-    const z0 = zones[this.at(X, Y)];
+    if (!UNITS.has(e.id)) return;
+    const zones = this.zones(e.id), z0 = zones[this.at(X, Y)];
     let left = e.groups;
     for (let n = L.pop(H0); n >= 0 && left > 0; n = L.pop(H0)) {
       const x = n % W, y = (n - x) / W;
       if (zones[n] !== z0 || (e.host >= 0 && this.terrain[n] !== e.host)) continue;
-      const [fx, fy] = this.position(e.unit, x, y);
-      if (this.fits(e.unit, fx, fy)) { this.clearSpacing(x, y, spacing); this.group(e, x, y, player); left--; }
-      else if (e.placing === 0 && L.next[H0] < 0) this.place(e.unit, player, fx, fy); // the last tile: put there all the same
+      if (!(x <= x0 || x >= x1 || y <= y0 || y >= y1)) continue;
+      const [fx, fy] = this.position(e.id, x, y);
+      if (this.canPlace(e.id, fx, fy, true, true) === 0) { this.clearSpacing(x, y, spacing); this.group(e, x, y, player); left--; }
+      else if (e.placing === 0 && L.next[H0] < 0) this.make(e, player, fx, fy); // the last tile: put there all the same
     }
     L.release(H0);
   }
 
-  /** Connected stretches of land (or of water): a thing on a land must be reachable from its origin. */
-  private zones(water: boolean): Int32Array {
+  /** Connected stretches of the ground a thing may stand on, and of what it may not (FUN_00524550): a thing on a
+   *  land must be reachable from its origin. One map per kind of ground, made the first time it is asked for,
+   *  numbered row by row and wrapping after 254. */
+  private zoneMaps = new Map<string, Int32Array>();
+  private zones(id: number): Int32Array {
+    const on = UNITS.get(id)!.on, key = [...on].sort((a, b) => a - b).join(",");
+    const had = this.zoneMaps.get(key);
+    if (had) return had;
     const W = this.W, H = this.H, N = W * H, out = new Int32Array(N).fill(-1);
-    const pass = (i: number) => WET.has(this.terrain[i]) === water;
-    let id = 0;
+    const pass = (i: number) => on.has(this.terrain[i]);
+    let zid = 0;
     const stack: number[] = [];
     for (let i = 0; i < N; i++) {
       if (out[i] >= 0) continue;
       const p = pass(i);
-      out[i] = id; stack.push(i);
+      out[i] = zid; stack.push(i);
       while (stack.length) {
         const c = stack.pop()!, x = c % W, y = (c - x) / W;
         for (const [a, b] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
           if (a < 0 || b < 0 || a >= W || b >= H) continue;
           const k = b * W + a;
-          if (out[k] < 0 && pass(k) === p) { out[k] = id; stack.push(k); }
+          if (out[k] < 0 && pass(k) === p) { out[k] = zid; stack.push(k); }
         }
       }
-      id = (id + 1) % 255;
+      zid = zid >= 254 ? 0 : zid + 1;
     }
+    this.zoneMaps.set(key, out);
     return out;
   }
 

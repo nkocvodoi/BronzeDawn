@@ -12,7 +12,7 @@ import type { DatGraphic, DatMap, DatTerrain } from "./dat";
 
 interface DatUnit {
   name: string; type: number; terrainRestriction: number; collisionSize: number[]; clearanceSize: number[];
-  placementTerrain: number[]; placementSideTerrain: number[]; hillMode: number; standingGraphic: number;
+  placementTerrain: number[]; placementSideTerrain: number[]; hillMode: number; standingGraphic: number; canBeBuiltOn: number;
 }
 
 /** The original's units on its maps, by id: Bronze Dawn's name for each, or "-" for those it has no use for. */
@@ -99,6 +99,9 @@ for (const id of [...ids].sort((a, b) => a - b)) {
     on: (dat.terrainRestrictions[u.terrainRestriction] ?? []).map((v, t) => (v > 0 ? t : -1)).filter((t) => t >= 0),
     onTerrain: u.placementTerrain, besideTerrain: u.placementSideTerrain, hill: u.hillMode,
     facing: u.type >= 30 && g && (g.sequenceType & 2) !== 0 && g.angleCount > 1 ? 1 : 0,
+    // A building is made finished, which draws one more (genie type 80); whether it may stand on things that
+    // can be built over.
+    building: u.type === 80 ? 1 : 0, buildOn: u.canBeBuiltOn,
   };
 }
 writeFileSync(outPath, JSON.stringify({

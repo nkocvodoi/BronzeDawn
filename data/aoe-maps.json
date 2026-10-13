@@ -628,7 +628,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 0
   },
   "48": {
    "size": [
@@ -661,7 +663,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 0
   },
   "53": {
    "size": [
@@ -687,7 +691,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "56": {
    "size": [
@@ -720,7 +726,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "59": {
    "size": [
@@ -745,7 +753,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "65": {
    "size": [
@@ -778,7 +788,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 0
   },
   "66": {
    "size": [
@@ -803,7 +815,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 0
   },
   "80": {
    "size": [
@@ -840,7 +854,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 0
   },
   "83": {
    "size": [
@@ -875,7 +891,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 0
   },
   "95": {
    "size": [
@@ -912,7 +930,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 1
   },
   "96": {
    "size": [
@@ -949,7 +969,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 1
   },
   "102": {
    "size": [
@@ -974,7 +996,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 0
   },
   "109": {
    "size": [
@@ -1007,7 +1031,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 0
+   "facing": 0,
+   "building": 1,
+   "buildOn": 0
   },
   "113": {
    "size": [
@@ -1040,7 +1066,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "114": {
    "size": [
@@ -1073,7 +1101,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "121": {
    "size": [
@@ -1106,7 +1136,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "126": {
    "size": [
@@ -1139,7 +1171,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 0
   },
   "129": {
    "size": [
@@ -1172,7 +1206,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "134": {
    "size": [
@@ -1205,7 +1241,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "136": {
    "size": [
@@ -1238,7 +1276,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "140": {
    "size": [
@@ -1271,7 +1311,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "141": {
    "size": [
@@ -1304,7 +1346,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "142": {
    "size": [
@@ -1337,7 +1381,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "143": {
    "size": [
@@ -1370,7 +1416,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "144": {
    "size": [
@@ -1403,7 +1451,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "146": {
    "size": [
@@ -1436,7 +1486,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "147": {
    "size": [
@@ -1469,7 +1521,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "150": {
    "size": [
@@ -1502,7 +1556,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "152": {
    "size": [
@@ -1535,7 +1591,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "153": {
    "size": [
@@ -1568,7 +1626,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "161": {
    "size": [
@@ -1601,7 +1661,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "164": {
    "size": [
@@ -1636,7 +1698,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "165": {
    "size": [
@@ -1671,7 +1735,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "166": {
    "size": [
@@ -1706,7 +1772,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "168": {
    "size": [
@@ -1739,7 +1807,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "169": {
    "size": [
@@ -1774,7 +1844,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "171": {
    "size": [
@@ -1807,7 +1879,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "173": {
    "size": [
@@ -1840,7 +1914,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "174": {
    "size": [
@@ -1873,7 +1949,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "175": {
    "size": [
@@ -1906,7 +1984,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "176": {
    "size": [
@@ -1939,7 +2019,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "177": {
    "size": [
@@ -1972,7 +2054,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "178": {
    "size": [
@@ -2007,7 +2091,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "179": {
    "size": [
@@ -2042,7 +2128,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "180": {
    "size": [
@@ -2077,7 +2165,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "181": {
    "size": [
@@ -2112,7 +2202,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "182": {
    "size": [
@@ -2147,7 +2239,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "183": {
    "size": [
@@ -2182,7 +2276,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "186": {
    "size": [
@@ -2215,7 +2311,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "187": {
    "size": [
@@ -2248,7 +2346,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "188": {
    "size": [
@@ -2281,7 +2381,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "189": {
    "size": [
@@ -2314,7 +2416,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "190": {
    "size": [
@@ -2347,7 +2451,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "191": {
    "size": [
@@ -2380,7 +2486,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "195": {
    "size": [
@@ -2413,7 +2521,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "198": {
    "size": [
@@ -2446,7 +2556,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "203": {
    "size": [
@@ -2479,7 +2591,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "226": {
    "size": [
@@ -2512,7 +2626,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "260": {
    "size": [
@@ -2538,7 +2654,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 1
   },
   "263": {
    "size": [
@@ -2564,7 +2682,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 1
   },
   "264": {
    "size": [
@@ -2601,7 +2721,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "265": {
    "size": [
@@ -2638,7 +2760,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "266": {
    "size": [
@@ -2675,7 +2799,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "267": {
    "size": [
@@ -2712,7 +2838,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "268": {
    "size": [
@@ -2749,7 +2877,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "269": {
    "size": [
@@ -2786,7 +2916,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "270": {
    "size": [
@@ -2823,7 +2955,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "271": {
    "size": [
@@ -2860,7 +2994,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "272": {
    "size": [
@@ -2897,7 +3033,9 @@
     -1
    ],
    "hill": 2,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "304": {
    "size": [
@@ -2930,7 +3068,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "305": {
    "size": [
@@ -2963,7 +3103,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "306": {
    "size": [
@@ -2996,7 +3138,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "310": {
    "size": [
@@ -3029,7 +3173,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "311": {
    "size": [
@@ -3062,7 +3208,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "312": {
    "size": [
@@ -3095,7 +3243,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "313": {
    "size": [
@@ -3128,7 +3278,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "314": {
    "size": [
@@ -3154,7 +3306,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "315": {
    "size": [
@@ -3180,7 +3334,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "316": {
    "size": [
@@ -3206,7 +3362,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "317": {
    "size": [
@@ -3232,7 +3390,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "319": {
    "size": [
@@ -3258,7 +3418,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "320": {
    "size": [
@@ -3284,7 +3446,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "322": {
    "size": [
@@ -3310,7 +3474,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "324": {
    "size": [
@@ -3336,7 +3502,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "365": {
    "size": [
@@ -3369,7 +3537,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "366": {
    "size": [
@@ -3402,7 +3572,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "367": {
    "size": [
@@ -3435,7 +3607,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 0
   },
   "370": {
    "size": [
@@ -3461,7 +3635,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 1
   },
   "385": {
    "size": [
@@ -3496,7 +3672,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 1
+   "facing": 1,
+   "building": 0,
+   "buildOn": 1
   },
   "391": {
    "size": [
@@ -3529,7 +3707,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "392": {
    "size": [
@@ -3562,7 +3742,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   },
   "393": {
    "size": [
@@ -3595,7 +3777,9 @@
     -1
    ],
    "hill": 0,
-   "facing": 0
+   "facing": 0,
+   "building": 0,
+   "buildOn": 1
   }
  },
  "maps": [
