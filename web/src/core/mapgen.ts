@@ -11,12 +11,12 @@ import type { World } from "./world";
 /** The kinds of map, as the start screen offers them: the original's nine, made as it makes them (aoemap.ts). */
 export type MapType = "inland" | "coastal" | "continental" | "mediterranean" | "large_islands" | "small_islands"
   | "highland" | "hill_country" | "narrows";
+// Names only, as the original's start screen shows them. The one-line descriptions they had said more than was
+// so: Inland, "all land", has lakes, a sea at some edges and, on many of the original's maps, rivers.
 export const MAP_TYPES: [MapType, string][] = [
-  ["inland", "Inland (all land)"], ["coastal", "Coastal (sea along some edges)"],
-  ["continental", "Continental (one land in the sea)"], ["mediterranean", "Mediterranean (a sea in the middle)"],
-  ["large_islands", "Large Islands (an island each: transports needed)"], ["small_islands", "Small Islands (an island each, and more to settle)"],
-  ["highland", "Highland (lands apart in the sea, or all land)"], ["hill_country", "Hill Country (many hills and cliffs)"],
-  ["narrows", "Narrows (shores close together across the water)"],
+  ["inland", "Inland"], ["coastal", "Coastal"], ["continental", "Continental"], ["mediterranean", "Mediterranean"],
+  ["large_islands", "Large Islands"], ["small_islands", "Small Islands"], ["highland", "Highland"],
+  ["hill_country", "Hill Country"], ["narrows", "Narrows"],
 ];
 /** One of the original's nine maps, made as the original makes it (aoemap.ts), from the world's seed. Ruins and
  *  Artifacts are Bronze Dawn's own afterwards: the original places them apart from the map generator. */
