@@ -347,7 +347,10 @@ await page.keyboard.up("Shift");
 await wait(100);
 check(spots.length === 3 && await g((id) => { const u = game.world.unit(id); return u.order.kind === "move" && u.waypoints.length === 2 && game.selection.join() === String(id); }, scout),
   "Shift + left click on the ground lays waypoint flags for the scout to walk round, and keeps it selected");
-check(await g(() => game.routes.parent !== null && game.routes.bounds.width > 0), "and its route is drawn, with a flag at each point");
+// Drawn with the next frame, which on a slow CI runner can be well after the clicks: waited for, up to 3 s.
+await page.waitForFunction(() => game.routes.parent !== null && game.routes.bounds.width > 0, null, { timeout: 3000 }).catch(() => {});
+const route = await g((id) => { const u = game.world.unit(id); return { drawn: game.routes.parent !== null && game.routes.bounds.width > 0, order: u?.order.kind, waypoints: u?.waypoints.length, selected: game.selection.join() }; }, scout);
+check(route.drawn, `and its route is drawn, with a flag at each point${route.drawn ? "" : ` (${JSON.stringify(route)})`}`);
 
 const pair = await g(() => { const vs = game.world.unitsOf(0).filter((u) => u.isVillager).slice(0, 2).map((u) => u.id); game.selection = vs; return vs; });
 await page.keyboard.press("Tab");
