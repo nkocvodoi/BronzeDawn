@@ -206,6 +206,8 @@ export class Game {
   private floorOf = new Map<number, Sprite>();
   private entities = new Container();
   private effects = new Container();
+  /** The flags of the selected units' walks: where each is going, and the waypoints after. */
+  private routes = new Graphics();
   private fogSprite = new Sprite();
   private fogCanvas = document.createElement("canvas");
   private fogFilter: FogFilter;
@@ -1591,7 +1593,7 @@ export class Game {
   private showHelp() {
     this.hud.showOverlay("Controls", [
       "Left click / drag: select · Shift: add · Double click: all of that kind on screen",
-      "Right click: move, gather, hunt, build, repair, attack, convert or heal (priests), or set a rally point · Shift + right click: a waypoint",
+      "Right click: move, gather, hunt, build, repair, attack, convert or heal (priests), or set a rally point · Shift + click on the ground (left or right): a waypoint flag",
       "Villagers: B opens the build menu, then E House · G Granary · S Storage Pit · B Barracks · D Dock (in the water at the shore) · M Market · F Farm",
       "A Archery Range · L Stable · W Wall · T Tower · C Government Center · P Temple · Y Academy · K Siege Workshop · N Town Center · O Wonder",
       "Trade (R at the Dock): right-click another player's Dock with a trade boat; it brings gold back, more the further it sails",
@@ -1860,6 +1862,7 @@ export class Game {
     this.worldLayer.position.set(Math.round(sw / 2 - this.cam.x / this.cam.zoom), Math.round(sh / 2 - this.cam.y / this.cam.zoom));
     this.fogFilter.update(this.worldLayer.x, this.worldLayer.y, this.worldLayer.scale.x, this.app.canvas.height);
     this.sync(alpha);
+    this.drawRoutes();
     if (w.tick !== this.fogStamp && (w.tick % 5 === 0 || this.fogStamp < 0)) { this.updateFog(); this.fogStamp = w.tick; }
     if (Math.floor(w.tick / 10) !== this.minimapStamp) { this.updateMinimap(); this.minimapStamp = Math.floor(w.tick / 10); }
     this.selection = this.selection.filter((id) => w.entity(id));
@@ -3053,6 +3056,8 @@ export class Game {
     const w = this.world, me = this.me;
     if (Math.hypot(a.x - e.clientX, a.y - e.clientY) < 6) {
       const hit = this.pick(e.clientX, e.clientY);
+      // Shift + click on the ground with your units picked: a flag for them to walk to, after the ones before.
+      if (!hit && e.shiftKey && this.selectedEntities().some((x) => x instanceof Unit && x.owner === me)) { this.flagWaypoint(e); return; }
       if (!hit) { if (!e.shiftKey) this.selection = []; return; }
       if (e.detail >= 2 && hit.owner === me) {
         this.select([hit.id, ...[...this.views.keys()].filter((id) => {
@@ -3094,12 +3099,7 @@ export class Game {
       return;
     }
     // Shift + right-click on the ground: a waypoint, walked to after the ones before it.
-    if (e.shiftKey && sel.some((x) => x instanceof Unit)) {
-      this.issue({ k: "waypoint", ids: [...this.selection], x: at.x, y: at.y });
-      this.selectSound(true);
-      this.marker(e.clientX, e.clientY, 0x33ff66);
-      return;
-    }
+    if (e.shiftKey && sel.some((x) => x instanceof Unit)) { this.flagWaypoint(e); return; }
     let target = this.pick(e.clientX, e.clientY);
     // Foundations lie flat and hide behind taller buildings. With villagers selected, a click on the
     // ground of your own unfinished building always means "build this", whatever is drawn over it.
@@ -3151,6 +3151,37 @@ export class Game {
       }
     };
     this.app.ticker.add(tick);
+  }
+
+  /** A waypoint where the mouse is, for the selected units (Shift + click, left or right). */
+  private flagWaypoint(e: MouseEvent) {
+    const at = this.toWorld(e.clientX, e.clientY);
+    this.issue({ k: "waypoint", ids: [...this.selection], x: at.x, y: at.y });
+    this.selectSound(true);
+    this.marker(e.clientX, e.clientY, 0x33ff66);
+  }
+
+  /** For the selected units of your own: a line along each one's walk, and a flag in your colour at where it
+   *  is going and at each waypoint after, so a scout's route can be seen as it is laid. */
+  private drawRoutes() {
+    const g = this.routes;
+    if (!g.parent) this.effects.addChild(g);
+    g.clear();
+    const color = playerColor(this.me);
+    for (const e of this.selectedEntities()) {
+      if (!(e instanceof Unit) || e.owner !== this.me || e.order.kind !== "move") continue;
+      const stops = [e.order.to, ...e.waypoints];
+      let from = iso(e.pos);
+      for (const p of stops) {
+        const s = iso(p);
+        g.moveTo(from.x, from.y).lineTo(s.x, s.y).stroke({ width: 1, color: 0xffffff, alpha: 0.35 });
+        // A pole and a pennant.
+        g.moveTo(s.x, s.y).lineTo(s.x, s.y - 14).stroke({ width: 1.5, color: 0x3a2a1a });
+        g.poly([s.x, s.y - 14, s.x + 8, s.y - 11, s.x, s.y - 8]).fill({ color });
+        g.ellipse(s.x, s.y, 3, 1.5).fill({ color: 0x000000, alpha: 0.35 });
+        from = s;
+      }
+    }
   }
 
   private marker(sx: number, sy: number, color: number | string) {

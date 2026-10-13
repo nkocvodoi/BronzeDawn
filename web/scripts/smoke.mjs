@@ -314,6 +314,29 @@ await page.mouse.click(sp.x + 120, sp.y + 90, { button: "right" });
 await page.keyboard.up("Shift");
 check(await g((id) => { const u = game.world.unit(id); return u.order.kind === "move" && u.waypoints.length === 1; }, soldier), "Shift + right-click lays a waypoint after the first point");
 
+// Shift + left click on the ground lays flags too: a scout walks to each in turn, and stays selected.
+const scout = await g(() => { const v = game.world.unitsOf(0).find((u) => u.isVillager); game.selection = [v.id]; return v.id; });
+await at(scout);
+// Three spots of bare ground near it, on the screen: nothing there to click on instead.
+const spots = await g((id) => {
+  const w = game.world, u = w.unit(id), out = [];
+  for (let r = 3; r <= 7 && out.length < 3; r++) for (let a = 0; a < 16 && out.length < 3; a++) {
+    const p = new u.pos.constructor(u.pos.x + r * Math.cos(a * Math.PI / 8), u.pos.y + r * Math.sin(a * Math.PI / 8));
+    if (!w.map.inside(p.tile) || !w.map.passable(p.tile)) continue;
+    const busy = [...w.units, ...w.nodes, ...w.buildings].some((e) => e.alive && e.center.distance(p) < 2.2);
+    if (busy || out.some((q) => Math.hypot(q.wx - p.x, q.wy - p.y) < 2)) continue;
+    out.push({ wx: p.x, wy: p.y, ...game.screenOf(p) });
+  }
+  return out;
+}, scout);
+await page.keyboard.down("Shift");
+for (const p of spots) await page.mouse.click(p.x, p.y);
+await page.keyboard.up("Shift");
+await wait(100);
+check(spots.length === 3 && await g((id) => { const u = game.world.unit(id); return u.order.kind === "move" && u.waypoints.length === 2 && game.selection.join() === String(id); }, scout),
+  "Shift + left click on the ground lays waypoint flags for the scout to walk round, and keeps it selected");
+check(await g(() => game.routes.parent !== null && game.routes.bounds.width > 0), "and its route is drawn, with a flag at each point");
+
 const pair = await g(() => { const vs = game.world.unitsOf(0).filter((u) => u.isVillager).slice(0, 2).map((u) => u.id); game.selection = vs; return vs; });
 await page.keyboard.press("Tab");
 check(await g((p) => game.selection[0] === p[1] && game.selection[1] === p[0], pair), "Tab brings the next unit of the selection forward");
