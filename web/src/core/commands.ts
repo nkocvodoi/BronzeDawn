@@ -21,6 +21,7 @@ export type Command =
   | { k: "standGround"; ids: number[]; on: boolean }
   | { k: "unload"; ids: number[] }
   | { k: "attackGround"; ids: number[]; x: number; y: number }
+  | { k: "sweep"; ids: number[]; x: number; y: number }
   | { k: "repair"; ids: number[]; target: number }
   | { k: "sacrifice"; priest: number; target: number }
   | { k: "stance"; to: number; stance: Stance }
@@ -55,6 +56,7 @@ export function runCommand(w: World, player: number, c: Command): CommandResult 
       return;
     }
     case "attackGround": return w.attackGround(player, c.ids, at(c.x, c.y));
+    case "sweep": return w.sweep(player, c.ids, at(c.x, c.y));
     case "repair": return w.repair(player, c.ids, c.target);
     case "sacrifice": return w.sacrifice(player, c.priest, c.target);
     case "stance": return w.setStance(player, c.to, c.stance);
@@ -76,7 +78,7 @@ export function isCommand(x: unknown): x is Command {
   const ids = (k: string) => Array.isArray(c[k]) && (c[k] as unknown[]).length <= 200 && (c[k] as unknown[]).every((v) => typeof v === "number" && Number.isInteger(v));
   const str = (k: string) => typeof c[k] === "string" && (c[k] as string).length < 64;
   switch (c.k) {
-    case "move": case "waypoint": case "attackGround": return ids("ids") && num("x") && num("y");
+    case "move": case "waypoint": case "attackGround": case "sweep": return ids("ids") && num("x") && num("y");
     case "smart": return ids("ids") && (c.target === null || id("target")) && num("x") && num("y");
     case "rally": return id("building") && num("x") && num("y");
     case "place": return str("type") && num("x") && num("y") && ids("builders");

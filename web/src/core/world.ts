@@ -58,6 +58,9 @@ export type WinHow = "conquest" | "wonder" | "score" | "time" | "ruins" | "artif
  * The whole simulation. No rendering in here: it runs the same in the browser,
  * in tests, and in a headless AI-versus-AI match.
  */
+/** How far round a flag soldiers clear the ground (the Flag order), in tiles. */
+export const SWEEP_RADIUS = 6;
+
 export class World {
   static readonly dt = 0.05; // 20 steps a second
 
@@ -798,6 +801,60 @@ export class World {
 
   canAttackGround(u: Unit) { return u.def.projectile === "stone" && (u.def.area ?? 0) > 0; }
 
+  /** The Flag order: soldiers go and fight every enemy round the flag, towers first, and stand by it after. */
+  sweep(player: number, ids: number[], at: Vec2) {
+    for (const u of this.own(ids, player)) {
+      if (!u.isSoldier) continue;
+      u.order = { kind: "sweep", at, target: 0, next: 0 };
+      u.path = []; u.repathTimer = 0; u.resumeMove = null; u.waypoints = [];
+    }
+  }
+
+  /** What a soldier clearing round `at` goes for: the nearest to it of the enemy towers there, else of the
+   *  soldiers, else of the villagers (and anything else that moves), else of the buildings. */
+  private sweepTarget(u: Unit, at: Vec2): Entity | null {
+    const tiers: [number, Entity][] = [];
+    const rank = (e: Entity) => e instanceof Building ? (e.def.tags?.includes("tower") ? 0 : 3) : (e as Unit).isSoldier ? 1 : 2;
+    const take = (e: Entity) => {
+      if (!e.alive || !this.hostile(u.owner, e) || e.center.distance(at) > SWEEP_RADIUS || !this.canEngage(u, e)) return;
+      if (e instanceof Unit && (e.isAnimal || e.isRelic || e.aboard !== null)) return;
+      tiers.push([rank(e), e]);
+    };
+    this.eachUnitNear(at, SWEEP_RADIUS + 1, take);
+    for (const b of this.buildings) if (b.owner !== u.owner) take(b);
+    let best: Entity | null = null, bestKey = Infinity;
+    for (const [r, e] of tiers) {
+      const key = r * 1e6 + e.distance(u.pos);
+      if (key < bestKey) { bestKey = key; best = e; }
+    }
+    return best;
+  }
+
+  private updateSweep(u: Unit, o: Extract<Order, { kind: "sweep" }>, dt: number) {
+    const cur = o.target ? this.entity(o.target) : null;
+    // Look again once a second, or when the one fought is gone: a tower or soldier come up comes first.
+    if (!cur || !cur.alive || this.time >= o.next) {
+      const t = this.sweepTarget(u, o.at);
+      o.target = t ? t.id : 0;
+      o.next = this.time + 1;
+    }
+    if (!o.target) {
+      // Nothing left round the flag: stand by it.
+      const spot = { center: o.at, distance: (p: Vec2) => p.distance(o.at) };
+      if (this.approach(u, spot, 1.2, dt) === "blocked") u.order = IDLE;
+      return;
+    }
+    // Fought as an attack order would be, then back to the flag's order: whatever that turned to (the
+    // target gone, a threat to face) is only who to fight next.
+    const keep = u.order;
+    u.order = { kind: "attack", id: o.target };
+    this.updateAttack(u, o.target, dt);
+    const after = u.order;
+    u.order = keep;
+    if (after.kind === "attack" && after.id !== o.target) o.target = after.id;
+    else if (after.kind !== "attack") { o.target = 0; o.next = 0; }
+  }
+
   stop(player: number, ids: number[]) {
     for (const u of this.own(ids, player)) { u.order = IDLE; u.path = []; u.resumeMove = null; u.buildQueue = []; u.waypoints = []; }
   }
@@ -1499,6 +1556,7 @@ export class World {
       case "trade": this.updateTrade(u, o, dt); break;
       case "attack": this.updateAttack(u, o.id, dt, o.auto === true); break;
       case "attackGround": this.updateAttackGround(u, o.at, dt); break;
+      case "sweep": this.updateSweep(u, o, dt); break;
       case "convert": this.updateConvert(u, o.id, dt, o.sacrifice === true); break;
       case "heal": this.updateHeal(u, o.id, dt); break;
     }

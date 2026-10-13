@@ -2531,6 +2531,10 @@ function techGlyph(p: PixelCanvas, g: string) {
       for (let i = 0; i < 13; i++) { p.rect(5 + i, 5 + i, 2, 2, C.red); p.rect(17 - i, 5 + i, 2, 2, C.red); }
       L(5, 6, 17, 18, lighten(C.red, 0.35)); break;
     case "stop": p.poly([[8, 4], [16, 4], [20, 8], [20, 16], [16, 20], [8, 20], [4, 16], [4, 8]], C.red); p.rect(7, 11, 10, 3, C.white); break;
+    case "flag": // a pennant on a pole, in a ring on the ground: clear round here
+      p.ellipse(12, 18, 9, 3.5, C.ironDark); p.ellipse(12, 18, 7, 2.2, darken(C.ironDark, 0.6));
+      p.rect(9, 4, 2, 15, C.woodDark);
+      p.poly([[11, 4], [20, 7], [11, 11]], C.red); L(11, 5, 18, 7, lighten(C.red, 0.35)); break;
     case "next": p.poly([[5, 9], [13, 9], [13, 5], [20, 12], [13, 19], [13, 15], [5, 15]], C.gold); L(6, 10, 12, 10, lighten(C.gold, 0.4)); break;
     case "back": p.poly([[19, 9], [11, 9], [11, 5], [4, 12], [11, 19], [11, 15], [19, 15]], C.gold); L(12, 10, 18, 10, lighten(C.gold, 0.4)); break;
     case "sword": L(6, 18, 17, 5, C.ironLight); L(7, 18, 18, 6, C.iron); L(5, 14, 10, 19, C.bronze); L(4, 19, 6, 21, C.woodDark); break;
@@ -2554,7 +2558,7 @@ function techGlyph(p: PixelCanvas, g: string) {
 }
 
 const TECH_WORDS: [RegExp, string][] = [
-  [/^delete$/, "delete"], [/^stop$/, "stop"], [/^next$/, "next"], [/^back$/, "back"],
+  [/^delete$/, "delete"], [/^stop$/, "stop"], [/^next$/, "next"], [/^back$/, "back"], [/^flag$/, "flag"],
   [/^(build|repair)$/, "hammer"], [/^(attack_move|attack_ground)$/, "sword"], [/^stand_ground$/, "shield"], [/^unload$/, "back"],
   [/^(stone|tool|bronze|iron)_age$|^age_|advance|ascend/, "age"],
   [/coin|gold|bank|market|trade|currency|tax|mint/, "coin"],
