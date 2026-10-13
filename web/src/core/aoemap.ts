@@ -126,6 +126,8 @@ const SIZE: Record<string, number> = {
   gazelle: 0.3, elephant: 0.5, lion: 0.3, alligator: 0.4, fish: 0.5, deep_fish: 0.5, "-": 0.2,
 };
 const ON_WATER = new Set(["fish", "deep_fish"]);
+/** The terrains each thing may stand on (empires.dat's terrain restrictions, in data/aoe-maps.json). */
+const STAND_ON = new Map(Object.entries((maps as unknown as { standOn?: Record<string, number[]> }).standOn ?? {}).map(([k, v]) => [k, new Set(v)]));
 
 export class AoeMapGen {
   readonly W: number;
@@ -1075,9 +1077,12 @@ export class AoeMapGen {
   private fits(unit: string, fx: number, fy: number) {
     const s = SIZE[unit] ?? 0.5, W = this.W, H = this.H;
     if (fx - s < 0 || fx + s - 0.001 >= W || fy - s < 0 || fy + s - 0.001 >= H) return false;
-    const water = ON_WATER.has(unit);
+    const water = ON_WATER.has(unit), on = STAND_ON.get(unit);
     for (let y = Math.trunc(fy - s); y <= Math.trunc(fy + s - 0.001); y++) for (let x = Math.trunc(fx - s); x <= Math.trunc(fx + s - 0.001); x++) {
       const t = this.terrain[this.at(x, y)];
+      // The ground its terrain restriction allows (mines on grass or desert, no animal on a beach), as the
+      // original's canPlace checks it; a thing the data has no restriction for, anything dry.
+      if (on) { if (!on.has(t)) return false; continue; }
       if (water ? !WET.has(t) : WET.has(t)) return false;
       if (!water && unit !== "villager" && unit !== "alligator" && t === T.shallows) return false;
     }

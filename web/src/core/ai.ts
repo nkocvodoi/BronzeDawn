@@ -647,8 +647,13 @@ export class AIController {
     // The original's woods and herds are often well away from the Town Center (an island's rim of trees, the
     // forests of Inland, gazelles 10 to 24 tiles out): when most of those working one of them walk more than
     // eight tiles to drop what they carry, a building that takes it goes up by them: a Granary for berries and
-    // the like, a Storage Pit for wood, meat, the shore fish villagers catch from land, gold and stone.
-    if (this.thinks % 5 === 0) {
+    // the like, a Storage Pit for wood, meat, the shore fish villagers catch from land, gold and stone. Only once
+    // the age's own buildings stand (the Barracks first): one going up holds back the next on the plan, and a
+    // town of drop sites and no Barracks is a town for the first raid (across the sea, where the wood is far
+    // away from the start, it does not wait).
+    const planned = Array.from({ length: p.age + 1 }, (_, a) => this.plan(w, a)).flat()
+      .every((id) => this.count(bs, id) > 0 || w.blockerBuilding(id, this.player) !== null);
+    if (this.thinks % 5 === 0 && (planned || this.acrossSea)) {
       const at = (u: Unit) => (u.order.kind === "gather" ? w.node(u.order.id) : null);
       const work = villagers.map(at).filter((n): n is NonNullable<typeof n> => !!n && !n.def.boats_only);
       const groups = new Map<string, typeof work>();

@@ -200,35 +200,65 @@ These addresses are from Empiresx.exe with MD5 52e8ae9f4262b2ccf679f806c86e7c46.
 
 A game saved at the very start (Single Player, Random Map) holds the whole map: `web/scripts/aoe/gmx.ts` reads a
 Rise of Rome `.gmx` (one raw deflate stream: the size at 106, 9-byte tiles with terrain and elevation first, then
-object records of type, owner, unit id and position), and `web/scripts/aoe/compare-maps.ts` sets one beside Bronze
-Dawn's maps of the same kind, size and players:
+object records of type, owner, unit id and position). Two tools use it:
 
 ```
 cd web
-npx tsx scripts/aoe/compare-maps.ts assets-local/saves/Coastal-1.gmx coastal
+# the original's maps of one kind beside Bronze Dawn's of the same size and players
+npx tsx scripts/aoe/compare-maps.ts coastal assets-local/saves/Coastal-1.gmx assets-local/saves/Coastal-2.gmx
+# the seed the original used, and how much of our map from that seed is the same, tile for tile
+npx tsx scripts/aoe/find-seed.ts coastal assets-local/saves/Coastal-1.gmx
 ```
 
-The saves used here (Large, 144 × 144, 4 or 5 players) are kept with the rest of the original's data in the private
-`BronzeDawn-aoe-data` repo, under `saves/`, so the check runs on a machine without the game.
+The saves (Large, 144 × 144, 4 or 5 players, two of each of the nine kinds) are kept with the rest of the
+original's data in the private `BronzeDawn-aoe-data` repo, under `saves/`, so both run on a machine without the game.
 
-What they showed (2026-10-13), Bronze Dawn as the mean of 8 maps:
+### What they show (2026-10-13)
 
-| | Coastal | Inland | Mediterranean | Hill Country | Small Islands |
-|---|---|---|---|---|---|
-| water %, original / ours | 36.9 / 36.3 | 16.0 / 18.1 | 21.2 / 23.3 | 0 / 0 | 68.3 / 68.8 |
-| map edge that is water % | 84.5 / 87.6 | 47.8 / 74.7 | 0 / 4.4 | 0 / 0 | 89.0 / 90.2 |
-| bases joined by land | yes / yes | yes / yes | yes / yes | yes / yes | no / no |
-| gold, stone within 20 tiles of a TC | 8, 7 / 8, 7.1 | 6, 7 / 8.1, 7 | 8, 7.2 / 8, 7.2 | 8, 7 / 8, 7.1 | 9, 9.5 / 9.5, 7.4 |
-| berries within 17 | 4.8 / 5.8 | 6.3 / 6.3 | 5.8 / 5.5 | 6 / 6.1 | 6 / 6.2 |
+Two of the original's maps of each kind against 12 of ours (`compare-maps.ts`): water, the map's edges, whether the
+bases meet by land, beach, desert, forest, palms, hills, gold, stone, berries, gazelles, elephants, lions and fish,
+on the map and round each Town Center, are all within the original's range on all nine. What is not:
 
-With the maps taken by id instead (§1), Inland had no water at all, Hill Country a sea, the Mediterranean 39% water
-and water along every edge: those numbers were wrong, not the generator.
+- **Alligators.** The original has 5 to 12 on every map but Highland and Continental, ours 0 to 5.5, though our
+  count per group follows the code (§6). Hill Country has 5 with neither beach nor shallows, the host terrains the
+  data gives them, so they come from somewhere other than the map's object list [gap]. The terrains' own unit
+  lists in the dat (grass tufts, rocks, trees) hold none.
+- **Hill Country's forests** lie further from the Town Centers in the original (19 forest tiles 12 to 20 tiles out,
+  against our 89; both its saves agree). Its elevation is also where our maps from the original's seed part most
+  (below) [open].
 
-- **Forests and deserts.** Inland's and Hill Country's saves both fell on the one map in four with the "dry" ground
-  (twice the desert, three times the palms, half the forests: `terrainInit`, `rand() < 0x1fff`), so their forest and
-  desert shares match our dry maps, not our mean. Forest near the Town Centers swings a lot between maps; more saves
-  would tell whether ours is a little nearer [open].
-- **Alligators.** The original has about twice as many (9 to 12 on these maps against our 4 to 6), and 5 on Hill
-  Country, which has neither beach nor shallows, their host terrains in the data. Where those come from was not found
-  [gap]. The terrains' own unit lists in the dat (grass tufts, rocks, trees on forest and palm ground) hold none.
-- Not yet checked against a save: Large Islands, Highland, Continental, Narrows.
+Two things these saves turned up and that are now as the original does them:
+- **The maps by their place in the file** (§1): taken by the id each record carries, Inland had no water, Hill
+  Country a sea, the Mediterranean 39% water instead of about 21%.
+- **What may stand where.** A thing goes only on the ground its terrain restriction in the dat allows (`standOn`
+  in `data/aoe-maps.json`, from `terrainRestrictions`): mines and berries on grass or desert, animals and Town
+  Centers not on beaches, the alligator and villagers on beaches and shallows too. Without it, on the small
+  islands, our mines and herds stood on the beach rim, the far edge from the Town Center (Large Islands' stone
+  within 20 tiles: 5, the original's 7.5, now 7.2).
+
+### The original's seeds, and how far ours follows them
+
+The original seeds the generator with a `rand()`, so 0 to 32767. The land origins come before anything Bronze Dawn
+does not do bit for bit, so trying every seed until the Town Centers stand where the save has them finds it
+(`find-seed.ts`). It found one, and only one, for each of the 18 saves. Bronze Dawn's map from that seed, tile for
+tile:
+
+| Save | Seed | land / water | elevation | forest | desert | every tile | gold on the same tile |
+|---|---|---|---|---|---|---|---|
+| Small Islands 1, 2 | 6730, 19828 | 96.7, 100 | 94.1, 94.9 | 95.3, 95.8 | 91.6, 92.0 | 59.4, 70.6 | 0, 0 |
+| Large Islands 1, 2 | 26850, 31865 | 100, 96.1 | 92.3, 91.8 | 89.7, 91.0 | 86.4, 84.4 | 78.1, 65.9 | 0, 0 |
+| Coastal 1, 2 | 16643, 29455 | 69.3, 95.7 | 85.4, 91.9 | 85.7, 85.7 | 81.7, 81.2 | 35.2, 59.7 | 1, 0 |
+| Inland 1, 2 | 8491, 18036 | 88.5, 80.9 | 83.9, 81.8 | 79.5, 80.2 | 73.8, 76.8 | 43.0, 36.3 | 3, 0 |
+| Highland 1, 2 | 28666, 26769 | 100, 96.4 | 95.3, 82.1 | 96.8, 79.6 | 95.4, 62.0 | 94.1, 41.2 | 0, 5 |
+| Continental 1, 2 | 19238, 23745 | 96.7, 98.6 | 93.3, 93.1 | 91.3, 90.4 | 88.7, 87.6 | 66.3, 64.0 | 0, 11 |
+| Mediterranean 1, 2 | 12914, 16572 | 83.3, 99.4 | 84.2, 84.0 | 76.6, 74.6 | 74.4, 73.4 | 36.2, 52.4 | 1, 0 |
+| Hill Country 1, 2 | 28418, 23981 | 100, 100 | 28.1, 67.2 | 83.3, 81.0 | 69.7, 73.5 | 54.7, 57.6 | 0, 0 |
+| Narrows 1, 2 | 23362, 8281 | 99.6, 100 | 89.5, 92.7 | 91.9, 90.5 | 87.6, 87.5 | 81.0, 78.9 | 4, 2 |
+
+(shares in %, gold as mines). Read from the left: the lands are often the original's to the tile (100% on six of
+the saves); where they are not, something in the lands' growth or shallows still draws its numbers differently.
+Hills part next, most on Hill Country. The gold mines almost never stand on the same tile: by the objects the
+random numbers have parted, as §8 expects (the cliffs, the terrains' own units, the facings). The "dry" ground is
+not one of the differences: on the five saves that have it, ours from the same seed has it too, palms to within a
+few tiles (Highland 1: 1891 against 1891). With the seeds known, each step can now be checked against the
+original's map until it is the same.

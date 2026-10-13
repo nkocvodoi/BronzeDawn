@@ -25,7 +25,9 @@ if (!datPath || !outPath) {
   console.error("usage: npx tsx scripts/aoe/rms-data.ts <empires-ror.json> <aoe-maps.json>");
   process.exit(1);
 }
-const dat = JSON.parse(readFileSync(datPath, "utf8")) as { randomMaps: DatMap[]; civs: { units: ({ name: string } | null)[] }[] };
+const dat = JSON.parse(readFileSync(datPath, "utf8")) as {
+  randomMaps: DatMap[]; terrainRestrictions: number[][]; civs: { units: ({ name: string; terrainRestriction: number } | null)[] }[];
+};
 const name = (id: number) => UNITS[id] ?? `aoe_${id}_${(dat.civs[0].units[id] ?? dat.civs[1].units[id])?.name ?? "unknown"}`.toLowerCase();
 // The generator takes a map by its place in the file, not by the id each record carries: the map type indexes
 // the table it loaded in file order, and the same number picks the type's own rules (6 adds the central sea,
@@ -56,8 +58,18 @@ const maps = dat.randomMaps.slice(0, 9).map((m, index) => ({
   })),
   elevations: m.elevations,
 }));
+// The ground each thing may be put on, from its terrain restriction (a table of terrain -> allowed). Mines and
+// berries go on grass or desert only, animals not on beaches, the alligator and villagers on beaches and
+// shallows too: on an island, what would sit on its beach rim goes further in.
+const standOn: Record<string, number[]> = {};
+for (const [id, nm] of Object.entries(UNITS)) {
+  const u = dat.civs[0].units[Number(id)] ?? dat.civs[1].units[Number(id)];
+  if (nm === "-" || !u || standOn[nm]) continue;
+  standOn[nm] = (dat.terrainRestrictions[u.terrainRestriction] ?? []).map((v, t) => (v > 0 ? t : -1)).filter((t) => t >= 0);
+}
 writeFileSync(outPath, JSON.stringify({
   source: "Age of Empires: The Rise of Rome, empires.dat, random maps 0 to 8 (numbers only)",
+  standOn,
   maps,
 }, null, 1) + "\n");
 console.log(`${maps.length} maps -> ${outPath}`);
