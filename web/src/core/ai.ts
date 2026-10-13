@@ -119,6 +119,8 @@ export class AIController {
 
     const mine = w.unitsOf(this.player);
     const villagers = mine.filter((u) => u.isVillager);
+    // On land, villagers stand idle a moment between jobs and the town is never out of things to gather.
+    this.stalled = this.acrossSea && villagers.length >= 6 && villagers.filter((u) => u.order.kind === "idle").length * 3 >= villagers.length;
     // The army on land, and the war ships apart: they go where the water goes.
     const army = mine.filter((u) => u.isSoldier && !u.isBoat && u.aboard === null);
     const navy = mine.filter((u) => u.isSoldier && u.isBoat);
@@ -229,6 +231,8 @@ export class AIController {
   private colonyWood = false;
   /** The woods on another island villagers were last taken to. */
   private colonySite: Vec2 | null = null;
+  /** The wood on home's island when last counted (islands only). */
+  private woodHome = Infinity;
   /** Home's island, by its ground alone (trees and buildings not counted): it does not change. */
   private island: { seen: Uint8Array; from: number } | null = null;
   /** The land a villager away from home stands on (worked out now and then). */
@@ -427,12 +431,19 @@ export class AIController {
    *  when those woods are cut too, the idle there go on to the next, or home. */
   private settle(w: World, home: Vec2, villagers: Unit[]) {
     if (this.colony) { this.runColony(w, home); return; }
-    if (this.ferry || this.thinks % 10 !== 0 || w.players[this.player].age < 1) return;
+    if (this.thinks % 10 !== 0) return;
+    // Known from the Stone Age on: an island of a few hundred wood is spent on the first houses and the
+    // Barracks, and with nothing kept for the transport (Tool Age) and a pit over the sea, the town stood
+    // capped and idle for the rest of the game.
+    const woodHome = w.nodes.reduce((s, n) => s + (n.alive && n.res === Res.wood && !n.def.on_water && this.onIsland(w, home, n.center) ? n.amount : 0), 0);
+    this.woodHome = woodHome;
+    // Only with woods to go to: a Tiny map of small islands may have none worth the trip, and the wood kept
+    // for one then never went on the Barracks whose soldiers cost food alone.
+    this.colonyWood = woodHome < 1500 && (this.colonySite !== null || this.findWoods(w, home, this.island?.seen ?? new Uint8Array(0)) !== null);
+    if (this.ferry || w.players[this.player].age < 1) return;
     const free = villagers.filter((u) => u.aboard === null);
     const atHome = free.filter((u) => this.onIsland(w, home, u.pos) && this.byLand(w, home, u.pos));
     const away = free.filter((u) => !this.onIsland(w, home, u.pos));
-    const woodHome = w.nodes.reduce((s, n) => s + (n.alive && n.res === Res.wood && !n.def.on_water && this.onIsland(w, home, n.center) ? n.amount : 0), 0);
-    this.colonyWood = woodHome < 1500;
     const transport = () => w.unitsOf(this.player).find((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle");
     const pitCost = w.buildingCost(this.player, "storage_pit");
 
@@ -511,7 +522,8 @@ export class AIController {
     // Enough trees, and open ground beside them for a Storage Pit (it need not have been seen yet: the
     // villagers see it when they land).
     const open = (c: Tile) => { let k = 0; for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) if (w.map.passable(new Tile(c.x + dx, c.y + dy))) k++; return k; };
-    for (const n of ok.slice(0, 60)) if (this.woodNear(w, n.center) >= 600 && open(n.tile) >= 16) return n.center;
+    // On a Tiny map of islands a stand of 600 is rare; 300 still pays for the pit and the trip over.
+    for (const n of ok.slice(0, 60)) if (this.woodNear(w, n.center) >= 300 && open(n.tile) >= 16) return n.center;
     return null;
   }
 
@@ -560,7 +572,10 @@ export class AIController {
   private plan(w: World, age: number): string[] {
     const g = this.bent(w).building;
     const army = (id: string) => (w.rules.buildings.get(id)?.trains ?? []).some((t) => t !== "villager");
-    const list = PLAN[age];
+    // An island short of wood (the original's Tiny Small Islands has next to no forest): the Dock and the
+    // Barracks make the two buildings the Tool Age asks for, and the 240 wood of a Granary and a Storage Pit
+    // go on houses and the transport. The Town Center takes everything in.
+    const list = age === 0 && this.acrossSea && this.woodHome < 1500 ? ["barracks"] : PLAN[age];
     const rest = list.filter((id) => !army(id));
     const armies = list.filter(army).map((id, i) => [id, i] as const)
       .sort((a, b) => (g.get(b[0]) ?? 0) - (g.get(a[0]) ?? 0) || a[1] - b[1]).map(([id]) => id);
@@ -572,12 +587,17 @@ export class AIController {
     const keep = this.ageReserve(w);
     // Across the sea, a transport comes before everything else once the first attack draws near: without
     // one the army never leaves home, and an island's wood is soon spent on other things.
-    if (this.wantsTransport(w)) keep.add(w.unitCost(this.player, w.current(this.player, "light_transport")));
-    // Home's trees running out and no woods settled yet: the wood for a Storage Pit over the sea is kept.
+    const transport = w.current(this.player, "light_transport");
+    if (this.wantsTransport(w)) keep.add(w.unitCost(this.player, transport));
+    // Home's trees running out and no woods settled yet: the wood for a Storage Pit over the sea is kept,
+    // and for the transport that takes the villagers there.
     if (this.colonyWood) keep.add(w.buildingCost(this.player, "storage_pit"));
+    if (this.colonyWood && !this.wantsTransport(w) && !w.unitsOf(this.player).some((u) => u.isTransport)) keep.add(w.unitCost(this.player, transport));
     return keep;
   }
 
+  /** On an island, a third of the villagers idle: nothing left near to put them on. */
+  private stalled = false;
   /** When enemy soldiers at home last outnumbered the army. */
   private outnumberedAt = -1e9;
 
@@ -587,13 +607,17 @@ export class AIController {
     // Under attack by more than it has: the savings for the next age go on soldiers for a minute. Saving
     // through a siege lost the town with a thousand gold in the bank.
     if (w.time - this.outnumberedAt < 60) return new ResBag();
+    // Nothing left to gather (an island stripped bare): what it has will never reach the next age, and saved
+    // for it, 500 food sat in the bank while a town with room for 20 more soldiers was taken.
+    if (this.stalled) return new ResBag();
     const next = w.rules.ages[p.age + 1];
     if (!next || w.ageRequirementCount(this.player) < (next.requires_buildings ?? 0)) return new ResBag();
     return ResBag.of(next.cost);
   }
 
   private wantsTransport(w: World) {
-    return this.needsFerry && w.time >= this.level.firstAttack * 0.6 && w.buildingsOf(this.player).some((b) => b.def.on_water && b.complete);
+    // Once the first has gone (sunk on the way over), the next is kept for at once.
+    return this.needsFerry && (w.time >= this.level.firstAttack * 0.6 || this.waves > 0) && w.buildingsOf(this.player).some((b) => b.def.on_water && b.complete);
   }
 
   private affordable(w: World, cost: ResBag) {
@@ -612,7 +636,10 @@ export class AIController {
     // Villagers, but hold back to save for the next age once its buildings stand.
     // Across the sea, fewer villagers from the Tool Age: an island's wood runs out anyway, and the population
     // is better spent on soldiers, who must cross in waves big enough to hold a beach.
-    const target = this.level.villagers[Math.min(p.age, 3)] - (this.acrossSea && p.age >= 1 ? 6 : 0);
+    // An island short of wood with no woods over the sea to settle (a Tiny map of small islands) keeps fewer
+    // still: its houses are few, and a town of 22 villagers had no room left for the soldiers that win.
+    const poor = this.acrossSea && this.woodHome < 1500 && !this.colonyWood;
+    const target = this.level.villagers[Math.min(p.age, 3)] - (this.acrossSea && p.age >= 1 ? (poor ? 10 : 6) : 0);
     const ageBlock = w.blockerForNextAge(this.player);
     const saving = p.age < this.level.maxAge && villagers.length >= 14 + p.age * 4 && (ageBlock === null || ageBlock === "Not enough resources");
     const tcBusy = tc.queue.some((q) => q.kind === "age");
@@ -636,11 +663,13 @@ export class AIController {
 
     // Drop sites next to the resources. The original puts a player's berries 7 to 16 tiles out, counted on the
     // longer axis: on a diagonal that is up to 23 tiles.
-    if (this.count(bs, "granary") === 0 && villagers.length >= 4 && p.res.wood >= 120) {
+    // Not on an island short of wood in the Stone Age (see plan): its berries are by the Town Center.
+    const lean = p.age === 0 && this.acrossSea && this.woodHome < 1500;
+    if (!lean && this.count(bs, "granary") === 0 && villagers.length >= 4 && p.res.wood >= 120) {
       const spot = w.nearestNode(Res.food, home, 24, null, "berry_bush")?.center ?? home;
       this.placeNear(w, "granary", spot, 2, 7, villagers, false);
     }
-    if (this.count(bs, "storage_pit") === 0 && villagers.length >= 6 && p.res.wood >= 120) {
+    if (!lean && this.count(bs, "storage_pit") === 0 && villagers.length >= 6 && p.res.wood >= 120) {
       const spot = w.nearestNode(Res.wood, home, 22)?.center ?? home;
       this.placeNear(w, "storage_pit", spot, 2, 7, villagers, false);
     }
@@ -788,7 +817,9 @@ export class AIController {
     }
     // The nearest that can be walked to: on an island map the nearest mine may be on another island, and a
     // villager sent there would only come back idle, again and again.
-    const radius = r === Res.gold || r === Res.stone ? FAR : 30;
+    // On an island, wood as far as the island goes: past 30 tiles the last of home's trees were left
+    // standing, counted as home's wood, so no villagers went over the sea for more and the town ran dry.
+    const radius = r === Res.gold || r === Res.stone || (r === Res.wood && this.acrossSea) ? FAR : 30;
     const n = minBy(w.nodes.filter((x) => x.alive && x.res === r && !x.def.boats_only && x.amount > 0 && x.center.distance(home) <= radius
       && w.mayTry(this.player, x) && (!this.acrossSea || this.byLand(w, home, x.center)) && this.safeAt(w, x.center, home)), (x) => x.center.distance(home));
     if (n) { w.gather(this.player, [u.id], n.id); return true; }
@@ -825,7 +856,9 @@ export class AIController {
     const docks = bs.filter((b) => b.def.on_water);
     if (!docks.length) {
       if (villagers.length < 8 || w.blockerBuilding("dock", this.player) !== null) return;
-      if (!this.affordable(w, w.buildingCost(this.player, "dock"))) return;
+      // Across the sea the wood kept back is for the transport, which the Dock trains: it is paid from all there is.
+      const dockCost = w.buildingCost(this.player, "dock");
+      if (!(this.acrossSea ? w.players[this.player].res.covers(dockCost) : this.affordable(w, dockCost))) return;
       // Across the sea a Dock is the way out, fish near it or not.
       if (this.dockAt === undefined || (this.dockAt === null && this.thinks % 20 === 0)) this.dockAt = this.findDockSpot(w, home) ?? (this.acrossSea ? this.findDockSpot(w, home, false) : null);
       if (!this.dockAt) return;
@@ -849,7 +882,10 @@ export class AIController {
     const dock = docks.find((d) => d.complete);
     if (!dock) return;
     const boats = w.unitsOf(this.player).filter((u) => u.isBoat && u.isGatherer);
-    const want = [3, 4, 5, 5][Math.min(p.age, 3)];
+    // On an island short of wood, boats only while food is short: with 2,000 food in hand the town spent its
+    // last wood on new boats and had none for a transport.
+    const poor = this.acrossSea && this.woodHome < 1500;
+    const want = poor && p.res.food > 600 ? Math.min(boats.length, 2) : [3, 4, 5, 5][Math.min(p.age, 3)];
     const type = w.current(this.player, "fishing_boat");
     if (boats.length + dock.queue.length < want && dock.queue.length === 0 && p.pop + 1 <= p.popCap - (this.needsFerry ? 1 : 0) && w.blockerUnit(type, this.player) === null
       && this.affordable(w, w.unitCost(this.player, type))) w.train(this.player, dock.id, type);
@@ -1047,8 +1083,12 @@ export class AIController {
       // One that sizes up the enemy (Moderate up) is short too while the enemy has more soldiers than it:
       // on the original's maps a poor start puts it behind, and saving for the next age then lost the town.
       const short = army.length < this.level.guard[Math.min(p.age, 3)] || (this.level.counters && army.length < enemyArmy.length);
-      const goldFree = p.res.gold - this.reserve(w).gold >= cost.gold;
-      if (short ? p.res.covers(cost) && goldFree : this.affordable(w, cost)) w.train(this.player, b.id, pick);
+      const keep = this.reserve(w);
+      const goldFree = p.res.gold - keep.gold >= cost.gold;
+      // Nor the wood kept for a transport: an island's last wood went on bowmen after the transport sank,
+      // and 22 soldiers stood at home for the rest of the game.
+      const woodFree = !this.needsFerry || p.res.wood - keep.wood >= cost.wood;
+      if (short ? p.res.covers(cost) && goldFree && woodFree : this.affordable(w, cost)) w.train(this.player, b.id, pick);
     }
   }
 
@@ -1218,7 +1258,10 @@ export class AIController {
     // there with nowhere to take their wood and no transport to fetch them.
     // Only the wood held back counts here: food saved for the next age once kept a house from going up at
     // the population cap, and with it every villager after.
-    if (this.acrossSea && w.players[this.player].res.wood - this.reserve(w).wood < w.buildingCost(this.player, type).wood) return;
+    // Houses in the Stone Age are the exception: the transport cannot be had before the Tool Age, and a
+    // town kept at eight villagers to save for it got there last.
+    const p = w.players[this.player];
+    if (this.acrossSea && !(type === "house" && p.age === 0) && p.res.wood - this.reserve(w).wood < w.buildingCost(this.player, type).wood) return;
     const builder = this.pickBuilder(villagers, near);
     if (!builder) return;
     const spot = this.findSpot(w, type, near, minR, maxR, margin);
