@@ -31,15 +31,15 @@ const page = await browser.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 
-await page.goto(`http://localhost:${port}/gallery.html`);
-const sections = await page.evaluate(() => [...document.querySelectorAll("#nav a")].map((a) => new URL(a.href).searchParams.get("section")));
+await page.goto(`http://localhost:${port}/gallery.html?art=code`);
+const sections = await page.evaluate(() => [...document.querySelectorAll("#nav a:not(.art-toggle)")].map((a) => new URL(a.href).searchParams.get("section")));
 const found = {}, pictures = {};
 // The gallery's own compositions are left out: the scenes, and a sprite laid on a painted background. They
 // blend half-clear pixels and draw smoothed grid lines, which machines round differently (a Linux runner
 // differed from a Mac on exactly these); every sprite in them is checked on its own.
 const composed = (section, key) => section === "scene" || key.includes("(on water)");
 for (const section of sections) {
-  await page.goto(`http://localhost:${port}/gallery.html?section=${section}&scale=1`);
+  await page.goto(`http://localhost:${port}/gallery.html?section=${section}&scale=1&art=code`);
   const got = await page.evaluate(() => {
     const out = [];
     let heading = "";

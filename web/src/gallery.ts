@@ -1,11 +1,17 @@
-// The sprite gallery: every picture art.ts can draw, on grass, at 2x. Pick a section with ?section=.
+// The sprite gallery: every picture the game draws, on grass, at 2x. Pick a section with ?section=.
+// It shows the art the game uses: the files of public/assets/ (and assets-local/ and art packs, as in the game),
+// with the code-drawn pictures where no file has one. ?art=code shows the code-drawn ones alone, as the art
+// fingerprints (npm run smoke:art) check them.
 import type { BuildingDef } from "./core/rules";
 import { ARCHES, Arch, buildingPic, Facing, iconPic, nodePic, Pic, Pose, projectilePic, Tool, unitPic, UnitLook, wallPic } from "./game/art";
+import { ASSETS } from "./game/assets";
 
 const params = new URLSearchParams(location.search);
 const section = params.get("section") ?? "infantry";
 const SCALE = Number(params.get("scale")) || 2;
+const codeArt = params.get("art") === "code";
 const main = document.getElementById("main")!;
+if (!codeArt) await ASSETS.load();
 
 const INFANTRY = ["villager", "clubman", "axeman", "slinger", "short_swordsman", "broad_swordsman", "long_swordsman", "legion", "hoplite", "phalanx", "centurion", "bowman", "improved_bowman", "composite_bowman", "priest"];
 const MOUNTED = ["scout", "cavalry", "heavy_cavalry", "cataphract", "horse_archer", "heavy_horse_archer", "camel_rider", "chariot", "scythe_chariot", "chariot_archer", "war_elephant", "armored_elephant", "elephant_archer"];
@@ -21,12 +27,18 @@ const def = (id: string, size: number) => ({ id, size }) as BuildingDef;
 
 const SECTIONS = ["infantry", "villager", "mounted", "siege", "boats", "animals", "nodes", "walls", "scene", "icons", ...ARCHES.map((a) => `b-${a}`), ...ARCHES.map((a) => `stages-${a}`)];
 const nav = document.getElementById("nav")!;
+const link = (s: string, code: boolean) => `?section=${s}${code ? "&art=code" : ""}${params.has("scale") ? `&scale=${SCALE}` : ""}`;
 for (const s of SECTIONS) {
   const a = document.createElement("a");
-  a.href = `?section=${s}`; a.textContent = s;
+  a.href = link(s, codeArt); a.textContent = s;
   if (s === section) a.className = "on";
   nav.append(a);
 }
+const toggle = document.createElement("a");
+toggle.href = link(section, !codeArt);
+toggle.textContent = codeArt ? "show the game's art" : "show the code-drawn art";
+toggle.className = "art-toggle";
+nav.append(toggle);
 
 function heading(text: string) { const h = document.createElement("h2"); h.textContent = text; main.append(h); }
 function row(): HTMLElement { const d = document.createElement("div"); d.className = "grid"; main.append(d); return d; }
@@ -44,8 +56,10 @@ function cell(into: HTMLElement, src: HTMLCanvasElement, label: string, flip = f
   f.append(c, cap); into.append(f);
 }
 
-const look = (type: string, owner: number, facing: Facing, pose: Pose, frame: number, tool: Tool = "none", carry: number | null = null): UnitLook =>
-  ({ type, owner, facing, pose, frame, tool, carry });
+/** A sprite sheet picks its frame by time and its row by direction: the gallery's frames are spread over the
+ *  animation, facing the viewer (S) or away (N). */
+const look = (type: string, owner: number, facing: Facing, pose: Pose, frame: number, tool: Tool = "none", carry: number | null = null, job?: string): UnitLook =>
+  ({ type, owner, facing, pose, frame, tool, carry, dir: facing === "back" ? 4 : 0, t: frame * (pose === "walk" ? 0.25 : 0.33), job });
 
 /** Every frame of a unit: idle, 4 walk, 3 work; both facings for owner 0, the front for the others. */
 function unitRows(types: string[], owners = [0, 1]) {
@@ -103,6 +117,14 @@ switch (section) {
       for (const facing of ["front", "back"] as Facing[]) {
         cell(r, unitPic(look("villager", 0, facing, "idle", 0, tool)).canvas, `${facing} idle`);
         for (let f = 0; f < 3; f++) cell(r, unitPic(look("villager", 0, facing, "work", f, tool)).canvas, `work ${f}`);
+      }
+    }
+    for (const [job, tool] of [["butcher", "spear"], ["fight", "spear"]] as [string, Tool][]) {
+      heading(`villager: ${job}`);
+      const r = row();
+      for (const facing of ["front", "back"] as Facing[]) {
+        cell(r, unitPic(look("villager", 0, facing, "idle", 0, tool, null, job)).canvas, `${facing} idle`);
+        for (let f = 0; f < 3; f++) cell(r, unitPic(look("villager", 0, facing, "work", f, tool, null, job)).canvas, `work ${f}`);
       }
     }
     heading("villager carrying food, wood, gold, stone");
