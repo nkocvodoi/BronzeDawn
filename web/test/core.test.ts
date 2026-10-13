@@ -553,16 +553,30 @@ describe("the original's rules", () => {
     }
   });
 
-  it("a herd grazes together: left alone for ten minutes it wanders, but does not scatter", () => {
+  it("a herd left alone grazes where it is, as in the original: it does not run about", () => {
     const w = new World(RULES, 4, ["A", "B"], 48, false);
     const herd = gazelles(w, new Tile(24, 24), 6);
-    const from = herd[0].pos;
+    const from = herd.map((g) => g.pos);
     run(w, 600);
-    expect(spread(herd)).toBeLessThan(6);
-    expect(herd[0].pos.distance(from)).toBeGreaterThan(1); // it does move about
+    expect(Math.max(...herd.map((g, i) => g.pos.distance(from[i])))).toBeLessThan(0.5);
   });
 
-  it("a gazelle struck runs, the herd grazes on, and the runner comes back to it", () => {
+  it("a villager walking at a gazelle drives it on, a step ahead, and it grazes where it is left", () => {
+    const w = blank();
+    const g = w.spawnAnimal("gazelle", new Tile(12, 12).center)!;
+    const v = w.spawnUnit("villager", 0, new Tile(8, 12).center);
+    w.move(0, [v.id], new Tile(20, 12).center);
+    run(w, 20);
+    expect(g.alive).toBe(true);
+    expect(g.pos.x).toBeGreaterThan(19); // driven most of the way, kept ahead of the villager
+    expect(g.pos.distance(v.pos)).toBeGreaterThan(1.5);
+    const at = g.pos;
+    w.move(0, [v.id], new Tile(2, 12).center); // the villager goes back: the gazelle stays
+    run(w, 30);
+    expect(g.pos.distance(at)).toBeLessThan(0.5);
+  });
+
+  it("a gazelle struck runs, the herd grazes on, and the runner grazes where it stops", () => {
     const w = blank();
     const herd = gazelles(w, new Tile(14, 12), 5);
     const v = w.spawnUnit("villager", 0, new Tile(9, 12).center);
@@ -571,12 +585,15 @@ describe("the original's rules", () => {
     expect(herd[0].hp).toBeLessThan(herd[0].maxHp);
     expect(herd[0].fleeTimer > 0 && herd[0].order.kind === "move").toBe(true);
     expect(herd.slice(1).filter((g) => g.fleeTimer > 0).length).toBeLessThanOrEqual(1); // not a stampede
-    // The villager is called off before the kill: the gazelle goes back to its herd.
+    // The villager is called off before the kill: the runner stays where it ran to, the herd where it was.
     w.stop(0, [v.id]);
     w.move(0, [v.id], new Tile(2, 2).center);
-    run(w, 40);
+    run(w, 10);
+    const at = herd[0].pos;
+    run(w, 30);
     expect(herd.every((g) => g.alive)).toBe(true);
-    expect(spread(herd)).toBeLessThan(6);
+    expect(herd[0].pos.distance(at)).toBeLessThan(0.5);
+    expect(spread(herd.slice(1))).toBeLessThan(6); // the rest of the herd grazes on together
   });
 
   it("lions hunt gazelles when no one is near, and gazelles run from lions", () => {

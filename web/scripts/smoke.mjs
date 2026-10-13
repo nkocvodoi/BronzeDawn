@@ -335,7 +335,10 @@ await page.keyboard.up("Shift");
 await wait(100);
 check(spots.length === 3 && await g((id) => { const u = game.world.unit(id); return u.order.kind === "move" && u.waypoints.length === 2 && game.selection.join() === String(id); }, scout),
   "Shift + left click on the ground lays waypoint flags for the scout to walk round, and keeps it selected");
-check(await g(() => game.routes.parent !== null && game.routes.bounds.width > 0), "and its route is drawn, with a flag at each point");
+// Drawn with the next frame, which on a slow CI runner can be well after the clicks: waited for, up to 3 s.
+await page.waitForFunction(() => game.routes.parent !== null && game.routes.bounds.width > 0, null, { timeout: 3000 }).catch(() => {});
+const route = await g((id) => { const u = game.world.unit(id); return { drawn: game.routes.parent !== null && game.routes.bounds.width > 0, order: u?.order.kind, waypoints: u?.waypoints.length, selected: game.selection.join() }; }, scout);
+check(route.drawn, `and its route is drawn, with a flag at each point${route.drawn ? "" : ` (${JSON.stringify(route)})`}`);
 
 const pair = await g(() => { const vs = game.world.unitsOf(0).filter((u) => u.isVillager).slice(0, 2).map((u) => u.id); game.selection = vs; return vs; });
 await page.keyboard.press("Tab");
@@ -365,9 +368,12 @@ check(await g((c) => game.selection.join() === c.join(), crew), "Ctrl + 1 keeps 
 // Delete removes what is selected.
 const doomed = await g(() => { const v = game.world.unitsOf(0).find((u) => u.isVillager); game.selection = [v.id]; return v.id; });
 await page.keyboard.press("Delete");
-await wait(400);
+// Gone from the game at once; its picture with the next frame that handles the game's events, which on a
+// slow CI runner can be well after 400 ms: waited for, up to 3 s, rather than looked at once.
+await page.waitForFunction((id) => !game.world.unit(id) && !game.views.has(id), doomed, { timeout: 3000 }).catch(() => {});
 check(await g((id) => !game.world.unit(id), doomed), "Delete removes the selected unit");
-check(await g((id) => !game.views.has(id), doomed), "and its picture: nothing of it is left standing");
+const left = await g((id) => { const v = game.views.get(id); return v ? `still drawn (shown ${v.root.visible}, in the scene ${!!v.root.parent})` : ""; }, doomed);
+check(!left, `and its picture: nothing of it is left standing${left ? ` (${left})` : ""}`);
 // Deleted between two steps of the game (the order acts at once), a unit is still in the world's list
 // until the next step. A frame that runs no step handles the event, then draws: the picture must not be
 // made again from it. That frame is played here by hand, the game paused so that no step comes first.
