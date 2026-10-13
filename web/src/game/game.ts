@@ -209,6 +209,9 @@ export class Game {
   private effects = new Container();
   /** The flags of the selected units' walks: where each is going, and the waypoints after. */
   private routes = new Graphics();
+  /** Walks laid with Shift + click, by the group they were laid for: the points clicked, in order. Only these
+   *  are drawn with flags, one per click, not a plain move, and not one per unit of a group. */
+  private flagRoutes = new Map<string, { ids: number[]; points: Vec2[] }>();
   private fogSprite = new Sprite();
   private fogCanvas = document.createElement("canvas");
   private fogFilter: FogFilter;
@@ -588,6 +591,20 @@ export class Game {
   /** One of your orders. Played alone it runs at once and says how it went. Online it goes to every
    *  machine for a turn a moment ahead, and what it will say is told from the world as it stands now. */
   issue(c: Order): CommandResult {
+    // A walk laid with Shift + click shows its flags until the units are given anything else.
+    const ids = "ids" in c && Array.isArray(c.ids) ? (c.ids as number[]) : [];
+    if (ids.length) {
+      const key = [...ids].sort((a, b) => a - b).join(",");
+      for (const [k, r] of this.flagRoutes) if (k !== key || c.k !== "waypoint") {
+        r.ids = r.ids.filter((id) => !ids.includes(id));
+        if (!r.ids.length) this.flagRoutes.delete(k);
+      }
+      if (c.k === "waypoint" && "x" in c) {
+        const r = this.flagRoutes.get(key) ?? { ids: [...ids], points: [] };
+        r.points.push(new Vec2(c.x, c.y));
+        this.flagRoutes.set(key, r);
+      }
+    }
     if (!this.net) return runCommand(this.world, this.me, c);
     const why = this.preview(c);
     const blocked = typeof why === "string" && c.k !== "smart" || (typeof why === "object" && why !== null && "error" in why) || why === false;
@@ -3199,17 +3216,23 @@ export class Game {
     this.marker(e.clientX, e.clientY, 0x33ff66);
   }
 
-  /** For the selected units of your own: a line along each one's walk, and a flag in your colour at where it
-   *  is going and at each waypoint after, so a scout's route can be seen as it is laid. */
+  /** For a walk laid with Shift + click, while any of its units is selected: a line from the group through the
+   *  points clicked, and one flag in your colour at each still ahead, so a scout's route can be seen as it is
+   *  laid. A plain move shows none. */
   private drawRoutes() {
     const g = this.routes;
     if (!g.parent) this.effects.addChild(g);
     g.clear();
-    const color = playerColor(this.me);
-    for (const e of this.selectedEntities()) {
-      if (!(e instanceof Unit) || e.owner !== this.me || e.order.kind !== "move") continue;
-      const stops = [e.order.to, ...e.waypoints];
-      let from = iso(e.pos);
+    const color = playerColor(this.me), picked = new Set(this.selection);
+    for (const [k, r] of this.flagRoutes) {
+      const walking = r.ids.map((id) => this.world.unit(id)).filter((u): u is Unit => !!u && u.owner === this.me && u.order.kind === "move");
+      if (!walking.length) { this.flagRoutes.delete(k); continue; } // arrived, or stopped
+      if (!walking.some((u) => picked.has(u.id))) continue;
+      // The flags not yet passed: as many as the furthest behind still has to go.
+      const left = Math.max(...walking.map((u) => 1 + u.waypoints.length));
+      const stops = r.points.slice(-left);
+      const mid = walking.reduce((a, u) => a.add(u.pos), new Vec2(0, 0)).mul(1 / walking.length);
+      let from = iso(mid);
       for (const p of stops) {
         const s = iso(p);
         g.moveTo(from.x, from.y).lineTo(s.x, s.y).stroke({ width: 1, color: 0xffffff, alpha: 0.35 });
