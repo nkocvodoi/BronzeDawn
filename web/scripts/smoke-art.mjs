@@ -37,7 +37,8 @@ const found = {}, pictures = {};
 // The gallery's own compositions are left out: the scenes, and a sprite laid on a painted background. They
 // blend half-clear pixels and draw smoothed grid lines, which machines round differently (a Linux runner
 // differed from a Mac on exactly these); every sprite in them is checked on its own.
-const composed = (section, key) => section === "scene" || key.includes("(on water)");
+// The walls laid out on the map are such a scene too (a Mac and the Linux runner differed on it).
+const composed = (section, key) => section === "scene" || key.includes("(on water)") || key.startsWith("walls laid out on the map");
 for (const section of sections) {
   await page.goto(`http://localhost:${port}/gallery.html?section=${section}&scale=1&art=code`);
   const got = await page.evaluate(() => {
