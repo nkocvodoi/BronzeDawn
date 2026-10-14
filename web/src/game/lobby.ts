@@ -21,6 +21,8 @@ export interface Seat {
 export interface LobbySettings {
   mapType: string; mapTypeName: string; mapSize: number; mapSizeName: string; victory: string; victoryName: string;
   startAge: string; resources: string; popLimit: number; reveal: boolean; relics: boolean; farmsBlock: boolean; speed: number;
+  /** Missing from a host on an older version: read as off. */
+  fullTechTree?: boolean;
 }
 export interface LobbyState { code: string | null; seats: Seat[]; settings: LobbySettings; chat: { from: string; text: string }[] }
 
@@ -96,6 +98,7 @@ export function lobbyHtml(state: LobbyState, you: number, host: boolean, rules: 
     line("Starting age", rules.ages[Number(st.startAge)]?.name ?? "Stone Age"), line("Resources", st.resources[0].toUpperCase() + st.resources.slice(1)),
     line("Population limit", String(st.popLimit)), line("Game speed", `${st.speed}x`),
     line("Ruins and Artifacts", st.relics ? "Yes" : "No"), line("Reveal map", st.reveal ? "Yes" : "No"), line("Farms block the way", st.farmsBlock ? "Yes" : "No"),
+    line("Full tech tree", st.fullTechTree ? "Yes" : "No"),
   ].join("")}</ul>`;
   const chat = state.chat.slice(-30).map((c) => (c.from ? `<div><b>${esc(c.from)}:</b> ${esc(c.text)}</div>` : `<div class="sys">${esc(c.text)}</div>`)).join("") || `<div class="quiet">Say hello to the others here.</div>`;
   const me = state.seats[you];

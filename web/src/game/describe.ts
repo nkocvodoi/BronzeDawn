@@ -66,8 +66,8 @@ export function describe(t: TechDef, rules: Rules): string {
   return parts.join("; ");
 }
 
-/** A civilization's bonuses, one per line, and what it cannot build. */
-export function describeCiv(c: CivDef, rules: Rules): string[] {
+/** A civilization's bonuses, one per line, and what it cannot build: nothing, with the full tech tree on. */
+export function describeCiv(c: CivDef, rules: Rules, fullTree = false): string[] {
   const name = (id: string) => rules.units.get(id)?.name ?? rules.buildings.get(id)?.name ?? rules.techs.get(id)?.name ?? id;
   const out = describeEffects(c.effects, rules);
   // A technology that only upgrades to or unlocks a missing unit or building goes without saying.
@@ -81,6 +81,6 @@ export function describeCiv(c: CivDef, rules: Rules): string[] {
   const own = [...rules.units.values(), ...rules.techs.values()].filter((d) => d.civ === c.id).map((d) => d.name);
   if (own.length) out.push(`their own: ${own.join(", ")}`);
   const shown = [...new Set(c.disabled.filter((id) => !implied(id)).map(name))];
-  if (shown.length) out.push(`no ${shown.join(", ")}`);
+  if (shown.length && !fullTree) out.push(`no ${shown.join(", ")}`);
   return out;
 }

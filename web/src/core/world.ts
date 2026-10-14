@@ -38,6 +38,8 @@ export interface WorldOptions {
   startAge?: number; resources?: string; popLimit?: number; revealMap?: boolean; victory?: Victory;
   /** Ruins and Artifacts on the map (5 of each), as in the original; on unless turned off. */
   relics?: boolean;
+  /** Every civ may have the whole common tech tree, as AoE2's setting: its `disabled` list is ignored, its bonuses stay. */
+  fullTechTree?: boolean;
   /** A map built from these numbers instead of `mapType` (one from a player's art pack). Plain data, so it
    *  goes to every machine in an online game with the rest of the options. */
   mapSpec?: RandomMapSpec;
@@ -116,6 +118,7 @@ export class World {
     this.stance = playerNames.map((_, a) => playerNames.map((_, b) => (a === b || (this.teams[a] > 0 && this.teams[a] === this.teams[b]) ? "ally" : "enemy")));
     this.tributed = playerNames.map(() => playerNames.map(() => 0));
     this.farmsBlock = options.farmsBlock === true;
+    this.fullTechTree = options.fullTechTree === true;
     this.popMax = options.popLimit ?? rules.economy.pop_max;
     this.victory = options.victory ?? { kind: "standard" };
     const stock = (options.resources && rules.economy.start_levels?.[options.resources]) || rules.economy.start;
@@ -123,7 +126,7 @@ export class World {
     playerNames.forEach((n, i) => {
       const mods = new Mods(rules);
       const civId = options.civs?.[i];
-      mods.setCiv(civId ? rules.civs.find((c) => c.id === civId) ?? null : null);
+      mods.setCiv(civId ? rules.civs.find((c) => c.id === civId) ?? null : null, this.fullTechTree);
       const p = new Player(i, n, ResBag.of(stock), mods);
       p.age = startAge;
       this.players.push(p);
@@ -155,6 +158,8 @@ export class World {
   buildingsOf(p: number) { return this.buildings.filter((b) => b.alive && b.owner === p); }
   /** Whether farms stop movement, as in the original. */
   farmsBlock = false;
+  /** Whether every civ has the whole tech tree. A save from before this setting has no field, which reads as off. */
+  fullTechTree = false;
   /** The population limit of this game. */
   popMax = 50;
   victory: Victory = { kind: "standard" };
