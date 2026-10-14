@@ -36,6 +36,7 @@ dời tâm (`center`) trong code.
 | `buildings.py` | Mọi công trình theo từng thời đại (Tool, Bronze, Iron) |
 | `stoneage.py` | Công trình Thời đồ đá: chòi tròn và nhà dài vách đất trên móng đá, mái rơm nhiều lớp có dây buộc, sân đất và đồ vật quanh nhà (củi, chum, giỏ, giá phơi da, hàng rào, cột cờ) |
 | `races.py` | Các tộc giả tưởng: dáng người, màu, bộ phận riêng của Elf, Dwarf, Centaur, Beastfolk trên khung người dân chung; nhân mã (thân người trên ngựa không đầu); người cây; 8 unit riêng (`replica/game/fantasy-races.md`) |
+| `race_buildings.py` | Công trình của 4 tộc giả tưởng: mỗi tộc một bộ khối dựng (gỗ sống và lá; đá đào vào núi; lều vải và nhà cột; lều da, nhà dài, cột vật tổ), cùng bố cục cho mọi tộc; Town Center, Temple, Wonder riêng của từng tộc |
 | `soldiers.py`, `machines.py` | Lính bộ, cung thủ, thầy tu, quân cưỡi; máy công thành và tàu |
 | `terrain.py` | Ô đất: cỏ, đất, cát, nước |
 | `build.py` | Danh sách cái cần render, kích thước khung, điểm neo, ghi manifest |

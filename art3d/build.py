@@ -38,6 +38,7 @@ import models  # noqa: E402
 import animals  # noqa: E402
 import buildings as blds  # noqa: E402
 import machines  # noqa: E402
+import race_buildings  # noqa: E402
 import races  # noqa: E402
 import relics  # noqa: E402
 import soldiers  # noqa: E402
@@ -269,6 +270,22 @@ def main():
             spec = still(f"{key}-{age}", lambda make=make, age=age: make(blds.Style(age)), size, anchor, tmp, center,
                          ground=key != "dock")
             buildings.setdefault(key, {}).setdefault("default", {})[age] = spec
+    # The fantasy races' own buildings, as the game picks them first for a civilization: buildings[id][race][age].
+    # --only takes "buildings-elf", "elf-house" or "elf-house@tool".
+    for race in race_buildings.KITS:
+        for key in race_buildings.BUILDERS:
+            for age in race_buildings.ages_of(key):
+                name = f"{race}-{key}"
+                if not (only is None or f"buildings-{race}" in only or name in only or f"{name}@{age}" in only):
+                    continue
+                (w, h), center, anchor = blds.frame_of(key)
+                # Their tallest (an elf's tree, a dwarf's peak) stand higher than anyone's.
+                grow = 1.7 if key in ("town_center", "temple", "wonder") else 1.3
+                size = (int(w * (1.2 if key == "town_center" else 1)), int(h * grow))
+                center = (center[0], center[1], center[2] * grow)
+                spec = still(f"{name}-{age}", lambda race=race, key=key, age=age: race_buildings.make(race, key, age), size, anchor, tmp, center,
+                             ground=key != "dock")
+                buildings.setdefault(key, {}).setdefault(race, {})[age] = spec
     if want("town_center-old"):
         s = models.TOWN_CENTER
         buildings["town_center"] = {"default": {"stone": still("town_center", models.town_center, s["size"], s["anchor"], tmp, s["center"])}}

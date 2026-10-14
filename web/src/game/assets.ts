@@ -120,6 +120,8 @@ export class Assets {
     // games have none of the fantasy races, whose villagers alone are 12 MB.
     const later = new Set(Object.entries(this.manifest.units ?? {}).filter(([k]) => k.includes("/")).map(([, u]) => u.file));
     for (const u of Object.entries(this.manifest.units ?? {})) if (!u[0].includes("/")) later.delete(u[1].file);
+    // And its own buildings (buildings[id][civ][age], a style that is no architecture of everyone's).
+    for (const f of civBuildingFiles(this.manifest, null)) later.add(f);
     const pictures = [...this.base.keys(), ...this.packUrls.keys()].filter((f) => /\.(png|webp|gif|jpe?g)$/i.test(f) && !later.has(f));
     await Promise.all(pictures.map((f) => this.loadImage(f)));
     if (this.failures.length) console.warn(`Assets not loaded: ${this.failures.join(", ")}`);
@@ -131,7 +133,8 @@ export class Assets {
   loadCiv(civ: string): Promise<void> {
     let p = this.civsLoading.get(civ);
     if (!p) {
-      const files = Object.entries(this.manifest.units ?? {}).filter(([k]) => k.startsWith(`${civ}/`)).map(([, u]) => u.file);
+      const files = [...Object.entries(this.manifest.units ?? {}).filter(([k]) => k.startsWith(`${civ}/`)).map(([, u]) => u.file),
+        ...civBuildingFiles(this.manifest, civ)];
       p = Promise.all(files.filter((f) => !this.images.has(f)).map((f) => this.loadImage(f))).then(() => {});
       this.civsLoading.set(civ, p);
     }
@@ -244,6 +247,23 @@ export class Assets {
   }
 
   musicUrls() { return (this.manifest.music ?? []).map((f) => this.url(f)); }
+}
+
+/** The building styles everyone shares; any other style is one civilization's own. */
+const SHARED_STYLES = new Set(["default", "egyptian", "greek", "babylonian", "asian", "roman"]);
+
+/** The pictures of a civilization's own buildings (all civilizations' with null). */
+function civBuildingFiles(m: Manifest, civ: string | null): string[] {
+  const out: string[] = [];
+  for (const b of Object.values(m.buildings ?? {})) {
+    if (!b || typeof b !== "object" || typeof (b as ImageSpec).file === "string") continue;
+    for (const [style, ages] of Object.entries(b as Record<string, unknown>)) {
+      if (SHARED_STYLES.has(style) || (civ !== null && style !== civ) || !ages || typeof ages !== "object") continue;
+      if (typeof (ages as ImageSpec).file === "string") { out.push((ages as ImageSpec).file); continue; }
+      for (const s of Object.values(ages as Record<string, ImageSpec>)) if (s && typeof s.file === "string") out.push(s.file);
+    }
+  }
+  return out;
 }
 
 /** Every file a manifest names. */

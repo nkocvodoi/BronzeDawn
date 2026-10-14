@@ -498,3 +498,21 @@ Khung xương, động tác và cách render là của người dân và lính c
 `elf/villager:axe`, hay `races` cho 8 unit riêng). Bản đầy đủ của cả bốn tộc và 8 unit mất khoảng 2 giờ trên Mac chip M
 khi chạy 4 tiến trình cùng lúc. Gallery có mục `fantasy` (`gallery.html?section=fantasy`), có cả góc nghiêng vì nhìn
 thẳng từ trước thì thân ngựa của nhân mã bị người che.
+
+### Công trình (Blender, `art3d/race_buildings.py`)
+
+Mỗi tộc một bộ khối dựng (`Kit`: nhà lớn, nhà tròn, tháp, hàng rào, cờ), cùng một bố cục cho mọi tộc (Barracks có
+giá giáo và cọc tập, Archery Range có bia, Stable có bãi quây, Market có quầy hàng...); Town Center, Temple và
+Wonder là của riêng từng tộc. Thời đại sau to và nhiều chi tiết hơn (`tier`). Khóa trong manifest:
+`buildings[id][elf|dwarf|centaur|beastfolk][age]`, game chỉ dùng cho người chơi của đúng tộc đó (17 dân tộc gốc vẫn
+hình như cũ) và chỉ tải khi trận có tộc đó. Ruộng và tường dùng chung.
+
+| Tộc | Nhà | Town Center | Temple | Wonder |
+| --- | --- | --- | --- | --- |
+| Elf | gỗ sống bo tròn, mái là tán lá, rễ ở góc | cây cổ thụ có hai sàn | cây thiêng giữa vòng đá trắng | Cây Thế Giới |
+| Dwarf | đá granit đào vào gò đá, cửa vòm sâu, mái đá phiến, ống khói | sảnh dưới chân núi tuyết, tháp có lò lửa | lò rèn: đe, lửa, tượng đá | cổng núi giữa hai tượng vua |
+| Centaur | lều vải sống mái, lều tròn, nhà cột mở (thời Đồng trở đi) | lều lớn / nhà cột, lều tròn | đài thiên văn: vòm vải tròn, vòng đồng | bậc tròn, cột, quả cầu thiên văn vàng |
+| Beastfolk | lều da, nhà dài vách đất mái rơm có sừng xương | nhà dài, lều, cột vật tổ | vòng cột vật tổ quanh lửa | gò đất dưới đầu lâu thú khổng lồ |
+
+`blender -b --factory-startup -P art3d/build.py -- --only buildings-elf` (hoặc `elf-house`, `elf-house@tool`). Gallery:
+`gallery.html?section=fantasy-buildings`.
