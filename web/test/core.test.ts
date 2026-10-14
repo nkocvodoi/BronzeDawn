@@ -952,6 +952,31 @@ describe("the original's rules", () => {
     expect(dock.hp).toBeLessThan(dock.maxHp);
   });
 
+  it("the computer hunts an elephant by its Town Center with a party of five, never one villager alone", () => {
+    // An elephant fights back: one villager sent alone was killed before the next came, so it was 300
+    // food the computer never took.
+    const party = (n: number) => {
+      const w = blank(32);
+      w.addBuilding("town_center", 0, new Tile(4, 4), true);
+      w.addBuilding("town_center", 1, new Tile(26, 26), true);
+      w.fog[0].revealAll();
+      const vs = Array.from({ length: n }, (_, i) => w.spawnUnit("villager", 0, new Tile(3 + (i % 6), 9 + Math.floor(i / 6)).center));
+      const el = w.spawnAnimal("elephant", new Tile(12, 6).center)!;
+      w.ais = [new AIController(0, "hard")];
+      w.ais[0].attach(w);
+      let most = 0;
+      for (let i = 0; i < Math.round(30 / World.dt) && el.alive; i++) {
+        w.step();
+        most = Math.max(most, vs.filter((v) => v.alive && v.order.kind === "attack" && v.order.id === el.id).length);
+      }
+      return { most, dead: !el.alive };
+    };
+    const big = party(12);
+    expect(big.most).toBeGreaterThanOrEqual(5);
+    expect(big.dead).toBe(true);
+    expect(party(6).most).toBe(0); // a small town keeps its villagers at work
+  });
+
   it("a boat comes out of a Dock on the open sea, not into a pond beside it", () => {
     const w = blank(24);
     // The sea to the west, a Dock in it by the shore, and a pond of one tile just behind the Dock on land,

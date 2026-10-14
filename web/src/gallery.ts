@@ -22,6 +22,8 @@ const ANIMALS = ["gazelle", "elephant", "lion", "alligator"];
 // The fantasy races: their villagers (the game's "<civ>/villager" sheets) and their own units. Their pictures
 // are Blender's only, so the section is left out of the drawn-by-code gallery.
 const RACES = ["elf", "dwarf", "centaur", "beastfolk"];
+const ELF_UNITS = ["clubman", "axeman", "slinger", "short_swordsman", "broad_swordsman", "long_swordsman", "hoplite", "phalanx",
+  "bowman", "improved_bowman", "priest", "scout", "cavalry", "horse_archer", "heavy_horse_archer"];
 const OWN_UNITS = ["glade_archer", "grove_warden", "ironclad", "deep_arbalest", "centaur_archer", "hoof_lancer", "wolfkin_raider", "bearkin_brute"];
 const BUILDINGS: [string, number][] = [
   ["town_center", 3], ["house", 2], ["granary", 3], ["storage_pit", 3], ["barracks", 3], ["archery_range", 3], ["stable", 3], ["market", 3], ["farm", 3],
@@ -155,6 +157,13 @@ switch (section) {
       for (const [name, tool, job] of jobs) {
         for (let f = 0; f < 3; f++) cell(r, unitPic({ ...look("villager", 0, "front", "work", f, tool, null, job), civ, dir: 2 }).canvas, `${name} ${f}`);
       }
+    }
+    // The common units the elves train, drawn as elves ("elf/<unit>").
+    heading("elf: the common units, front and side");
+    const er = row();
+    for (const t of ELF_UNITS) {
+      cell(er, unitPic({ ...look(t, 0, "front", "idle", 0), civ: "elf" }).canvas, t);
+      cell(er, unitPic({ ...look(t, 0, "front", "work", 1), civ: "elf", dir: 2 }).canvas, `${t} attack`);
     }
     unitRows(OWN_UNITS);
     heading("their own units, from the side");

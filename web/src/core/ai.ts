@@ -61,6 +61,9 @@ export function strength(a: UnitDef, b: UnitDef, rules: Rules) {
 const dist = (a: Unit, p: Vec2) => a.pos.distance(p);
 /** How far from home villagers are sent for gold and stone once the mines nearby are spent. */
 const FAR = 50;
+/** Home's wood below which the computer on an island saves for, and goes to, woods over the sea. */
+const SETTLE_AT = 3000;
+
 function minBy<T>(xs: T[], f: (x: T) => number): T | null {
   let best: T | null = null, bv = Infinity;
   for (const x of xs) { const v = f(x); if (v < bv) { bv = v; best = x; } }
@@ -439,12 +442,18 @@ export class AIController {
     this.woodHome = woodHome;
     // Only with woods to go to: a Tiny map of small islands may have none worth the trip, and the wood kept
     // for one then never went on the Barracks whose soldiers cost food alone.
-    this.colonyWood = woodHome < 1500 && (this.colonySite !== null || this.findWoods(w, home, this.island?.seen ?? new Uint8Array(0)) !== null);
-    if (this.ferry || w.players[this.player].age < 1) return;
+    // At 3000: on a Large map of eight, farms and their sowing spend a home's last 1500 in a few minutes, and
+    // with nothing kept the 120 for the Storage Pit over the sea was never there (a town sat on 4000 gold).
+    this.colonyWood = woodHome < SETTLE_AT && (this.colonySite !== null || this.findWoods(w, home, this.island?.seen ?? new Uint8Array(0)) !== null);
+    if (w.players[this.player].age < 1) return;
     const free = villagers.filter((u) => u.aboard === null);
     const atHome = free.filter((u) => this.onIsland(w, home, u.pos) && this.byLand(w, home, u.pos));
     const away = free.filter((u) => !this.onIsland(w, home, u.pos));
-    const transport = () => w.unitsOf(this.player).find((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle");
+    // A transport of its own: the army's ferry would otherwise take every one, and the town stood idle with
+    // nothing to cut through three waves of attacks.
+    const army = new Set(this.ferry?.transports ?? []);
+    const transport = () => w.unitsOf(this.player).find((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle" && !army.has(u.id));
+    const ownTransport = () => this.trainTransport(w, army.size + 1);
     const pitCost = w.buildingCost(this.player, "storage_pit");
 
     // Over there with nowhere to take what they cut (the Storage Pit could not be paid for, or was
@@ -462,7 +471,7 @@ export class AIController {
     const idleAway = away.filter((u) => u.order.kind === "idle" || stuck.includes(u));
     if (idleAway.length >= 3) {
       const t = transport();
-      if (!t) { this.trainTransport(w); return; }
+      if (!t) { ownTransport(); return; }
       const from = w.map.reachable(w.map.nearestPassable(idleAway[0].pos.tile, 2) ?? idleAway[0].pos.tile, () => true);
       const woods = this.findWoods(w, home, from);
       const site = woods && (pitThere(woods) || w.players[this.player].res.wood >= pitCost.wood + 10) ? woods : home;
@@ -472,9 +481,9 @@ export class AIController {
     }
 
     const idle = atHome.filter((u) => u.order.kind === "idle");
-    if (!(woodHome < 1500 && away.length < 6) && idle.length < 3) return;
+    if (!(woodHome < SETTLE_AT && away.length < 6) && idle.length < 3) return;
     const t = transport();
-    if (!t) { this.trainTransport(w); return; }
+    if (!t) { ownTransport(); return; }
     const island = this.island!.seen;
     const site = this.colonySite && this.woodNear(w, this.colonySite) >= 300 ? this.colonySite : this.findWoods(w, home, island);
     if (!site || (!pitThere(site) && w.players[this.player].res.wood < pitCost.wood + 10)) return;
@@ -518,12 +527,16 @@ export class AIController {
   private findWoods(w: World, home: Vec2, not: Uint8Array): Vec2 | null {
     const trees = w.nodes.filter((n) => n.alive && n.res === Res.wood && !n.def.on_water && !this.onIsland(w, home, n.center) && !not[w.map.index(n.tile)]);
     const enemy = w.buildings.filter((b) => b.alive && w.isEnemy(this.player, b.owner));
-    const ok = trees.filter((n) => !enemy.some((b) => b.distance(n.center) < 18)).sort((a, b) => a.center.distance(home) - b.center.distance(home));
     // Enough trees, and open ground beside them for a Storage Pit (it need not have been seen yet: the
     // villagers see it when they land).
     const open = (c: Tile) => { let k = 0; for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) if (w.map.passable(new Tile(c.x + dx, c.y + dy))) k++; return k; };
-    // On a Tiny map of islands a stand of 600 is rare; 300 still pays for the pit and the trip over.
-    for (const n of ok.slice(0, 60)) if (this.woodNear(w, n.center) >= 300 && open(n.tile) >= 16) return n.center;
+    // Well away from the enemy first; on a map of eight every island has someone on it, and a town that
+    // would only go far from all of them stayed home with nothing to cut while 20000 wood stood elsewhere.
+    for (const away of [18, 12]) { // nearer than 12 the woodcutters were cut down by the enemy's soldiers
+      const ok = trees.filter((n) => !enemy.some((b) => b.distance(n.center) < away)).sort((a, b) => a.center.distance(home) - b.center.distance(home));
+      // On a Tiny map of islands a stand of 600 is rare; 300 still pays for the pit and the trip over.
+      for (const n of ok.slice(0, 200)) if (this.woodNear(w, n.center) >= 300 && open(n.tile) >= 16) return n.center;
+    }
     return null;
   }
 
@@ -543,12 +556,18 @@ export class AIController {
       return;
     }
     if (!waiting.length && !aboard.length) {
-      this.colony = null;
-      if (!c.woods) return; // home: back to work there
+      if (!c.woods) { this.colony = null; return; } // home: back to work there
       const pits = () => w.buildingsOf(this.player).filter((b) => b.dropsOff(Res.wood) && b.center.distance(c.woods!) < 10);
       // All of them build it (they still carry what they cut before, so the usual pick of a builder with
-      // empty hands would find none).
-      const spot = pits().length || !landed.length ? null : this.findSpot(w, "storage_pit", c.woods, 2, 7, false);
+      // empty hands would find none). By the trees if there is room, else further out, else where they
+      // landed.
+      const spot = pits().length || !landed.length ? null
+        : this.findSpot(w, "storage_pit", c.woods, 2, 12, false) ?? this.findSpot(w, "storage_pit", landed[0].pos, 1, 8, false);
+      // Just ashore they have not looked round yet, and nowhere could be built on: wait and look again
+      // (the wood stays kept for it). Given up at once, the woodcutters cut with nowhere to take it, the
+      // wood was spent at home meanwhile, and every island town ran out.
+      if (!spot && !pits().length && landed.length && w.time - c.sailed < 60) return;
+      this.colony = null;
       if (spot) w.place(this.player, "storage_pit", spot, landed.map((u) => u.id));
       const pit = pits().find((b) => !b.complete);
       if (pit) w.build(this.player, landed.map((u) => u.id), pit.id);
@@ -592,7 +611,9 @@ export class AIController {
     // Home's trees running out and no woods settled yet: the wood for a Storage Pit over the sea is kept,
     // and for the transport that takes the villagers there.
     if (this.colonyWood) keep.add(w.buildingCost(this.player, "storage_pit"));
-    if (this.colonyWood && !this.wantsTransport(w) && !w.unitsOf(this.player).some((u) => u.isTransport)) keep.add(w.unitCost(this.player, transport));
+    // Its own, besides any the army sails in.
+    const army = new Set(this.ferry?.transports ?? []);
+    if (this.colonyWood && !this.wantsTransport(w) && !w.unitsOf(this.player).some((u) => u.isTransport && !army.has(u.id))) keep.add(w.unitCost(this.player, transport));
     return keep;
   }
 
@@ -735,25 +756,56 @@ export class AIController {
       }
     }
 
+    // Saving for woods over the sea: no new farms, and the spent ones are not sown again, out of that wood.
+    // Sowing fourteen farms took every log as it came in, and the town never had the 120 for the Storage Pit.
+    const keepWood = this.reserve(w).get(Res.wood);
+    p.reseedHeld = this.colonyWood && p.res.wood < keepWood + w.reseedCost(this.player).get(Res.wood);
     // Farms when the berries and game near home are gone. One farmer each.
     const foodNear = w.nearestNode(Res.food, home, 23) !== null || this.huntNear(w, home) !== null;
     const farms = bs.filter((b) => b.isFarm);
     const foodWorkers = Math.ceil(this.shares(p, this.reserve(w))[Res.food] * villagers.length);
     const wantFarms = Math.max(0, foodWorkers - (foodNear ? 5 : 0));
     const farmsBuilding = farms.filter((f) => !f.complete).length;
-    if (farms.length < wantFarms && farmsBuilding < 2 && p.res.wood >= 75 && w.blockerBuilding("farm", this.player) === null) {
+    if (farms.length < wantFarms && farmsBuilding < 2 && p.res.wood - (this.colonyWood ? keepWood : 0) >= 75 && w.blockerBuilding("farm", this.player) === null) {
       this.placeFarm(w, home, villagers);
     }
 
+    this.huntBig(w, home, villagers);
     if (this.acrossSea) this.settle(w, home, villagers);
     this.assignIdle(w, home, villagers);
     this.finishAbandoned(w, villagers, bs);
     this.rebalance(w, villagers, home, this.thinks % 3 === 0 ? 1.5 : 3);
   }
 
+  /** Game near home for one hunter: what runs (gazelles). An elephant fights back and kills a lone villager,
+   *  so it is hunted by a party (`huntBig`), never by one sent alone. */
   private huntNear(w: World, home: Vec2): Unit | null {
-    return minBy(w.units.filter((u) => u.alive && u.isAnimal && u.animal!.behavior !== "aggressive" && u.pos.distance(home) < 16),
+    return minBy(w.units.filter((u) => u.alive && u.isAnimal && u.animal!.behavior === "flee" && u.pos.distance(home) < 16),
       (u) => u.pos.distance(home));
+  }
+
+  /** An elephant near home is 300 food: five villagers on food go together, as the original's computer
+   *  did, and cut it up where it falls. One at a time, the first was killed before the second came. */
+  private huntBig(w: World, home: Vec2, villagers: Unit[]) {
+    if (this.thinks % 5 !== 0) return;
+    const PARTY = 5;
+    const beasts = w.units.filter((u) => u.alive && u.isAnimal && u.animal!.behavior === "defend");
+    if (!beasts.length) return;
+    const hunting = (b: Unit) => villagers.filter((v) => v.order.kind === "attack" && v.order.id === b.id).length;
+    if (beasts.some((b) => hunting(b) > 0)) return; // one at a time
+    // Only beside somewhere to take the meat (a Town Center or a Granary), and with a town big enough to
+    // spare five: one 20 tiles out, hunted by five of an early town's ten, cost the stronger computer
+    // its Tool Age (the meat rots as they carry it home ten at a time).
+    if (villagers.length < 10) return;
+    const larders = w.buildingsOf(this.player).filter((b) => b.complete && b.dropsOff(Res.food) && !b.isFarm);
+    const elephant = minBy(beasts.filter((b) => larders.some((d) => d.distance(b.pos) <= 10) && (!this.acrossSea || this.byLand(w, home, b.pos)) && this.safeAt(w, b.pos, home)),
+      (b) => b.pos.distance(home));
+    if (!elephant) return;
+    // From those gathering food (or idle), nearest first; not the last few on a farm-less town's food.
+    const free = villagers.filter((v) => v.aboard === null && (v.order.kind === "idle" || ((v.order.kind === "gather" || v.order.kind === "return") && v.lastGather === Res.food)));
+    if (free.length < PARTY + 1) return;
+    const party = free.sort((a, b) => a.pos.distance(elephant.pos) - b.pos.distance(elephant.pos)).slice(0, PARTY);
+    w.attack(this.player, party.map((v) => v.id), elephant.id);
   }
 
   /** How to split the villagers. A big stockpile of something pulls workers off it. */

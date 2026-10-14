@@ -3179,6 +3179,456 @@
      "fps": 11
     }
    }
+  },
+  "elf/clubman": {
+   "file": "art3d/elf-clubman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/broad_swordsman": {
+   "file": "art3d/elf-broad_swordsman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/cavalry": {
+   "file": "art3d/elf-cavalry.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/scout": {
+   "file": "art3d/elf-scout.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/horse_archer": {
+   "file": "art3d/elf-horse_archer.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/heavy_horse_archer": {
+   "file": "art3d/elf-heavy_horse_archer.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/axeman": {
+   "file": "art3d/elf-axeman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/slinger": {
+   "file": "art3d/elf-slinger.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/short_swordsman": {
+   "file": "art3d/elf-short_swordsman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/long_swordsman": {
+   "file": "art3d/elf-long_swordsman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/hoplite": {
+   "file": "art3d/elf-hoplite.png",
+   "frame": [
+    120,
+    100
+   ],
+   "anchor": [
+    58.0,
+    70.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/phalanx": {
+   "file": "art3d/elf-phalanx.png",
+   "frame": [
+    120,
+    100
+   ],
+   "anchor": [
+    58.0,
+    70.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/bowman": {
+   "file": "art3d/elf-bowman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/improved_bowman": {
+   "file": "art3d/elf-improved_bowman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/priest": {
+   "file": "art3d/elf-priest.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
   }
  },
  "credits": [

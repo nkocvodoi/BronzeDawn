@@ -226,6 +226,8 @@ export class Player {
   /** Farms that run out are sown again at a farm's price, if there is the wood: AoE2's reseeding,
    *  as a game setting. Off by default, as in the original, where a spent farm is gone. */
   autoReseed = false;
+  /** The computer holds back the sowing for a while: its wood is saved for woods over the sea. */
+  reseedHeld = false;
 
   constructor(readonly id: number, readonly name: string, public res: ResBag, readonly mods: Mods) {}
   get civ() { return this.mods.civ; }

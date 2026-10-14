@@ -483,11 +483,11 @@ Mỗi con số là 102 trận, sai số khoảng ±5%. Lần sau: thêm bản đ
 
 ### Hình (Blender, `art3d/races.py`)
 
-Theo ý chủ repo, phong cách anime Nhật hơn châu Âu: đầu hơi to, tóc thành mảng rõ. Mọi nhân vật mặc đủ đồ.
+Theo ý chủ repo, phong cách anime Nhật hơn châu Âu: đầu hơi to, tóc thành mảng rõ. Elf mặc bikini da gấu (người trưởng thành, không khỏa thân); các tộc khác mặc đủ đồ.
 
 | Tộc | Người dân (`<civ>/villager`, đủ 9 nghề) | Unit riêng |
 | --- | --- | --- |
-| Elf | cao như người thường, phần lớn là nữ (áo thân xanh có eo, váy dài màu người chơi), tóc vàng dài, tai nhọn; săn bằng cung, đánh bằng dao găm | Glade Archer: cung cao gần bằng người, áo choàng màu người chơi; Grove Warden: người cây cao 1,6 lần |
+| Elf | cao như người thường, nữ, dáng đầy đặn, mặc bikini da gấu (áo ngực và quần ngắn), khố và băng đô màu người chơi, tóc vàng dài, tai nhọn; săn bằng cung, đánh bằng dao găm. **Mọi lính thường của Elf** (15 loại, khóa `elf/<unit>`) cũng là nữ elf mặc bikini da gấu, giữ mũ, khiên, vũ khí và áo choàng của loại lính đó | Glade Archer: cung cao gần bằng người, áo choàng màu người chơi; Grove Warden: người cây cao 1,6 lần |
 | Dwarf | thấp 80%, bè 130%, râu tết hai lọn có khoen đồng, mũi to | Ironclad: mũ kín, giáp sắt, khiên to; Deep Arbalest: nỏ nặng, quay tay nạp dây |
 | Centaur | nhân mã bốn chân: thân người mọc ở ngực ngựa, đi nước kiệu; các việc của tay và thân như người dân thường, xẻ thịt thì cúi xuống | Centaur Archer; Hoof Lancer (ngựa xám, giáo dài, phi nước đại) |
 | Beastfolk | mặt người, tai và đuôi mèo, cao 110% | Wolfkin Raider: đầu sói xám, hai rìu, cao 125%; Bearkin Brute: đầu gấu nâu, chùy đá, cao 145% |
