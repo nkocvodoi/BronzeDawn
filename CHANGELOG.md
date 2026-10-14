@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-14
 
+- [#132](https://github.com/nkocvodoi/BronzeDawn/pull/132) Hết nhấp nháy sáng tối khi lướt bản đồ trên PC đặt Scale 125%/150%: lưới chấm của sương mù và vị trí bản đồ tính theo điểm ảnh thật
 - [#130](https://github.com/nkocvodoi/BronzeDawn/pull/130) AI đảo (bước 2): thuyền vận tải đổ quân xong quay về bờ nhà thay vì đậu lại bãi đối phương để bị bắn chìm, chọn bãi đổ bộ tránh tháp, thời Đồ Đá không giữ gỗ cho thuyền (Barracks không còn trễ), sang đảo đối phương chặt gỗ xa nhà chính của họ, được xây nhà khi chạm trần dân số; Hard thắng Easy 36/96 thay vì 32/96 trên Tiny Small/Large Islands (thua vẫn 16)
 - [#129](https://github.com/nkocvodoi/BronzeDawn/pull/129) Ctrl + '+' / '-' và Ctrl + lăn chuột chỉ phóng to, thu nhỏ bản đồ, không zoom cả trang (giao diện giữ nguyên cỡ)
 - [#128](https://github.com/nkocvodoi/BronzeDawn/pull/128) Công trình riêng của 4 tộc giả tưởng (Blender, 184 hình): Elf nhà gỗ sống mái lá, Town Center là cây cổ thụ, Wonder là Cây Thế Giới; Dwarf nhà đá đào vào núi, Temple là lò rèn, Wonder là cổng núi; Centaur lều vải và nhà cột, Temple là đài thiên văn; Beastfolk lều da, nhà dài, cột vật tổ, Wonder là gò đầu lâu thú. Chỉ dùng cho người chơi của đúng tộc đó, chỉ tải khi trận có tộc đó
