@@ -286,8 +286,10 @@ export class HUD {
     this.lines.forEach((l) => (l.textContent = ""));
     this.lines[0].textContent = [...kinds.values()].map((k) => `${k.n} ${k.name}`).join(" · ");
     // Drawn again only when the picked or their hit points (in steps of 5%) change.
-    const cells = sel.map((e) => ({ e, f: Math.max(0, Math.min(1, e.hp / Math.max(1, e.maxHp))) }));
-    const sig = cells.map(({ e, f }) => `${e.id}:${Math.round(f * 20)}`).join(",");
+    // The panel holds four rows of pictures: past that, the rest are a count.
+    const SHOWN = 27;
+    const cells = sel.slice(0, sel.length > SHOWN + 1 ? SHOWN : SHOWN + 1).map((e) => ({ e, f: Math.max(0, Math.min(1, e.hp / Math.max(1, e.maxHp))) }));
+    const sig = cells.map(({ e, f }) => `${e.id}:${Math.round(f * 20)}`).join(",") + `/${sel.length}`;
     if (sig !== this.multiSig) {
       this.multiSig = sig;
       this.multi.innerHTML = cells.map(({ e, f }) => {
@@ -295,7 +297,7 @@ export class HUD {
         const hp = f > 0.66 ? "#0c0" : f > 0.33 ? "#e8c020" : "#e02818";
         const name = (e instanceof Unit ? jobName(e) : null) ?? e.name;
         return `<button data-pick="${e.id}" title="${name}: ${Math.ceil(e.hp)}/${e.maxHp}"><img src="${this.iconUrl(type)}" alt=""><i style="width:${Math.round(f * 100)}%;background:${hp}"></i></button>`;
-      }).join("");
+      }).join("") + (sel.length > cells.length ? `<span class="more">+${sel.length - cells.length}</span>` : "");
     }
     return true;
   }

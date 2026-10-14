@@ -53,7 +53,6 @@ const GATHER_STAND = 0.22;
  *  the letter is the same on every keyboard layout. */
 
 /** The original's limit on how many units one selection holds. */
-const MAX_SELECTION = 25;
 /** How long a health bar stays up over something that was hit, in game seconds. */
 const HIT_BAR_SECONDS = 15;
 
@@ -1692,7 +1691,7 @@ export class Game {
         row("Docks and boats", `a ${name("dock")} goes in the water at the shore · trade boats (${kbd("R")} at the Dock) bring gold back from another player's Dock, more the further they sail · transports (${kbd("T")}) take land units aboard with a right-click, and put them ashore with a right-click on the land or ${kbd("U")}`),
         row("Tribute", `100 at a time on the Diplomacy screen, or 100, 500 or 1000 with ${kbd("T")} at a ${name("market")} (which tribute does not need) · ${Math.round((r.economy.tribute_fee ?? 0.25) * 100)}% fee (free with Coinage or for the Palmyrans)`),
         row("Ruins and Artifacts", "walk any unit up to one to take it; an Artifact you hold can be moved (right-click) and carried in a transport. Hold all of either for 15 minutes to win"),
-        row("Selection", "up to 25 units at a time"),
+        row("Selection", "drag a box over as many as you like · double-click one to pick all of its kind on the screen"),
         row("Game speed", `1x, 1.5x, 2x, 3x (${this.keyName("faster")} and ${this.keyName("slower")}, or click the speed in the top bar), and 5x, 10x when watching`),
         row("Watching the computers", `${kbd("V")} follows one player (its fog, resources and panel), then the next, then everything`),
         row("Online", `${kbd("Enter")} chats · only the host pauses and sets the speed`),
@@ -3328,10 +3327,11 @@ export class Game {
     music?.classList.toggle("off", !this.sound.musicOn);
   }
 
-  /** Sets the selection, keeping to the original's limit of 25, and lets the first unit answer. */
+  /** Sets the selection and lets the first unit answer. There is no limit: the original's 25 left units
+   *  behind when a big army was dragged over. */
   private select(ids: number[], speak = true) {
     const before = this.selection.join();
-    this.selection = ids.slice(0, MAX_SELECTION);
+    this.selection = ids;
     if (speak && this.selection.length && this.selection.join() !== before) this.selectSound(false);
   }
 
@@ -3435,7 +3435,7 @@ export class Game {
       if (e.shiftKey) {
         const i = this.selection.indexOf(hit.id);
         if (i >= 0) this.selection.splice(i, 1);
-        else if (this.selection.length < MAX_SELECTION) { this.selection.push(hit.id); this.selectSound(false); }
+        else { this.selection.push(hit.id); this.selectSound(false); }
       } else this.select([hit.id]);
       return;
     }
