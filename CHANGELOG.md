@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-14
 
+- [#129](https://github.com/nkocvodoi/BronzeDawn/pull/129) Ctrl + '+' / '-' và Ctrl + lăn chuột chỉ phóng to, thu nhỏ bản đồ, không zoom cả trang (giao diện giữ nguyên cỡ)
 - [#128](https://github.com/nkocvodoi/BronzeDawn/pull/128) Công trình riêng của 4 tộc giả tưởng (Blender, 184 hình): Elf nhà gỗ sống mái lá, Town Center là cây cổ thụ, Wonder là Cây Thế Giới; Dwarf nhà đá đào vào núi, Temple là lò rèn, Wonder là cổng núi; Centaur lều vải và nhà cột, Temple là đài thiên văn; Beastfolk lều da, nhà dài, cột vật tổ, Wonder là gò đầu lâu thú. Chỉ dùng cho người chơi của đúng tộc đó, chỉ tải khi trận có tộc đó
 - [#127](https://github.com/nkocvodoi/BronzeDawn/pull/127) AI trên đảo không còn cạn gỗ (Elf ở Large Islands 8 người từng kẹt Tool Age với 28 gỗ, chỉ luyện Clubman): Storage Pit ở đảo khác được đặt cả khi vừa cập bờ, thuyền riêng chở dân đi đốn, để dành gỗ sớm hơn và tạm không trồng lại ruộng; Elf giờ lên Iron Age, có Archery Range và cung thủ. Máy săn voi theo nhóm 5 người thay vì gửi từng người một. Toàn bộ tộc Elf (dân và 15 loại lính) mặc bikini da gấu
 - [#126](https://github.com/nkocvodoi/BronzeDawn/pull/126) Nút Resign (hỏi lại một lần, chơi online vẫn khớp); Menu chia nhóm và có trang Settings riêng (tốc độ, ruộng tự trồng lại, âm thanh, nhạc, toàn màn hình, giữ chuột, phím tắt); nút lệnh hiện phím tắt ở góc (tắt được); chọn nhiều quân thì ô trạng thái hiện số lượng theo loại và hình kèm thanh máu của từng con (bấm để chọn riêng, Shift để bỏ ra); con trỏ cần câu khi trỏ vào cá
