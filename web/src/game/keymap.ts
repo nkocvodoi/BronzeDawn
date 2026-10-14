@@ -61,8 +61,10 @@ export const KEY_ACTIONS: KeyAction[] = [
   a("Game", "scores", "Population, scores or nothing above the minimap", "F4"),
 ];
 
-/** Keys the player cannot take: they open the help and menu, cancel, chat and scroll. */
-export const RESERVED = new Set(["Escape", "F1", "F10", "Shift+/", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+/** Keys the player cannot take: they open the help and menu, cancel, chat, scroll and zoom. */
+export const RESERVED = new Set(["Escape", "F1", "F10", "Shift+/", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+  // Ctrl + "+" and Ctrl + "-" zoom the map, in place of the browser's page zoom.
+  "Ctrl+=", "Ctrl+-", "Ctrl+Shift+=", "Ctrl+Shift+-"]);
 
 const NAMED: Record<string, string> = {
   Space: "Space", Tab: "Tab", Enter: "Enter", Escape: "Escape", Backspace: "Backspace", Delete: "Delete", Insert: "Insert",

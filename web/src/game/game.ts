@@ -1656,7 +1656,7 @@ export class Game {
         row("Right click", "the order the pointer shows: move, gather, hunt, build, repair, attack, convert or heal (priests), or a building's rally point"),
         row("Shift + click on the ground", "a waypoint flag (left or right click); they walk the flags in turn"),
         row("Minimap", "left click looks there · right click sends what is picked"),
-        row("Screen edge, arrows, trackpad or wheel", "scroll · pinch or Ctrl + wheel zooms"),
+        row("Screen edge, arrows, trackpad or wheel", "scroll · pinch, Ctrl + wheel or Ctrl + \"+\" / \"-\" zooms the map"),
         row("Middle and side buttons", `free: set them on the <a href="#" data-tab="keys">Keys</a> page (for example the back button for the next idle villager)`),
       ])],
       ["keys", "Keys", ""],
@@ -3204,7 +3204,7 @@ export class Game {
       if (plain && (e.code === "Delete" || e.code === "Backspace")) { this.bindCaptured(null); return; }
       const c = chordOfKey(e);
       if (!c) return;
-      if (RESERVED.has(c)) { this.hud.message(`${prettyChord(c)} is kept for the game (help, menu, cancel, chat or scrolling)`, "warn"); return; }
+      if (RESERVED.has(c)) { this.hud.message(`${prettyChord(c)} is kept for the game (help, menu, cancel, chat, scrolling or zoom)`, "warn"); return; }
       this.bindCaptured(c);
     }, { capture: true });
     window.addEventListener("mousedown", (e) => {
@@ -3229,14 +3229,29 @@ export class Game {
     mm.addEventListener("mousedown", (e) => { e.preventDefault(); miniMove(e); });
     mm.addEventListener("mousemove", (e) => { if (e.buttons & 1) miniMove(e); });
     mm.addEventListener("contextmenu", (e) => e.preventDefault());
+    // Ctrl + wheel (and a trackpad pinch, which the browser sends as one) zooms the map, in steps, wherever the
+    // pointer is: the browser's own page zoom would scale the panels and the menus with it.
+    window.addEventListener("wheel", (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      if (!this.started) return;
+      this.pinch += e.deltaY;
+      if (Math.abs(this.pinch) > 40) { this.zoom(this.pinch < 0 ? 0.5 : 2); this.pinch = 0; }
+    }, { passive: false, capture: true });
     canvas.addEventListener("wheel", (e) => {
       e.preventDefault();
-      if (e.ctrlKey) {                                           // trackpad pinch, in steps
-        this.pinch += e.deltaY;
-        if (Math.abs(this.pinch) > 40) { this.zoom(this.pinch < 0 ? 0.5 : 2); this.pinch = 0; }
-      }
-      else { this.cam.x += e.deltaX * this.cam.zoom; this.cam.y += e.deltaY * this.cam.zoom; this.clampCamera(); }
+      if (e.ctrlKey || e.metaKey) return; // the zoom, above
+      this.cam.x += e.deltaX * this.cam.zoom; this.cam.y += e.deltaY * this.cam.zoom; this.clampCamera();
     }, { passive: false });
+    // Ctrl + "+" and Ctrl + "-" (Cmd on a Mac) zoom the map too, not the page.
+    window.addEventListener("keydown", (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || this.keyCapture) return;
+      const into = e.code === "Equal" || e.code === "NumpadAdd", out = e.code === "Minus" || e.code === "NumpadSubtract";
+      if (!into && !out) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (this.started) this.zoom(into ? 0.5 : 2);
+    }, { capture: true });
     window.addEventListener("keydown", (e) => this.keyDown(e));
     window.addEventListener("keyup", (e) => this.keys.delete(e.key));
     window.addEventListener("blur", () => this.keys.clear());
