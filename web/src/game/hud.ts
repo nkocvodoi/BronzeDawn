@@ -69,6 +69,9 @@ export class HUD {
   private hpText = $("#hp-text");
   private queue = $("#queue");
   private status = $("#status");
+  /** Several picked: each one's picture and hit points, instead of the first one's numbers. */
+  private multi = $("#multi");
+  private multiSig = "";
   private portraitBox = $("#portrait-box");
   private progress = $("#progress");
   private progressBar = $("#progress-bar");
@@ -257,11 +260,50 @@ export class HUD {
   }
 
   /** As in the original, a group shows its first member. */
+  /** More than one picked, as in the original: how many of each kind, then a picture for each with its
+   *  hit points under it. Clicking one picks it alone; with Shift, leaves it out. True when shown. */
+  private manyBox(sel: Entity[]): boolean {
+    const many = sel.length > 1;
+    this.multi.hidden = !many;
+    for (const el of [this.portraitBox, this.hpBox, this.hpText, this.title]) el.style.display = many ? "none" : "";
+    this.lines[0].classList.toggle("wrap", many);
+    if (!many) { this.multiSig = ""; return false; }
+    const kinds = new Map<string, { name: string; n: number }>();
+    for (const e of sel) {
+      const name = (e instanceof Unit ? jobName(e) : null) ?? e.name;
+      const k = kinds.get(name) ?? { name, n: 0 };
+      k.n++;
+      kinds.set(name, k);
+    }
+    this.owner.textContent = `${sel.length} selected`;
+    this.title.style.color = "";
+    // How many of each kind, on as many lines as it takes, above the pictures.
+    this.title.textContent = "";
+    this.stats.innerHTML = "";
+    this.queue.innerHTML = "";
+    this.lines.forEach((l) => (l.textContent = ""));
+    this.lines[0].textContent = [...kinds.values()].map((k) => `${k.n} ${k.name}`).join(" · ");
+    // Drawn again only when the picked or their hit points (in steps of 5%) change.
+    const cells = sel.map((e) => ({ e, f: Math.max(0, Math.min(1, e.hp / Math.max(1, e.maxHp))) }));
+    const sig = cells.map(({ e, f }) => `${e.id}:${Math.round(f * 20)}`).join(",");
+    if (sig !== this.multiSig) {
+      this.multiSig = sig;
+      this.multi.innerHTML = cells.map(({ e, f }) => {
+        const type = e instanceof Unit ? e.def.id : e instanceof Building ? e.def.id : "";
+        const hp = f > 0.66 ? "#0c0" : f > 0.33 ? "#e8c020" : "#e02818";
+        const name = (e instanceof Unit ? jobName(e) : null) ?? e.name;
+        return `<button data-pick="${e.id}" title="${name}: ${Math.ceil(e.hp)}/${e.maxHp}"><img src="${this.iconUrl(type)}" alt=""><i style="width:${Math.round(f * 100)}%;background:${hp}"></i></button>`;
+      }).join("");
+    }
+    return true;
+  }
+
   private statusBox(w: World, me: number, sel: Entity[]) {
     const first = sel[0];
     this.status.style.visibility = first ? "visible" : "hidden";
     this.progress.hidden = true;
     if (!first) return;
+    if (this.manyBox(sel)) return;
     const enemy = first.owner >= 0 && first.owner !== me;
     this.title.textContent = (first instanceof Unit ? jobName(first) : null) ?? first.name;
     this.title.style.color = enemy ? playerColor(first.owner) : "";
@@ -383,20 +425,27 @@ export class HUD {
     return slots;
   }
 
+  /** Whether the buttons show their keys. */
+  private showKeys = true;
+  get hotkeys() { return this.showKeys; }
+  set hotkeys(on: boolean) { this.showKeys = on; this.signature = ""; this.setCommands(this.commands); }
+
   setCommands(cmds: Command[]) {
     this.commands = cmds;
     const menu = cmds.map((c) => c.title).join("|");
     if (menu !== this.menuKey) { this.menuKey = menu; this.page = 0; }
     const shown = this.layout(cmds, menu);
-    const sig = `${this.page}#` + shown.map((c) => (c ? `${c.key}|${c.title}|${c.blocker}` : "-")).join(";");
+    const sig = `${this.page}#${this.hotkeys}#` + shown.map((c) => (c ? `${c.key}|${c.title}|${c.blocker}` : "-")).join(";");
     this.shown = shown;
     if (sig === this.signature) return;
     this.signature = sig;
-    // No hotkey letters on the buttons, as in the original: they are in the help line.
+    // The key in the corner of each button, unless the player keeps the original's bare buttons (Settings).
+    const keyName = (k: string) => ({ Escape: "Esc", Delete: "Del" } as Record<string, string>)[k] ?? k;
     this.grid.innerHTML = shown.map((c, i) => {
       if (!c) return `<button class="empty" tabindex="-1" aria-hidden="true"></button>`;
       const icon = c.icon ? `<img src="${this.iconUrl(c.icon)}" alt="${c.title}">` : `<span>${c.title}</span>`;
-      return `<button data-i="${i}" class="${c.blocker ? "off" : ""}" aria-label="${c.title}">${icon}</button>`;
+      const key = this.hotkeys && c.key ? `<kbd class="hk">${keyName(c.key)}</kbd>` : "";
+      return `<button data-i="${i}" class="${c.blocker ? "off" : ""}" aria-label="${c.title}">${icon}${key}</button>`;
     }).join("");
   }
 

@@ -241,6 +241,10 @@ await page.mouse.down();
 await page.mouse.move(box.x1, box.y1, { steps: 5 });
 await page.mouse.up();
 check((await g(() => game.selection.length)) === box.n, `drag selects all ${box.n} villagers`);
+await page.waitForTimeout(300);
+check((await page.$$("#multi [data-pick]")).length === box.n && (await page.textContent("#owner-line")) === `${box.n} selected` && (await page.textContent("#info-0")).length > 0,
+  "the status box shows each one picked, with its hit points");
+check((await page.$$eval("#commands .hk", (k) => k.map((x) => x.textContent))).includes("B"), "the command buttons show their keys");
 await g(() => { game.paused = false; });
 
 // Arrow keys scroll, H comes home, ? opens help and pauses.
@@ -297,14 +301,17 @@ const ratio = ((await g(() => game.world.time)) - g0) / ((Date.now() - r0) / 100
 timed(ratio > 1.6, `game time runs ${ratio.toFixed(1)}x real time at 2x`, rate2);
 await page.click("#menu-btn");
 check(await page.isVisible("#overlay .menu") && (await g(() => game.paused)), "Menu opens the game menu and pauses");
-await page.click("#speed");
-check((await g(() => game.speed)) === 3 && (await page.textContent("#speed")) === "Game speed 3x", "the speed in the menu steps to 3x");
+check(await page.isVisible("#resign-open") && !(await page.isVisible("#overlay #reseed-btn")), "the menu has Resign, and leaves the settings to their own page");
+await page.click("#settings-open");
+await page.click('#overlay [data-speed="3"]');
+check((await g(() => game.speed)) === 3 && (await page.getAttribute('#overlay [data-speed="3"]', "class")) === "picked", "Settings sets the speed to 3x");
 const reseedOn = () => g(() => game.world.players.every((p) => p.autoReseed));
 check(await reseedOn(), "farms sow themselves again by default, for both players");
 await page.click("#reseed-btn");
 check(!(await reseedOn()) && (await page.getAttribute("#reseed-btn", "class")).includes("off"), "the menu turns reseeding off");
 await page.click("#reseed-btn");
 check(await reseedOn(), "and on again");
+await page.click("#menu-back");
 await page.click("#timeline-btn");
 check(await page.isVisible("#timeline") && (await page.textContent("#timeline-read")).includes("You"), "the menu shows the Timeline so far");
 await page.keyboard.press("Escape");
@@ -567,6 +574,15 @@ await page.click("[data-tribute='1:2:500']");
 check(await g(() => game.world.players[0].res.gold === 75 && game.world.players[1].res.gold >= 500), "500 gold sent from the Market costs 625");
 await page.keyboard.press("Escape");
 check(await g(() => !game.hud.overlayShown && !game.paused), "Esc closes the tribute screen");
+
+// Resign, asked once more: everything of yours falls and the game is lost.
+await page.click("#menu-btn");
+await page.click("#resign-open");
+check(await page.isVisible("#resign-yes"), "Resign asks once more");
+await page.click("#resign-yes");
+await page.waitForFunction(() => game.world.players[0].defeated && document.querySelector("#overlay .lose"), null, { timeout: 5000 }).catch(() => {});
+check(await g(() => game.world.players[0].defeated && !game.world.units.some((u) => u.alive && u.owner === 0)) && (await page.isVisible("#overlay .lose")),
+  "Resign: everything of yours falls, and the game is lost");
 
 check(errors.length === 0, `no errors in the console${errors.length ? ": " + errors.join(" | ") : ""}`);
 await browser.close();
