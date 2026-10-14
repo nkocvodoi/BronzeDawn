@@ -31,12 +31,13 @@ function gain(e: Extract<Effect, { type: "stat" }>, u: UnitDef): number {
 /** What a civilization's own unit counts for, at the least: about a third better than the common one. */
 const OWN_UNIT = 0.35;
 
-export function civBent(rules: Rules, civ: CivDef | null): CivBent {
+/** `fullTree`: the full tech tree setting is on, so nothing of the common tree is out of the civ's reach. */
+export function civBent(rules: Rules, civ: CivDef | null, fullTree = false): CivBent {
   const unit = new Map<string, number>();
   const building = new Map<string, number>();
   if (!civ) return { unit, building };
-  const off = new Set(civ.disabled);
-  for (const u of rules.units.values()) if (u.civ && u.civ !== civ.id) off.add(u.id);
+  const off = new Set(fullTree ? [] : civ.disabled);
+  for (const u of rules.units.values()) if (u.civ && u.civ !== civ.id) off.add(u.id); // other races' own, even then
   for (const u of rules.units.values()) {
     if (off.has(u.id) || u.tags?.includes("animal")) continue;
     let g = 0;
