@@ -7,6 +7,7 @@ import { scores } from "../core/score";
 import { clock } from "../core/sim";
 import type { World } from "../core/world";
 import { iconPic, playerColor, reliefTexture, resourceIcons, statIcons, stoneTexture, type Arch } from "./art";
+import { ASSETS } from "./assets";
 
 /** One command button: a hotkey, a label, a cost, and why it is greyed out. */
 export interface Command {
@@ -153,7 +154,8 @@ export class HUD {
   private iconLook: { age: number; arch: Arch; civ?: string } = { age: 2, arch: "greek" };
   private iconLookKey = "";
   setIconLook(age: number, arch: Arch, civ?: string) {
-    const key = `${age}/${arch}/${civ ?? ""}`;
+    // With whether the civilization's own pictures are in: the buttons are drawn again once they are.
+    const key = `${age}/${arch}/${civ ?? ""}${civ && ASSETS.civLoaded(civ) ? "+" : ""}`;
     if (key === this.iconLookKey) return;
     this.iconLook = { age, arch, civ };
     this.iconLookKey = key;

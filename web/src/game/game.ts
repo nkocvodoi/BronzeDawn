@@ -33,9 +33,11 @@ import { Sfx, Sound, VoiceKind } from "./sound";
 /** The drawable side of one entity. `workFrame` is the last work-animation frame, so a swing makes one sound. */
 interface View { root: Container; sprite: Sprite; pic: Pic;
   /** The selection mark and the health bar: made the first time the thing is selected (most never are). */
-  ring: Graphics | null; bar: Graphics | null; makeRing: () => Graphics; barY: number; isUnit: boolean; key: string; barW: number; tiles: Tile[]; workFrame: number;
+  ring: Graphics | null; bar: Graphics | null; makeRing: () => Graphics; isUnit: boolean; key: string; barW: number; tiles: Tile[]; workFrame: number;
   /** Flames on a damaged building, one more at each quarter of its hit points lost. */
   fire?: Container; farm?: boolean;
+  /** Its hit points when last drawn, and when it last lost some: a health bar shows a while after a hit. */
+  lastHp?: number; hitAt?: number;
   /** A resource's place, set once: trees, mines and bushes never move. */
   placed?: boolean;
   /** Where a gatherer is drawn from where it stands, stepped in to its tree, mine or bush (tiles), and when
@@ -52,6 +54,28 @@ const GATHER_STAND = 0.22;
 
 /** The original's limit on how many units one selection holds. */
 const MAX_SELECTION = 25;
+/** How long a health bar stays up over something that was hit, in game seconds. */
+const HIT_BAR_SECONDS = 15;
+
+/** The part of a picture that is drawn on, from its anchor: how far up its top is, and where its left and
+ *  right edges are. A sheet's frame is mostly empty (a ship's is several times the ship), so a health bar
+ *  or a flame placed by the frame floated well above the thing. */
+const DRAWN = new WeakMap<Pic, { up: number; left: number; right: number }>();
+function drawnBounds(pic: Pic) {
+  let b = DRAWN.get(pic);
+  if (b) return b;
+  const c = pic.canvas, W = c.width, H = c.height;
+  let top = H, l = W, r = -1;
+  try {
+    const d = c.getContext("2d")!.getImageData(0, 0, W, H).data;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 40) { if (y < top) top = y; if (x < l) l = x; if (x > r) r = x; }
+  } catch { top = 0; l = 0; r = W - 1; }
+  if (r < 0) { top = 0; l = 0; r = W - 1; }
+  const sx = pic.w / W, sy = pic.h / H;
+  b = { up: pic.h * pic.ay - top * sy, left: l * sx - pic.w * pic.ax, right: (r + 1) * sx - pic.w * pic.ax };
+  DRAWN.set(pic, b);
+  return b;
+}
 
 /** Where the Timeline is drawn, with the line that reads it under the pointer. */
 const TIMELINE_HTML = `<canvas id="timeline"></canvas><div id="timeline-read"></div><div class="timeline-key">T Tool · B Bronze · I Iron · W Wonder · ✕ out</div>`;
@@ -2402,7 +2426,7 @@ export class Game {
   }
 
   private makeView(e: Entity): View {
-    let pic: Pic, makeRing: () => Graphics, barY: number, barW: number;
+    let pic: Pic, makeRing: () => Graphics, barW: number;
     const own = e.owner === this.me;
     const ringColor = own ? 0xffffff : e.owner >= 0 ? playerColor(e.owner) : 0xffee55;
     if (e instanceof Unit) {
@@ -2410,17 +2434,17 @@ export class Game {
       // A flat diamond on the ground under the unit, as the original marks what you picked.
       const big = pic.w > 48, rw = big ? 20 : 12, rh = rw / 2;
       makeRing = () => new Graphics().poly([-rw, 0, 0, -rh, rw, 0, 0, rh]).stroke({ width: 1.5, color: ringColor });
-      barY = -pic.h * pic.ay - 6; barW = 26;
+      barW = 26;
     } else if (e instanceof Building) {
       pic = this.buildingLook(e);
       const s = e.def.size, w = s * HALF_W, h = s * HALF_H;
       makeRing = () => new Graphics().poly([0, 0, w, -h, 0, -2 * h, -w, -h]).stroke({ width: 2, color: ringColor });
-      barY = -pic.h + 34; barW = s * 22;
+      barW = s * 22;
     } else {
       const r = e as ResourceNode;
       pic = nodePic(r.def.id, this.world.map.shade[this.world.map.index(r.tile)]);
       makeRing = () => new Graphics().ellipse(0, 0, 15, 7.5).stroke({ width: 1.5, color: ringColor });
-      barY = -pic.h; barW = 0;
+      barW = 0;
     }
     const root = new Container();
     const sprite = new Sprite(pic.texture);
@@ -2429,7 +2453,7 @@ export class Game {
     sprite.anchor.set(pic.ax, pic.ay);
     root.addChild(sprite);
     this.entities.addChild(root);
-    const v: View = { root, sprite, ring: null, bar: null, makeRing, barY, pic, isUnit: e instanceof Unit, key: "", barW, tiles: e instanceof Building ? e.footprint.tiles() : [], workFrame: -1,
+    const v: View = { root, sprite, ring: null, bar: null, makeRing, pic, isUnit: e instanceof Unit, key: "", barW, tiles: e instanceof Building ? e.footprint.tiles() : [], workFrame: -1,
       farm: e instanceof Building && e.isFarm };
     this.views.set(e.id, v);
     return v;
@@ -2555,12 +2579,16 @@ export class Game {
     if (!v.fire) { v.fire = new Container(); v.root.addChild(v.fire); }
     while (v.fire.children.length > n) v.fire.children[v.fire.children.length - 1].destroy();
     while (v.fire.children.length < n) {
-      const [fx, fy] = Game.FLAMES[v.fire.children.length];
       const s = new Sprite(firePic(0).texture);
       s.anchor.set(0.5, 1);
-      s.position.set(Math.round(fx * v.pic.w), -Math.round(fy * v.pic.h * v.pic.ay));
       v.fire.addChild(s);
     }
+    // On the building as drawn, not its frame, which may stand well above it.
+    const d = drawnBounds(v.pic), mid = (d.left + d.right) / 2, wide = d.right - d.left;
+    v.fire.children.forEach((c, i) => {
+      const [fx, fy] = Game.FLAMES[i];
+      c.position.set(Math.round(mid + fx * wide), -Math.round(fy * d.up));
+    });
     const time = this.world.time + alpha * World.dt;
     v.fire.children.forEach((c, i) => {
       const p = firePic(Math.floor(time * 7 + i * 1.7 + b.id));
@@ -2645,8 +2673,17 @@ export class Game {
       const sel = selected.has(e.id);
       if (sel && !v.ring) { v.ring = v.makeRing(); v.root.addChildAt(v.ring, 0); }
       if (v.ring) v.ring.visible = sel;
-      const bw = v.barW, barOn = sel && bw > 0 && !frozen;
-      if (barOn && !v.bar) { v.bar = new Graphics(); v.bar.position.set(-bw / 2, v.barY); v.root.addChild(v.bar); }
+      // A health bar over what is selected, and for a while over anything that is hit (what your soldiers
+      // fight, and what fights them), so a fight can be read without clicking on each one.
+      if (!frozen) {
+        if (v.lastHp !== undefined && e.hp < v.lastHp - 0.01) v.hitAt = this.world.time;
+        v.lastHp = e.hp;
+      }
+      const hit = v.hitAt !== undefined && this.world.time - v.hitAt < HIT_BAR_SECONDS && e.hp < e.maxHp;
+      const bw = v.barW, barOn = (sel || hit) && bw > 0 && !frozen;
+      if (barOn && !v.bar) { v.bar = new Graphics(); v.root.addChild(v.bar); }
+      // Just above the top of the picture as drawn (it changes with the pose and the age).
+      if (v.bar && barOn) v.bar.position.set(-bw / 2, -Math.round(drawnBounds(v.pic).up) - 7);
       if (v.bar) v.bar.visible = barOn;
       if (v.bar && barOn) {
         const f = Math.max(0, e.hp / e.maxHp);
