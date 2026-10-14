@@ -47,10 +47,22 @@ export class Mods {
   private buildingCache = new Map<string, BuildingStats>();
   civ: CivDef | null = null;
 
-  constructor(readonly rules: Rules) {}
+  constructor(readonly rules: Rules) {
+    this.ownOnly(null);
+  }
+
+  /** A civilization's own units and techs are nobody else's. */
+  private ownOnly(civ: CivDef | null) {
+    for (const d of [...this.rules.units.values(), ...this.rules.techs.values()]) {
+      if (!d.civ) continue;
+      if (d.civ === civ?.id) this.disabled.delete(d.id);
+      else this.disabled.add(d.id);
+    }
+  }
 
   setCiv(civ: CivDef | null) {
     this.civ = civ;
+    this.ownOnly(civ);
     if (!civ) return;
     for (const d of civ.disabled) this.disabled.add(d);
     for (const e of civ.effects) this.apply(e);

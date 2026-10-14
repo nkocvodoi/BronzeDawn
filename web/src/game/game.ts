@@ -14,10 +14,10 @@ import { loadWorld, SaveFile, saveWorld } from "../core/save";
 import { Command as Order, CommandResult, runCommand } from "../core/commands";
 import { Link, LockstepGuest, LockstepHost, LockstepState, TURN_TICKS } from "../core/net";
 import { Conn, HAS_RELAY, joinRoom, Peer, Room } from "./rtc";
-import { canStart, CHAT_MAX, cleanName, LobbySettings, LobbyState, lobbyHtml, Seat, seated, SEATS } from "./lobby";
+import { canStart, CHAT_MAX, civOptions, cleanName, LobbySettings, LobbyState, lobbyHtml, Seat, seated, SEATS } from "./lobby";
 import { deleteSave, listSaves, pack, readSave, SaveInfo, storeSave, unpack } from "./saves";
 import { addPack, folderFiles, listPacks, PackInfo, removePack, setEnabled, zipFiles } from "./packs";
-import { Arch, buildingPic, CIV_RELIEFS, cliffPic, Facing, forestFloorPic, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
+import { Arch, buildingPic, setLooksLike, CIV_RELIEFS, cliffPic, Facing, forestFloorPic, firePic, rubblePic, nodePic, Pic, playerColor, Pose, projectilePic, terrainChunks, Tool, unitPic, UnitLook, wallPic } from "./art";
 import { CursorKind, cursors, setFlagColor } from "./cursors";
 import { drawTimeline } from "./timeline";
 import { describe, describeCiv } from "./describe";
@@ -145,6 +145,9 @@ const TRAIN_KEYS: Record<string, string> = {
   fishing_boat: "F", fishing_ship: "F",
   light_transport: "T", heavy_transport: "T", trade_boat: "R", merchant_ship: "R",
   scout_ship: "E", war_galley: "E", trireme: "E", catapult_trireme: "C", juggernaught: "C", fire_galley: "G",
+  // The fantasy races' own, on letters their buildings leave free.
+  glade_archer: "G", deep_arbalest: "D", centaur_archer: "N", grove_warden: "G",
+  ironclad: "I", wolfkin_raider: "W", bearkin_brute: "B", hoof_lancer: "Q",
 };
 
 /** Letters for whatever has no key of its own (technologies, advancing). H, P and digits stay global. */
@@ -281,6 +284,7 @@ export class Game {
 
   constructor(private app: Application, private rules: Rules, seed: number) {
     this.seed = seed;
+    setLooksLike([...rules.units.values()].filter((u) => u.looks_like).map((u) => [u.id, u.looks_like!] as [string, string]));
     this.startAge = Number(remembered("bd-start-age", rules.ages.map((_, i) => String(i)), "0"));
     this.popLimit = Number(remembered("bd-pop-limit", (rules.economy.pop_limits ?? []).map(String), String(rules.economy.pop_max)));
     this.world = new World(rules, seed, ["You", "Enemy"]);
@@ -485,7 +489,7 @@ export class Game {
   showStart() {
     this.started = false;
     this.hud.playing(false);
-    const civs = this.rules.civs.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+    const civs = civOptions(this.rules, null);
     const opts = (xs: [string, string][], on: string) => xs.map(([id, name]) => `<option value="${id}"${id === on ? " selected" : ""}>${name}</option>`).join("");
     const hosting = this.online?.role === "host" && this.online.friends.length > 0;
     this.hud.showOverlay(hosting ? "Multiplayer" : "Single Player", [
@@ -1373,7 +1377,7 @@ export class Game {
   private showJoin(status = "") {
     if (this.online?.role !== "guest") return;
     const o = this.online;
-    const civs = this.rules.civs.map((c) => `<option value="${c.id}"${c.id === o.civ ? " selected" : ""}>${c.name}</option>`).join("");
+    const civs = civOptions(this.rules, o.civ ?? null);
     const connected = !!o.peer?.open;
     const pretty = (c: string) => (/^\d{6}$/.test(c) ? `${c.slice(0, 3)} ${c.slice(3)}` : "of the new host");
     // Joining by room code: a clear panel while it looks for the host, and once it is in.

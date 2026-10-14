@@ -28,15 +28,21 @@ function gain(e: Extract<Effect, { type: "stat" }>, u: UnitDef): number {
   }
 }
 
+/** What a civilization's own unit counts for, at the least: about a third better than the common one. */
+const OWN_UNIT = 0.35;
+
 export function civBent(rules: Rules, civ: CivDef | null): CivBent {
   const unit = new Map<string, number>();
   const building = new Map<string, number>();
   if (!civ) return { unit, building };
   const off = new Set(civ.disabled);
+  for (const u of rules.units.values()) if (u.civ && u.civ !== civ.id) off.add(u.id);
   for (const u of rules.units.values()) {
     if (off.has(u.id) || u.tags?.includes("animal")) continue;
     let g = 0;
     for (const e of civ.effects) if (e.type === "stat" && unitMatches(e.target, u)) g += gain(e, u);
+    // A civilization's own unit is the point of it, bonus or not: its building goes up first.
+    if (u.civ === civ.id) g = Math.max(g, OWN_UNIT);
     if (g !== 0) unit.set(u.id, Math.round(g * 1000) / 1000);
   }
   for (const b of rules.buildings.values()) {
