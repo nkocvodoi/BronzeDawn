@@ -8,6 +8,7 @@ import type { World } from "./world";
 /** A building whose units the civilization makes this much better (a fifth) is its army's own: built
  *  first among the army buildings of its age, given the first place to train, and a second one later. */
 const FAVOURITE = 0.2;
+const XP = (k: string) => (typeof process !== "undefined" && process.env?.[k] === "0" ? false : true); // XPTMP
 
 /** The original's five levels, Easiest to Hardest. "normal" is the one the original calls Moderate. */
 export type Difficulty = "easiest" | "easy" | "normal" | "hard" | "hardest";
@@ -188,7 +189,7 @@ export class AIController {
     const dock = bs.find((b) => b.def.on_water && b.complete);
     // Across the sea a fleet is wanted whether or not deep-sea fish are left: once they were fished out the
     // AI built no more war ships, and two enemy Scout Ships sank every transport it sent.
-    if (!dock || p.age < 1 || !(this.acrossSea || w.nodes.some((n) => n.def.boats_only))) return;
+    if (!dock || p.age < 1 || !((XP("ESC_NAVY") && this.acrossSea) || w.nodes.some((n) => n.def.boats_only))) return;
     const enemyShips = w.units.filter((u) => u.alive && u.isBoat && u.isSoldier && !u.isRelic && w.isEnemy(this.player, u.owner)).length;
     // A small fleet: one more than the enemy shows, within a cap by age, and never more than a fifth of
     // the population, so a race of ships does not starve the army that has to finish the game.
@@ -209,6 +210,12 @@ export class AIController {
     const enemy = (u: Unit) => u.alive && u.isBoat && !u.isRelic && w.isEnemy(this.player, u.owner);
     // A wave crossing: the fleet sails with the transports and goes for enemy boats that come near them;
     // with no transport at sea, it holds the water off the beach.
+    if (this.ferry && !XP("ESC_ESCORT")) {
+      const off = w.landingNear(this.ferry.beach);
+      const away = idle.filter((u) => !off || u.pos.distance(off.center) > 6);
+      if (off && away.length) w.move(this.player, away.map((u) => u.id), off.center, true);
+      return;
+    }
     if (this.ferry) {
       const boats = this.ferry.transports.map((id) => w.unit(id)).filter((t): t is Unit => !!t);
       const threat = minBy(w.units.filter((u) => enemy(u) && u.isSoldier && boats.some((t) => t.pos.distance(u.pos) < 9)), (u) => Math.min(...boats.map((t) => t.pos.distance(u.pos))));
@@ -1276,7 +1283,7 @@ export class AIController {
       // Not while the enemy has more war ships at sea than we do: they sank the transports, every wave.
       const theirs = w.units.filter((u) => u.alive && u.isBoat && u.isSoldier && w.isEnemy(this.player, u.owner)).length;
       const ours = w.unitsOf(this.player).filter((u) => u.isBoat && u.isSoldier).length;
-      if (theirs <= ours) this.fleetWaitSince = null;
+      if (theirs <= ours || !XP("ESC_WAIT")) this.fleetWaitSince = null;
       else if (w.time - (this.fleetWaitSince ??= w.time) < 300) return;
       if (this.startFerry(w, home, target, ids)) { this.waves++; this.waveSize = Math.min(this.waveSize + 2, 16); }
       return;
