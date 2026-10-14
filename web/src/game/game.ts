@@ -2401,7 +2401,9 @@ export class Game {
   }
 
   private civId(owner: number): string | undefined {
-    return owner >= 0 ? this.world.players[owner]?.civ?.id : undefined;
+    const civ = owner >= 0 ? this.world.players[owner]?.civ?.id : undefined;
+    if (civ) void ASSETS.loadCiv(civ); // its own sheets, the first time it is drawn (once)
+    return civ;
   }
 
   private arch(owner: number): Arch {

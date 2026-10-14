@@ -26,7 +26,7 @@ describe("rules", () => {
     expect(RULES.buildings.get("town_center")?.pop_provided).toBe(4);
     expect(RULES.techs.size).toBeGreaterThan(50);
     expect(RULES.civs.filter((c) => !c.fantasy).length).toBe(17); // Rise of Rome and Lac Viet
-    expect(RULES.civs.filter((c) => c.fantasy).map((c) => c.id)).toEqual(["elf", "dwarf", "sagittarian", "beastfolk"]);
+    expect(RULES.civs.filter((c) => c.fantasy).map((c) => c.id)).toEqual(["elf", "dwarf", "centaur", "beastfolk"]);
     expect(RULES.units.get("cavalry")?.bonus?.infantry).toBe(5);
   });
 });
@@ -1196,11 +1196,11 @@ describe("the original's rules", () => {
   });
 
   it("the fantasy races have their own units and techs, and nobody else does", () => {
-    const civs = ["elf", "dwarf", "sagittarian", "beastfolk", "greek"];
+    const civs = ["elf", "dwarf", "centaur", "beastfolk", "greek"];
     const w = new World(RULES, 1, ["A", "B", "C", "D", "E"], 24, false, { civs });
     const own: Record<string, string[]> = {
       elf: ["glade_archer", "grove_warden", "moonlit_volley"], dwarf: ["ironclad", "deep_arbalest", "deep_delving"],
-      sagittarian: ["centaur_archer", "hoof_lancer", "galloping_volley"], beastfolk: ["wolfkin_raider", "bearkin_brute", "blood_of_the_wild"],
+      centaur: ["centaur_archer", "hoof_lancer", "galloping_volley"], beastfolk: ["wolfkin_raider", "bearkin_brute", "blood_of_the_wild"],
     };
     civs.forEach((civ, p) => {
       for (const [race, ids] of Object.entries(own)) {
@@ -1219,7 +1219,7 @@ describe("the original's rules", () => {
   });
 
   it("the fantasy races' numbers are as proposed", () => {
-    const w = new World(RULES, 1, ["A", "B", "C", "D"], 24, false, { civs: ["elf", "dwarf", "sagittarian", "beastfolk"] });
+    const w = new World(RULES, 1, ["A", "B", "C", "D"], 24, false, { civs: ["elf", "dwarf", "centaur", "beastfolk"] });
     expect(w.unitStats(0, "glade_archer").range).toBe(8);
     expect(w.unitStats(0, "glade_archer").los).toBe(11);
     expect(w.buildingStats(0, "house").hp).toBe(Math.round(RULES.buildings.get("house")!.hp * 0.85));

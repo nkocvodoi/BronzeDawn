@@ -347,7 +347,8 @@ function assetUnitPic(look: UnitLook): Pic | null {
   const keys = [...(look.civ ? names.map((n) => `${look.civ}/${n}`) : []), ...names];
   // From the topmost layer that has any of them (a pack over the game's own), and in that layer the first
   // name: a pack's hunter cutting up a kill, not the game's own butcher among the pack's villagers.
-  const found = keys.filter((k) => units[k] !== undefined);
+  // A civilization's own sheet counts once it has loaded (ASSETS.loadCiv); until then everyone's is drawn.
+  const found = keys.filter((k) => units[k] !== undefined && (!k.includes("/") || ASSETS.has(units[k].file)));
   const top = Math.max(...found.map((k) => ASSETS.unitLayer(k)));
   const sheet = found.find((k) => ASSETS.unitLayer(k) === top);
   const spec = sheet !== undefined ? units[sheet] : undefined;
