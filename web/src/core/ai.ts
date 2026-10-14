@@ -358,12 +358,14 @@ export class AIController {
     const map = w.map, sea = this.seaFrom(w, boat);
     const onSea = (t: Tile) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const o = new Tile(t.x + dx, t.y + dy); return map.inside(o) && sea[map.index(o)] === 1; });
     const far = map.reachable(map.nearestPassable(target.tile, 4) ?? target.tile, (id) => w.building(id) !== null);
+    // Not under the enemy's towers: a transport unloading beside two Watch Towers was sunk with every wave.
+    const towers = keepOff ? w.buildings.filter((b) => b.alive && w.isEnemy(this.player, b.owner) && b.def.tags?.includes("tower")) : [];
     let best: Tile | null = null, bestScore = Infinity;
     for (let y = 1; y < map.height - 1; y++) for (let x = 1; x < map.width - 1; x++) {
       const t = new Tile(x, y);
       if (!far[map.index(t)] || !map.coastal(t) || !onSea(t)) continue;
       const d = t.center.distance(target);
-      const score = keepOff ? t.center.distance(home) + (d < 12 ? 40 : 0) + Math.max(0, d - 26) : d;
+      const score = keepOff ? t.center.distance(home) + (d < 12 ? 40 : 0) + Math.max(0, d - 26) + (towers.some((b) => b.distance(t.center) < 10) ? 60 : 0) : d;
       if (score < bestScore) { bestScore = score; best = t; }
     }
     return best?.center ?? null;
@@ -404,7 +406,12 @@ export class AIController {
         }
         continue;
       }
-      if (!waiting.length || t.unloadAt !== null) continue;
+      if (t.unloadAt !== null) continue;
+      // Emptied, and nobody left to fetch: back to home's shore, not left by the enemy's beach to be sunk.
+      if (!waiting.length) {
+        if (t.order.kind === "idle" && homeShore && t.pos.distance(homeShore.center) > 3) w.move(this.player, [t.id], homeShore.center);
+        continue;
+      }
       if (t.order.kind === "idle" && homeShore && t.pos.distance(homeShore.center) > 3) w.move(this.player, [t.id], homeShore.center);
       const take = waiting.filter((u) => u.order.kind !== "board").slice(0, Math.max(0, cap(id) - coming));
       if (take.length) w.board(this.player, take.map((u) => u.id), t.id);
@@ -537,6 +544,11 @@ export class AIController {
       // On a Tiny map of islands a stand of 600 is rare; 300 still pays for the pit and the trip over.
       for (const n of ok.slice(0, 200)) if (this.woodNear(w, n.center) >= 300 && open(n.tile) >= 16) return n.center;
     }
+    // Then the enemy's own island, away from its Town Center and towers: on a Tiny map of two islands that is
+    // where all the wood is, and a town on the poorer one (800 wood against 6,000) ran dry by minute 15.
+    const guarded = (b: Building) => (b.def.id === "town_center" ? 18 : b.def.tags?.includes("tower") ? 10 : 6);
+    const ok = trees.filter((n) => !enemy.some((b) => b.distance(n.center) < guarded(b))).sort((a, b) => a.center.distance(home) - b.center.distance(home));
+    for (const n of ok.slice(0, 200)) if (this.woodNear(w, n.center) >= 300 && open(n.tile) >= 16) return n.center;
     return null;
   }
 
@@ -610,10 +622,13 @@ export class AIController {
     if (this.wantsTransport(w)) keep.add(w.unitCost(this.player, transport));
     // Home's trees running out and no woods settled yet: the wood for a Storage Pit over the sea is kept,
     // and for the transport that takes the villagers there.
-    if (this.colonyWood) keep.add(w.buildingCost(this.player, "storage_pit"));
+    // From the Tool Age, when there can be a transport: kept in the Stone Age, it held back the Barracks the
+    // Tool Age needs until minute 10, and the town ate its food on villagers and never got there.
+    const colony = this.colonyWood && w.players[this.player].age >= 1;
+    if (colony) keep.add(w.buildingCost(this.player, "storage_pit"));
     // Its own, besides any the army sails in.
     const army = new Set(this.ferry?.transports ?? []);
-    if (this.colonyWood && !this.wantsTransport(w) && !w.unitsOf(this.player).some((u) => u.isTransport && !army.has(u.id))) keep.add(w.unitCost(this.player, transport));
+    if (colony && !this.wantsTransport(w) && !w.unitsOf(this.player).some((u) => u.isTransport && !army.has(u.id))) keep.add(w.unitCost(this.player, transport));
     return keep;
   }
 
@@ -1210,6 +1225,13 @@ export class AIController {
       this.needsFerry = this.acrossSea && !w.unitsOf(this.player).some((u) => u.isTransport);
     }
     if (this.wantsTransport(w)) this.trainTransport(w);
+    // A transport idle away from home, between waves: it waits by home's shore.
+    if (!this.ferry && !this.colony && this.acrossSea && this.thinks % 5 === 0) {
+      for (const t of w.unitsOf(this.player).filter((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle" && u.unloadAt === null)) {
+        const shore = this.homeLanding(w, home, t.pos);
+        if (shore && t.pos.distance(shore.center) > 6) w.move(this.player, [t.id], shore.center);
+      }
+    }
     if (this.ferry) { this.runFerry(w); return; }
     // A gathered wave goes in together once most of it has arrived, or after a minute.
     if (this.staging) {
@@ -1312,8 +1334,11 @@ export class AIController {
     // the population cap, and with it every villager after.
     // Houses in the Stone Age are the exception: the transport cannot be had before the Tool Age, and a
     // town kept at eight villagers to save for it got there last.
+    // So is a house at the population cap: held back for a pit over the sea, a town on a poor island sat
+    // at 28 with 1,600 food it could not spend, six soldiers against the enemy's 34.
     const p = w.players[this.player];
-    if (this.acrossSea && !(type === "house" && p.age === 0) && p.res.wood - this.reserve(w).wood < w.buildingCost(this.player, type).wood) return;
+    const capped = type === "house" && p.pop >= p.popCap - 1;
+    if (this.acrossSea && !(type === "house" && p.age === 0) && !capped && p.res.wood - this.reserve(w).wood < w.buildingCost(this.player, type).wood) return;
     const builder = this.pickBuilder(villagers, near);
     if (!builder) return;
     const spot = this.findSpot(w, type, near, minR, maxR, margin);
