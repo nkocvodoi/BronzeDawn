@@ -2309,11 +2309,15 @@ function assetBuildingSpec(id: string, age: number, arch: Arch, civ?: string): I
   for (const style of [...(civ ? [civ] : []), arch, "greek", "default"]) {
     const byStyle = (b as Record<string, ImageSpec | Record<string, ImageSpec>>)[style];
     if (!byStyle) continue;
-    if (typeof (byStyle as ImageSpec).file === "string") return byStyle as ImageSpec;
-    for (let a = age; a >= 0; a--) {
+    // A civilization's own pictures count once they have loaded (ASSETS.loadCiv): until then, everyone's.
+    const ready = (s: ImageSpec) => style !== civ || ASSETS.has(s.file);
+    if (typeof (byStyle as ImageSpec).file === "string") { if (ready(byStyle as ImageSpec)) return byStyle as ImageSpec; continue; }
+    let found: ImageSpec | null = null;
+    for (let a = age; a >= 0 && !found; a--) {
       const s = (byStyle as Record<string, ImageSpec>)[AGE_KEYS[a]];
-      if (s) return s;
+      if (s && ready(s)) found = s;
     }
+    if (found) return found;
   }
   return null;
 }

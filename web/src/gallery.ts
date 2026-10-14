@@ -31,7 +31,7 @@ const BUILDINGS: [string, number][] = [
 ];
 const def = (id: string, size: number) => ({ id, size }) as BuildingDef;
 
-const SECTIONS = ["infantry", "villager", ...(codeArt ? [] : ["fantasy"]), "mounted", "siege", "boats", "animals", "nodes", "walls", "scene", "icons", ...ARCHES.map((a) => `b-${a}`), ...ARCHES.map((a) => `stages-${a}`)];
+const SECTIONS = ["infantry", "villager", ...(codeArt ? [] : ["fantasy", "fantasy-buildings"]), "mounted", "siege", "boats", "animals", "nodes", "walls", "scene", "icons", ...ARCHES.map((a) => `b-${a}`), ...ARCHES.map((a) => `stages-${a}`)];
 const nav = document.getElementById("nav")!;
 const link = (s: string, code: boolean) => `?section=${s}${code ? "&art=code" : ""}${params.has("scale") ? `&scale=${SCALE}` : ""}`;
 for (const s of SECTIONS) {
@@ -171,6 +171,22 @@ switch (section) {
     for (const t of OWN_UNITS) {
       cell(r, unitPic({ ...look(t, 0, "front", "idle", 0), dir: 2 }).canvas, `${t}`);
       cell(r, unitPic({ ...look(t, 0, "front", "work", 1), dir: 2 }).canvas, `${t} attack`);
+    }
+    break;
+  }
+  case "fantasy-buildings": {
+    // Each race's own buildings: every one in the Iron Age, then the town centre and the house by age.
+    await Promise.all(RACES.map((c) => ASSETS.loadCiv(c)));
+    const archOf: Record<string, Arch> = { elf: "asian", dwarf: "babylonian", centaur: "greek", beastfolk: "egyptian" };
+    for (const civ of RACES) {
+      heading(`${civ}: buildings (Iron Age)`);
+      let r = row();
+      for (const [id, size] of [...BUILDINGS, ["dock", 3] as [string, number]]) cell(r, buildingPic(def(id, size), 0, 3, 3, 1, archOf[civ], civ).canvas, id);
+      heading(`${civ}: town centre and house, ages 0..3`);
+      r = row();
+      for (const [id, size] of [["town_center", 3], ["house", 2]] as [string, number][]) {
+        for (let age = 0; age < 4; age++) cell(r, buildingPic(def(id, size), age % 2, age, 3, 1, archOf[civ], civ).canvas, `${id} ${age}`);
+      }
     }
     break;
   }
