@@ -53,6 +53,8 @@ export type Victory = { kind: "standard" } | { kind: "conquest" } | { kind: "sco
  *  an alliance holds when both have set it. Units and towers attack only those set as enemies. */
 export type Stance = "ally" | "neutral" | "enemy";
 export const STANCES: Stance[] = ["ally", "neutral", "enemy"];
+/** What the Market's tribute screen sends at a click (the order itself takes up to 10000). */
+export const TRIBUTE_AMOUNTS = [100, 500, 1000];
 
 export type WinHow = "conquest" | "wonder" | "score" | "time" | "ruins" | "artifacts";
 
@@ -209,6 +211,16 @@ export class World {
     if (s === "enemy" && this.ais.some((ai) => ai.player === b)) this.setStance(b, a, "enemy");
   }
 
+  /** The fee on tribute `from` pays: a share of what is sent on top. */
+  tributeFee(from: number): number {
+    return this.players[from].mods.flags.has("free_tribute") ? 0 : this.rules.economy.tribute_fee ?? 0.25;
+  }
+
+  /** What sending `amount` costs `from`, the fee included (the screens show it and grey out what is too dear). */
+  tributeCost(from: number, amount: number): number {
+    return Math.ceil(amount * (1 + this.tributeFee(from)));
+  }
+
   /** Sends resources to another player. The sender pays a fee on top (none with Coinage, or for the
    *  Palmyrans). A computer that is neutral toward the sender turns ally once it has had enough. */
   tribute(from: number, to: number, r: Res, amount: number): string | null {
@@ -216,8 +228,7 @@ export class World {
     if (!RES_ALL.includes(r)) return "Not a resource";
     if (this.players[to].defeated) return `${this.players[to].name} is out of the game`;
     const p = this.players[from];
-    const fee = p.mods.flags.has("free_tribute") ? 0 : this.rules.economy.tribute_fee ?? 0.25;
-    const pay = Math.ceil(amount * (1 + fee));
+    const pay = this.tributeCost(from, amount);
     if (p.res.get(r) < pay) return "Not enough resources";
     p.res.set(r, p.res.get(r) - pay);
     this.players[to].res.set(r, this.players[to].res.get(r) + amount);

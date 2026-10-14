@@ -549,6 +549,25 @@ check(b1.startsWith("barracks#") && b2.startsWith("barracks#") && b1 !== b2, "Ct
 await page.keyboard.press("Control+l");
 check((await page.textContent("#messages")).includes("No Stable") && (await picked()) === b2, "Ctrl+L with no Stable says so and keeps the selection");
 
+// A finished Market's T opens the tribute screen: allies first, 100, 500 or 1000 a click, too dear greyed out.
+await g(() => {
+  const w = game.world, s = w.startTiles[0], T = s.constructor;
+  const m = w.addBuilding("market", 0, new T(s.x - 6, s.y - 6), true);
+  w.players[0].res.set(2, 700);
+  w.players[0].mods.flags.delete("free_tribute"); // in case the civilization is the Palmyrans
+  game.selection = [m.id];
+});
+await wait(200);
+await page.keyboard.press("t");
+const tribute = await page.$$eval("#tribute tr", (rows) => rows.map((r) => r.textContent));
+check(await g(() => game.paused) && tribute.length === 3 && tribute[0].includes(await g(() => game.world.players[1].name)) && tribute[0].includes("Ally")
+  && (await page.textContent("#overlay")).includes("100 costs 125"), "a Market's T opens the tribute screen, paused, the ally first, with the fee");
+check(await page.$eval("[data-tribute='1:2:1000']", (b) => b.disabled) && !(await page.$eval("[data-tribute='1:2:500']", (b) => b.disabled)), "tribute you cannot pay for is greyed out");
+await page.click("[data-tribute='1:2:500']");
+check(await g(() => game.world.players[0].res.gold === 75 && game.world.players[1].res.gold >= 500), "500 gold sent from the Market costs 625");
+await page.keyboard.press("Escape");
+check(await g(() => !game.hud.overlayShown && !game.paused), "Esc closes the tribute screen");
+
 check(errors.length === 0, `no errors in the console${errors.length ? ": " + errors.join(" | ") : ""}`);
 await browser.close();
 server.close();
