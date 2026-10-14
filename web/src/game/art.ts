@@ -2581,7 +2581,7 @@ const TECH_WORDS: [RegExp, string][] = [
   [/^delete$/, "delete"], [/^stop$/, "stop"], [/^next$/, "next"], [/^back$/, "back"], [/^flag$/, "flag"],
   [/^(build|repair)$/, "hammer"], [/^(attack_move|attack_ground)$/, "sword"], [/^stand_ground$/, "shield"], [/^unload$/, "back"],
   [/^(stone|tool|bronze|iron)_age$|^age_|advance|ascend/, "age"],
-  [/coin|gold|bank|market|trade|currency|tax|mint/, "coin"],
+  [/coin|gold|bank|market|trade|currency|tax|mint|tribute/, "coin"],
   [/shield/, "shield"],
   [/armor|armour|mail|leather|scale|plate|chain/, "armor"],
   [/bow|arrow|archer|ballist/, "bow"],

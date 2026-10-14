@@ -9,7 +9,7 @@ import { clock } from "../core/sim";
 import { AOE_SIZES } from "../core/aoemap";
 import { MAP_TYPES, MapType } from "../core/mapgen";
 import { isMapSpec, RandomMapSpec } from "../core/rmspec";
-import { SmartResult, Stance, STANCES, Victory, WinHow, World, WorldOptions } from "../core/world";
+import { SmartResult, Stance, STANCES, TRIBUTE_AMOUNTS, Victory, WinHow, World, WorldOptions } from "../core/world";
 import { loadWorld, SaveFile, saveWorld } from "../core/save";
 import { Command as Order, CommandResult, runCommand } from "../core/commands";
 import { Link, LockstepGuest, LockstepHost, LockstepState, TURN_TICKS } from "../core/net";
@@ -685,10 +685,7 @@ export class Game {
         const t = w.entity(c.target);
         return !!t && w.players[me].mods.flags.has("martyrdom") && w.isEnemy(me, t.owner) && !(t instanceof Unit && (t.isPriest || t.isRelic));
       }
-      case "tribute": {
-        const fee = w.players[me].mods.flags.has("free_tribute") ? 0 : w.rules.economy.tribute_fee ?? 0.25;
-        return w.players[me].res.get(c.res) < Math.ceil(c.amount * (1 + fee)) ? "Not enough resources" : null;
-      }
+      case "tribute": return w.players[me].res.get(c.res) < w.tributeCost(me, c.amount) ? "Not enough resources" : null;
       case "smart": {
         const e = c.target !== null ? w.entity(c.target) : null;
         const units = c.ids.map((id) => w.unit(id)).filter((u): u is Unit => !!u && u.owner === me);
@@ -1659,6 +1656,7 @@ export class Game {
         row("Farms", `need a ${name("market")} · spent farms are sown again for wood when the menu's option is on`),
         row("Walls", "choose Wall, then drag a line"),
         row("Docks and boats", `a ${name("dock")} goes in the water at the shore · trade boats (${kbd("R")} at the Dock) bring gold back from another player's Dock, more the further they sail · transports (${kbd("T")}) take land units aboard with a right-click, and put them ashore with a right-click on the land or ${kbd("U")}`),
+        row("Tribute", `100 at a time on the Diplomacy screen, or 100, 500 or 1000 with ${kbd("T")} at a ${name("market")} (which tribute does not need) · ${Math.round((r.economy.tribute_fee ?? 0.25) * 100)}% fee (free with Coinage or for the Palmyrans)`),
         row("Ruins and Artifacts", "walk any unit up to one to take it; an Artifact you hold can be moved (right-click) and carried in a transport. Hold all of either for 15 minutes to win"),
         row("Selection", "up to 25 units at a time"),
         row("Game speed", `1x, 1.5x, 2x, 3x (${this.keyName("faster")} and ${this.keyName("slower")}, or click the speed in the top bar), and 5x, 10x when watching`),
@@ -1917,7 +1915,7 @@ export class Game {
   private showDiplomacy() {
     const w = this.world, me = this.me;
     const word: Record<Stance, string> = { ally: "Ally", neutral: "Neutral", enemy: "Enemy" };
-    const fee = w.players[me].mods.flags.has("free_tribute") ? 0 : w.rules.economy.tribute_fee ?? 0.25;
+    const fee = w.tributeFee(me);
     const rows = w.players.map((p) => {
       const bonuses = p.civ ? describeCiv(p.civ, this.rules).join("; ") : "no bonuses";
       const name = `<td style="color:${playerColor(p.id)}"><b>${p.name}</b>${p.defeated ? " (out)" : ""}</td><td>${p.civ?.name ?? "-"}</td>`;
@@ -1934,7 +1932,34 @@ export class Game {
     ], "menu");
   }
 
-  /** A click in the Diplomacy screen: a new stance, or 100 of a resource sent. */
+  /** The Market's tribute screen: the players still in the game, allies first, and 100, 500 or 1000 of each
+   *  resource to send them. What you cannot pay for (the fee included) is greyed out. Tribute needs no
+   *  Market; this is a shortcut to what the Diplomacy screen also sends. */
+  private showTribute() {
+    const w = this.world, me = this.me, fee = w.tributeFee(me), res = w.players[me].res;
+    const word: Record<Stance, string> = { ally: "Ally", neutral: "Neutral", enemy: "Enemy" };
+    const others = w.players.filter((p) => p.id !== me && !p.defeated)
+      .sort((a, b) => STANCES.indexOf(w.stance[me][a.id]) - STANCES.indexOf(w.stance[me][b.id]) || a.id - b.id);
+    const rows = others.map((p) => {
+      const cells = ([Res.food, Res.wood, Res.gold, Res.stone] as Res[]).map((r) => {
+        const buttons = TRIBUTE_AMOUNTS.map((n) => {
+          const cost = w.tributeCost(me, n);
+          return `<button data-tribute="${p.id}:${r}:${n}" title="costs ${cost} ${RES_NAME[r]}"${res.get(r) < cost ? " disabled" : ""}>${n}</button>`;
+        }).join("");
+        return `<td>${RES_NAME[r]} <span class="seg">${buttons}</span></td>`;
+      }).join("");
+      const stance = `${word[w.stance[me][p.id]]} · to you: ${word[w.stance[p.id][me]]}`;
+      return `<tr><td style="color:${playerColor(p.id)}"><b>${p.name}</b></td><td>${stance}</td>${cells}</tr>`;
+    }).join("");
+    const costs = fee ? `With the ${Math.round(fee * 100)}% fee: ${TRIBUTE_AMOUNTS.map((n) => `${n} costs ${w.tributeCost(me, n)}`).join(" · ")}` : "No fee: each costs what is sent";
+    this.hud.showOverlay("Tribute", [
+      others.length ? `<table id="tribute" class="diplomacy">${rows}</table>` : "Nobody left to send to.",
+      costs,
+      `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`,
+    ], "menu");
+  }
+
+  /** A click in the Diplomacy or tribute screen: a new stance, or some of a resource sent. */
   private diplomacyClick(t: HTMLElement): boolean {
     const st = t.closest("[data-stance]") as HTMLElement | null, tr = t.closest("[data-tribute]") as HTMLElement | null;
     if (!st && !tr) return false;
@@ -1942,11 +1967,12 @@ export class Game {
       const [pid, s] = st.dataset.stance!.split(":");
       this.issue({ k: "stance", to: Number(pid), stance: s as Stance });
     } else {
-      const [pid, r] = tr!.dataset.tribute!.split(":").map(Number);
-      const why = this.issue({ k: "tribute", to: pid, res: r as Res, amount: 100 });
+      const [pid, r, amount = 100] = tr!.dataset.tribute!.split(":").map(Number);
+      const why = this.issue({ k: "tribute", to: pid, res: r as Res, amount });
       if (typeof why === "string") this.hud.message(why);
     }
-    this.showDiplomacy();
+    // Drawn again from the world, so the buttons follow what is left to pay with.
+    if (document.querySelector("#tribute")) this.showTribute(); else this.showDiplomacy();
     return true;
   }
 
@@ -2802,6 +2828,15 @@ export class Game {
         const why = this.issue({ k: "age", building: b.id });
         if (typeof why === "string") this.hud.message(why, "warn");
       } });
+    }
+    // A shortcut to tribute, which itself needs no Market. T is not among the spare letters, so no
+    // technology here can take it.
+    if (b.def.id === "market" && !this.watching) {
+      const key = used.has("T") ? spare() : "T";
+      used.add(key);
+      const fee = w.tributeFee(me);
+      out.push({ key, title: "Tribute", detail: `send 100, 500 or 1000 to another player${fee ? ` · costs ${Math.round(fee * 100)}% more` : ""}`, blocker: null, icon: "tribute",
+        action: () => { this.showTribute(); this.paused = true; } });
     }
     for (const t of w.techsAt(b, me)) {
       out.push({ key: spare(), title: t.name, detail: `${ResBag.of(t.cost).text} · ${duration(t.time ?? 30)}`, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), row: 1, action: () => {

@@ -54,6 +54,7 @@ export const KEY_ACTIONS: KeyAction[] = [
   order("cmd_sacrifice", "Sacrifice (priests, Martyrdom)", "Q", "temple", "Sacrifice"),
   order("cmd_villager", "Train a villager (Town Center)", "C", "villager"),
   order("cmd_age", "Advance to the next age (Town Center)", "A", "age"),
+  order("cmd_tribute", "Tribute (Market)", "T", "tribute"),
   a("Game", "pause", "Pause", "F3", "Pause"),
   a("Game", "faster", "Game speed up", "=", "Shift+="),
   a("Game", "slower", "Game speed down", "-", "Shift+-"),

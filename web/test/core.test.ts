@@ -9,7 +9,7 @@ import { runMatch } from "../src/core/sim";
 import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
 import { civBent } from "../src/core/civbent";
-import { Victory, World, WorldOptions } from "../src/core/world";
+import { TRIBUTE_AMOUNTS, Victory, World, WorldOptions } from "../src/core/world";
 import { loadWorld, saveWorld } from "../src/core/save";
 import { delayFor, LockstepGuest, LockstepHost, LockstepState, MIN_DELAY, START_DELAY, TURN_TICKS } from "../src/core/net";
 import { Command, isCommand, runCommand } from "../src/core/commands";
@@ -1691,6 +1691,20 @@ describe("diplomacy and tribute", () => {
     expect(w.tribute(0, 1, Res.gold, 100)).toBe("Not enough resources");
     expect(w.players[0].stats.tributed).toBe(400);
     expect(scores(w)[0].economy).toBeGreaterThanOrEqual(Math.floor(400 / 60));
+  });
+
+  it("the Market's amounts cost what the fee says, and need no Market", () => {
+    const w = new World(RULES, 1, ["A", "B"], 24, false);
+    expect(TRIBUTE_AMOUNTS.map((n) => w.tributeCost(0, n))).toEqual([125, 625, 1250]);
+    expect(w.buildingsOf(0).some((b) => b.def.id === "market")).toBe(false);
+    w.players[0].res.set(Res.stone, 1250);
+    w.players[1].res.set(Res.stone, 0);
+    expect(runCommand(w, 0, { k: "tribute", to: 1, res: Res.stone, amount: 1000 })).toBeNull();
+    expect(w.players[0].res.stone).toBe(0);
+    expect(w.players[1].res.stone).toBe(1000);
+    expect(w.tribute(0, 1, Res.stone, 100)).toBe("Not enough resources");
+    w.players[0].mods.research(RULES.techs.get("coinage")!);
+    expect(TRIBUTE_AMOUNTS.map((n) => w.tributeCost(0, n))).toEqual(TRIBUTE_AMOUNTS);
   });
 
   it("a computer answers: an enemy back at once, an ally only when neutral and paid enough", () => {
