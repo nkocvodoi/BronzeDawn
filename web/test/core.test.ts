@@ -9,6 +9,7 @@ import { runMatch } from "../src/core/sim";
 import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
 import { civBent } from "../src/core/civbent";
+import { describeCiv } from "../src/game/describe";
 import { Victory, World, WorldOptions } from "../src/core/world";
 import { loadWorld, saveWorld } from "../src/core/save";
 import { delayFor, LockstepGuest, LockstepHost, LockstepState, MIN_DELAY, START_DELAY, TURN_TICKS } from "../src/core/net";
@@ -1192,6 +1193,29 @@ describe("the original's rules", () => {
     expect(w.blockerBuilding("guard_tower", 2)).toContain("Not available"); // the Romans stop at Sentry Tower
     expect(w.blockerTech("guard_tower_tech", 2)).toContain("Not available");
     for (const c of RULES.civs) expect(c.disabled.length).toBeGreaterThan(10);
+  });
+
+  it("the full tech tree setting gives every civ everything and keeps its bonuses", () => {
+    const w = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["egyptian", "greek"], fullTechTree: true });
+    expect(w.fullTechTree).toBe(true);
+    expect(w.blockerUnit("cavalry", 0) ?? "").not.toContain("Not available");
+    expect(w.blockerTech("heavy_cavalry_tech", 0) ?? "").not.toContain("Not available");
+    expect(w.players[0].mods.disabled.size).toBe(0);
+    // The Egyptian bonuses still apply.
+    expect(w.unitStats(0, "chariot").hp).toBeCloseTo(w.unitStats(1, "chariot").hp * 1.33, 0);
+    expect(w.players[0].mods.gather(Res.gold, null)).toBeCloseTo(1.4444);
+    // The computer may now play to units its civ lacks in the original, and the civ text claims nothing missing.
+    const egypt = RULES.civs.find((c) => c.id === "egyptian")!;
+    expect(civBent(RULES, egypt, true).unit.has("chariot")).toBe(true);
+    expect(describeCiv(egypt, RULES).some((l) => l.startsWith("no "))).toBe(true);
+    expect(describeCiv(egypt, RULES, true).some((l) => l.startsWith("no "))).toBe(false);
+    // A save keeps it; a save from before the setting reads as off.
+    const back = loadWorld(JSON.parse(JSON.stringify(saveWorld(w))), RULES);
+    expect(back.fullTechTree).toBe(true);
+    expect(back.blockerUnit("cavalry", 0) ?? "").not.toContain("Not available");
+    const old = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["egyptian", "greek"] });
+    delete (old as unknown as { fullTechTree?: boolean }).fullTechTree;
+    expect(loadWorld(JSON.parse(JSON.stringify(saveWorld(old))), RULES).fullTechTree).toBeFalsy();
   });
 
   it("time left: the item in progress, the whole queue, and a foundation at its builders' pace", () => {

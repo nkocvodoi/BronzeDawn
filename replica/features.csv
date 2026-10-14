@@ -77,6 +77,7 @@ Rally points,extras,could,no,yes,ours: not in the original
 Custom shortcuts and mouse buttons,extras,could,no,yes,"ours: the Keys page of the help; the middle and side mouse buttons can run any shortcut or panel order"
 Attack-move,extras,could,no,yes,ours: not in the original
 Game speed 3x,extras,could,no,yes,ours: the original stops at 2x
+Full tech tree option,extras,could,no,yes,ours: like AoE2's setting
 Headless AI vs AI match,tooling,should,no,yes,ours
 Plays in a browser,platform,should,no,yes,ours
 Mouse kept inside the game window and full screen,platform,should,yes,yes,pointer lock with our own drawn pointer; Alt+Tab or Esc lets go

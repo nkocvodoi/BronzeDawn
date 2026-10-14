@@ -100,6 +100,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 | Đổi phím tắt, nút chuột phụ | Không có | Có (tab Keys của Help) | Chữ cái trên bảng lệnh vẫn như bản gốc |
 | Rally point, attack-move | Không có | Có | Tiện lợi kiểu hiện đại; có thể làm thành tùy chọn |
 | Tốc độ 3x | Tối đa 2x | Có thêm 3x | |
+| Full tech tree | Không có | Tùy chọn (tắt sẵn) | Như AoE2: mọi dân tộc có đủ cây công nghệ, bonus vẫn giữ |
 | AI mức Khó | Hardest được thêm tài nguyên | Thu nhanh hơn 15% | Cùng ý tưởng là AI được lợi thế, cách thực hiện khác |
 
 Số liệu (`data/rules.json`) là số của Rise of Rome lấy thẳng từ `empires.dat` (2026-10-12): máu, giáp, đòn,

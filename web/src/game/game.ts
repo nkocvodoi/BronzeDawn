@@ -177,6 +177,8 @@ export class Game {
   teamList: number[] = (store.get("bd-team-list") ?? "").split(",").map((x) => Number(x) || 0).concat(Array(8).fill(0)).slice(0, 8);
   /** Farms block the way, as in the original; off, they are walked over as in the remaster. Remembered. */
   farmsBlock = store.get("bd-farms-block") === "on";
+  /** Every civ has the whole tech tree, as AoE2's setting; its bonuses stay. Off unless turned on. Remembered. */
+  fullTechTree = store.get("bd-full-tech-tree") === "on";
   /** The kind of map: Inland with lakes, or one with a sea. Remembered. */
   mapType: MapType = MAP_TYPES.some(([id]) => id === store.get("bd-map-type")) ? (store.get("bd-map-type") as MapType) : "inland";
   /** Or a map from an art pack, by name, played instead of `mapType` while the pack is in use. Remembered. */
@@ -309,7 +311,7 @@ export class Game {
     const names = this.watching ? Array.from({ length: n }, (_, i) => `Computer ${i + 1}`)
       : ["You", ...Array.from({ length: n - 1 }, (_, i) => (n === 2 ? "Enemy" : `Enemy ${i + 1}`))];
     this.useWorld(new World(this.rules, seed, names, size, true, {
-      civs, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, mapSpec: this.mapSpecNow(), startAge: this.startAge, resources: this.resources,
+      civs, teams, farmsBlock: this.farmsBlock, fullTechTree: this.fullTechTree, mapType: this.mapType, mapSpec: this.mapSpecNow(), startAge: this.startAge, resources: this.resources,
       popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2],
     }));
   }
@@ -509,6 +511,7 @@ export class Game {
         check("relics", this.relics, "Ruins and Artifacts", "five of each; hold all of either for 15 minutes to win"),
         check("reveal", this.exploredStart, "Reveal map", "the land is known from the start; units are still hidden by the fog"),
         check("farms-block", this.farmsBlock, "Farms block the way, as in the original", "off: walk over them, as in the remaster"),
+        check("full-tech-tree", this.fullTechTree, "Full tech tree", "every civilization can have everything; its bonuses stay"),
         hosting ? "" : check("watch", false, "Only watch", "every player is a computer"),
       ]),
       `<span class="choices" id="start-choices">${this.startButtons(this.computersShown())}</span>`,
@@ -524,6 +527,8 @@ export class Game {
     this.watching = (document.querySelector("#watch") as HTMLInputElement | null)?.checked === true;
     const fb = document.querySelector("#farms-block") as HTMLInputElement | null;
     if (fb) { this.farmsBlock = fb.checked; store.set("bd-farms-block", fb.checked ? "on" : "off"); }
+    const ft = document.querySelector("#full-tech-tree") as HTMLInputElement | null;
+    if (ft) { this.fullTechTree = ft.checked; store.set("bd-full-tech-tree", ft.checked ? "on" : "off"); }
     const rl = document.querySelector("#relics") as HTMLInputElement | null;
     if (rl) { this.relics = rl.checked; store.set("bd-relics", rl.checked ? "on" : "off"); }
     const rv = document.querySelector("#reveal") as HTMLInputElement | null;
@@ -594,7 +599,7 @@ export class Game {
     this.sound.startMusic();
     const civ = this.world.players[this.me].civ;
     const others = this.world.players.filter((p) => p.id !== this.me).map((p) => p.civ?.name ?? p.name);
-    this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules) : [], others.join(", ") || null);
+    this.hud.civ(civ?.name ?? null, civ ? describeCiv(civ, this.rules, this.world.fullTechTree) : [], others.join(", ") || null);
   }
 
   // ---- orders
@@ -780,7 +785,7 @@ export class Game {
     const setup: OnlineSetup = {
       seed: this.seed, names, size: Math.max(size, minMapSize(names.length)), reseed: this.reseed, speed: this.speed,
       ais: theirs.map((_, i) => [people + i, d] as [number, Difficulty]),
-      options: { civs: all, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, mapSpec: this.mapSpecNow(), startAge: this.startAge, resources: this.resources,
+      options: { civs: all, teams, farmsBlock: this.farmsBlock, fullTechTree: this.fullTechTree, mapType: this.mapType, mapSpec: this.mapSpecNow(), startAge: this.startAge, resources: this.resources,
         popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2] },
     };
     friends.forEach((f, i) => { f.slot = i + 1; });
@@ -1195,7 +1200,7 @@ export class Game {
       mapSize: this.mapSize, mapSizeName: `${MAP_SIZES.find(([, t]) => t === this.mapSize)?.[0] ?? ""} (${this.mapSize} x ${this.mapSize})`,
       victory: this.victoryId, victoryName: VICTORIES.find(([id]) => id === this.victoryId)?.[1] ?? "",
       startAge: String(this.startAge), resources: this.resources, popLimit: this.popLimit, reveal: this.exploredStart,
-      relics: this.relics, farmsBlock: this.farmsBlock, speed: this.speed,
+      relics: this.relics, farmsBlock: this.farmsBlock, fullTechTree: this.fullTechTree, speed: this.speed,
     };
   }
 
@@ -1328,6 +1333,7 @@ export class Game {
         check("relics", this.relics, "Ruins and Artifacts"),
         check("reveal", this.exploredStart, "Reveal map"),
         check("farms-block", this.farmsBlock, "Farms block the way, as in the original"),
+        check("full-tech-tree", this.fullTechTree, "Full tech tree"),
       ]),
       `<span class="choices"><button id="lobby-settings-ok">OK</button><button id="lobby-settings-cancel">Cancel</button></span>`,
     ], "menu");
@@ -1346,6 +1352,7 @@ export class Game {
     this.relics = on("#relics"); store.set("bd-relics", this.relics ? "on" : "off");
     this.exploredStart = on("#reveal"); store.set("bd-reveal", this.exploredStart ? "on" : "off");
     this.farmsBlock = on("#farms-block"); store.set("bd-farms-block", this.farmsBlock ? "on" : "off");
+    this.fullTechTree = on("#full-tech-tree"); store.set("bd-full-tech-tree", this.fullTechTree ? "on" : "off");
   }
 
   /** The host starts the game from the lobby: everyone seated plays, in seat order. */
@@ -1362,7 +1369,7 @@ export class Game {
     const ais = players.map(({ seat }, i) => [i, seat.level] as [number, Difficulty]).filter((_, i) => players[i].seat.kind === "computer");
     const setup: OnlineSetup = {
       seed: this.seed, names, size: Math.max(this.mapSize, minMapSize(names.length)), reseed: this.reseed, speed: this.speed, ais,
-      options: { civs: all, teams, farmsBlock: this.farmsBlock, mapType: this.mapType, mapSpec: this.mapSpecNow(), startAge: this.startAge, resources: this.resources,
+      options: { civs: all, teams, farmsBlock: this.farmsBlock, fullTechTree: this.fullTechTree, mapType: this.mapType, mapSpec: this.mapSpecNow(), startAge: this.startAge, resources: this.resources,
         popLimit: this.popLimit, revealMap: this.exploredStart, relics: this.relics, victory: VICTORIES.find(([id]) => id === this.victoryId)?.[2] },
     };
     for (const f of o.friends) f.slot = players.findIndex(({ seat }) => seat.kind === "friend" && seat.friend === f.id);
@@ -1915,7 +1922,7 @@ export class Game {
     const word: Record<Stance, string> = { ally: "Ally", neutral: "Neutral", enemy: "Enemy" };
     const fee = w.players[me].mods.flags.has("free_tribute") ? 0 : w.rules.economy.tribute_fee ?? 0.25;
     const rows = w.players.map((p) => {
-      const bonuses = p.civ ? describeCiv(p.civ, this.rules).join("; ") : "no bonuses";
+      const bonuses = p.civ ? describeCiv(p.civ, this.rules, w.fullTechTree).join("; ") : "no bonuses";
       const name = `<td style="color:${playerColor(p.id)}"><b>${p.name}</b>${p.defeated ? " (out)" : ""}</td><td>${p.civ?.name ?? "-"}</td>`;
       if (this.watching || p.id === me) return `<tr>${name}<td>${this.watching ? "Computer" : "You"}</td><td></td><td></td><td class="bonus">${bonuses}</td></tr>`;
       const mine = STANCES.map((s) => `<button data-stance="${p.id}:${s}"${w.stance[me][p.id] === s ? ' class="picked"' : ""}>${word[s]}</button>`).join("");
@@ -1950,10 +1957,10 @@ export class Game {
   private civLines(): string[] {
     const out: string[] = [];
     const mine = this.world.players[this.me].civ;
-    if (mine) out.push(`<b>You: ${mine.name}</b> · ${describeCiv(mine, this.rules).join(" · ")}`);
+    if (mine) out.push(`<b>You: ${mine.name}</b> · ${describeCiv(mine, this.rules, this.world.fullTechTree).join(" · ")}`);
     for (const p of this.world.players) {
       if (p.id === this.me || !p.civ) continue;
-      out.push(`${p.name}: ${p.civ.name} · ${describeCiv(p.civ, this.rules).join(" · ")}`);
+      out.push(`${p.name}: ${p.civ.name} · ${describeCiv(p.civ, this.rules, this.world.fullTechTree).join(" · ")}`);
     }
     return out;
   }
@@ -2998,10 +3005,12 @@ export class Game {
         }
         return;
       }
-      if (t.id !== "civ") return;
+      if (t.id !== "civ" && t.id !== "full-tech-tree") return;
       const info = document.querySelector("#civ-info");
-      const c = this.rules.civs.find((x) => x.id === t.value);
-      if (info) info.textContent = c ? `${c.name}: ${describeCiv(c, this.rules).join("; ")}` : "A civilization picked at random. Its bonuses show at the top of the screen.";
+      const pick = (document.querySelector("#civ") as HTMLSelectElement | null)?.value;
+      const full = (document.querySelector("#full-tech-tree") as HTMLInputElement | null)?.checked === true;
+      const c = this.rules.civs.find((x) => x.id === pick);
+      if (info) info.textContent = c ? `${c.name}: ${describeCiv(c, this.rules, full).join("; ")}` : "A civilization picked at random. Its bonuses show at the top of the screen.";
     });
     // Browsers start sound only after the first click or key.
     window.addEventListener("pointerdown", () => this.sound.unlock(), { capture: true });

@@ -120,6 +120,7 @@ check((await page.$$eval("[data-start]", (b) => b.map((x) => x.textContent))).jo
 
 check((await page.$$eval("#map-type option", (o) => o.length)) === 9, "the start screen offers nine kinds of map");
 check((await page.$$eval("#map-size option", (o) => o.map((x) => x.textContent))).some((t) => t.startsWith("Gigantic")), "and five sizes, up to Gigantic");
+check(await page.isVisible("#full-tech-tree") && !(await page.isChecked("#full-tech-tree")), "a Full tech tree setting, as in AoE2, off by default");
 await page.selectOption("#opponents", "3");
 check((await page.textContent("#players-info")).includes("4 players"), "the start screen counts the players chosen");
 await page.selectOption("#opponents", "1");

@@ -49,10 +49,11 @@ export class Mods {
 
   constructor(readonly rules: Rules) {}
 
-  setCiv(civ: CivDef | null) {
+  /** `fullTree`: the game's full tech tree setting, so the civ keeps its bonuses but loses nothing. */
+  setCiv(civ: CivDef | null, fullTree = false) {
     this.civ = civ;
     if (!civ) return;
-    for (const d of civ.disabled) this.disabled.add(d);
+    if (!fullTree) for (const d of civ.disabled) this.disabled.add(d);
     for (const e of civ.effects) this.apply(e);
   }
 

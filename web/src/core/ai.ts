@@ -93,7 +93,7 @@ export class AIController {
 
   /** Moderate and up play to their civilization; the easy levels, which do not plan, play every one alike. */
   private bent(w: World): CivBent {
-    return (this.bentOf ??= this.playsToCiv && this.level.counters ? civBent(w.rules, w.players[this.player].civ ?? null) : { unit: new Map(), building: new Map() });
+    return (this.bentOf ??= this.playsToCiv && this.level.counters ? civBent(w.rules, w.players[this.player].civ ?? null, w.fullTechTree) : { unit: new Map(), building: new Map() });
   }
 
   /** The best building for the army, and how much better its units are, if the civilization has one. */

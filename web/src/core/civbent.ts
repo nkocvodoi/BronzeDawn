@@ -28,11 +28,12 @@ function gain(e: Extract<Effect, { type: "stat" }>, u: UnitDef): number {
   }
 }
 
-export function civBent(rules: Rules, civ: CivDef | null): CivBent {
+/** `fullTree`: the full tech tree setting is on, so nothing is out of the civ's reach. */
+export function civBent(rules: Rules, civ: CivDef | null, fullTree = false): CivBent {
   const unit = new Map<string, number>();
   const building = new Map<string, number>();
   if (!civ) return { unit, building };
-  const off = new Set(civ.disabled);
+  const off = new Set(fullTree ? [] : civ.disabled);
   for (const u of rules.units.values()) {
     if (off.has(u.id) || u.tags?.includes("animal")) continue;
     let g = 0;
