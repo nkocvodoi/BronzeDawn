@@ -2078,7 +2078,10 @@ export class Game {
     const sw = this.app.screen.width, sh = this.app.screen.height;
     this.worldLayer.scale.set(1 / this.cam.zoom);
     // Whole screen pixels, so the pixel art never shimmers while scrolling.
-    this.worldLayer.position.set(Math.round(sw / 2 - this.cam.x / this.cam.zoom), Math.round(sh / 2 - this.cam.y / this.cam.zoom));
+    // On whole device pixels, not CSS ones: at a 125% or 150% screen a CSS pixel is not a whole pixel, and the
+    // pixel art shimmered as the map scrolled.
+    const res = this.app.renderer.resolution, px = (v: number) => Math.round(v * res) / res;
+    this.worldLayer.position.set(px(sw / 2 - this.cam.x / this.cam.zoom), px(sh / 2 - this.cam.y / this.cam.zoom));
     this.fogFilter.update(this.worldLayer.x, this.worldLayer.y, this.worldLayer.scale.x, this.app.canvas.height);
     this.sync(alpha);
     this.drawRoutes();
