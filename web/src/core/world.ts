@@ -833,24 +833,31 @@ export class World {
 
   /** The Flag order: soldiers go and fight every enemy round the flag, towers first, and stand by it after. */
   sweep(player: number, ids: number[], at: Vec2) {
+    const r = this.sweepRadius(this.own(ids, player));
     for (const u of this.own(ids, player)) {
       if (!u.isSoldier) continue;
-      u.order = { kind: "sweep", at, target: 0, next: 0 };
+      u.order = { kind: "sweep", at, target: 0, next: 0, r };
       u.path = []; u.repathTimer = 0; u.resumeMove = null; u.waypoints = [];
     }
   }
 
+  /** How far round its flag a group sent with the Flag order fights: as far as the longest reach among its
+   *  soldiers, so archers clear what they can shoot at from where they stand, and SWEEP_RADIUS at least. */
+  sweepRadius(units: Unit[]) {
+    return units.reduce((r, u) => (u.isSoldier ? Math.max(r, this.stats(u).range) : r), SWEEP_RADIUS);
+  }
+
   /** What a soldier clearing round `at` goes for: the nearest to it of the enemy towers there, else of the
    *  soldiers, else of the villagers (and anything else that moves), else of the buildings. */
-  private sweepTarget(u: Unit, at: Vec2): Entity | null {
+  private sweepTarget(u: Unit, at: Vec2, radius = SWEEP_RADIUS): Entity | null {
     const tiers: [number, Entity][] = [];
     const rank = (e: Entity) => e instanceof Building ? (e.def.tags?.includes("tower") ? 0 : 3) : (e as Unit).isSoldier ? 1 : 2;
     const take = (e: Entity) => {
-      if (!e.alive || !this.hostile(u.owner, e) || e.center.distance(at) > SWEEP_RADIUS || !this.canEngage(u, e)) return;
+      if (!e.alive || !this.hostile(u.owner, e) || e.center.distance(at) > radius || !this.canEngage(u, e)) return;
       if (e instanceof Unit && (e.isAnimal || e.isRelic || e.aboard !== null)) return;
       tiers.push([rank(e), e]);
     };
-    this.eachUnitNear(at, SWEEP_RADIUS + 1, take);
+    this.eachUnitNear(at, radius + 1, take);
     for (const b of this.buildings) if (b.owner !== u.owner) take(b);
     let best: Entity | null = null, bestKey = Infinity;
     for (const [r, e] of tiers) {
@@ -864,7 +871,7 @@ export class World {
     const cur = o.target ? this.entity(o.target) : null;
     // Look again once a second, or when the one fought is gone: a tower or soldier come up comes first.
     if (!cur || !cur.alive || this.time >= o.next) {
-      const t = this.sweepTarget(u, o.at);
+      const t = this.sweepTarget(u, o.at, o.r ?? SWEEP_RADIUS);
       o.target = t ? t.id : 0;
       o.next = this.time + 1;
     }

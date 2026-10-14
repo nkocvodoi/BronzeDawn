@@ -2864,7 +2864,7 @@ export class Game {
         out.push({ key: "A", title: "Attack-move", detail: "click a point", blocker: null, icon: "attack_move", action: () => { this.attackMovePending = true; this.hud.message("Click where to attack-move"); } });
       }
       if (soldiers.length) {
-        out.push({ key: "F", title: "Flag", detail: "plant a flag: they fight every enemy round it, towers first, then soldiers, then buildings", blocker: null, icon: "flag",
+        out.push({ key: "F", title: "Flag", detail: "plant a flag: they fight every enemy round it, as far as the longest reach among them, towers first, then soldiers, then buildings", blocker: null, icon: "flag",
           action: () => { this.flagPending = true; this.hud.message("Click where to plant the flag"); } });
         const on = soldiers.every((u) => u.standGround);
         out.push({ key: "D", title: on ? "Stand ground: on" : "Stand ground", detail: on ? "press again to let them chase" : "hold this spot, strike only what comes in reach",
@@ -3526,17 +3526,19 @@ export class Game {
     if (!g.parent) this.overFog.addChild(g);
     g.clear();
     const color = playerColor(this.me);
-    const one = (p: Vec2, alpha: number) => {
+    const one = (p: Vec2, alpha: number, r: number) => {
       const s = iso(p);
       // The ring is a circle on the ground, so an ellipse on the screen.
-      g.ellipse(s.x, s.y, SWEEP_RADIUS * HALF_W * Math.SQRT2, SWEEP_RADIUS * HALF_H * Math.SQRT2).stroke({ width: 1.5, color, alpha });
+      g.ellipse(s.x, s.y, r * HALF_W * Math.SQRT2, r * HALF_H * Math.SQRT2).stroke({ width: 1.5, color, alpha });
       g.moveTo(s.x, s.y).lineTo(s.x, s.y - 22).stroke({ width: 2, color: 0x3a2a1a, alpha: Math.min(1, alpha * 2) });
       g.poly([s.x, s.y - 22, s.x + 12, s.y - 18, s.x, s.y - 13]).fill({ color, alpha: Math.min(1, alpha * 2) });
     };
-    if (this.flagPending && this.mouse.inside) one(this.toWorld(this.mouse.x, this.mouse.y), 0.6);
-    const held = new Map<string, Vec2>();
-    for (const e of this.selectedEntities()) if (e instanceof Unit && e.owner === this.me && e.order.kind === "sweep") held.set(`${e.order.at.x},${e.order.at.y}`, e.order.at);
-    for (const p of held.values()) one(p, 0.35);
+    // As far as the longest reach among the soldiers picked, as the order will be.
+    const mine = this.selectedEntities().filter((e): e is Unit => e instanceof Unit && e.owner === this.me);
+    if (this.flagPending && this.mouse.inside) one(this.toWorld(this.mouse.x, this.mouse.y), 0.6, this.world.sweepRadius(mine));
+    const held = new Map<string, [Vec2, number]>();
+    for (const e of mine) if (e.order.kind === "sweep") held.set(`${e.order.at.x},${e.order.at.y}`, [e.order.at, e.order.r ?? SWEEP_RADIUS]);
+    for (const [p, r] of held.values()) one(p, 0.35, r);
   }
 
   /** A waypoint where the mouse is, for the selected units (Shift + click, left or right). */
