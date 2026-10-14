@@ -20,9 +20,16 @@ CARRIES = ("basket", "butcher", "rod")  # the tools that go with a basket on the
 
 
 class Rig:
-    def __init__(self, tool="none"):
-        skin, hair = lib.mat("skin", SKIN, 0.6), lib.mat("hair", HAIR, 0.9)
-        cloth, belt = lib.mat("cloth", CLOTH, 0.9), lib.mat("belt", BELT, 0.8)
+    """`look`: a people of their own (races.py): their skin, hair and cloth, and afterwards their build and
+    the parts only they have (races.finish). None is the common figure of the peoples of Rise of Rome."""
+
+    def __init__(self, tool="none", look=None):
+        self.look = look
+        tag = f"-{look.name}" if look else ""
+        skin = lib.mat(f"skin{tag}", look.skin if look else SKIN, 0.6)
+        hair = lib.mat(f"hair{tag}", look.hair if look else HAIR, 0.9)
+        cloth = lib.mat(f"cloth{tag}", look.cloth if look else CLOTH, 0.9)
+        belt = lib.mat("belt", BELT, 0.8)
         team = lib.team_mat()
         self.root = lib.empty("root")
         self.hips = lib.empty("hips", (0, 0, 0.42), self.root)

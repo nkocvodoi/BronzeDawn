@@ -19,13 +19,17 @@ const SIEGE = ["stone_thrower", "catapult", "heavy_catapult", "ballista", "helep
 const BOATS = ["fishing_boat", "fishing_ship", "trade_boat", "merchant_ship", "light_transport", "heavy_transport", "scout_ship", "war_galley",
   "trireme", "catapult_trireme", "juggernaught", "fire_galley"];
 const ANIMALS = ["gazelle", "elephant", "lion", "alligator"];
+// The fantasy races: their villagers (the game's "<civ>/villager" sheets) and their own units. Their pictures
+// are Blender's only, so the section is left out of the drawn-by-code gallery.
+const RACES = ["elf", "dwarf", "centaur", "beastfolk"];
+const OWN_UNITS = ["glade_archer", "grove_warden", "ironclad", "deep_arbalest", "centaur_archer", "hoof_lancer", "wolfkin_raider", "bearkin_brute"];
 const BUILDINGS: [string, number][] = [
   ["town_center", 3], ["house", 2], ["granary", 3], ["storage_pit", 3], ["barracks", 3], ["archery_range", 3], ["stable", 3], ["market", 3], ["farm", 3],
   ["government_center", 3], ["temple", 3], ["academy", 3], ["siege_workshop", 3], ["wonder", 5], ["watch_tower", 2], ["sentry_tower", 2], ["guard_tower", 2], ["ballista_tower", 2],
 ];
 const def = (id: string, size: number) => ({ id, size }) as BuildingDef;
 
-const SECTIONS = ["infantry", "villager", "mounted", "siege", "boats", "animals", "nodes", "walls", "scene", "icons", ...ARCHES.map((a) => `b-${a}`), ...ARCHES.map((a) => `stages-${a}`)];
+const SECTIONS = ["infantry", "villager", ...(codeArt ? [] : ["fantasy"]), "mounted", "siege", "boats", "animals", "nodes", "walls", "scene", "icons", ...ARCHES.map((a) => `b-${a}`), ...ARCHES.map((a) => `stages-${a}`)];
 const nav = document.getElementById("nav")!;
 const link = (s: string, code: boolean) => `?section=${s}${code ? "&art=code" : ""}${params.has("scale") ? `&scale=${SCALE}` : ""}`;
 for (const s of SECTIONS) {
@@ -131,6 +135,33 @@ switch (section) {
     const r = row();
     for (let carry = 0; carry < 4; carry++) for (const facing of ["front", "back"] as Facing[]) for (let f = 0; f < 4; f++) {
       cell(r, unitPic(look("villager", 1, facing, "walk", f, "none", carry)).canvas, `${carry} ${facing} ${f}`);
+    }
+    break;
+  }
+  case "fantasy": {
+    const jobs: [string, Tool, string?][] = [["axe", "axe"], ["pick", "pick"], ["basket", "basket"], ["hoe", "hoe"], ["hammer", "hammer"],
+      ["hunt", "spear"], ["fish", "net"], ["butcher", "spear", "butcher"], ["fight", "spear", "fight"]];
+    await Promise.all(RACES.map((c) => ASSETS.loadCiv(c)));
+    for (const civ of RACES) {
+      heading(`${civ}: villager`);
+      let r = row();
+      // Front, back and from the side: a centaur's horse is behind the man seen from the front.
+      for (const [name, facing, dir] of [["front", "front", 0], ["back", "back", 4], ["side", "front", 2]] as [string, Facing, number][]) {
+        cell(r, unitPic({ ...look("villager", 0, facing, "idle", 0), civ, dir }).canvas, `${name} idle`);
+        for (let f = 0; f < 4; f++) cell(r, unitPic({ ...look("villager", 0, facing, "walk", f), civ, dir }).canvas, `${name} walk${f}`);
+      }
+      heading(`${civ}: at work`);
+      r = row();
+      for (const [name, tool, job] of jobs) {
+        for (let f = 0; f < 3; f++) cell(r, unitPic({ ...look("villager", 0, "front", "work", f, tool, null, job), civ, dir: 2 }).canvas, `${name} ${f}`);
+      }
+    }
+    unitRows(OWN_UNITS);
+    heading("their own units, from the side");
+    const r = row();
+    for (const t of OWN_UNITS) {
+      cell(r, unitPic({ ...look(t, 0, "front", "idle", 0), dir: 2 }).canvas, `${t}`);
+      cell(r, unitPic({ ...look(t, 0, "front", "work", 1), dir: 2 }).canvas, `${t} attack`);
     }
     break;
   }

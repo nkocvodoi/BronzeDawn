@@ -149,7 +149,7 @@
     "military"
    ],
    "projectile": "arrow",
-   "civ": "sagittarian",
+   "civ": "centaur",
    "looks_like": "horse_archer"
   },
   {
@@ -183,7 +183,7 @@
     "cavalry",
     "military"
    ],
-   "civ": "sagittarian",
+   "civ": "centaur",
    "looks_like": "cataphract"
   },
   {
@@ -310,7 +310,7 @@
    },
    "time": 100,
    "requires": [],
-   "civ": "sagittarian",
+   "civ": "centaur",
    "effects": [
     {
      "type": "stat",
@@ -536,8 +536,8 @@
    ]
   },
   {
-   "id": "sagittarian",
-   "name": "Sagittarian",
+   "id": "centaur",
+   "name": "Centaur",
    "arch": "greek",
    "fantasy": true,
    "effects": [

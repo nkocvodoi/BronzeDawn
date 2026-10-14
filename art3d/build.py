@@ -38,6 +38,7 @@ import models  # noqa: E402
 import animals  # noqa: E402
 import buildings as blds  # noqa: E402
 import machines  # noqa: E402
+import races  # noqa: E402
 import relics  # noqa: E402
 import soldiers  # noqa: E402
 import terrain  # noqa: E402
@@ -103,7 +104,7 @@ def _unit_sheet(key, build, anims, frame_size, anchor, quick, tmp):
                 lib.check_edges(img, f"{key} {name} dir {d} frame {f}")
                 row.append(img)
             rows.append(row)
-    path = os.path.join(OUT, ART, f"{key.replace(':', '-')}.png")
+    path = os.path.join(OUT, ART, f"{key.replace(':', '-').replace('/', '-')}.png")  # "elf/villager:axe" -> elf-villager-axe.png
     os.makedirs(os.path.dirname(path), exist_ok=True)
     lib.save_png(lib.sheet(rows), path)
     print(f"{key}: {len(rows)} rows -> {path}")
@@ -192,6 +193,23 @@ VILLAGER_ANCHOR = (96, 118)
 ANGLER_FRAME = (280, 260)
 ANGLER_ANCHOR = (136, 190)
 
+# A villager's jobs: (the game's name for the sheet, the rig's tool, the work animation, frames, fps).
+# The fisher's sheet keeps the name "net", the tool the game and art packs know fishing by; it is drawn
+# angling with a rod.
+JOBS = (("axe", "axe", "chop", 12, 11), ("pick", "pick", "mine", 12, 11), ("hammer", "hammer", "hammer", 10, 12),
+        ("basket", "basket", "forage", 16, 10), ("butcher", "butcher", "butcher", 14, 10), ("hoe", "hoe", "hoe", 10, 10),
+        ("spear", "spear", "throw", 12, 12), ("net", "rod", "angle", 20, 8), ("fight", "spear", "thrust", 10, 11))
+
+# The races are drawn bigger or smaller than the common villager: frames and anchors to hold them.
+RACE_FRAME = {"elf": ((210, 180), (100, 128)), "dwarf": ((200, 168), (96, 118)),
+              "centaur": ((340, 300), (166, 214)), "beastfolk": ((260, 200), (126, 146))}
+RACE_ANGLER = {"centaur": ((420, 360), (206, 254))}
+# The races' own units: frame and anchor.
+OWN_FRAME = {"glade_archer": ((260, 240), (126, 170)), "grove_warden": ((340, 340), (166, 250)),
+             "ironclad": ((210, 176), (100, 124)), "deep_arbalest": ((230, 186), (110, 130)),
+             "centaur_archer": ((340, 300), (166, 214)), "hoof_lancer": ((360, 320), (176, 230)),
+             "wolfkin_raider": ((250, 230), (120, 164)), "bearkin_brute": ((320, 310), (156, 224))}
+
 
 def main():
     only, quick = args()
@@ -204,18 +222,35 @@ def main():
                                        [("idle", "idle", 6, 4), ("walk", "walk", 12, 14)],
                                        VILLAGER_FRAME, VILLAGER_ANCHOR, quick, tmp)
     # A villager by job: the game picks "villager:<tool>" for the work in hand.
-    # The fisher's sheet keeps the name "net", the tool the game and art packs know fishing by; it is drawn
-    # angling with a rod.
-    for tool, rig_tool, work, frames, fps in (("axe", "axe", "chop", 12, 11), ("pick", "pick", "mine", 12, 11),
-                                              ("hammer", "hammer", "hammer", 10, 12), ("basket", "basket", "forage", 16, 10),
-                                              ("butcher", "butcher", "butcher", 14, 10), ("hoe", "hoe", "hoe", 10, 10),
-                                              ("spear", "spear", "throw", 12, 12), ("net", "rod", "angle", 20, 8),
-                                              ("fight", "spear", "thrust", 10, 11)):
+    for tool, rig_tool, work, frames, fps in JOBS:
         if want("villager") or want(f"villager:{tool}"):
             units[f"villager:{tool}"] = unit_sheet(f"villager:{tool}", lambda rig_tool=rig_tool: villager.Rig(rig_tool),
                                                    [("idle", "idle", 6, 4), ("walk", "walk", 12, 14), ("work", work, frames, fps)],
                                                    *((ANGLER_FRAME, ANGLER_ANCHOR) if rig_tool == "rod" else (VILLAGER_FRAME, VILLAGER_ANCHOR)),
                                                    quick, tmp)
+    # The fantasy races' villagers, as the game picks them first for a civilization ("elf/villager:axe"), in
+    # every job; --only takes "elf", "elf/villager" or "elf/villager:axe".
+    for race in races.VILLAGERS:
+        frame, anchor = RACE_FRAME[race]
+        jobs = [(None, "none", None, 0, 0), *JOBS]
+        for tool, rig_tool, work, frames, fps in jobs:
+            key = f"{race}/villager" + (f":{tool}" if tool else "")
+            if not (only is None or race in only or key in only):
+                continue
+            make = lambda race=race, rig_tool=rig_tool: races.villager_of(race, rig_tool)  # noqa: E731
+            # Elves hunt with the bow and fight with a dagger.
+            if race == "elf" and tool == "spear":
+                make, work = races.elf_hunter, "shoot"
+            if race == "elf" and tool == "fight":
+                make, work = races.elf_fighter, "slash"
+            anims = [("idle", "idle", 6, 4), ("walk", "walk", 12, 14)] + ([("work", work, frames, fps)] if tool else [])
+            f, a = RACE_ANGLER.get(race, (ANGLER_FRAME, ANGLER_ANCHOR)) if rig_tool == "rod" else (frame, anchor)
+            units[key] = unit_sheet(key, make, anims, f, a, quick, tmp)
+    for unit, (make, attack) in races.UNITS.items():
+        if only is not None and unit not in only and "races" not in only:
+            continue
+        frame, anchor = OWN_FRAME[unit]
+        units[unit] = unit_sheet(unit, make, [("idle", "idle", 4, 3), ("walk", "walk", 12, 14), ("attack", attack, 10, 10)], frame, anchor, quick, tmp)
     # Every building in the style of each age from its first; the game falls back to an earlier age's
     # picture, so the first is enough for the ages before it. --only takes "barracks" or "barracks@bronze".
     for key, make in blds.BUILDERS.items():

@@ -116,10 +116,30 @@ export class Assets {
         this.packs.push({ id: p.info.id, name: p.info.name });
       }
     } catch (e) { console.warn("Art packs not loaded", e); }
-    const pictures = [...this.base.keys(), ...this.packUrls.keys()].filter((f) => /\.(png|webp|gif|jpe?g)$/i.test(f));
+    // A civilization's own sheets ("elf/villager:axe") wait until a game has that civilization (`loadCiv`): most
+    // games have none of the fantasy races, whose villagers alone are 12 MB.
+    const later = new Set(Object.entries(this.manifest.units ?? {}).filter(([k]) => k.includes("/")).map(([, u]) => u.file));
+    for (const u of Object.entries(this.manifest.units ?? {})) if (!u[0].includes("/")) later.delete(u[1].file);
+    const pictures = [...this.base.keys(), ...this.packUrls.keys()].filter((f) => /\.(png|webp|gif|jpe?g)$/i.test(f) && !later.has(f));
     await Promise.all(pictures.map((f) => this.loadImage(f)));
     if (this.failures.length) console.warn(`Assets not loaded: ${this.failures.join(", ")}`);
   }
+
+  private civsLoading = new Map<string, Promise<void>>();
+
+  /** Loads a civilization's own sheets, once; until they are in, its units are drawn as everyone's. */
+  loadCiv(civ: string): Promise<void> {
+    let p = this.civsLoading.get(civ);
+    if (!p) {
+      const files = Object.entries(this.manifest.units ?? {}).filter(([k]) => k.startsWith(`${civ}/`)).map(([, u]) => u.file);
+      p = Promise.all(files.filter((f) => !this.images.has(f)).map((f) => this.loadImage(f))).then(() => {});
+      this.civsLoading.set(civ, p);
+    }
+    return p;
+  }
+
+  /** Whether a picture has been loaded. */
+  has(file: string) { return this.images.has(file); }
 
   url(file: string) { return this.packUrls.get(file) ?? `${this.base.get(file) ?? "assets/"}${file}`; }
 

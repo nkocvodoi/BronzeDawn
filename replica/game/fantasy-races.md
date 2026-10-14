@@ -1,8 +1,8 @@
-# Đề xuất: các tộc giả tưởng (Elf, Dwarf, Sagittarian, Beastfolk)
+# Đề xuất: các tộc giả tưởng (Elf, Dwarf, Centaur, Beastfolk)
 
 Trạng thái: **đợt 1 (4 tộc ở mục 2) đã vào game**, luôn có trong danh sách chọn dân tộc, nhóm "Fantasy". Theo ý
 chủ repo, **không có nút bật tắt** (mục 5.1 cũ): để thử cả bốn tộc trong mọi trận. Số đang dùng nằm ở
-`data/fantasy.json` (gộp vào luật lúc nạp, `web/src/core/data.ts`); vài số đã chỉnh sau giả lập, xem mục 6. Mọi id
+`data/fantasy.json` (gộp vào luật lúc nạp, `web/src/core/data.ts`); tộc nhân mã trước đây tên Sagittarian, nay là Centaur (id `centaur`); vài số đã chỉnh sau giả lập, xem mục 6. Mọi id
 (unit, stat, tech) giữ tiếng Anh như trong `data/rules.json`.
 
 Nguồn dữ liệu: `data/rules.json` (17 dân tộc, số của Rise of Rome từ `empires.dat`, cộng Lac Viet), cách áp dụng hiệu ứng
@@ -28,7 +28,7 @@ bản thân nó. Unit riêng cần một mức sàn trong `civBent` (mục 5).
 ## 1. Nguyên tắc thiết kế
 
 1. **Mỗi tộc là một lối chơi**, nói được trong một câu: Elf = cung thủ gỗ, không cần vàng; Dwarf = bộ binh thép và đá,
-   chậm; Sagittarian = cung kỵ từ thời Đồng; Beastfolk = đánh sớm bằng bộ binh nhanh và thú săn.
+   chậm; Centaur = cung kỵ từ thời Đồng; Beastfolk = đánh sớm bằng bộ binh nhanh và thú săn.
 2. **Cùng biên độ với Rise of Rome.** Bonus kinh tế ×1.15–×1.5 (Egyptian vàng ×1.44, Persian săn ×1.67, Lac Viet hái
    ×1.15); bonus quân ×1.25–×2 máu (Egyptian chariot ×1.33, Hittite máy ×2), giảm giá ×0.7–×0.8 (Yamato kỵ ×0.75), tốc
    độ +0.2–+0.5. Mỗi tộc 4–5 hiệu ứng, như dân tộc gốc (2–4, Palmyran 12).
@@ -163,13 +163,13 @@ Chuồng ngựa chỉ còn `scout`: điểm yếu lớn nhất là không có qu
 | AI (civbent) | Hiện: siege_workshop 0.5 (stone_thrower), barracks 0.04. Có sàn unit riêng thì barracks ~0.35: barracks trước, nhiều thợ vàng, rồi Siege Workshop |
 | Cần bộ máy mới | (a) `civ` (chung); (b) **không nên** làm "xây trong núi / đường hầm": đụng lưới, tìm đường, sinh bản đồ, **lớn, 1–2 tuần**. Nếu muốn hương vị núi: Dwarf xây được nhà sát vách đá (nới luật đặt nhà): nhỏ, ~1 ngày |
 
-### 2.3 Sagittarian: tộc nhân mã cung thủ
+### 2.3 Centaur: tộc nhân mã cung thủ
 
 **Bản sắc:** nửa người nửa ngựa, sống bằng săn và cung. Có cung kỵ từ thời Đồng (dân khác phải chờ Iron), người dân chạy
 nhanh. Không có bộ binh kiếm, không Academy, không xe, voi, thành lũy. Chơi: săn, quấy, thả diều; thua nếu bị dồn vào
 thế đánh trận đứng với bộ binh nặng.
 
-| Hiệu ứng | Sagittarian | Mốc so sánh |
+| Hiệu ứng | Centaur | Mốc so sánh |
 | --- | --- | --- |
 | Tốc độ người dân | +0.3 | Assyrian, Yamato +0.2 |
 | Săn | ×1.33, carry +2 | Persian ×1.67, carry +3 |
@@ -177,7 +177,7 @@ thế đánh trận đứng với bộ binh nặng.
 | Tầm cung kỵ (`mounted` + `missile`) | +1 | Hittite cung +1 đòn |
 
 ```json
-{"id": "sagittarian", "name": "Sagittarian", "arch": "greek", "fantasy": true, "effects": [
+{"id": "centaur", "name": "Centaur", "arch": "greek", "fantasy": true, "effects": [
   {"type": "stat", "stat": "speed", "op": "add", "value": 0.3, "target": {"units": ["villager"]}},
   {"type": "gather", "resource": "food", "rate": 1.33, "carry": 2, "kind": "hunt"},
   {"type": "stat", "stat": "cost", "op": "mul", "value": 0.8, "target": {"units": ["horse_archer", "heavy_horse_archer", "centaur_archer"]}},
@@ -205,14 +205,14 @@ thế đánh trận đứng với bộ binh nặng.
 
 - `centaur_archer` ở thời Đồng mạnh hơn chariot_archer nhưng yếu hơn horse_archer thời Iron. Class `horse_archer` để
   lạc đà của địch vẫn khắc nó.
-- `hoof_lancer`: kỵ rẻ vàng chuyên săn cung và máy. Sagittarian vẫn có `horse_archer` → `heavy_horse_archer`, `scout`,
+- `hoof_lancer`: kỵ rẻ vàng chuyên săn cung và máy. Centaur vẫn có `horse_archer` → `heavy_horse_archer`, `scout`,
   `cavalry` → `cataphract`, `camel_rider`, `slinger`, `bowman`.
 
 **Tech riêng:**
 
 ```json
 {"id": "galloping_volley", "name": "Galloping Volley", "age": "iron", "building": "archery_range",
- "cost": {"food": 400, "gold": 250}, "time": 100, "requires": [], "civ": "sagittarian",
+ "cost": {"food": 400, "gold": 250}, "time": 100, "requires": [], "civ": "centaur",
  "effects": [{"type": "stat", "stat": "attack", "op": "add", "value": 1, "target": {"tags": ["mounted", "missile"]}}]}
 ```
 
@@ -339,7 +339,7 @@ thắng cột, < 0.91 là thua. Tầm bắn và tốc độ không có trong cô
 | bearkin_brute | 110 | 16.00 | legion (tech 2000 tài nguyên) | 27.73 |
 | grove_warden | 220 | 17.68 | war_elephant | 28.57 |
 
-- Cảnh báo: `centurion` và `legion` vẫn đứng đầu Iron Age như bản gốc; Elf và Beastfolk mất cả hai, Sagittarian mất cả
+- Cảnh báo: `centurion` và `legion` vẫn đứng đầu Iron Age như bản gốc; Elf và Beastfolk mất cả hai, Centaur mất cả
   dòng kiếm và Academy. Đó là cái giá cố ý; giả lập trận (mục 5) sẽ cho biết có quá nặng không.
 
 ## 3. Hướng hình ảnh
@@ -366,7 +366,7 @@ thú nhân = gù, có tai, đuôi, mõm. Ở cỡ sprite của game (lính ~40�
 Giữ phong cách Bronze Age của game: kim loại đồng, vải thô, gỗ, đá; không phép thuật lấp lánh, không phát sáng. Giả
 tưởng "mộc", như một dân tộc cổ có thật.
 
-| | Elf | Dwarf | Sagittarian | Beastfolk |
+| | Elf | Dwarf | Centaur | Beastfolk |
 | --- | --- | --- | --- | --- |
 | Hình dáng lính | Cao hơn người ~10%, gầy, tai nhọn, áo choàng dài, cung cao hơn người | Thấp ~80%, rộng ~120%, râu che ngực, mũ đồng kín, khiên tròn to | Thân ngựa + thân người; dài gấp đôi bộ binh; tóc đuôi ngựa, cung ngắn cong | Gù, chân thú, tai và đuôi nhìn rõ; mỗi unit một loài (sói nhỏ nhanh, gấu to) |
 | Người dân | Elf dáng mảnh, dụng cụ gỗ | Dwarf thấp, cuốc to | **Satyr chân dê hai chân** (dùng lại khung người dân; nhân mã bốn chân làm 10 động tác thu hoạch là quá nặng) | Cáo hoặc chó, hai chân, dùng lại khung người dân + đầu, tai, đuôi |
@@ -433,7 +433,7 @@ dùng hình composite_bowman...) và nhà bằng `arch` tạm.
 - Mặc định (không bật Fantasy): danh sách dân tộc vẫn đúng 17 (test hiện có `RULES.civs.length` phải đổi thành đếm dân
   tộc không có `fantasy`), không ai luyện được unit có `civ`.
 - Bật Fantasy: mỗi tộc luyện được unit riêng của mình và **không** luyện được của tộc khác; tech riêng tương tự.
-- Số đúng như tài liệu: Elf `glade_archer` tầm 8; Dwarf `ironclad` giáp 4, tốc độ 0.9; Sagittarian `centaur_archer` giá
+- Số đúng như tài liệu: Elf `glade_archer` tầm 8; Dwarf `ironclad` giáp 4, tốc độ 0.9; Centaur `centaur_archer` giá
   56f 36g; Beastfolk `wolfkin_raider` luyện 19.2 giây.
 - Mỗi tộc mới tắt hơn 10 thứ (như test "each civilization lacks what its tech tree lacks").
 - `civBent` của mỗi tộc có ít nhất một building > 0.
@@ -467,8 +467,7 @@ riêng thì vẽ bằng hình của unit gần nhất: Glade Archer như Improve
 Broad Swordsman, Deep Arbalest như Composite Bowman, Centaur Archer như Horse Archer, Hoof Lancer như Cataphract,
 Wolfkin như Axeman, Bearkin như Long Swordsman), sàn 0.35 trong `civBent` cho unit riêng, AI luyện Grove Warden ở
 Temple (giới hạn 2 chỉ còn áp cho thầy tu), phím luyện riêng (G, D, N, I, W, B, Q), danh sách chọn chia nhóm
-"Rise of Rome" / "Fantasy", mô tả dân tộc kể unit và tech riêng. Chưa làm: team bonus, hồi máu, tàng hình, hình
-Blender riêng.
+"Rise of Rome" / "Fantasy", mô tả dân tộc kể unit và tech riêng. Chưa làm: team bonus, hồi máu, tàng hình.
 
 Giả lập: `npm run sim:races -- 6 hard inland 45` (mỗi tộc đấu 17 dân tộc gốc, 6 seed mỗi cặp, đổi bên; hết giờ tính
 nửa trận). Mốc của dân tộc gốc chạy cùng cách: Greek 45%, Egyptian 46%, Shang 64%.
@@ -477,7 +476,25 @@ nửa trận). Mốc của dân tộc gốc chạy cùng cách: Greek 45%, Egypt
 | --- | --- | --- | --- |
 | Elf | 68% | gỗ ×1.2 → ×1.15, hái quả ×1.2 → ×1.1, `glade_archer` 40f 40w → 45f 45w | 60% |
 | Dwarf | 50% | không đổi; trên Coastal 28% (Greek 26% trên cùng bản đồ) | 50% |
-| Sagittarian | 71% | tốc độ người dân +0.3 → +0.2, `centaur_archer` 70f 45g → 75f 50g | 58% |
+| Centaur | 71% | tốc độ người dân +0.3 → +0.2, `centaur_archer` 70f 45g → 75f 50g | 58% |
 | Beastfolk | 64% | luyện barracks ×0.8 → ×0.85, `wolfkin_raider` 60f → 65f; rồi săn ×1.5 → ×1.4 | 61% |
 
 Mỗi con số là 102 trận, sai số khoảng ±5%. Lần sau: thêm bản đồ có nước cho cả bốn tộc, và mức AI Moderate.
+
+### Hình (Blender, `art3d/races.py`)
+
+Theo ý chủ repo, phong cách anime Nhật hơn châu Âu: đầu hơi to, tóc thành mảng rõ. Mọi nhân vật mặc đủ đồ.
+
+| Tộc | Người dân (`<civ>/villager`, đủ 9 nghề) | Unit riêng |
+| --- | --- | --- |
+| Elf | cao như người thường, phần lớn là nữ (áo thân xanh có eo, váy dài màu người chơi), tóc vàng dài, tai nhọn; săn bằng cung, đánh bằng dao găm | Glade Archer: cung cao gần bằng người, áo choàng màu người chơi; Grove Warden: người cây cao 1,6 lần |
+| Dwarf | thấp 80%, bè 130%, râu tết hai lọn có khoen đồng, mũi to | Ironclad: mũ kín, giáp sắt, khiên to; Deep Arbalest: nỏ nặng, quay tay nạp dây |
+| Centaur | nhân mã bốn chân: thân người mọc ở ngực ngựa, đi nước kiệu; các việc của tay và thân như người dân thường, xẻ thịt thì cúi xuống | Centaur Archer; Hoof Lancer (ngựa xám, giáo dài, phi nước đại) |
+| Beastfolk | mặt người, tai và đuôi mèo, cao 110% | Wolfkin Raider: đầu sói xám, hai rìu, cao 125%; Bearkin Brute: đầu gấu nâu, chùy đá, cao 145% |
+
+Khung xương, động tác và cách render là của người dân và lính chung (`villager.Rig`, `soldiers.Soldier`): một
+`Look` cho mỗi tộc (màu da, tóc, vải; cao, bè, cỡ đầu; bộ phận riêng), rồi `races.finish` gắn bộ phận và đổi dáng.
+`blender -b --factory-startup -P art3d/build.py -- --only elf` (hoặc `dwarf`, `centaur`, `beastfolk`, một khóa như
+`elf/villager:axe`, hay `races` cho 8 unit riêng). Bản đầy đủ của cả bốn tộc và 8 unit mất khoảng 2 giờ trên Mac chip M
+khi chạy 4 tiến trình cùng lúc. Gallery có mục `fantasy` (`gallery.html?section=fantasy`), có cả góc nghiêng vì nhìn
+thẳng từ trước thì thân ngựa của nhân mã bị người che.

@@ -35,6 +35,7 @@ dời tâm (`center`) trong code.
 | `relics.py` | Ruins (vòng đá cổ có xà ngang và phiến đá tế) và Artifact (rương vàng trên hai đòn khiêng, nhún nhẹ khi đi); mỗi thứ hai hình: lúc chưa ai giữ (không có màu người chơi) và lúc có người giữ (`ruins:held`, `artifact:held`: cờ hoặc tấm vải màu người giữ) |
 | `buildings.py` | Mọi công trình theo từng thời đại (Tool, Bronze, Iron) |
 | `stoneage.py` | Công trình Thời đồ đá: chòi tròn và nhà dài vách đất trên móng đá, mái rơm nhiều lớp có dây buộc, sân đất và đồ vật quanh nhà (củi, chum, giỏ, giá phơi da, hàng rào, cột cờ) |
+| `races.py` | Các tộc giả tưởng: dáng người, màu, bộ phận riêng của Elf, Dwarf, Centaur, Beastfolk trên khung người dân chung; nhân mã (thân người trên ngựa không đầu); người cây; 8 unit riêng (`replica/game/fantasy-races.md`) |
 | `soldiers.py`, `machines.py` | Lính bộ, cung thủ, thầy tu, quân cưỡi; máy công thành và tàu |
 | `terrain.py` | Ô đất: cỏ, đất, cát, nước |
 | `build.py` | Danh sách cái cần render, kích thước khung, điểm neo, ghi manifest |

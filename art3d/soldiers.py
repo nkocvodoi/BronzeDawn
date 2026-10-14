@@ -47,9 +47,10 @@ KITS = {
     "elephant_archer": ("turban", "leather", "none", "composite", {"quiver": True}),
 }
 
-SWORDS = {"short": 0.24, "broad": 0.3, "long": 0.36, "gladius": 0.24, "scimitar": 0.3}
+SWORDS = {"short": 0.24, "broad": 0.3, "long": 0.36, "gladius": 0.24, "scimitar": 0.3, "dagger": 0.13}
 SPEARS = {"spear": 0.75, "lance": 0.85, "javelin": 0.5}
-BOWS = {"bow": 0.32, "longbow": 0.4, "composite": 0.3}
+# The elves' great bow is as tall as the archer.
+BOWS = {"bow": 0.32, "longbow": 0.4, "composite": 0.3, "greatbow": 0.8}
 
 
 def attack_of(weapon):
@@ -61,13 +62,18 @@ def attack_of(weapon):
         return "sling"
     if weapon == "staff":
         return "bless"
-    return "slash"
+    if weapon == "crossbow":
+        return "crossbow"
+    return "slash"  # swords, axes (one or a pair), clubs and the bear's maul
 
 
 class Soldier(villager.Rig):
-    def __init__(self, unit):
-        super().__init__("none")
-        helm, armor, shield, weapon, more = KITS[unit]
+    """`kit`: helmet, armour, shield, weapon and the rest, for a unit not in KITS (the races' own);
+    `look`: the people they are (villager.Rig)."""
+
+    def __init__(self, unit, look=None, kit=None):
+        super().__init__("none", look)
+        helm, armor, shield, weapon, more = kit or KITS[unit]
         self.weapon, self.shield_kind = weapon, shield
         metal = lib.mat("iron", IRON, 0.35, 0.8) if armor in ("iron", "lorica") or helm in ("roman", "transverse", "plume") else lib.mat("bronze", BRONZE, 0.35, 0.8)
         leather = lib.mat("leather", LEATHER, 0.8)
@@ -155,6 +161,26 @@ class Soldier(villager.Rig):
             lib.box("axeblade", (0.012, 0.08, 0.07), (hx, -0.04, hz - 0.26), blade, g, bevel=0.006)
         elif w == "club":
             lib.cyl("club", 0.035, 0.3, (hx, 0, hz - 0.13), wood, g, r2=0.015)
+        elif w == "twin_axe":
+            # A short axe in each fist.
+            for side, x, parent in (("R", hx, g), ("L", -hx, None)):
+                if parent is None:
+                    parent = self.grip2 = lib.empty("grip2", (x, 0, hz), self.handL)
+                lib.cyl(f"haft{side}", 0.012, 0.26, (x, 0, hz - 0.09), wood, parent)
+                lib.box(f"axeblade{side}", (0.012, 0.07, 0.06), (x, -0.035, hz - 0.2), blade, parent, bevel=0.006)
+        elif w == "maul":
+            # A long haft with a block of stone lashed to it, held in both hands.
+            lib.cyl("haft", 0.016, 0.5, (hx, 0, hz - 0.18), wood, g)
+            lib.box("maulhead", (0.1, 0.09, 0.1), (hx, 0, hz - 0.43), lib.mat("maulstone", (0.52, 0.50, 0.46), 0.85), g, bevel=0.02)
+            lib.cyl("lashing", 0.02, 0.03, (hx, 0, hz - 0.37), lib.mat("leather", LEATHER, 0.8), g)
+        elif w == "crossbow":
+            # A heavy crossbow: the stock runs forward from the right fist, the bow across its far end.
+            lib.box("stock", (0.03, 0.3, 0.035), (hx, -0.12, hz), wood, g, bevel=0.006)
+            for k in range(7):
+                a = (k / 6 - 0.5) * math.pi * 0.7
+                lib.box(f"prod{k}", (0.32 / 6.5, 0.014, 0.014), (hx + math.sin(a) * 0.16, -0.27 + (1 - math.cos(a)) * 0.05, hz), metal, g, rot=(0, 0, a))
+            lib.box("xstring", (0.3, 0.003, 0.003), (hx, -0.22, hz), lib.mat("string", (0.9, 0.9, 0.85), 0.8), g)
+            lib.box("crank", (0.06, 0.02, 0.02), (hx, 0.04, hz - 0.02), metal, g)
         elif w == "sling":
             lib.cyl("strap", 0.006, 0.18, (hx, 0, hz - 0.08), lib.mat("leather", LEATHER, 0.8), g)
             lib.ball("pouch", 0.02, (hx, 0, hz - 0.17), lib.mat("leather", LEATHER, 0.8), g)
@@ -174,7 +200,7 @@ class Soldier(villager.Rig):
         self.grip = g
 
     def pose(self, anim, t):
-        if anim not in ("slash", "thrust", "shoot", "sling", "bless"):
+        if anim not in ("slash", "thrust", "shoot", "sling", "bless", "crossbow"):
             super().pose(anim, t)
             self.hold(anim)
             return
@@ -195,6 +221,16 @@ class Soldier(villager.Rig):
             self.arms["R"].rotation_euler = (R(a), 0, R(12))
             self.elbows["R"].rotation_euler = (R(-15), 0, 0)
             self.grip.rotation_euler = (R(80), 0, 0)
+            if self.weapon == "maul":
+                # Both hands on the haft.
+                self.arms["L"].rotation_euler = (R(a + 8), 0, R(-30))
+                self.elbows["L"].rotation_euler = (R(-25), 0, 0)
+            if hasattr(self, "grip2"):
+                # The other axe follows half a beat behind.
+                b = -40 - 130 * ease(((t + 0.5) % 1) / 0.5) if (t + 0.5) % 1 < 0.5 else -170 + 130 * ease(((t + 0.5) % 1 - 0.5) / 0.5)
+                self.arms["L"].rotation_euler = (R(b), 0, R(-12))
+                self.elbows["L"].rotation_euler = (R(-15), 0, 0)
+                self.grip2.rotation_euler = (R(80), 0, 0)
         elif anim == "thrust":
             k = math.sin(math.pi * min(1.0, t / 0.6)) if t < 0.6 else 0.0
             self.torso.rotation_euler = (R(4 + 10 * k), 0, R(-10 + 10 * k))
@@ -221,6 +257,26 @@ class Soldier(villager.Rig):
                 k = ease((t - 0.6) / 0.25)
                 self.arms["R"].rotation_euler = (R(-150 + 100 * k), 0, 0)
                 self.torso.rotation_euler = (R(10 * k), 0, 0)
+        elif anim == "crossbow":
+            # Aimed at the shoulder and loosed with a kick; then lowered and wound back by the crank, which is
+            # why it shoots slowly.
+            if t < 0.3:
+                kick, low, wind = 0.0, 0.0, 0.0
+            elif t < 0.4:
+                kick, low, wind = math.sin(math.pi * (t - 0.3) / 0.1), 0.0, 0.0
+            else:
+                k = (t - 0.4) / 0.6
+                low, wind = math.sin(math.pi * k), 4 * k
+                kick = 0.0
+            arm, elbow = -82 + 30 * low, -18 - 30 * low
+            self.torso.rotation_euler = (R(-6 * kick), 0, R(-8))
+            self.arms["R"].rotation_euler = (R(arm), 0, R(14))
+            self.elbows["R"].rotation_euler = (R(elbow), 0, 0)
+            self.grip.rotation_euler = (R(-(arm + elbow)), 0, 0)  # level, pointing at the foe
+            # The left hand under the stock when aiming, turning the crank when winding.
+            spin = 2 * math.pi * wind
+            self.arms["L"].rotation_euler = (R(-70 + 30 * low + 14 * math.sin(spin) * low), 0, R(-30 + 12 * math.cos(spin) * low))
+            self.elbows["L"].rotation_euler = (R(-40), 0, 0)
         elif anim == "bless":
             up = math.sin(math.pi * t)
             for side, z in (("L", -20), ("R", 20)):
@@ -244,6 +300,16 @@ class Soldier(villager.Rig):
             self.arms["R"].rotation_euler = (R(-12), R(8), 0)
             self.elbows["R"].rotation_euler = (R(-70), 0, 0)
             self.grip.rotation_euler = (R(-8), 0, 0)
+        elif w == "crossbow":
+            # Carried level at the waist.
+            self.arms["R"].rotation_euler = (R(-35), 0, R(10))
+            self.elbows["R"].rotation_euler = (R(-55), 0, 0)
+            self.grip.rotation_euler = (R(90), 0, 0)
+        elif w == "maul":
+            # Over the shoulder.
+            self.arms["R"].rotation_euler = (R(-20), 0, R(8))
+            self.elbows["R"].rotation_euler = (R(-110), 0, 0)
+            self.grip.rotation_euler = (R(160), 0, 0)
         elif w in BOWS:
             self.arms["L"].rotation_euler = (R(-25), 0, R(-6))
             self.elbows["L"].rotation_euler = (R(-30), 0, 0)
@@ -251,6 +317,8 @@ class Soldier(villager.Rig):
                 self.bowgrip.rotation_euler = (R(55), 0, 0)
         else:
             self.grip.rotation_euler = (R(60), 0, 0)
+            if hasattr(self, "grip2"):
+                self.grip2.rotation_euler = (R(60), 0, 0)
 
 
 class Horse(animals.Quadruped):
