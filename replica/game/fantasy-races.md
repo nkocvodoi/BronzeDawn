@@ -1,8 +1,9 @@
 # Đề xuất: các tộc giả tưởng (Elf, Dwarf, Sagittarian, Beastfolk)
 
-Trạng thái: **đề xuất, chưa làm.** Tài liệu này chỉ đề xuất số liệu, hướng hình ảnh và thứ tự làm. Không có mã game nào
-đổi. Mọi id (unit, stat, tech) giữ tiếng Anh như trong `data/rules.json`. Số liệu ở đây là bản nháp đầu, sẽ còn chỉnh
-sau khi chạy giả lập trận đấu (mục 5).
+Trạng thái: **đợt 1 (4 tộc ở mục 2) đã vào game**, luôn có trong danh sách chọn dân tộc, nhóm "Fantasy". Theo ý
+chủ repo, **không có nút bật tắt** (mục 5.1 cũ): để thử cả bốn tộc trong mọi trận. Số đang dùng nằm ở
+`data/fantasy.json` (gộp vào luật lúc nạp, `web/src/core/data.ts`); vài số đã chỉnh sau giả lập, xem mục 6. Mọi id
+(unit, stat, tech) giữ tiếng Anh như trong `data/rules.json`.
 
 Nguồn dữ liệu: `data/rules.json` (17 dân tộc, số của Rise of Rome từ `empires.dat`, cộng Lac Viet), cách áp dụng hiệu ứng
 trong `web/src/core/stats.ts` (`Mods.apply`, `Mods.fold`), cách AI đọc bonus trong `web/src/core/civbent.ts`, và công cụ
@@ -458,3 +459,25 @@ dùng hình composite_bowman...) và nhà bằng `arch` tạm.
 - Không đổi số của 17 dân tộc gốc để chiều tộc mới.
 - Không bật Fantasy làm mặc định.
 - Không đưa tên phe, tên unit, hình hay bảng màu của các game ở mục 3 vào game.
+
+## 6. Kết quả đợt 1 (2026-10-14)
+
+Đã làm: trường `civ` cho unit và tech (`Mods` tắt chúng với mọi dân tộc khác), `looks_like` (unit chưa có hình
+riêng thì vẽ bằng hình của unit gần nhất: Glade Archer như Improved Bowman, Grove Warden như Phalanx, Ironclad như
+Broad Swordsman, Deep Arbalest như Composite Bowman, Centaur Archer như Horse Archer, Hoof Lancer như Cataphract,
+Wolfkin như Axeman, Bearkin như Long Swordsman), sàn 0.35 trong `civBent` cho unit riêng, AI luyện Grove Warden ở
+Temple (giới hạn 2 chỉ còn áp cho thầy tu), phím luyện riêng (G, D, N, I, W, B, Q), danh sách chọn chia nhóm
+"Rise of Rome" / "Fantasy", mô tả dân tộc kể unit và tech riêng. Chưa làm: team bonus, hồi máu, tàng hình, hình
+Blender riêng.
+
+Giả lập: `npm run sim:races -- 6 hard inland 45` (mỗi tộc đấu 17 dân tộc gốc, 6 seed mỗi cặp, đổi bên; hết giờ tính
+nửa trận). Mốc của dân tộc gốc chạy cùng cách: Greek 45%, Egyptian 46%, Shang 64%.
+
+| Tộc | Lần 1 | Chỉnh | Lần cuối |
+| --- | --- | --- | --- |
+| Elf | 68% | gỗ ×1.2 → ×1.15, hái quả ×1.2 → ×1.1, `glade_archer` 40f 40w → 45f 45w | 60% |
+| Dwarf | 50% | không đổi; trên Coastal 28% (Greek 26% trên cùng bản đồ) | 50% |
+| Sagittarian | 71% | tốc độ người dân +0.3 → +0.2, `centaur_archer` 70f 45g → 75f 50g | 58% |
+| Beastfolk | 64% | luyện barracks ×0.8 → ×0.85, `wolfkin_raider` 60f → 65f; rồi săn ×1.5 → ×1.4 | 61% |
+
+Mỗi con số là 102 trận, sai số khoảng ±5%. Lần sau: thêm bản đồ có nước cho cả bốn tộc, và mức AI Moderate.

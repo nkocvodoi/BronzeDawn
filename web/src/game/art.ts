@@ -424,7 +424,20 @@ const CHARIOTS = new Set(["chariot", "scythe_chariot", "chariot_archer"]);
 const ELEPHANTS = new Set(["war_elephant", "armored_elephant", "elephant_archer", "elephant"]);
 const SIEGE = new Set(["stone_thrower", "catapult", "heavy_catapult", "ballista", "helepolis"]);
 
+/** Units with no picture of their own yet (the fantasy races' units), and the unit each is drawn as meanwhile. */
+const LOOKS_LIKE = new Map<string, string>();
+export function setLooksLike(pairs: Iterable<[string, string]>) { for (const [a, b] of pairs) LOOKS_LIKE.set(a, b); }
+
+/** The unit to draw: itself once a sheet or pack has it, until then the one it looks like. */
+function drawnAs(type: string): string {
+  const to = LOOKS_LIKE.get(type);
+  if (!to) return type;
+  const units = ASSETS.manifest.units ?? {};
+  return Object.keys(units).some((k) => k === type || k.startsWith(`${type}:`) || k.endsWith(`/${type}`) || k.includes(`/${type}:`)) ? type : to;
+}
+
 export function unitPic(look: UnitLook): Pic {
+  if (LOOKS_LIKE.has(look.type)) look = { ...look, type: drawnAs(look.type) };
   // A Ruin or Artifact someone holds shows their colour ("ruins:held"); as found, it has none.
   const held = (look.type === "ruins" || look.type === "artifact") && look.owner >= 0;
   const fromFile = assetUnitPic(held ? { ...look, job: "held" } : look); // a pack with only "ruins" falls back to it
@@ -2613,6 +2626,7 @@ function spriteIcon(src: HTMLCanvasElement, bg: RGB, upper: boolean): HTMLCanvas
 /** A 24x24 art-px button icon for a unit, building or technology id (48 x 48 when drawn from a sprite file).
  *  A building is drawn as it would go up for this age, architecture and civilization. */
 export function iconPic(id: string, age = 2, arch: Arch = "greek", civ?: string): HTMLCanvasElement {
+  if (LOOKS_LIKE.has(id) && !ASSETS.manifest.icons?.[id]) id = drawnAs(id);
   const isBuilding = NOMINAL[id] !== undefined;
   const cacheKey = isBuilding ? `${id}@${age}@${arch}@${civ ?? ""}` : id;
   const hit = iconCache.get(cacheKey);
