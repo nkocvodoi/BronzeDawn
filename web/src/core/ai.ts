@@ -544,6 +544,11 @@ export class AIController {
       // On a Tiny map of islands a stand of 600 is rare; 300 still pays for the pit and the trip over.
       for (const n of ok.slice(0, 200)) if (this.woodNear(w, n.center) >= 300 && open(n.tile) >= 16) return n.center;
     }
+    // Then the enemy's own island, away from its Town Center and towers: on a Tiny map of two islands that is
+    // where all the wood is, and a town on the poorer one (800 wood against 6,000) ran dry by minute 15.
+    const guarded = (b: Building) => (b.def.id === "town_center" ? 18 : b.def.tags?.includes("tower") ? 10 : 6);
+    const ok = trees.filter((n) => !enemy.some((b) => b.distance(n.center) < guarded(b))).sort((a, b) => a.center.distance(home) - b.center.distance(home));
+    for (const n of ok.slice(0, 200)) if (this.woodNear(w, n.center) >= 300 && open(n.tile) >= 16) return n.center;
     return null;
   }
 
@@ -1329,8 +1334,11 @@ export class AIController {
     // the population cap, and with it every villager after.
     // Houses in the Stone Age are the exception: the transport cannot be had before the Tool Age, and a
     // town kept at eight villagers to save for it got there last.
+    // So is a house at the population cap: held back for a pit over the sea, a town on a poor island sat
+    // at 28 with 1,600 food it could not spend, six soldiers against the enemy's 34.
     const p = w.players[this.player];
-    if (this.acrossSea && !(type === "house" && p.age === 0) && p.res.wood - this.reserve(w).wood < w.buildingCost(this.player, type).wood) return;
+    const capped = type === "house" && p.pop >= p.popCap - 1;
+    if (this.acrossSea && !(type === "house" && p.age === 0) && !capped && p.res.wood - this.reserve(w).wood < w.buildingCost(this.player, type).wood) return;
     const builder = this.pickBuilder(villagers, near);
     if (!builder) return;
     const spot = this.findSpot(w, type, near, minR, maxR, margin);
