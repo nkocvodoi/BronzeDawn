@@ -256,9 +256,23 @@ await page.keyboard.press("Delete");
 check(await g(() => game.world.building(game.selection[0])?.alive) && (await page.textContent("#messages")).includes("only Town Center"),
   "Delete leaves the only town center standing, and says why");
 await page.keyboard.press("?");
-check(await page.isVisible("#overlay .help") && (await g(() => game.paused)), "? shows the controls and pauses");
+check(await page.isVisible("#overlay .help") && (await g(() => game.paused)), "? shows the help and pauses");
+// The Keys page: the mouse's back button is set to pause, then pauses and resumes the game.
+await page.click('#overlay [data-tab="keys"]');
+check(await page.isVisible('#overlay [data-pane="keys"]') && !(await page.isVisible('#overlay [data-pane="start"]')), "the help's Keys tab shows its page");
+await page.click('#overlay [data-bind="pause:1"]');
+check((await page.textContent('[data-bind="pause:1"]')).includes("press a key"), "a slot waits for a key once clicked");
+const sideButton = () => g(() => { window.dispatchEvent(new MouseEvent("mousedown", { button: 3, bubbles: true })); window.dispatchEvent(new MouseEvent("mouseup", { button: 3, bubbles: true })); });
+await sideButton();
+check((await g(() => game.keymap.get("pause")[1])) === "Mouse4" && (await page.textContent('[data-bind="pause:1"]')) === "Mouse back button",
+  "the mouse's back button goes in the slot");
 await page.keyboard.press("Escape");
 check(!(await page.isVisible("#overlay")) && !(await g(() => game.paused)), "Esc closes it and resumes");
+await sideButton();
+check(await g(() => game.paused), "the back button now pauses");
+await sideButton();
+check(!(await g(() => game.paused)), "and resumes");
+await g(() => game.keymap.reset());
 
 // Time passes and the economy runs. A machine that draws few frames (a CI runner, drawing on its processor)
 // falls behind by design rather than freezing: real time is only judged where the frames keep up.

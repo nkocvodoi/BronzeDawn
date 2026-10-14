@@ -74,6 +74,7 @@ Campaigns and scenarios,modes,could,yes,skip,out of scope
 Scenario editor,modes,could,yes,skip,out of scope
 The original's sprites sounds music and name,assets,must,yes,skip,clean-room: never copied
 Rally points,extras,could,no,yes,ours: not in the original
+Custom shortcuts and mouse buttons,extras,could,no,yes,"ours: the Keys page of the help; the middle and side mouse buttons can run any shortcut or panel order"
 Attack-move,extras,could,no,yes,ours: not in the original
 Game speed 3x,extras,could,no,yes,ours: the original stops at 2x
 Headless AI vs AI match,tooling,should,no,yes,ours
