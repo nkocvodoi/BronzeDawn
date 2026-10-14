@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-14
 
+- [#126](https://github.com/nkocvodoi/BronzeDawn/pull/126) Nút Resign (hỏi lại một lần, chơi online vẫn khớp); Menu chia nhóm và có trang Settings riêng (tốc độ, ruộng tự trồng lại, âm thanh, nhạc, toàn màn hình, giữ chuột, phím tắt); nút lệnh hiện phím tắt ở góc (tắt được); chọn nhiều quân thì ô trạng thái hiện số lượng theo loại và hình kèm thanh máu của từng con (bấm để chọn riêng, Shift để bỏ ra); con trỏ cần câu khi trỏ vào cá
 - [#125](https://github.com/nkocvodoi/BronzeDawn/pull/125) Hình Blender cho 4 tộc giả tưởng theo phong cách anime: người dân đủ 9 nghề (Elf phần lớn là nữ, tóc vàng, tai nhọn, săn bằng cung và đánh bằng dao găm; Dwarf thấp bè râu tết; nhân mã bốn chân; Beastfolk mặt người tai và đuôi mèo) và 8 unit riêng (người cây, nỏ quay tay, người sói hai rìu, người gấu chùy đá...); tộc Sagittarian đổi tên thành Centaur; hình riêng của một dân tộc chỉ tải khi trận có dân tộc đó; gallery có mục `fantasy`
 - [#124](https://github.com/nkocvodoi/BronzeDawn/pull/124) 4 tộc giả tưởng (Elf, Dwarf, Sagittarian, Beastfolk) luôn có trong danh sách chọn dân tộc: 8 unit và 4 tech riêng trong `data/fantasy.json`, AI luyện unit riêng, `npm run sim:races` đo tỉ lệ thắng (sau khi chỉnh: 60%, 50%, 58%, 61%; dân tộc gốc 45–64%)
 - [#123](https://github.com/nkocvodoi/BronzeDawn/pull/123) Tùy chọn Full tech tree như AoE2 (tắt sẵn): mọi dân tộc có đủ cây công nghệ chung, vẫn giữ bonus; có cả khi chơi online và trong file lưu

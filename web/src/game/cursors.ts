@@ -3,7 +3,7 @@
 // a hammer over a foundation and a staff for priests; with Shift held, a flag in your colour, to lay a waypoint.
 import { ASSETS } from "./assets";
 
-export type CursorKind = "arrow" | "sword" | "axe" | "pick" | "basket" | "hammer" | "staff" | "flag";
+export type CursorKind = "arrow" | "sword" | "axe" | "pick" | "basket" | "hammer" | "staff" | "flag" | "rod";
 
 /** The player's colour, for the flag pointer (CSS). */
 let flagColor = "#3a7bd5";
@@ -98,6 +98,16 @@ const DRAW: Record<CursorKind, { hot: [number, number]; draw: (px: Px) => void }
     fill(px, [[7, 4], [25, 9], [7, 15]], (x, y) => (y < 7 ? "#ffffff" : flagColor));
     line(px, 7, 5, 22, 9, flagColor);
     px(5, 3, "#f3d27a"); px(6, 3, "#f3d27a");         // a knob on top
+  } },
+  // A fishing rod: the cane from the handle up to its tip, the line hanging from it with a float, the hook
+  // (the spot that counts) at the bottom.
+  rod: { hot: [25, 28], draw: (px) => {
+    line(px, 3, 28, 24, 4, (t) => (t < 0.25 ? WOOD_D : t < 0.6 ? "#c8a050" : "#e0c070"), 2);
+    line(px, 25, 4, 25, 26, "#e8e4d8");
+    px(25, 15, "#d8242c"); px(24, 15, "#d8242c"); px(26, 15, "#d8242c"); px(25, 14, "#d8242c");
+    px(25, 17, "#ffffff"); px(24, 17, "#ffffff"); px(26, 17, "#ffffff"); px(25, 16, "#ffffff");
+    px(25, 27, "#c9cfd4"); px(25, 28, "#c9cfd4"); px(24, 28, "#c9cfd4"); px(23, 27, "#c9cfd4");
+    px(6, 25, "#a9b1b8"); px(7, 25, "#a9b1b8"); px(6, 24, "#a9b1b8"); // the reel
   } },
   staff: { hot: [10, 3], draw: (px) => {
     line(px, 10, 8, 22, 28, WOOD, 2);

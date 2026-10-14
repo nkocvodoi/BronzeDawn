@@ -26,6 +26,7 @@ export type Command =
   | { k: "sacrifice"; priest: number; target: number }
   | { k: "stance"; to: number; stance: Stance }
   | { k: "tribute"; to: number; res: Res; amount: number }
+  | { k: "resign" }
   /** Online, from the host (World.host) only: a computer plays for a friend who has left. */
   | { k: "takeover"; player: number }
   /** Online, from the host only: a friend who left is back, and plays for themselves again. */
@@ -61,6 +62,7 @@ export function runCommand(w: World, player: number, c: Command): CommandResult 
     case "sacrifice": return w.sacrifice(player, c.priest, c.target);
     case "stance": return w.setStance(player, c.to, c.stance);
     case "tribute": return w.tribute(player, c.to, c.res, c.amount);
+    case "resign": return w.resign(player);
     case "takeover": return player === (w.host ?? 0) && c.player !== player && w.takeOver(c.player);
     case "rejoin": return player === (w.host ?? 0) && c.player !== player && w.giveBack(c.player);
   }
@@ -93,6 +95,7 @@ export function isCommand(x: unknown): x is Command {
     case "stance": return player("to") && (c.stance === "ally" || c.stance === "neutral" || c.stance === "enemy");
     case "tribute": return player("to") && res("res") && num("amount") && (c.amount as number) > 0 && (c.amount as number) <= 10000;
     case "takeover": case "rejoin": return player("player");
+    case "resign": return true;
     default: return false;
   }
 }

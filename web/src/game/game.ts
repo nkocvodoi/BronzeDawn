@@ -248,6 +248,8 @@ export class Game {
   /** Drawn over the fog: the flags you lay are seen where you laid them, explored or not. */
   private overFog = new Container();
   private keys = new Set<string>();
+  /** Whether the command buttons show their key, as the help line does on hovering (on unless turned off). */
+  private hotkeys = store.get("bd-hotkeys") !== "off";
   /** The shortcuts, as the player has set them. */
   readonly keymap = new KeyMap(store);
   /** The slot waiting for a key or mouse button, on the Keys page of the help. */
@@ -286,6 +288,7 @@ export class Game {
 
   constructor(private app: Application, private rules: Rules, seed: number) {
     this.seed = seed;
+    this.hud.hotkeys = this.hotkeys;
     setLooksLike([...rules.units.values()].filter((u) => u.looks_like).map((u) => [u.id, u.looks_like!] as [string, string]));
     this.startAge = Number(remembered("bd-start-age", rules.ages.map((_, i) => String(i)), "0"));
     this.popLimit = Number(remembered("bd-pop-limit", (rules.economy.pop_limits ?? []).map(String), String(rules.economy.pop_max)));
@@ -1669,7 +1672,7 @@ export class Game {
         row("Game speed", `1x, 1.5x, 2x, 3x (${this.keyName("faster")} and ${this.keyName("slower")}, or click the speed in the top bar), and 5x, 10x when watching`),
         row("Watching the computers", `${kbd("V")} follows one player (its fog, resources and panel), then the next, then everything`),
         row("Online", `${kbd("Enter")} chats · only the host pauses and sets the speed`),
-        row("The menu", "game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)"),
+        row("The menu", `${kbd("F10")}: help, save or load, the Timeline, resign, quit · Settings there: game speed, farms that sow themselves again, sound, music, full screen (hold Esc to leave), keeping the mouse in the game (Alt+Tab or Esc lets go), the keys on the buttons, the shortcuts`),
       ])],
       ...(this.started ? [["civs", "Civilizations", this.civLines().map((l) => `<p>${l}</p>`).join("")] as [string, string, string]] : []),
     ];
@@ -1792,23 +1795,57 @@ export class Game {
   }
 
   /** The game menu: options that the top bar used to hold, help, and leaving the game. */
+  /** The game menu: what you come here for during a game, in groups; the settings have a page of their own. */
   private showMenu() {
-    const t = (id: string, label: string, on: boolean) => `<button id="${id}" class="toggle${on ? "" : " off"}">${label}</button>`;
+    const w = this.world, out = this.watching || w.players[this.me].defeated || w.winner !== null;
     this.hud.showOverlay("Menu", [
-      `<span class="stack">
-        <button id="resume-btn">Return to game (Esc)</button>
-        <button id="help-open">Controls (F1)</button>
-        <button id="speed">Game speed ${this.speed}x</button>
-        ${t("sfx-btn", "Sound effects", this.sound.sfxOn)}
-        ${t("music-btn", "Music", this.sound.musicOn)}
-        ${t("lock-btn", "Keep the mouse in the game", this.lock.wanted)}
-        ${t("reseed-btn", "Farms sow themselves again", this.reseed)}
-        <button id="fs-btn">${document.fullscreenElement ? "Leave full screen" : "Full screen"}</button>
+      `<div class="stack menu-list">
+        <button id="resume-btn">Return to game <kbd>Esc</kbd></button>
+        <hr>
+        <button id="help-open">Help <kbd>F1</kbd></button>
+        <button id="settings-open">Settings</button>
+        <hr>
         <button id="saves-open">Save or load a game</button>
         <button id="timeline-btn">Timeline</button>
-        <button id="credits-btn">Credits</button>
+        <hr>
+        ${out ? "" : `<button id="resign-open" class="danger">Resign</button>`}
         <button data-restart>Quit to a new map</button>
-      </span>`,
+      </div>`,
+      `<div class="menu-foot"><button id="credits-btn" class="link">Credits</button></div>`,
+    ], "menu");
+  }
+
+  /** The settings, by what they are about; each takes effect at once. */
+  private showSettings() {
+    const t = (id: string, label: string, on: boolean, note = "") =>
+      `<button id="${id}" class="toggle${on ? "" : " off"}">${label}${note ? `<small>${note}</small>` : ""}</button>`;
+    const speeds = this.speeds.map((v, i) => `<button data-speed="${i}"${v === this.speed ? ` class="picked"` : ""}>${v}x</button>`).join("");
+    const online = this.net instanceof LockstepGuest ? `<small>the host sets it in an online game</small>` : "";
+    this.hud.showOverlay("Settings", [
+      `<div class="settings">
+        <h3>Game</h3>
+        <div class="row"><span>Game speed</span><span class="seg">${speeds}</span>${online}</div>
+        ${t("reseed-btn", "Farms sow themselves again", this.reseed, "for half a new farm's price in wood")}
+        <h3>Sound</h3>
+        ${t("sfx-btn", "Sound effects", this.sound.sfxOn)}
+        ${t("music-btn", "Music", this.sound.musicOn)}
+        <h3>Screen and mouse</h3>
+        <button id="fs-btn">${document.fullscreenElement ? "Leave full screen" : "Full screen"}</button>
+        ${t("lock-btn", "Keep the mouse in the game", this.lock.wanted, "Alt+Tab or Esc lets go")}
+        <h3>Shortcuts</h3>
+        ${t("hotkeys-btn", "Show the keys on the buttons", this.hotkeys)}
+        <button id="keys-open">Change the shortcuts…</button>
+      </div>`,
+      `<div class="choices"><button id="menu-back">Back</button><button id="resume-btn">Return to game <kbd>Esc</kbd></button></div>`,
+    ], "menu");
+  }
+
+  /** Resigning is for good: asked once more. */
+  private showResign() {
+    const online = !!this.net;
+    this.hud.showOverlay("Resign?", [
+      `You lose this game${online ? "; the others play on" : ""}. Everything of yours falls.`,
+      `<div class="choices"><button id="resign-yes" class="danger">Resign</button><button id="menu-back">Cancel</button></div>`,
     ], "menu");
   }
 
@@ -2085,6 +2122,8 @@ export class Game {
     }
     if (!t) return "arrow";
     if (t instanceof ResourceNode) {
+      // Fish, for a villager on the shore or a fishing boat: the rod.
+      if (t.def.on_water) return villagers || units.some((u) => (u.def.gathers ?? []).includes("fish")) ? "rod" : "arrow";
       if (!villagers) return "arrow";
       return t.res === Res.wood ? "axe" : t.res === Res.food ? "basket" : "pick";
     }
@@ -2112,7 +2151,7 @@ export class Game {
     const t = this.pick(this.mouse.x, this.mouse.y);
     const verb: Partial<Record<CursorKind, string>> = {
       sword: "Right-click to attack", axe: "Right-click to cut wood", pick: "Right-click to mine", basket: "Right-click to gather food",
-      hammer: "Right-click to build", staff: "Right-click to convert or heal",
+      hammer: "Right-click to build", staff: "Right-click to convert or heal", rod: "Right-click to fish",
     };
     if (!t) return null;
     const what = t instanceof ResourceNode ? t.name : t.owner === this.me ? "" : `${t.owner >= 0 ? `${this.world.players[t.owner].name}'s ` : ""}${t.name}`;
@@ -3059,6 +3098,13 @@ export class Game {
     document.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       if (t.closest("button, #speed")) this.sound.play("click", 0.7, 0, 0.03);
+      // One of several picked, in the status box: that one alone, or with Shift, all but it.
+      const pick = t.closest("[data-pick]") as HTMLElement | null;
+      if (pick) {
+        const id = Number(pick.dataset.pick);
+        this.select(e.shiftKey ? this.selection.filter((x) => x !== id) : [id]);
+        return;
+      }
       if (t.closest("#sfx-btn")) { const on = this.sound.toggleSfx(); this.soundButtons(); this.hud.message(on ? "Sound on" : "Sound off"); return; }
       if (t.closest("#music-btn")) { const on = this.sound.toggleMusic(); if (on && this.started) this.sound.startMusic(); this.soundButtons(); this.hud.message(on ? "Music on" : "Music off"); return; }
       if (t.closest("#lock-btn")) {
@@ -3076,6 +3122,13 @@ export class Game {
         return;
       }
       if (t.closest("#fs-btn")) { this.toggleFullscreen(); return; }
+      if (t.closest("#hotkeys-btn")) {
+        this.hotkeys = !this.hotkeys;
+        store.set("bd-hotkeys", this.hotkeys ? "on" : "off");
+        this.hud.hotkeys = this.hotkeys;
+        document.querySelector("#hotkeys-btn")?.classList.toggle("off", !this.hotkeys);
+        return;
+      }
       if (t.closest("#timeline-btn")) { this.showTimeline(); return; }
       if (this.keysClick(t)) return;
       const tab = t.closest("[data-tab]") as HTMLElement | null;
@@ -3102,6 +3155,13 @@ export class Game {
         if (t.closest("#score-btn")) { this.scoresToggled(); return; }
         if (t.closest("#resume-btn")) { this.hud.hideOverlay(); this.paused = false; return; }
         if (t.closest("#help-open")) { this.showHelp(); return; }
+        if (t.closest("#settings-open")) { this.showSettings(); return; }
+        if (t.closest("#menu-back")) { this.showMenu(); return; }
+        if (t.closest("#keys-open")) { this.showHelp("keys"); return; }
+        if (t.closest("#resign-open")) { this.showResign(); return; }
+        if (t.closest("#resign-yes")) { this.issue({ k: "resign" }); this.hud.hideOverlay(); this.paused = false; return; }
+        const speed = t.closest("[data-speed]") as HTMLElement | null;
+        if (speed) { this.setSpeed(0, Number(speed.dataset.speed)); this.showSettings(); return; }
         if (t.closest("#credits-btn")) { this.showCredits(); return; }
       }
       const s = t.closest("[data-start]") as HTMLElement | null;

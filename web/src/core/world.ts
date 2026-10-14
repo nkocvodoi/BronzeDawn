@@ -1242,6 +1242,21 @@ export class World {
     if (this.nodes.some((n) => !n.alive)) this.nodes = this.nodes.filter((n) => n.alive);
   }
 
+  /** A player gives up, as the original's Resign: everything of theirs falls, and they are out of the game.
+   *  The others play on (a computer that resigned for them would be odd, so none takes over). */
+  resign(player: number): boolean {
+    const p = this.players[player];
+    if (!p || p.defeated || this.winner !== null) return false;
+    for (const e of [...this.units, ...this.buildings]) {
+      if (e.alive && e.owner === player && !(e instanceof Unit && e.isRelic)) this.kill(e, 0, true);
+    }
+    p.defeated = true;
+    this.ais = this.ais.filter((ai) => ai.player !== player);
+    this.events.push({ kind: "message", player: -1, text: `${p.name} resigned` });
+    this.milestones.push({ t: this.time, player, kind: "defeated" });
+    return true;
+  }
+
   /** Conquest: every unit and every building but walls gone. Or a Wonder that stood long enough. */
   private checkDefeat() {
     if (this.winner !== null) return;

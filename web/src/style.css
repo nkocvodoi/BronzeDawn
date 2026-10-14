@@ -89,6 +89,17 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 .bar i { display: block; height: 100%; background: #0c0; }
 #hp-text { font-variant-numeric: tabular-nums; }
 #status p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Several picked: a picture for each, 7 to a row (25 fit), its hit points beneath in green, yellow or red. */
+#multi { display: grid; grid-template-columns: repeat(7, calc(var(--u) * 17)); gap: calc(var(--u) * 1) calc(var(--u) * 1); margin-top: calc(var(--u) * 3); }
+#multi[hidden] { display: none; }
+#status p.wrap { white-space: normal; max-height: calc(var(--u) * 26); overflow: hidden; }
+#multi button {
+  all: unset; cursor: pointer; display: flex; flex-direction: column; width: calc(var(--u) * 17);
+  background: #300; outline: calc(var(--u) * .5) solid #222;
+}
+#multi button:hover { outline-color: var(--gold); }
+#multi img { width: calc(var(--u) * 17); height: calc(var(--u) * 17); image-rendering: pixelated; background: #111; }
+#multi i { display: block; height: calc(var(--u) * 3); }
 /* What a building is working on: icons beside its picture, the first one in progress. */
 #queue { display: flex; flex-wrap: wrap; align-content: flex-start; gap: calc(var(--u) * 2); }
 #queue:empty { display: none; }
@@ -113,6 +124,14 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
   background: #000; border: calc(var(--u) * 1) solid; border-color: var(--edge-light) var(--edge-dark) var(--edge-dark) var(--edge-light);
 }
 #commands button.empty { visibility: hidden; pointer-events: none; }
+/* The button's key, in its lower right corner. */
+#commands button { position: relative; }
+#commands button .hk {
+  position: absolute; right: 1px; bottom: 1px; min-width: calc(var(--u) * 9); padding: 0 calc(var(--u) * 1.5);
+  font: 700 calc(var(--u) * 9)/1.25 "Alegreya Sans", Arial, sans-serif; text-align: center; color: #fff6dc;
+  background: rgba(20, 14, 8, .78); border: 1px solid rgba(200, 164, 98, .7); border-radius: 2px; pointer-events: none;
+}
+#commands button.off .hk { color: #9a8a72; }
 #commands button img { width: 100%; height: 100%; }
 #commands button span { font-size: calc(var(--u) * 10); text-align: center; padding: calc(var(--u) * 2); }
 #commands button:hover, #commands button.vhover { filter: brightness(1.2); }
@@ -206,6 +225,29 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay .help button.slot.listening { background: linear-gradient(#a8844a, #7a5c2c); color: #fff6dc; animation: listen 1s ease-in-out infinite alternate; }
 @keyframes listen { to { filter: brightness(1.25); } }
 #overlay button:disabled { opacity: .5; cursor: default; }
+/* The game menu: groups of buttons between rules, Credits as a quiet link at the foot. */
+#overlay .menu-list { min-width: min(340px, 80vw); }
+#overlay .menu-list hr { width: 100%; border: 0; border-top: 1px solid rgba(200, 164, 98, .35); margin: 4px 0; }
+#overlay button kbd, #overlay .menu kbd {
+  display: inline-block; margin-left: 6px; padding: 0 5px; font: 700 12px/1.5 "Alegreya Sans", Arial, sans-serif; color: #fff6dc;
+  background: #2a2218; border: 1px solid #c8a462; border-radius: 3px; vertical-align: 1px;
+}
+#overlay button.danger { background: linear-gradient(#7a3424, #521f14); }
+#overlay button.danger:hover { background: linear-gradient(#8e4030, #642818); }
+#overlay .menu-foot { margin-top: 8px; }
+#overlay button.link { background: none; border: 0; padding: 4px 8px; font-size: 13px; color: #c8b896; text-decoration: underline; }
+/* Settings: a heading for each kind, the switches full width below it. */
+#overlay .settings { display: grid; gap: 7px; min-width: min(420px, 82vw); text-align: left; }
+#overlay .settings h3 { margin: 10px 0 0; font: 700 15px Cinzel, serif; color: var(--gold); text-shadow: 1px 1px 0 #000; }
+#overlay .settings h3:first-child { margin-top: 0; }
+#overlay .settings > button { text-align: left; }
+/* A switch with a note: "Name · on" on the first line, the note under it. */
+#overlay .settings > button.toggle { display: flex; flex-wrap: wrap; align-items: baseline; }
+#overlay .settings > button.toggle small { order: 2; flex-basis: 100%; }
+#overlay .settings small { display: block; font-size: 12px; font-weight: 400; color: #c8b896; }
+#overlay .settings .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+#overlay .settings .row > span:first-child { min-width: 100px; }
+#overlay .settings .seg button { font-size: 14px; padding: 5px 10px; }
 @media (max-width: 560px) {
   #overlay .card.help { padding: 16px; }
   #overlay table.help-table th { display: block; width: auto; padding-bottom: 0; }
