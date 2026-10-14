@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-14
 
+- [#120](https://github.com/nkocvodoi/BronzeDawn/pull/120) Đề xuất 4 tộc giả tưởng (Elf, Dwarf, Sagittarian, Beastfolk): bonus theo cùng biên độ Rise of Rome, unit và tech riêng, số kiểm bằng `balance.py`, hướng hình ảnh, 8 tộc gợi ý thêm, cách đưa vào (`replica/game/fantasy-races.md`)
 - [#119](https://github.com/nkocvodoi/BronzeDawn/pull/119) Tự đặt phím tắt (trang Keys trong Help): mỗi thao tác 2 ô, nhận phím kèm Ctrl/Alt/Shift hoặc nút chuột giữa và 2 nút phụ; lệnh trên bảng giữ chữ cái gốc và có thêm một ô; nút phụ không còn làm trình duyệt lùi trang. Trang Help chia tab: Getting started 6 bước, Mouse, Keys, Build & train, Rules, Civilizations
 - [#118](https://github.com/nkocvodoi/BronzeDawn/pull/118) Thuyền, sư tử, cá sấu (bộ hình 3D) to gấp 1,5 lần, render lại cho sắc nét; nghiên cứu Catapult Trireme cần Trireme trước như trong `empires.dat` (trước đây mở ngay ở Iron Age)
 
