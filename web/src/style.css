@@ -100,6 +100,7 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #multi button:hover { outline-color: var(--gold); }
 #multi img { width: calc(var(--u) * 17); height: calc(var(--u) * 17); image-rendering: pixelated; background: #111; }
 #multi i { display: block; height: calc(var(--u) * 3); }
+#multi .more { display: flex; align-items: center; justify-content: center; width: calc(var(--u) * 17); height: calc(var(--u) * 20); color: var(--gold); font-weight: bold; }
 /* What a building is working on: icons beside its picture, the first one in progress. */
 #queue { display: flex; flex-wrap: wrap; align-content: flex-start; gap: calc(var(--u) * 2); }
 #queue:empty { display: none; }

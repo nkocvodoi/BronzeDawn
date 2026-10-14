@@ -128,6 +128,10 @@ export class Assets {
   }
 
   private civsLoading = new Map<string, Promise<void>>();
+  private civsLoaded = new Set<string>();
+
+  /** Whether a civilization's own sheets are in (`loadCiv`): pictures drawn before then show everyone's. */
+  civLoaded(civ: string) { return this.civsLoaded.has(civ); }
 
   /** Loads a civilization's own sheets, once; until they are in, its units are drawn as everyone's. */
   loadCiv(civ: string): Promise<void> {
@@ -135,7 +139,7 @@ export class Assets {
     if (!p) {
       const files = [...Object.entries(this.manifest.units ?? {}).filter(([k]) => k.startsWith(`${civ}/`)).map(([, u]) => u.file),
         ...civBuildingFiles(this.manifest, civ)];
-      p = Promise.all(files.filter((f) => !this.images.has(f)).map((f) => this.loadImage(f))).then(() => {});
+      p = Promise.all(files.filter((f) => !this.images.has(f)).map((f) => this.loadImage(f))).then(() => { this.civsLoaded.add(civ); });
       this.civsLoading.set(civ, p);
     }
     return p;
