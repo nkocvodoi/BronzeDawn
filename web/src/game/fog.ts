@@ -36,10 +36,13 @@ void main(void) {
   vec2 t = vec2(s.x / ${HALF_W.toFixed(1)} + s.y / ${HALF_H.toFixed(1)}, s.y / ${HALF_H.toFixed(1)} - s.x / ${HALF_W.toFixed(1)}) * 0.5;
   // A gentle wobble, so the edge waves like the original's instead of following the tiles.
   f += (sin(t.x * 2.7 + t.y * 1.3) + sin(t.y * 3.1 - t.x * 1.9)) * 0.04;
-  // The stipple is a checker of whole screen pixels (two at high zoom), counted from the world's corner
-  // so it keeps still while scrolling; at 1.5x a world-unit checker would come out uneven.
-  float cell = max(1.0, floor(uScale + 0.5));
-  vec2 q = floor((css - uLayer) / cell);
+  // The stipple is a checker of whole device pixels (two at high zoom), counted from the world's corner
+  // so it keeps still while scrolling; at 1.5x a world-unit checker would come out uneven. In device pixels,
+  // not CSS ones: with Windows set to 125% or 150%, a CSS pixel is 1.25 or 1.5 of them, a checker of CSS
+  // pixels covered more or less of the screen as the map moved, and the explored ground flickered.
+  vec2 dev = vec2(gl_FragCoord.x, uViewH - gl_FragCoord.y);
+  float cell = max(1.0, floor(uScale * uRes + 0.5));
+  vec2 q = floor((dev - floor(uLayer * uRes + 0.5)) / cell);
   float checker = mod(q.x + q.y, 2.0);
   float a = f > 0.72 ? 1.0 : (f > 0.21 ? checker : 0.0);
   finalColor = vec4(0.0, 0.0, 0.0, a);
