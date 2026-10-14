@@ -27,6 +27,7 @@ import { FogFilter } from "./fog";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 import { SWEEP_RADIUS } from "../core/world";
 import { MouseLock } from "./mouselock";
+import { chordOfKey, chordOfMouse, KEY_ACTIONS, KeyAction, KeyMap, prettyChord, RESERVED } from "./keymap";
 import { Sfx, Sound, VoiceKind } from "./sound";
 
 /** The drawable side of one entity. `workFrame` is the last work-animation frame, so a swing makes one sound. */
@@ -48,9 +49,6 @@ const GATHER_STAND = 0.22;
 
 /** Ctrl and these keys go to a kind of building, as in the original game and Rise of Rome. By key code, so
  *  the letter is the same on every keyboard layout. */
-const GO_TO: Record<string, string> = {
-  KeyB: "barracks", KeyA: "archery_range", KeyL: "stable", KeyK: "siege_workshop", KeyY: "academy", KeyP: "temple", KeyD: "dock",
-};
 
 /** The original's limit on how many units one selection holds. */
 const MAX_SELECTION = 25;
@@ -245,6 +243,10 @@ export class Game {
   /** Drawn over the fog: the flags you lay are seen where you laid them, explored or not. */
   private overFog = new Container();
   private keys = new Set<string>();
+  /** The shortcuts, as the player has set them. */
+  readonly keymap = new KeyMap(store);
+  /** The slot waiting for a key or mouse button, on the Keys page of the help. */
+  private keyCapture: { id: string; slot: 0 | 1 } | null = null;
   private accumulator = 0;
   /** Playing online: the lockstep that runs the world, as host or guest. Null when playing alone. */
   net: LockstepHost | LockstepGuest | null = null;
@@ -1621,26 +1623,138 @@ export class Game {
     return false;
   }
 
-  private showHelp() {
-    this.hud.showOverlay("Controls", [
-      "Left click / drag: select · Shift: add · Double click: all of that kind on screen",
-      "Right click: move, gather, hunt, build, repair, attack, convert or heal (priests), or set a rally point · Shift + click on the ground (left or right): a waypoint flag",
-      "Villagers: B opens the build menu, then E House · G Granary · S Storage Pit · B Barracks · D Dock (in the water at the shore) · M Market · F Farm",
-      "A Archery Range · L Stable · W Wall · T Tower · C Government Center · P Temple · Y Academy · K Siege Workshop · N Town Center · O Wonder",
-      "Trade (R at the Dock): right-click another player's Dock with a trade boat; it brings gold back, more the further it sails",
-      "Transports (T at the Dock): right-click one with land units to go aboard, then right-click the land (or U) to put them ashore",
-      "Train: F Fishing Boat at the Dock · C Villager · T Clubman, Bowman, Hoplite, Priest · Z swordsmen · S Scout · C Cavalry · R chariots · E elephants · Esc back or cancel",
-      "Walls: choose Wall, then drag a line · Farms need a Market · Ages need two buildings of the age",
-      "Ruins and Artifacts: walk any unit up to one to take it; an Artifact you hold can be moved (right-click) and carried in a transport. Hold all of either for 15 minutes to win",
-      "H town center (again: the next) · Ctrl+B Barracks · Ctrl+A Archery Range · Ctrl+L Stable · Ctrl+K Siege Workshop · Ctrl+Y Academy · Ctrl+P Temple · Ctrl+D Dock · . idle villager · Space look at the selection · Ctrl+1-9 save group · 1-9 recall · Shift+1-9 add a group · Delete destroy",
-      "Villagers: R repair · Soldiers: D stand ground · Stone throwers: T attack ground · Up to 25 units in one selection · The pointer shows what a right-click will do · Tab: the next unit of the selection · F4 or S: population, scores or nothing above the minimap · F10: menu",
-      "In the menu: game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)",
-      "Arrows / trackpad / screen edge: scroll · Pinch, wheel or PageUp/PageDown: zoom",
-      "+ / -: game speed 1x, 1.5x, 2x, 3x (or click the speed in the top bar), and 5x, 10x when watching · F3 pause · Enter: chat, in an online game",
-      "Watching the computers: V follows one player (its fog, resources and panel), then the next, then everything",
-      ...(this.started ? this.civLines() : []),
-      this.started ? "Press ? or Esc to close" : `<span class="choices"><button id="mm-back">Back</button></span>`,
+  /** The help, in pages: how to start, the mouse, the keys (which the player can change), building and
+   *  training, the rules, and the civilizations in this game. */
+  private showHelp(page = "start") {
+    const r = this.rules, kbd = (k: string) => `<kbd>${k}</kbd>`;
+    const name = (id: string) => r.buildings.get(id)?.name ?? r.units.get(id)?.name ?? id;
+    const tool = r.ages[1], house = r.buildings.get("house");
+    const row = (what: string, how: string) => `<tr><th>${what}</th><td>${how}</td></tr>`;
+    const table = (rows: string[]) => `<table class="help-table">${rows.join("")}</table>`;
+    const pages: [string, string, string][] = [
+      ["start", "Getting started", `<ol class="steps">
+        <li><b>Gather.</b> Pick villagers (click, or drag a box) and right-click a tree, a berry bush, gold, stone or a gazelle. The pointer shows what a right-click will do.</li>
+        <li><b>Store.</b> They carry it back to the ${name("town_center")}, a ${name("storage_pit")} (wood, gold, stone) or a ${name("granary")} (food). Build those close to the work.</li>
+        <li><b>Grow.</b> Pick the ${name("town_center")} and press ${kbd("C")} for more villagers. Each ${name("house")} (${kbd("B")} then ${kbd("E")}) houses ${house?.pop_provided ?? 4} more people.</li>
+        <li><b>Advance.</b> Build two of ${(tool.requires_from ?? []).map(name).join(", ")}, then press ${kbd("A")} at the ${name("town_center")} (${ResBag.of(tool.cost ?? {}).text}). Each age opens new buildings, soldiers and technologies.</li>
+        <li><b>Fight.</b> A ${name("barracks")} (${kbd("B")} then ${kbd("B")}) trains soldiers. Pick them and right-click an enemy. Mix them: archers shoot from afar, cavalry is fast, stone throwers break walls, priests convert.</li>
+        <li><b>Win.</b> Destroy every enemy, or keep a Wonder standing, or hold every Ruin or every Artifact, for 15 minutes.</li>
+      </ol><p class="tip">${kbd("?")} or ${kbd("F1")} opens this help at any time · ${kbd("F10")} the menu · ${kbd("Esc")} closes</p>`],
+      ["mouse", "Mouse", table([
+        row("Left click, or drag a box", "pick units or a building · Shift adds to what is picked · Double click: all of that kind on screen"),
+        row("Right click", "the order the pointer shows: move, gather, hunt, build, repair, attack, convert or heal (priests), or a building's rally point"),
+        row("Shift + click on the ground", "a waypoint flag (left or right click); they walk the flags in turn"),
+        row("Minimap", "left click looks there · right click sends what is picked"),
+        row("Screen edge, arrows, trackpad or wheel", "scroll · pinch or Ctrl + wheel zooms"),
+        row("Middle and side buttons", `free: set them on the <a href="#" data-tab="keys">Keys</a> page (for example the back button for the next idle villager)`),
+      ])],
+      ["keys", "Keys", ""],
+      ["build", "Build & train", this.buildHelp()],
+      ["rules", "Rules", table([
+        row("Ages", "each needs two kinds of building of the age you are in, and food (gold too for the Iron Age)"),
+        row("Farms", `need a ${name("market")} · spent farms are sown again for wood when the menu's option is on`),
+        row("Walls", "choose Wall, then drag a line"),
+        row("Docks and boats", `a ${name("dock")} goes in the water at the shore · trade boats (${kbd("R")} at the Dock) bring gold back from another player's Dock, more the further they sail · transports (${kbd("T")}) take land units aboard with a right-click, and put them ashore with a right-click on the land or ${kbd("U")}`),
+        row("Ruins and Artifacts", "walk any unit up to one to take it; an Artifact you hold can be moved (right-click) and carried in a transport. Hold all of either for 15 minutes to win"),
+        row("Selection", "up to 25 units at a time"),
+        row("Game speed", `1x, 1.5x, 2x, 3x (${this.keyName("faster")} and ${this.keyName("slower")}, or click the speed in the top bar), and 5x, 10x when watching`),
+        row("Watching the computers", `${kbd("V")} follows one player (its fog, resources and panel), then the next, then everything`),
+        row("Online", `${kbd("Enter")} chats · only the host pauses and sets the speed`),
+        row("The menu", "game speed, sound, music, keeping the mouse in the game (Alt+Tab or Esc lets go), farms that sow themselves again, full screen (hold Esc to leave)"),
+      ])],
+      ...(this.started ? [["civs", "Civilizations", this.civLines().map((l) => `<p>${l}</p>`).join("")] as [string, string, string]] : []),
+    ];
+    if (!pages.some(([id]) => id === page)) page = "start";
+    const tabs = pages.map(([id, title]) => `<button data-tab="${id}"${id === page ? ` class="on"` : ""}>${title}</button>`).join("");
+    const panes = pages.map(([id, , html]) => `<div class="help-pane" data-pane="${id}"${id === page ? "" : " hidden"}>${id === "keys" ? this.keysHtml() : html}</div>`).join("");
+    this.hud.showOverlay("Help", [
+      `<div class="choices tabs">${tabs}</div>`,
+      `<div class="help-body">${panes}</div>`,
+      this.started ? `<div class="tip">${kbd("?")} or ${kbd("Esc")} to close</div>` : `<div class="choices"><button id="mm-back">Back</button></div>`,
     ], "help");
+  }
+
+  /** The Build & train page: each building's letter after B, and the letters of what each building trains. */
+  private buildHelp(): string {
+    const r = this.rules, kbd = (k: string) => `<kbd>${k}</kbd>`;
+    const builds = Object.entries(BUILD_KEYS).map(([id, k]) => `<span class="pair">${kbd(k)} ${r.buildings.get(id)?.name ?? id}</span>`).join("");
+    const rows: string[] = [];
+    for (const b of r.buildings.values()) {
+      const seen = new Set<string>();
+      const units = (b.trains ?? []).filter((t) => TRAIN_KEYS[t] && r.units.get(t)).map((t) => {
+        const k = TRAIN_KEYS[t];
+        const label = `${kbd(k)} ${r.units.get(t)!.name}`;
+        if (seen.has(label)) return "";
+        seen.add(label);
+        return `<span class="pair">${label}</span>`;
+      }).join("");
+      if (units) rows.push(`<tr><th>${b.name}</th><td>${units}</td></tr>`);
+    }
+    return `<p>Pick villagers, press ${kbd("B")} for the build menu, then:</p><div class="pairs">${builds}</div>`
+      + `<p>Pick a building, then (an upgraded unit keeps its line's letter; technologies take the letters left over):</p>`
+      + `<table class="help-table">${rows.join("")}</table>`
+      + `<p>${kbd("Esc")} goes back or cancels the last in the queue · ${kbd("Delete")} destroys what is picked</p>`;
+  }
+
+  /** The Keys page: every shortcut that can change, its two slots, and how to set them. */
+  private keysHtml(): string {
+    const groups = new Map<string, KeyAction[]>();
+    for (const act of KEY_ACTIONS) groups.set(act.group, [...(groups.get(act.group) ?? []), act]);
+    const cap = this.keyCapture;
+    const slot = (act: KeyAction, i: 0 | 1) => {
+      const c = this.keymap.get(act.id)[i];
+      if (i === 0 && act.fixed) return `<span class="slot fixed" title="The panel's own letter">${c ? prettyChord(c) : ""}</span>`;
+      const listening = cap?.id === act.id && cap.slot === i;
+      return `<button class="slot${listening ? " listening" : ""}${c ? "" : " empty"}" data-bind="${act.id}:${i}">${listening ? "press a key or mouse button…" : c ? prettyChord(c) : "—"}</button>`;
+    };
+    const body = [...groups].map(([g, acts]) => `<tr class="group"><th colspan="3">${g}</th></tr>`
+      + acts.map((act) => `<tr><td>${act.label}</td><td>${slot(act, 0)}</td><td>${slot(act, 1)}</td></tr>`).join("")).join("");
+    return `<p class="tip">Click a slot, then press a key (with Ctrl, Alt or Shift if you like) or a mouse button: the middle one or a side one. `
+      + `Esc cancels, Delete clears the slot. A letter given to a shortcut stops working on the command panel.</p>`
+      + `<table class="keys">${body}</table>`
+      + `<div class="choices"><button id="keys-reset"${this.keymap.changed ? "" : " disabled"}>Reset to the defaults</button></div>`;
+  }
+
+  /** Draws the Keys page again, if it is open. */
+  private paintKeys() {
+    const pane = document.querySelector<HTMLElement>('#overlay [data-pane="keys"]');
+    if (pane) pane.innerHTML = this.keysHtml();
+  }
+
+  /** The key a shortcut has now, for the help's text. */
+  private keyName(id: string): string {
+    const c = this.keymap.get(id).find((x) => x);
+    return c ? `<kbd>${prettyChord(c)}</kbd>` : "(no key)";
+  }
+
+  /** The slot being set gets this chord, or is cleared. */
+  private bindCaptured(chord: string | null) {
+    const cap = this.keyCapture;
+    if (!cap) return;
+    this.keyCapture = null;
+    const taken = this.keymap.set(cap.id, cap.slot, chord);
+    const act = KEY_ACTIONS.find((x) => x.id === cap.id)!;
+    if (chord) {
+      const notes = [`${prettyChord(chord)}: ${act.label}`];
+      if (taken && taken.id !== act.id) notes.push(`(taken from ${taken.label})`);
+      if (/^[A-Z]$/.test(chord)) notes.push(`· ${chord} no longer works on the command panel`);
+      this.hud.message(notes.join(" "));
+    }
+    this.paintKeys();
+  }
+
+  /** A click on the Keys page. */
+  private keysClick(t: HTMLElement): boolean {
+    const bind = t.closest("[data-bind]") as HTMLElement | null;
+    if (bind) {
+      const [id, slot] = bind.dataset.bind!.split(":");
+      this.keyCapture = { id, slot: Number(slot) as 0 | 1 };
+      this.paintKeys();
+      return true;
+    }
+    if (this.keyCapture) { this.keyCapture = null; this.paintKeys(); }
+    if (t.closest("#keys-reset")) { this.keymap.reset(); this.paintKeys(); this.hud.message("Shortcuts are back to the defaults"); return true; }
+    return false;
   }
 
   /** Watching: everything, then each player in turn, seen through their eyes (fog, resources, panel). */
@@ -2913,9 +3027,11 @@ export class Game {
       }
       if (t.closest("#fs-btn")) { this.toggleFullscreen(); return; }
       if (t.closest("#timeline-btn")) { this.showTimeline(); return; }
+      if (this.keysClick(t)) return;
       const tab = t.closest("[data-tab]") as HTMLElement | null;
       if (tab) {
-        document.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("on", b === tab));
+        e.preventDefault(); // a link to another page of the help
+        document.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("on", (b as HTMLElement).dataset.tab === tab.dataset.tab && b.tagName === "BUTTON"));
         document.querySelectorAll<HTMLElement>("[data-pane]").forEach((p) => { p.hidden = p.dataset.pane !== tab.dataset.tab; });
         if (tab.dataset.tab === "timeline") this.paintTimeline();
         return;
@@ -2955,6 +3071,40 @@ export class Game {
     document.addEventListener("mouseleave", () => { this.mouse.inside = false; });
     canvas.addEventListener("mousedown", (e) => this.mouseDown(e));
     window.addEventListener("mouseup", (e) => this.mouseUp(e));
+    // The middle and side mouse buttons run what they are set to. The side ones would leave the page (the
+    // browser's back and forward), so in a game they never do.
+    const sideButton = (e: MouseEvent) => e.button === 3 || e.button === 4;
+    window.addEventListener("mousedown", (e) => {
+      if (e.button !== 1 && !sideButton(e)) return;
+      if (!this.started) return;
+      e.preventDefault();
+      if (this.hud.overlayShown) return;
+      const act = this.keymap.actionFor(chordOfMouse(e));
+      if (act) this.runAction(act);
+    });
+    window.addEventListener("mouseup", (e) => { if (sideButton(e) && (this.started || this.keyCapture)) e.preventDefault(); });
+    // Setting a shortcut: the next key or mouse button goes in the slot, before anything else sees it.
+    window.addEventListener("keydown", (e) => {
+      if (!this.keyCapture) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) return; // wait for the key they hold down with
+      const plain = !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey;
+      if (plain && e.key === "Escape") { this.keyCapture = null; this.paintKeys(); return; }
+      if (plain && (e.code === "Delete" || e.code === "Backspace")) { this.bindCaptured(null); return; }
+      const c = chordOfKey(e);
+      if (!c) return;
+      if (RESERVED.has(c)) { this.hud.message(`${prettyChord(c)} is kept for the game (help, menu, cancel, chat or scrolling)`, "warn"); return; }
+      this.bindCaptured(c);
+    }, { capture: true });
+    window.addEventListener("mousedown", (e) => {
+      if (!this.keyCapture) return;
+      const c = chordOfMouse(e);
+      if (!c) return; // left and right clicks still press buttons
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.bindCaptured(c);
+    }, { capture: true });
     const mm = this.hud.minimap;
     const miniMove = (e: MouseEvent) => {
       const p = this.minimapToWorld(e);
@@ -3319,14 +3469,7 @@ export class Game {
       else { if (key === "F10") this.showMenu(); else this.showHelp(); this.paused = true; }
       return;
     }
-    if (key === "F4") { e.preventDefault(); this.scoresToggled(); return; }
     if (this.watching && ch === "V") { this.nextView(); return; }
-    // Tab: the next unit of the selection comes first, so its status and orders show.
-    if (key === "Tab") {
-      e.preventDefault();
-      if (this.started && this.selection.length > 1) this.selection = [...this.selection.slice(1), this.selection[0]];
-      return;
-    }
     if (key === "Escape") {
       if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; return; }
       const cancel = this.hud.commands.find((c) => c.key === "Escape");
@@ -3338,7 +3481,10 @@ export class Game {
       return;
     }
     if (this.hud.overlayShown) return;
-    if (key === "Delete" || key === "Backspace") { this.deleteSelection(); return; }
+    if (key === "Tab") e.preventDefault(); // never the browser's focus, whatever Tab is set to do
+    // The shortcuts the player can change, then the fixed ones: groups and the command panel's letters.
+    const bound = this.keymap.actionFor(chordOfKey(e));
+    if (bound) { e.preventDefault(); this.runAction(bound); return; }
     const digit = /^Digit([1-9])$/.exec(e.code);
     if (digit) {
       const d = Number(digit[1]);
@@ -3346,47 +3492,60 @@ export class Game {
         e.preventDefault();
         this.groups.set(d, [...this.selection]);
         this.hud.message(`Group ${d} saved`);
-      } else {
-        const g = (this.groups.get(d) ?? []).filter((id) => this.world.entity(id));
-        if (e.shiftKey) { this.select([...new Set([...this.selection, ...g])]); return; } // Shift adds the group to what is picked
-        if (g.length && g.join() === this.selection.join()) this.centerOn(this.world.entity(g[0])!.center);
-        this.select(g);
-      }
+      } else this.recallGroup(d, e.shiftKey);
       return;
     }
-    // Ctrl and a letter go to a kind of building, and again to the next one, as in the original.
-    const goTo = e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey ? GO_TO[e.code] : undefined;
-    if (goTo && this.started) { e.preventDefault(); this.cycleBuildings(goTo); return; }
     if (e.metaKey || e.ctrlKey) return; // leave browser shortcuts alone
-    if (key === " ") {
-      // Space looks at what is picked, as in the original.
-      e.preventDefault();
-      const first = this.selectedEntities()[0];
-      if (first) this.centerOn(first.center);
-      return;
-    }
-    switch (ch) {
-      case "H": this.cycleBuildings("town_center"); return;
-      case ".": this.selectIdleVillager(); return;
-      case "F3": case "Pause":
-        if (this.net instanceof LockstepGuest) { this.hud.message("Only the host can pause an online game"); return; }
-        if (this.net instanceof LockstepHost) {
-          this.hostPaused = !this.hostPaused;
-          this.net.paused = this.hostPaused; // stops at the end of the turn being played, on every machine alike
-          this.net.broadcast({ t: "paused", on: this.hostPaused });
-          this.hud.message(this.hostPaused ? "Paused for everyone (F3 to resume)" : "Resumed");
-          return;
-        }
-        this.paused = !this.paused; this.hud.message(this.paused ? "Paused (F3 to resume)" : "Resumed"); return;
-      case "+": case "=": this.setSpeed(1); return;   // game speed, as in the original
-      case "-": case "_": this.setSpeed(-1); return;
-      case "PageUp": this.zoom(0.85); return;
-      case "PageDown": this.zoom(1.15); return;
-      case "`": this.revealMap = !this.revealMap; this.fogStamp = -1; return; // debugging aid
-    }
+    if (key === "`") { this.revealMap = !this.revealMap; this.fogStamp = -1; return; } // debugging aid
     // Rebuild the commands now: the selection may have changed since the last frame.
     this.hud.setCommands(this.commands(this.selectedEntities()));
     this.hud.run(this.hud.commands.find((c) => c.key === ch));
+  }
+
+  /** Does what a shortcut stands for, from a key or a mouse button. */
+  private runAction(act: KeyAction) {
+    if (act.id.startsWith("go_")) { this.cycleBuildings(act.id.slice(3)); return; }
+    if (act.id.startsWith("group_")) { this.recallGroup(Number(act.id.slice(6)), false); return; }
+    switch (act.id) {
+      case "look": { const first = this.selectedEntities()[0]; if (first) this.centerOn(first.center); return; }
+      case "zoom_in": this.zoom(0.85); return;
+      case "zoom_out": this.zoom(1.15); return;
+      case "idle_villager": this.selectIdleVillager(); return;
+      case "next_in_selection":
+        // The next unit of the selection comes first, so its status and orders show.
+        if (this.selection.length > 1) this.selection = [...this.selection.slice(1), this.selection[0]];
+        return;
+      case "delete": this.deleteSelection(); return;
+      case "pause": this.togglePause(); return;
+      case "faster": this.setSpeed(1); return;
+      case "slower": this.setSpeed(-1); return;
+      case "scores": this.scoresToggled(); return;
+    }
+    // An order on the command panel: the button with that icon (or title), for what is selected now.
+    this.hud.setCommands(this.commands(this.selectedEntities()));
+    const c = this.hud.commands.find((x) => (act.title ? x.title.startsWith(act.title) : x.icon === act.icon));
+    if (c) this.hud.run(c);
+  }
+
+  /** A saved group: picked, or added to what is picked; picked again, the screen goes to it. */
+  private recallGroup(d: number, add: boolean) {
+    const g = (this.groups.get(d) ?? []).filter((id) => this.world.entity(id));
+    if (add) { this.select([...new Set([...this.selection, ...g])]); return; }
+    if (g.length && g.join() === this.selection.join()) this.centerOn(this.world.entity(g[0])!.center);
+    this.select(g);
+  }
+
+  private togglePause() {
+    if (this.net instanceof LockstepGuest) { this.hud.message("Only the host can pause an online game"); return; }
+    if (this.net instanceof LockstepHost) {
+      this.hostPaused = !this.hostPaused;
+      this.net.paused = this.hostPaused; // stops at the end of the turn being played, on every machine alike
+      this.net.broadcast({ t: "paused", on: this.hostPaused });
+      this.hud.message(this.hostPaused ? "Paused for everyone (F3 to resume)" : "Resumed");
+      return;
+    }
+    this.paused = !this.paused;
+    this.hud.message(this.paused ? `Paused (${prettyChord(this.keymap.get("pause")[0] ?? "F3")} to resume)` : "Resumed");
   }
 
   /** Steps the game speed up or down, or to a given index. */

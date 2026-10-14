@@ -26,7 +26,7 @@ rồi chấm lại.
 | Tôn giáo | Thầy tu cải đạo và chữa thương, faith hồi dần, Monotheism |
 | Thắng | Chinh phục, Wonder (đứng 15 phút) |
 | AI | 5 mức, chơi đủ 4 thời đại, săn, nghiên cứu, tập hợp quân trước khi đánh; mức Khó thu nhanh hơn 15% (ghi rõ trên màn hình); từ mức Moderate chơi theo thế mạnh dân tộc (đọc từ bonus: nhà lính nào xây trước và xây thêm cái thứ hai, loại quân nào được ưu tiên, nâng cấp dòng quân mạnh sớm, thêm tàu nếu giỏi trên biển); chế độ chỉ xem các máy đánh nhau (V đổi góc nhìn, tới 10x) |
-| Giao diện | Bố cục kiểu bản gốc, phím xây B + chữ, phím luyện quân của bản gốc, đối tượng nháy khi giao việc, tốc độ 1x đến 3x, hiển thị dân tộc, tùy chọn ruộng tự trồng lại (kiểu AoE2, bật sẵn, tắt trong Menu), thời gian còn lại khi luyện quân, nghiên cứu, lên đời và xây (thanh trên cùng đếm ngược lúc lên đời) |
+| Giao diện | Bố cục kiểu bản gốc, phím xây B + chữ, phím luyện quân của bản gốc, đối tượng nháy khi giao việc, tốc độ 1x đến 3x, hiển thị dân tộc, tùy chọn ruộng tự trồng lại (kiểu AoE2, bật sẵn, tắt trong Menu), thời gian còn lại khi luyện quân, nghiên cứu, lên đời và xây (thanh trên cùng đếm ngược lúc lên đời); trang Help chia tab (Getting started, Mouse, Keys, Build & train, Rules, Civilizations); tự đặt phím tắt và nút chuột giữa / nút phụ (tab Keys, lưu trong trình duyệt) |
 | Hình | Mọi unit, thú, công trình (theo thời đại và kiến trúc), ô đất, cây, mỏ dựng bằng code trong `art3d/` rồi render bằng Blender; hình vẽ bằng code còn làm dự phòng; tường và vách đá nối liền |
 | Gói hình (Art Packs) | Người chơi tự nạp hình, tiếng và bản đồ từ thư mục hoặc zip, lưu trong trình duyệt; `npm run import-aoe` lấy hình, tiếng, số liệu từ bản AoE của chính mình vào `web/assets-local/` (chỉ dev server dùng, không bao giờ vào repo hay bản deploy), kể cả công trường lúc đang xây và vách đá |
 | Kiểm thử | 128 unit test, smoke test bằng chuột và phím thật trên Chrome (cả chơi online), so từng hình với dấu vân tay (`smoke:art`, 2.191 hình), trận AI đấu AI chạy không cần màn hình, CI và deploy lên GitHub Pages |
@@ -97,6 +97,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 | Khác biệt | Bản gốc | Hiện tại | Ghi chú |
 | --- | --- | --- | --- |
 | Farm | Chặn đường đi | Mặc định đi xuyên qua được, như bản Definitive Edition | Tùy chọn "Farms block the way" ở màn hình bắt đầu để chơi đúng luật gốc |
+| Đổi phím tắt, nút chuột phụ | Không có | Có (tab Keys của Help) | Chữ cái trên bảng lệnh vẫn như bản gốc |
 | Rally point, attack-move | Không có | Có | Tiện lợi kiểu hiện đại; có thể làm thành tùy chọn |
 | Tốc độ 3x | Tối đa 2x | Có thêm 3x | |
 | AI mức Khó | Hardest được thêm tài nguyên | Thu nhanh hơn 15% | Cùng ý tưởng là AI được lợi thế, cách thực hiện khác |
