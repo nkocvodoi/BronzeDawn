@@ -2633,7 +2633,10 @@ function spriteIcon(src: HTMLCanvasElement, bg: RGB, upper: boolean): HTMLCanvas
 export function iconPic(id: string, age = 2, arch: Arch = "greek", civ?: string): HTMLCanvasElement {
   if (LOOKS_LIKE.has(id) && !ASSETS.manifest.icons?.[id]) id = drawnAs(id);
   const isBuilding = NOMINAL[id] !== undefined;
-  const cacheKey = isBuilding ? `${id}@${age}@${arch}@${civ ?? ""}` : id;
+  // A unit by its civilization too (a fantasy race's villager is its own), and anything of a civilization by
+  // whether its own pictures are in yet: drawn before they load, an icon kept everyone's for the whole game.
+  const ready = civ && ASSETS.civLoaded(civ) ? "+" : "";
+  const cacheKey = isBuilding ? `${id}@${age}@${arch}@${civ ?? ""}${ready}` : `${id}@${civ ?? ""}${ready}`;
   const hit = iconCache.get(cacheKey);
   if (hit) return hit;
   const file = ASSETS.manifest.icons?.[id];
@@ -2642,10 +2645,10 @@ export function iconPic(id: string, age = 2, arch: Arch = "greek", civ?: string)
   const p = new PixelCanvas(24, 24);
   if (UNIT_IDS.has(id)) {
     iconFrame(p, rgb(0x3a4a5e));
-    const u = unitPic({ type: id, owner: 0, facing: "front", pose: "idle", frame: 0, tool: "none", carry: null, dir: 1 });
+    const u = unitPic({ type: id, owner: 0, facing: "front", pose: "idle", frame: 0, tool: "none", carry: null, dir: 1, civ });
     if (u.asset) {
       const out = spriteIcon(u.canvas, rgb(0x3a4a5e), !BOATS.has(id) && u.canvas.height >= u.canvas.width * 0.7);
-      iconCache.set(id, out);
+      iconCache.set(cacheKey, out);
       return out;
     }
     if (u.canvas.width <= 26 && u.canvas.height <= 28) {

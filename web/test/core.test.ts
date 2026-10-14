@@ -10,7 +10,7 @@ import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
 import { civBent } from "../src/core/civbent";
 import { describeCiv } from "../src/game/describe";
-import { TRIBUTE_AMOUNTS, Victory, World, WorldOptions } from "../src/core/world";
+import { TRIBUTE_AMOUNTS, Victory, World, WorldOptions, SWEEP_RADIUS } from "../src/core/world";
 import { loadWorld, saveWorld } from "../src/core/save";
 import { delayFor, LockstepGuest, LockstepHost, LockstepState, MIN_DELAY, START_DELAY, TURN_TICKS } from "../src/core/net";
 import { Command, isCommand, runCommand } from "../src/core/commands";
@@ -618,6 +618,19 @@ describe("the original's rules", () => {
     expect(by.length).toBeGreaterThan(0);
     // Then they stand by the flag, still holding it.
     expect(by.every((u) => u.order.kind === "sweep" && u.pos.distance(new Tile(18, 20).center) < 4)).toBe(true);
+  });
+
+  it("the Flag order reaches as far as the longest range among those sent", () => {
+    const w = blank(40);
+    w.players[0].age = 3;
+    const melee = Array.from({ length: 3 }, (_, i) => w.spawnUnit("axeman", 0, new Tile(4 + i, 4).center));
+    const archer = w.spawnUnit("composite_bowman", 0, new Tile(4, 6).center);
+    const cat = w.spawnUnit("catapult", 0, new Tile(6, 6).center);
+    expect(w.sweepRadius(melee)).toBe(SWEEP_RADIUS); // the least it reaches
+    expect(w.sweepRadius([...melee, archer])).toBe(w.stats(archer).range);
+    expect(w.sweepRadius([...melee, archer, cat])).toBe(Math.max(SWEEP_RADIUS, w.stats(cat).range));
+    w.sweep(0, [...melee, archer, cat].map((u) => u.id), new Tile(20, 20).center);
+    expect(melee.every((u) => u.order.kind === "sweep" && u.order.r === w.stats(cat).range)).toBe(true);
   });
 
   it("no building goes up where someone stands: people and animals are not pushed aside for it", () => {
