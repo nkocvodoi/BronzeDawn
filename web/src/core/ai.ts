@@ -1065,7 +1065,7 @@ export class AIController {
       if (!b.queue.length) { if (slots <= 0) continue; slots--; }
       let options = (b.def.trains ?? []).filter((t) => w.unitShown(t, this.player) && w.blockerUnit(t, this.player) === null);
       if (b.def.id === "siege_workshop" && siege >= 3) options = [];
-      if (b.def.id === "temple" && priests >= 2) options = [];
+      if (priests >= 2) options = options.filter((t) => !w.rules.units.get(t)?.converts); // two priests are enough; a Temple may train others too
       if (!options.length) continue;
       let pick: string;
       if (b.def.id === "siege_workshop") pick = options.find((o) => w.rules.units.get(o)?.area) ?? options[0];

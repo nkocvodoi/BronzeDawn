@@ -21,7 +21,7 @@ rồi chấm lại.
 | Bản đồ | Isometric, sinh ngẫu nhiên theo seed, 4 cỡ (72 / 96 / 120 / 144), hồ, rừng, sương mù, vị trí xuất phát ngẫu nhiên theo seed |
 | Kinh tế | 4 tài nguyên, hái dâu, săn thú (thịt thối dần, chỉ villager giết mới có thịt; hươu đi theo bầy 4 đến 7 con, sư tử săn hươu), đánh cá ven bờ, farm sau Market, kho thịt và kho lúa riêng |
 | Thời đại | Stone, Tool, Bronze, Iron, mỗi lần lên cần 2 loại công trình của thời đó |
-| Nội dung | 33 unit với các dòng nâng cấp, 21 công trình, 65 công nghệ, 17 dân tộc (5 kiểu kiến trúc; Lạc Việt của Return of Rome có khung giao diện trống đồng riêng) |
+| Nội dung | 33 unit với các dòng nâng cấp, 21 công trình, 65 công nghệ, 17 dân tộc (5 kiểu kiến trúc; Lạc Việt của Return of Rome có khung giao diện trống đồng riêng); thêm 4 tộc giả tưởng (Elf, Dwarf, Sagittarian, Beastfolk) với 8 unit và 4 tech riêng, số trong `data/fantasy.json` (`replica/game/fantasy-races.md`) |
 | Chiến đấu | Công thức sát thương gốc, giáp xuyên, công trình nhận 1/5 sát thương, đá văng và né được, voi giẫm, tháp canh 4 cấp, tường kéo dài |
 | Tôn giáo | Thầy tu cải đạo và chữa thương, faith hồi dần, Monotheism |
 | Thắng | Chinh phục, Wonder (đứng 15 phút) |
@@ -97,6 +97,7 @@ Thứ tự dựa trên mức ảnh hưởng tới cảm giác "đang chơi Đế
 | Khác biệt | Bản gốc | Hiện tại | Ghi chú |
 | --- | --- | --- | --- |
 | Farm | Chặn đường đi | Mặc định đi xuyên qua được, như bản Definitive Edition | Tùy chọn "Farms block the way" ở màn hình bắt đầu để chơi đúng luật gốc |
+| Tộc giả tưởng | Không có | 4 tộc, luôn có trong danh sách | Số riêng ở `data/fantasy.json`, `rules.json` vẫn là số gốc |
 | Đổi phím tắt, nút chuột phụ | Không có | Có (tab Keys của Help) | Chữ cái trên bảng lệnh vẫn như bản gốc |
 | Rally point, attack-move | Không có | Có | Tiện lợi kiểu hiện đại; có thể làm thành tùy chọn |
 | Tốc độ 3x | Tối đa 2x | Có thêm 3x | |

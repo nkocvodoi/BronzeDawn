@@ -3,7 +3,7 @@ import { RULES } from "../src/core/data";
 import { Footprint, Tile, Vec2 } from "../src/core/geom";
 import type { Unit } from "../src/core/entities";
 import { Terrain } from "../src/core/grid";
-import { Res } from "../src/core/rules";
+import { Res, ResBag } from "../src/core/rules";
 import { scores } from "../src/core/score";
 import { runMatch } from "../src/core/sim";
 import { MapType, startTiles } from "../src/core/mapgen";
@@ -26,7 +26,8 @@ describe("rules", () => {
     expect(RULES.units.get("villager")).toBeDefined();
     expect(RULES.buildings.get("town_center")?.pop_provided).toBe(4);
     expect(RULES.techs.size).toBeGreaterThan(50);
-    expect(RULES.civs.length).toBe(17);
+    expect(RULES.civs.filter((c) => !c.fantasy).length).toBe(17); // Rise of Rome and Lac Viet
+    expect(RULES.civs.filter((c) => c.fantasy).map((c) => c.id)).toEqual(["elf", "dwarf", "sagittarian", "beastfolk"]);
     expect(RULES.units.get("cavalry")?.bonus?.infantry).toBe(5);
   });
 });
@@ -1200,7 +1201,9 @@ describe("the original's rules", () => {
     expect(w.fullTechTree).toBe(true);
     expect(w.blockerUnit("cavalry", 0) ?? "").not.toContain("Not available");
     expect(w.blockerTech("heavy_cavalry_tech", 0) ?? "").not.toContain("Not available");
-    expect(w.players[0].mods.disabled.size).toBe(0);
+    // Nothing of the common tree is off; only the fantasy races' own units and techs, which stay theirs.
+    expect([...w.players[0].mods.disabled].every((id) => (RULES.units.get(id) ?? RULES.techs.get(id))?.civ)).toBe(true);
+    expect(w.blockerUnit("ironclad", 0)).toContain("Not available");
     // The Egyptian bonuses still apply.
     expect(w.unitStats(0, "chariot").hp).toBeCloseTo(w.unitStats(1, "chariot").hp * 1.33, 0);
     expect(w.players[0].mods.gather(Res.gold, null)).toBeCloseTo(1.4444);
@@ -1216,6 +1219,50 @@ describe("the original's rules", () => {
     const old = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["egyptian", "greek"] });
     delete (old as unknown as { fullTechTree?: boolean }).fullTechTree;
     expect(loadWorld(JSON.parse(JSON.stringify(saveWorld(old))), RULES).fullTechTree).toBeFalsy();
+  });
+
+  it("the fantasy races have their own units and techs, and nobody else does", () => {
+    const civs = ["elf", "dwarf", "sagittarian", "beastfolk", "greek"];
+    const w = new World(RULES, 1, ["A", "B", "C", "D", "E"], 24, false, { civs });
+    const own: Record<string, string[]> = {
+      elf: ["glade_archer", "grove_warden", "moonlit_volley"], dwarf: ["ironclad", "deep_arbalest", "deep_delving"],
+      sagittarian: ["centaur_archer", "hoof_lancer", "galloping_volley"], beastfolk: ["wolfkin_raider", "bearkin_brute", "blood_of_the_wild"],
+    };
+    civs.forEach((civ, p) => {
+      for (const [race, ids] of Object.entries(own)) {
+        for (const id of ids) {
+          const why = RULES.techs.has(id) ? w.blockerTech(id, p) : w.blockerUnit(id, p);
+          if (race === civ) expect(why ?? "", `${civ} ${id}`).not.toContain("Not available");
+          else expect(why, `${civ} ${id}`).toContain("Not available");
+        }
+      }
+    });
+    // Each joins the building that trains it, after what it trained before.
+    expect(RULES.buildings.get("barracks")!.trains).toEqual(expect.arrayContaining(["clubman", "ironclad", "wolfkin_raider", "bearkin_brute"]));
+    expect(RULES.buildings.get("temple")!.trains).toEqual(["priest", "grove_warden"]);
+    // A civ with no civilization at all has none of them either.
+    expect(new World(RULES, 1, ["A", "B"], 24, false).blockerUnit("ironclad", 0)).toContain("Not available");
+  });
+
+  it("the fantasy races' numbers are as proposed", () => {
+    const w = new World(RULES, 1, ["A", "B", "C", "D"], 24, false, { civs: ["elf", "dwarf", "sagittarian", "beastfolk"] });
+    expect(w.unitStats(0, "glade_archer").range).toBe(8);
+    expect(w.unitStats(0, "glade_archer").los).toBe(11);
+    expect(w.buildingStats(0, "house").hp).toBe(Math.round(RULES.buildings.get("house")!.hp * 0.85));
+    expect(w.unitStats(1, "ironclad").armor).toBe(4);
+    expect(w.unitStats(1, "ironclad").speed).toBeCloseTo(0.9);
+    expect(w.unitStats(1, "stone_thrower").hp).toBe(Math.round(RULES.units.get("stone_thrower")!.hp * 1.5));
+    expect(w.unitCost(2, "centaur_archer").text).toBe(ResBag.of({ food: 60, gold: 40 }).text);
+    expect(w.unitStats(2, "centaur_archer").range).toBe(7);
+    expect(w.unitStats(2, "villager").speed).toBeCloseTo(1.3);
+    expect(w.unitStats(3, "wolfkin_raider").train_time).toBeCloseTo(20.4);
+    expect(w.unitStats(3, "wolfkin_raider").speed).toBeCloseTo(1.8);
+    expect(w.unitStats(3, "villager").hp).toBe(35);
+    for (const c of RULES.civs.filter((x) => x.fantasy)) {
+      // What the computer plays to: its own units' buildings.
+      expect(civBent(RULES, c).building.size, c.id).toBeGreaterThan(0);
+    }
+    expect(civBent(RULES, RULES.civs.find((c) => c.id === "greek")!).unit.has("ironclad")).toBe(false);
   });
 
   it("time left: the item in progress, the whole queue, and a foundation at its builders' pace", () => {

@@ -28,16 +28,22 @@ function gain(e: Extract<Effect, { type: "stat" }>, u: UnitDef): number {
   }
 }
 
-/** `fullTree`: the full tech tree setting is on, so nothing is out of the civ's reach. */
+/** What a civilization's own unit counts for, at the least: about a third better than the common one. */
+const OWN_UNIT = 0.35;
+
+/** `fullTree`: the full tech tree setting is on, so nothing of the common tree is out of the civ's reach. */
 export function civBent(rules: Rules, civ: CivDef | null, fullTree = false): CivBent {
   const unit = new Map<string, number>();
   const building = new Map<string, number>();
   if (!civ) return { unit, building };
   const off = new Set(fullTree ? [] : civ.disabled);
+  for (const u of rules.units.values()) if (u.civ && u.civ !== civ.id) off.add(u.id); // other races' own, even then
   for (const u of rules.units.values()) {
     if (off.has(u.id) || u.tags?.includes("animal")) continue;
     let g = 0;
     for (const e of civ.effects) if (e.type === "stat" && unitMatches(e.target, u)) g += gain(e, u);
+    // A civilization's own unit is the point of it, bonus or not: its building goes up first.
+    if (u.civ === civ.id) g = Math.max(g, OWN_UNIT);
     if (g !== 0) unit.set(u.id, Math.round(g * 1000) / 1000);
   }
   for (const b of rules.buildings.values()) {

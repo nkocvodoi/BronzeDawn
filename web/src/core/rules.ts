@@ -131,6 +131,10 @@ export interface UnitDef {
   capacity?: number;
   /** Trade boats: they carry goods between Docks for gold. */
   trades?: boolean;
+  /** Only this civilization has it (the fantasy races' own units); everyone else goes without. */
+  civ?: string;
+  /** Drawn as this unit until it has a picture of its own. */
+  looks_like?: string;
 }
 export interface BuildingDef {
   id: string; name: string; age: string; cost: Record<string, number>; size: number;
@@ -163,8 +167,16 @@ export type Effect =
 export interface TechDef {
   id: string; name: string; age: string; building: string; cost: Record<string, number>; time: number;
   requires: string[]; effects: Effect[];
+  /** Only this civilization can research it. */
+  civ?: string;
 }
-export interface CivDef { id: string; name: string; arch: string; effects: Effect[]; disabled: string[] }
+export interface CivDef {
+  id: string; name: string; arch: string; effects: Effect[]; disabled: string[];
+  /** One of the fantasy races, not a people of Rise of Rome. */
+  fantasy?: boolean;
+}
+/** More units, techs and civilizations on top of rules.json, and what the buildings train of the new units. */
+export interface RulesAddon { units?: UnitDef[]; techs?: TechDef[]; civs?: CivDef[]; trains?: Record<string, string[]> }
 export interface RulesFile {
   resources: string[];
   ages: AgeDef[];
@@ -176,6 +188,21 @@ export interface RulesFile {
   buildings: BuildingDef[];
   techs?: TechDef[];
   civs?: CivDef[];
+}
+
+/** rules.json with an addon laid over it. rules.json keeps the original's numbers alone (the AoE importer
+ *  rewrites it); the fantasy races live in their own file and join here. */
+export function withAddon(file: RulesFile, add: RulesAddon): RulesFile {
+  const buildings = file.buildings.map((b) => {
+    const more = add.trains?.[b.id];
+    return more ? { ...b, trains: [...(b.trains ?? []), ...more.filter((t) => !(b.trains ?? []).includes(t))] } : b;
+  });
+  return {
+    ...file, buildings,
+    units: [...file.units, ...(add.units ?? [])],
+    techs: [...(file.techs ?? []), ...(add.techs ?? [])],
+    civs: [...(file.civs ?? []), ...(add.civs ?? [])],
+  };
 }
 
 export const isWorker = (u: UnitDef) => u.class === "worker";

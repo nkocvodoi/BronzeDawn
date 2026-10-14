@@ -6,8 +6,9 @@ const TAGS: Record<string, string> = {
   archery: "Archery Range units", stable: "Stable units", academy: "Academy units", barracks: "Barracks units",
   infantry: "infantry", melee: "melee units", missile: "missile units", siege: "siege", catapult: "Stone Throwers",
   chariot: "chariots", elephant: "elephants", mounted: "mounted units", priest: "priests", swordsman: "swordsmen",
-  cavalry: "cavalry", military: "military units", boat: "ships", warship: "war ships", catapult_ship: "catapult ships", tower: "towers", wall: "walls", "*": "buildings",
+  cavalry: "cavalry", military: "military units", foot_archer: "foot archers", treant: "tree folk", boat: "ships", warship: "war ships", catapult_ship: "catapult ships", tower: "towers", wall: "walls", "*": "buildings",
 };
+const BOTH: Record<string, string> = { "barracks+melee": "Barracks infantry", "missile+mounted": "mounted archers" };
 const pct = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
 
 /** One line on what a list of effects does. */
@@ -16,7 +17,8 @@ export function describeEffects(effects: Effect[], rules: Rules): string[] {
   const who = (e: Extract<Effect, { type: "stat" }>) => {
     const t2 = e.target;
     if (t2.units) return t2.units.map(name).join(", ");
-    if (t2.tags) return t2.tags.map((x) => TAGS[x] ?? x).join(", ");
+    // A unit must have every tag listed: some pairs have a name of their own.
+    if (t2.tags) return BOTH[[...t2.tags].sort().join("+")] ?? t2.tags.map((x) => TAGS[x] ?? x).join(" that are ");
     if (t2.buildings) return t2.buildings.map(name).join(", ");
     if (t2.buildings_tags) {
       const pos = t2.buildings_tags.filter((x) => !x.startsWith("!")), neg = t2.buildings_tags.filter((x) => x.startsWith("!"));
@@ -76,6 +78,8 @@ export function describeCiv(c: CivDef, rules: Rules, fullTree = false): string[]
     const unlocks = [...rules.units.values(), ...rules.buildings.values()].filter((d) => d.requires_tech === id);
     return t.effects.some((e) => e.type === "upgrade" && off.has(e.to)) || unlocks.some((d) => off.has(d.id));
   };
+  const own = [...rules.units.values(), ...rules.techs.values()].filter((d) => d.civ === c.id).map((d) => d.name);
+  if (own.length) out.push(`their own: ${own.join(", ")}`);
   const shown = [...new Set(c.disabled.filter((id) => !implied(id)).map(name))];
   if (shown.length && !fullTree) out.push(`no ${shown.join(", ")}`);
   return out;

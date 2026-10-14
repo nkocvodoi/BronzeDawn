@@ -1,0 +1,733 @@
+{
+ "_about": "The fantasy races (replica/game/fantasy-races.md): their own units and techs, and what the buildings train of them. Joined to rules.json when the rules load (web/src/core/data.ts); rules.json keeps the original's numbers alone.",
+ "units": [
+  {
+   "id": "glade_archer",
+   "name": "Glade Archer",
+   "class": "archer",
+   "age": "bronze",
+   "trained_at": "archery_range",
+   "cost": {
+    "food": 45,
+    "wood": 45
+   },
+   "train_time": 34,
+   "hp": 45,
+   "attack": 5,
+   "armor": 0,
+   "pierce_armor": 1,
+   "range": 7,
+   "attack_cooldown": 1.4,
+   "speed": 1.3,
+   "los": 9,
+   "pop": 1,
+   "tags": [
+    "archery",
+    "missile",
+    "foot_archer",
+    "military"
+   ],
+   "projectile": "arrow",
+   "civ": "elf",
+   "looks_like": "improved_bowman"
+  },
+  {
+   "id": "grove_warden",
+   "name": "Grove Warden",
+   "class": "treant",
+   "age": "iron",
+   "trained_at": "temple",
+   "cost": {
+    "food": 100,
+    "wood": 120
+   },
+   "train_time": 50,
+   "hp": 500,
+   "attack": 14,
+   "armor": 2,
+   "pierce_armor": 4,
+   "range": 0,
+   "attack_cooldown": 1.8,
+   "speed": 0.8,
+   "los": 5,
+   "pop": 1,
+   "bonus": {
+    "building": 15
+   },
+   "tags": [
+    "treant",
+    "melee",
+    "military"
+   ],
+   "civ": "elf",
+   "looks_like": "phalanx"
+  },
+  {
+   "id": "ironclad",
+   "name": "Ironclad",
+   "class": "infantry",
+   "age": "bronze",
+   "trained_at": "barracks",
+   "cost": {
+    "food": 45,
+    "gold": 25
+   },
+   "train_time": 30,
+   "hp": 85,
+   "attack": 8,
+   "armor": 3,
+   "pierce_armor": 2,
+   "range": 0,
+   "attack_cooldown": 1.5,
+   "speed": 1.0,
+   "los": 4,
+   "pop": 1,
+   "tags": [
+    "barracks",
+    "infantry",
+    "melee",
+    "military"
+   ],
+   "civ": "dwarf",
+   "looks_like": "broad_swordsman"
+  },
+  {
+   "id": "deep_arbalest",
+   "name": "Deep Arbalest",
+   "class": "archer",
+   "age": "bronze",
+   "trained_at": "archery_range",
+   "cost": {
+    "food": 40,
+    "wood": 25,
+    "gold": 20
+   },
+   "train_time": 34,
+   "hp": 50,
+   "attack": 8,
+   "armor": 1,
+   "pierce_armor": 1,
+   "range": 6,
+   "attack_cooldown": 2.0,
+   "speed": 1.0,
+   "los": 8,
+   "pop": 1,
+   "tags": [
+    "archery",
+    "missile",
+    "foot_archer",
+    "military"
+   ],
+   "projectile": "bolt",
+   "civ": "dwarf",
+   "looks_like": "composite_bowman"
+  },
+  {
+   "id": "centaur_archer",
+   "name": "Centaur Archer",
+   "class": "horse_archer",
+   "age": "bronze",
+   "trained_at": "archery_range",
+   "cost": {
+    "food": 75,
+    "gold": 50
+   },
+   "train_time": 36,
+   "hp": 70,
+   "attack": 5,
+   "armor": 0,
+   "pierce_armor": 1,
+   "range": 6,
+   "attack_cooldown": 1.5,
+   "speed": 2.0,
+   "los": 9,
+   "pop": 1,
+   "tags": [
+    "archery",
+    "missile",
+    "mounted",
+    "military"
+   ],
+   "projectile": "arrow",
+   "civ": "sagittarian",
+   "looks_like": "horse_archer"
+  },
+  {
+   "id": "hoof_lancer",
+   "name": "Hoof Lancer",
+   "class": "cavalry",
+   "age": "bronze",
+   "trained_at": "stable",
+   "cost": {
+    "food": 70,
+    "gold": 50
+   },
+   "train_time": 38,
+   "hp": 130,
+   "attack": 8,
+   "armor": 0,
+   "pierce_armor": 1,
+   "range": 0,
+   "attack_cooldown": 1.5,
+   "speed": 2.1,
+   "los": 5,
+   "pop": 1,
+   "bonus": {
+    "archer": 4,
+    "horse_archer": 4
+   },
+   "tags": [
+    "stable",
+    "mounted",
+    "melee",
+    "cavalry",
+    "military"
+   ],
+   "civ": "sagittarian",
+   "looks_like": "cataphract"
+  },
+  {
+   "id": "wolfkin_raider",
+   "name": "Wolfkin Raider",
+   "class": "infantry",
+   "age": "tool",
+   "trained_at": "barracks",
+   "cost": {
+    "food": 65
+   },
+   "train_time": 24,
+   "hp": 50,
+   "attack": 5,
+   "armor": 0,
+   "pierce_armor": 0,
+   "range": 0,
+   "attack_cooldown": 1.3,
+   "speed": 1.6,
+   "los": 5,
+   "pop": 1,
+   "tags": [
+    "barracks",
+    "infantry",
+    "melee",
+    "military"
+   ],
+   "civ": "beastfolk",
+   "looks_like": "axeman"
+  },
+  {
+   "id": "bearkin_brute",
+   "name": "Bearkin Brute",
+   "class": "infantry",
+   "age": "iron",
+   "trained_at": "barracks",
+   "cost": {
+    "food": 70,
+    "gold": 40
+   },
+   "train_time": 40,
+   "hp": 220,
+   "attack": 16,
+   "armor": 1,
+   "pierce_armor": 3,
+   "range": 0,
+   "attack_cooldown": 2.0,
+   "speed": 1.0,
+   "los": 4,
+   "pop": 1,
+   "bonus": {
+    "building": 8
+   },
+   "tags": [
+    "barracks",
+    "infantry",
+    "melee",
+    "military"
+   ],
+   "civ": "beastfolk",
+   "looks_like": "long_swordsman"
+  }
+ ],
+ "techs": [
+  {
+   "id": "moonlit_volley",
+   "name": "Moonlit Volley",
+   "age": "iron",
+   "building": "archery_range",
+   "cost": {
+    "food": 300,
+    "wood": 250
+   },
+   "time": 90,
+   "requires": [],
+   "civ": "elf",
+   "effects": [
+    {
+     "type": "stat",
+     "stat": "attack_cooldown",
+     "op": "mul",
+     "value": 0.85,
+     "target": {
+      "tags": [
+       "foot_archer"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "deep_delving",
+   "name": "Deep Delving",
+   "age": "iron",
+   "building": "market",
+   "cost": {
+    "food": 250,
+    "wood": 150
+   },
+   "time": 75,
+   "requires": [],
+   "civ": "dwarf",
+   "effects": [
+    {
+     "type": "mine_yield",
+     "resource": "gold",
+     "value": 1.25
+    },
+    {
+     "type": "mine_yield",
+     "resource": "stone",
+     "value": 1.25
+    }
+   ]
+  },
+  {
+   "id": "galloping_volley",
+   "name": "Galloping Volley",
+   "age": "iron",
+   "building": "archery_range",
+   "cost": {
+    "food": 400,
+    "gold": 250
+   },
+   "time": 100,
+   "requires": [],
+   "civ": "sagittarian",
+   "effects": [
+    {
+     "type": "stat",
+     "stat": "attack",
+     "op": "add",
+     "value": 1,
+     "target": {
+      "tags": [
+       "mounted",
+       "missile"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "blood_of_the_wild",
+   "name": "Blood of the Wild",
+   "age": "iron",
+   "building": "barracks",
+   "cost": {
+    "food": 300,
+    "gold": 150
+   },
+   "time": 90,
+   "requires": [],
+   "civ": "beastfolk",
+   "effects": [
+    {
+     "type": "stat",
+     "stat": "hp",
+     "op": "mul",
+     "value": 1.15,
+     "target": {
+      "tags": [
+       "barracks",
+       "melee"
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "civs": [
+  {
+   "id": "elf",
+   "name": "Elf",
+   "arch": "asian",
+   "fantasy": true,
+   "effects": [
+    {
+     "type": "gather",
+     "resource": "wood",
+     "rate": 1.15,
+     "carry": 2
+    },
+    {
+     "type": "gather",
+     "resource": "food",
+     "rate": 1.1,
+     "carry": 0,
+     "kind": "forage"
+    },
+    {
+     "type": "stat",
+     "stat": "range",
+     "op": "add",
+     "value": 1,
+     "target": {
+      "tags": [
+       "foot_archer"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "los",
+     "op": "add",
+     "value": 2,
+     "target": {
+      "tags": [
+       "foot_archer"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "hp",
+     "op": "mul",
+     "value": 0.85,
+     "target": {
+      "buildings_tags": [
+       "*"
+      ]
+     }
+    }
+   ],
+   "disabled": [
+    "composite_bowman",
+    "composite_bow",
+    "chariot",
+    "chariot_archer",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "heavy_cavalry",
+    "heavy_cavalry_tech",
+    "cataphract",
+    "cataphract_tech",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "elephant_archer",
+    "camel_rider",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "helepolis",
+    "helepolis_tech",
+    "legion",
+    "legion_tech",
+    "centurion",
+    "centurion_tech",
+    "iron_shield",
+    "tower_shield",
+    "chain_armor_infantry",
+    "metallurgy",
+    "fortification",
+    "fortification_tech",
+    "siegecraft",
+    "juggernaught",
+    "juggernaught_tech"
+   ]
+  },
+  {
+   "id": "dwarf",
+   "name": "Dwarf",
+   "arch": "babylonian",
+   "fantasy": true,
+   "effects": [
+    {
+     "type": "gather",
+     "resource": "gold",
+     "rate": 1.25,
+     "carry": 2
+    },
+    {
+     "type": "gather",
+     "resource": "stone",
+     "rate": 1.25,
+     "carry": 2
+    },
+    {
+     "type": "stat",
+     "stat": "armor",
+     "op": "add",
+     "value": 1,
+     "target": {
+      "tags": [
+       "barracks",
+       "melee"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "speed",
+     "op": "add",
+     "value": -0.1,
+     "target": {
+      "tags": [
+       "barracks",
+       "melee"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "hp",
+     "op": "mul",
+     "value": 1.5,
+     "target": {
+      "units": [
+       "stone_thrower",
+       "catapult",
+       "heavy_catapult",
+       "ballista",
+       "helepolis"
+      ]
+     }
+    }
+   ],
+   "disabled": [
+    "chariot",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "cavalry",
+    "heavy_cavalry",
+    "heavy_cavalry_tech",
+    "cataphract",
+    "cataphract_tech",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "camel_rider",
+    "chariot_archer",
+    "horse_archer",
+    "heavy_horse_archer",
+    "heavy_horse_archer_tech",
+    "elephant_archer",
+    "composite_bowman",
+    "composite_bow",
+    "astrology",
+    "mysticism",
+    "polytheism",
+    "monotheism",
+    "aristocracy",
+    "trireme",
+    "trireme_tech",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech",
+    "fire_galley"
+   ]
+  },
+  {
+   "id": "sagittarian",
+   "name": "Sagittarian",
+   "arch": "greek",
+   "fantasy": true,
+   "effects": [
+    {
+     "type": "stat",
+     "stat": "speed",
+     "op": "add",
+     "value": 0.2,
+     "target": {
+      "units": [
+       "villager"
+      ]
+     }
+    },
+    {
+     "type": "gather",
+     "resource": "food",
+     "rate": 1.33,
+     "carry": 2,
+     "kind": "hunt"
+    },
+    {
+     "type": "stat",
+     "stat": "cost",
+     "op": "mul",
+     "value": 0.8,
+     "target": {
+      "units": [
+       "horse_archer",
+       "heavy_horse_archer",
+       "centaur_archer"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "range",
+     "op": "add",
+     "value": 1,
+     "target": {
+      "tags": [
+       "mounted",
+       "missile"
+      ]
+     }
+    }
+   ],
+   "disabled": [
+    "academy",
+    "short_swordsman",
+    "short_sword",
+    "broad_swordsman",
+    "broad_sword",
+    "long_swordsman",
+    "long_sword",
+    "legion",
+    "legion_tech",
+    "improved_bowman",
+    "improved_bow",
+    "composite_bowman",
+    "composite_bow",
+    "chariot",
+    "chariot_archer",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "war_elephant",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "elephant_archer",
+    "fortification",
+    "fortification_tech",
+    "guard_tower",
+    "guard_tower_tech",
+    "ballista_tower",
+    "ballista_tower_tech",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "helepolis",
+    "helepolis_tech",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech"
+   ]
+  },
+  {
+   "id": "beastfolk",
+   "name": "Beastfolk",
+   "arch": "egyptian",
+   "fantasy": true,
+   "effects": [
+    {
+     "type": "gather",
+     "resource": "food",
+     "rate": 1.4,
+     "carry": 2,
+     "kind": "hunt"
+    },
+    {
+     "type": "stat",
+     "stat": "hp",
+     "op": "add",
+     "value": 10,
+     "target": {
+      "units": [
+       "villager"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "speed",
+     "op": "add",
+     "value": 0.2,
+     "target": {
+      "tags": [
+       "barracks",
+       "melee"
+      ]
+     }
+    },
+    {
+     "type": "stat",
+     "stat": "train_time",
+     "op": "mul",
+     "value": 0.85,
+     "target": {
+      "tags": [
+       "barracks"
+      ]
+     }
+    }
+   ],
+   "disabled": [
+    "academy",
+    "legion",
+    "legion_tech",
+    "composite_bowman",
+    "composite_bow",
+    "chariot",
+    "chariot_archer",
+    "scythe_chariot",
+    "scythe_chariot_tech",
+    "elephant_archer",
+    "cataphract",
+    "cataphract_tech",
+    "armored_elephant",
+    "armored_elephant_tech",
+    "catapult",
+    "catapult_tech",
+    "heavy_catapult",
+    "heavy_catapult_tech",
+    "ballista",
+    "helepolis",
+    "helepolis_tech",
+    "fortification",
+    "fortification_tech",
+    "guard_tower",
+    "guard_tower_tech",
+    "ballista_tower",
+    "ballista_tower_tech",
+    "astrology",
+    "monotheism",
+    "afterlife",
+    "architecture",
+    "engineering",
+    "alchemy",
+    "catapult_trireme",
+    "catapult_trireme_tech",
+    "juggernaught",
+    "juggernaught_tech"
+   ]
+  }
+ ],
+ "trains": {
+  "archery_range": [
+   "glade_archer",
+   "deep_arbalest",
+   "centaur_archer"
+  ],
+  "temple": [
+   "grove_warden"
+  ],
+  "barracks": [
+   "ironclad",
+   "wolfkin_raider",
+   "bearkin_brute"
+  ],
+  "stable": [
+   "hoof_lancer"
+  ]
+ }
+}

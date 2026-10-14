@@ -53,11 +53,21 @@ export function canStart(state: LobbyState): string | null {
   return null;
 }
 
+/** The civilizations to pick from: the peoples of Rise of Rome, then the fantasy races. */
+export function civOptions(rules: Rules, on: string | null): string {
+  const opt = (c: { id: string; name: string }) => `<option value="${c.id}"${c.id === on ? " selected" : ""}>${c.name}</option>`;
+  const group = (label: string, fantasy: boolean) => {
+    const cs = rules.civs.filter((c) => !!c.fantasy === fantasy);
+    return cs.length ? `<optgroup label="${label}">${cs.map(opt).join("")}</optgroup>` : "";
+  };
+  return group("Rise of Rome", false) + group("Fantasy", true);
+}
+
 /** The lobby as the overlay's lines, seen by the player in seat `you` (the host when `host`). */
 export function lobbyHtml(state: LobbyState, you: number, host: boolean, rules: Rules, color: (i: number) => string, status = ""): string[] {
   const civName = (id: string | null) => (id ? rules.civs.find((c) => c.id === id)?.name ?? "?" : "Random");
   const civSelect = (id: string, on: string | null, disabled: boolean) =>
-    `<select id="${id}"${disabled ? " disabled" : ""}><option value="">Random</option>${rules.civs.map((c) => `<option value="${c.id}"${c.id === on ? " selected" : ""}>${c.name}</option>`).join("")}</select>`;
+    `<select id="${id}"${disabled ? " disabled" : ""}><option value="">Random</option>${civOptions(rules, on)}</select>`;
   const teamSelect = (id: string, on: number, disabled: boolean) =>
     `<select id="${id}" class="team"${disabled ? " disabled" : ""}>${[0, 1, 2, 3, 4].map((t) => `<option value="${t}"${t === on ? " selected" : ""}>${t ? t : "-"}</option>`).join("")}</select>`;
   const rows = state.seats.map((s, i) => {
