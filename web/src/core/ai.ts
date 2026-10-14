@@ -186,7 +186,9 @@ export class AIController {
   private navy(w: World, home: Vec2, navy: Unit[], bs: Building[]) {
     const p = w.players[this.player];
     const dock = bs.find((b) => b.def.on_water && b.complete);
-    if (!dock || p.age < 1 || !w.nodes.some((n) => n.def.boats_only)) return;
+    // Across the sea a fleet is wanted whether or not deep-sea fish are left: once they were fished out the
+    // AI built no more war ships, and two enemy Scout Ships sank every transport it sent.
+    if (!dock || p.age < 1 || !(this.acrossSea || w.nodes.some((n) => n.def.boats_only))) return;
     const enemyShips = w.units.filter((u) => u.alive && u.isBoat && u.isSoldier && !u.isRelic && w.isEnemy(this.player, u.owner)).length;
     // A small fleet: one more than the enemy shows, within a cap by age, and never more than a fifth of
     // the population, so a race of ships does not starve the army that has to finish the game.
@@ -205,11 +207,17 @@ export class AIController {
     const idle = navy.filter((u) => u.order.kind === "idle");
     if (!idle.length) return;
     const enemy = (u: Unit) => u.alive && u.isBoat && !u.isRelic && w.isEnemy(this.player, u.owner);
-    // A wave crossing: the fleet holds the water off its beach, so the transports get through.
+    // A wave crossing: the fleet sails with the transports and goes for enemy boats that come near them;
+    // with no transport at sea, it holds the water off the beach.
     if (this.ferry) {
-      const off = w.landingNear(this.ferry.beach);
-      const away = idle.filter((u) => !off || u.pos.distance(off.center) > 6);
-      if (off && away.length) w.move(this.player, away.map((u) => u.id), off.center, true);
+      const boats = this.ferry.transports.map((id) => w.unit(id)).filter((t): t is Unit => !!t);
+      const threat = minBy(w.units.filter((u) => enemy(u) && u.isSoldier && boats.some((t) => t.pos.distance(u.pos) < 9)), (u) => Math.min(...boats.map((t) => t.pos.distance(u.pos))));
+      if (threat) { w.attack(this.player, idle.map((u) => u.id), threat.id); return; }
+      const sailing = boats.find((t) => t.cargo.length);
+      const off = sailing ? null : w.landingNear(this.ferry.beach);
+      const at = sailing?.pos ?? off?.center ?? null;
+      const away = idle.filter((u) => at && u.pos.distance(at) > (sailing ? 3 : 6));
+      if (at && away.length) w.move(this.player, away.map((u) => u.id), at, true);
       return;
     }
     const near = minBy(w.units.filter((u) => enemy(u) && u.pos.distance(dock.center) < 22), (u) => u.pos.distance(dock.center));
@@ -634,6 +642,8 @@ export class AIController {
 
   /** On an island, a third of the villagers idle: nothing left near to put them on. */
   private stalled = false;
+  /** Since when a wave has waited for its fleet to match the enemy's: five minutes at most, then it goes. */
+  private fleetWaitSince: number | null = null;
   /** When enemy soldiers at home last outnumbered the army. */
   private outnumberedAt = -1e9;
 
@@ -1263,6 +1273,11 @@ export class AIController {
     const ids = ready.map((u) => u.id).concat(sendPriests);
     // Over the water (islands): by transport, as many as it carries a trip.
     if (this.overSea(w, home, target)) {
+      // Not while the enemy has more war ships at sea than we do: they sank the transports, every wave.
+      const theirs = w.units.filter((u) => u.alive && u.isBoat && u.isSoldier && w.isEnemy(this.player, u.owner)).length;
+      const ours = w.unitsOf(this.player).filter((u) => u.isBoat && u.isSoldier).length;
+      if (theirs <= ours) this.fleetWaitSince = null;
+      else if (w.time - (this.fleetWaitSince ??= w.time) < 300) return;
       if (this.startFerry(w, home, target, ids)) { this.waves++; this.waveSize = Math.min(this.waveSize + 2, 16); }
       return;
     }
