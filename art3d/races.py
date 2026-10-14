@@ -2,13 +2,15 @@
 # build, colours and parts of their own, and the races' own units. Drawn in the manner of Japanese
 # animation rather than European tradition: heads a little larger, hair in big clear shapes.
 #
-#   Elf          as tall as anyone, slender, mostly women with full figures, golden hair, long pointed ears
+#   Elf          as tall as anyone, slender, women with full figures in bikinis of bear fur, golden hair,
+#                long pointed ears
 #   Dwarf        short and broad, a braided beard down the chest, a big nose
 #   Centaur  centaurs: a man's body where a horse's neck would be, villagers too
 #   Beastfolk    villagers with a human face and a cat's ears and tail; soldiers tall, with a wolf's or
 #                a bear's head
 #
-# Clothing covers everyone: the full figure is the shape of the tunic, never skin.
+# The elves wear bear fur, as the owner asked: a top and a short bottom, a loincloth and headband in their
+# player's colour. Grown women, nothing more shown than a swimsuit would.
 
 import math
 
@@ -30,7 +32,7 @@ class Look:
 
 
 ELF = Look("elf", skin=(0.98, 0.86, 0.76), hair=(1.0, 0.84, 0.36), cloth=(0.40, 0.58, 0.30),
-           girth=0.92, head=1.14, parts=("elf_ears", "long_hair", "figure"))
+           girth=0.92, head=1.14, parts=("elf_ears", "long_hair", "fur_bikini"))
 DWARF = Look("dwarf", skin=(0.88, 0.62, 0.48), hair=(0.66, 0.28, 0.10), cloth=(0.44, 0.42, 0.40),
              height=0.8, girth=1.32, head=1.12, parts=("beard", "big_nose"))
 CENTAUR_LOOK = Look("centaur", skin=(0.86, 0.62, 0.44), hair=(0.26, 0.16, 0.10), cloth=(0.94, 0.90, 0.78),
@@ -66,26 +68,34 @@ def _parts(rig):
         # Two long locks in front of the shoulders, so the hair shows from the front too.
         for x in (0.078, -0.078):
             lib.ball(f"lock{x}", 0.028, (x, -0.03, 0.69), hair, n, scale=(0.75, 0.7, 3.0))
-    if "figure" in p:
-        # A woman's figure: a fitted bodice with a full bust and a narrow waist, a long skirt in her player's
-        # colour (so the side shows from the front), sleeves of the bodice's cloth.
-        bodice = next((o.active_material for o in t.children_recursive if o.name.startswith("cuirass")), None) \
-            or lib.mat(f"bodice-{look.name}", look.cloth, 0.8)
+    if "fur_bikini" in p:
+        # Bare arms and midriff; a top and a short bottom of bear fur; a loincloth front and back and a
+        # headband in the player's colour, so the side still shows. A soldier's cuirass is left off (her
+        # helmet, shield, weapon and cape stay).
+        bear = lib.mat("bearfur", (0.42, 0.27, 0.15), 0.95, grain=0.45, grain_size=0.008)
         team = lib.team_mat()
-        for o in rig.root.children_recursive:
+        for o in list(rig.root.children_recursive):
             if o.type != "MESH":
                 continue
+            if o.name.startswith("cuirass") or (o.name.startswith("band") and o.parent is t):
+                bpy.data.objects.remove(o, do_unlink=True)
+                continue
             if o.name in ("tunic", "shoulders") or o.name.startswith("upper"):
-                o.active_material = bodice
+                o.active_material = skin
             if o.name == "tunic":
-                o.scale = (0.86, 0.8, 1)
+                o.scale = (0.84, 0.78, 1)
             if o.name == "skirt":
-                o.active_material = team
-                o.scale = (1.12, 1.05, 1.9)
-                o.location.z -= 0.04
-        for x in (0.036, -0.036):
-            lib.ball(f"bust{x}", 0.036, (x, -0.062, 0.615), bodice, t, scale=(1.0, 0.95, 0.9))
-        lib.cyl("waist", 0.082, 0.04, (0, 0, 0.5), lib.mat("belt", villager.BELT, 0.8), t, verts=16)
+                # The fur bottom: short, on the hips.
+                o.active_material = bear
+                o.scale = (1.06, 1.02, 0.55)
+                o.location.z += 0.03
+        for x in (0.037, -0.037):
+            lib.ball(f"bust{x}", 0.04, (x, -0.064, 0.612), bear, t, scale=(1.0, 0.95, 0.9))
+        lib.box("bikinistrap", (0.17, 0.12, 0.016), (0, 0.0, 0.625), bear, t)
+        for y, k in ((-0.108, "front"), (0.108, "back")):
+            lib.box(f"loincloth{k}", (0.07, 0.01, 0.13), (0, y, 0.35), team, t)
+        if not any(o.name in ("headband", "helm", "hood") for o in n.children_recursive):
+            lib.cyl("headband", 0.081, 0.018, (0, 0, 0.825), team, n, verts=16)
     if "tail_of_hair" in p:
         lib.ball("tailofhair", 0.03, (0, 0.09, 0.74), hair, n, scale=(0.9, 0.9, 2.4))
     if "beard" in p:
@@ -193,6 +203,23 @@ def finish(rig):
         _parts(rig)
         _reshape(rig)
     return rig
+
+
+# The common units the elves train (their tech tree leaves out the rest), drawn as elves: "elf/<unit>".
+ELF_UNITS = ["clubman", "axeman", "slinger", "short_swordsman", "broad_swordsman", "long_swordsman", "hoplite", "phalanx",
+             "bowman", "improved_bowman", "priest", "scout", "cavalry", "horse_archer", "heavy_horse_archer"]
+
+
+def elf_unit(unit):
+    """A common unit as an elf: on foot, or riding a horse."""
+    kit = soldiers.KITS[unit]
+    if unit not in ("scout", "cavalry", "horse_archer", "heavy_horse_archer"):
+        return soldier_of(ELF, kit)
+    rider = finish(soldiers.Soldier(unit, ELF, kit))
+    beast = soldiers.Horse()
+    rider.root.location = (0, 0.02, soldiers.Horse.HIGH + 0.02 - 0.42)
+    lib.adopt(rider.root, beast.body)
+    return soldiers.Mount(rider, beast)
 
 
 def villager_of(race, tool):

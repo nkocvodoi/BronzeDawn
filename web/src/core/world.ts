@@ -1882,7 +1882,7 @@ export class World {
         src.food -= take;
         u.carry += take;
         const p = this.players[src.owner];
-        if (src.food <= 0.0001 && p.autoReseed && p.res.covers(this.reseedCost(src.owner))) {
+        if (src.food <= 0.0001 && p.autoReseed && !p.reseedHeld && p.res.covers(this.reseedCost(src.owner))) {
           // Sown again where it stands, for half a new farm's price: the farmer keeps working it.
           p.res.spend(this.reseedCost(src.owner));
           src.food = p.mods.farmFood(src.def.resource!.food);

@@ -246,6 +246,13 @@ def main():
             anims = [("idle", "idle", 6, 4), ("walk", "walk", 12, 14)] + ([("work", work, frames, fps)] if tool else [])
             f, a = RACE_ANGLER.get(race, (ANGLER_FRAME, ANGLER_ANCHOR)) if rig_tool == "rod" else (frame, anchor)
             units[key] = unit_sheet(key, make, anims, f, a, quick, tmp)
+    # The elves' own looks for the common units they train ("elf/clubman"); --only takes "elf" or "elf/clubman".
+    for unit in races.ELF_UNITS:
+        key = f"elf/{unit}"
+        if not (only is None or "elf" in only or key in only):
+            continue
+        _, anims, frame, anchor = unit_spec(unit)
+        units[key] = unit_sheet(key, lambda unit=unit: races.elf_unit(unit), anims, frame, anchor, quick, tmp)
     for unit, (make, attack) in races.UNITS.items():
         if only is not None and unit not in only and "races" not in only:
             continue
