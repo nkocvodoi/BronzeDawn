@@ -10,6 +10,7 @@ Mỗi đợt sàng lọc thêm vào cuối. Cột "Duyệt" để chủ repo đ�
 | --- | --- | --- |
 | **F8** (hoặc Menu → Report a bug) | Bấm khi thấy lỗi. Game tải về một file `.bdreport`: trận đang chơi (lưu nguyên), ảnh khung nhìn, 150 dòng thông báo và lỗi console gần nhất, cài đặt, cỡ màn hình | Gửi file này là đủ: mở bằng Saved Games → Load from a file là vào đúng trận đó, đúng lúc đó. Đọc không cần trình duyệt: `npm run report -- file.bdreport` (in tóm tắt, tách ảnh ra `.png`, chạy tiếp 2 phút xem có vỡ không) |
 | `npm run build && npm run ui-shots` | Chạy từ `web/`. Mở `web/ui-shots/index.html` để lướt ảnh | Mọi màn hình (menu chính, cài đặt trận, chơi online, art pack, lưu/tải, 5 trang Help, trong trận: Town Center, dân, chọn nhiều, Menu, Settings, Timeline, Diplomacy, Tribute, Help, lưu/tải, Resign, màn thua) ở 5 cỡ: điện thoại dọc 390×844 và ngang 844×390, laptop 1366×768, 1920×1080, 4K. Tự kiểm: trang cuộn ngang, bảng lòi ra ngoài màn hình, chữ bị cắt, nút đè nhau (chỉ phần nhìn thấy), nút ngoài màn hình, lỗi console. Những gì cần mắt người (chữ quá nhỏ, cân đối) thì xem ảnh |
+| `npm run build && npm run monkey -- [số trận] [giây mỗi trận]` | Chạy từ `web/`. Kết quả ở `web/monkey-out/` (`findings.json` và ảnh). `MONKEY_SELFTEST=1` cài sẵn một lỗi để xem công cụ còn bắt được | Chơi bừa trên Chrome thật: bấm trái/phải, kéo chọn, Shift+bấm, phím chữ, số, Ctrl+số, Esc, F1, F3, F10, Tab, Space, Delete, +/−, nút lệnh, mở bảng và bấm nút ngẫu nhiên trong đó (trừ thoát, đầu hàng, xoá), lưu trận. Bắt: lỗi trang hay console, bảng bấm Esc 3 lần không đóng, màn hình đứng quá 1 giây, đồng hồ game dừng khi không tạm dừng. Mỗi lỗi kèm ảnh và 30 thao tác trước đó |
 | `npm run soak -- [số trận] [phút] [phần] [số phần]` | Chạy từ `web/`. Ví dụ 8 tiến trình cùng lúc: `npm run soak -- 120 45 0 8` … `7 8` | Máy đấu máy trên mọi kiểu bản đồ, cỡ, 2–8 người, mọi dân tộc và mức AI; mỗi 10 giây game kiểm: không vỡ, unit không ra ngoài bản đồ hay đứng dưới nước, tài nguyên không âm, dân số không quá giới hạn (trừ quân cải đạo), hai công trình không chồng ô, dân không đứng không 3 phút khi còn tài nguyên, không kẹt thời đại 10 phút khi đủ điều kiện; lưu ở phút 8 rồi tải lại phải chạy y hệt; cùng seed hai lần phải ra cùng một trận. Mỗi lỗi ghi số trận, seed, phút: chạy lại được |
 
 ## Đợt 1 (2026-10-15)
@@ -120,6 +121,12 @@ hay đứng dưới nước, **0** công trình chồng nhau, **0** tài nguyên
 - **Tự kiểm:** trên màn lớn (hoặc Chrome → Inspect → kéo cửa sổ 3840×2160), mở Menu, Settings, Help, Timeline: bảng
   to vừa phải, chữ đọc được; trong Timeline, rê chuột thì số đọc đúng chỗ con trỏ.
 - **Duyệt:** [ ]
+
+## Đợt 3: chơi bừa trên trình duyệt (2026-10-15)
+
+8 trận × 150 giây, khoảng 5200 thao tác ngẫu nhiên, 8 dân tộc khác nhau (có Beastfolk, Centaur) trên 7 kiểu bản đồ:
+**không lỗi nào** (không lỗi trang hay console, không bảng kẹt, không đứng hình, đồng hồ không dừng). Kiểm lại công cụ
+bằng một lỗi cài sẵn: bắt được ngay, kèm ảnh và các thao tác trước đó.
 
 ### Đã sửa trước đợt này
 
