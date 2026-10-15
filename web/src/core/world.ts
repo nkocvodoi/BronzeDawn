@@ -761,8 +761,10 @@ export class World {
     const t = this.unit(id);
     if (!t || t.owner !== u.owner || !t.isTransport || t.cargo.length >= (t.def.capacity ?? 0)) { u.order = IDLE; return; }
     if (u.pos.distance(t.pos) <= 1.8) {
+      // What a villager carries goes aboard with it, to be put in once ashore, as in the original: emptied
+      // here, a load of wood cut on another island and brought home was lost on the way.
       u.aboard = t.id; t.cargo.push(u.id);
-      u.order = IDLE; u.path = []; u.carry = 0;
+      u.order = IDLE; u.path = [];
       return;
     }
     const a = this.approach(u, t, 1.4, dt);

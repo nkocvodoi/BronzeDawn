@@ -63,6 +63,9 @@ const dist = (a: Unit, p: Vec2) => a.pos.distance(p);
 const FAR = 50;
 /** Home's wood below which the computer on an island saves for, and goes to, woods over the sea. */
 const SETTLE_AT = 3000;
+/** Villagers crossing to another island: who goes, the transport, the land they leave (and where it picks
+ *  them up, if not at home), the beach they land on and the woods they settle by (none when they go home). */
+type Colony = { ids: number[]; transport: number; beach: Vec2; site: Vec2; from: Uint8Array; pickup: Vec2 | null; woods: Vec2 | null; since: number; sailed: number };
 
 function minBy<T>(xs: T[], f: (x: T) => number): T | null {
   let best: T | null = null, bv = Infinity;
@@ -226,10 +229,10 @@ export class AIController {
   /** A wave on its way by sea: everyone who is to go, the transports shuttling them, the beach on the far
    *  shore where they gather until all are over, and when the last transport sailed. */
   private ferry: { ids: number[]; transports: number[]; beach: Vec2; target: Vec2; home: Vec2; since: number; sailed: number } | null = null;
-  /** Villagers on their way to cut wood on another island, once home's trees run low: who goes, the
-   *  transport, the land they leave (and where it picks them up, if not at home), the beach they land on
-   *  and the woods they settle by (none when they go home). */
-  private colony: { ids: number[]; transport: number; beach: Vec2; site: Vec2; from: Uint8Array; pickup: Vec2 | null; woods: Vec2 | null; since: number; sailed: number } | null = null;
+  /** Villagers on their way to cut wood on another island, once home's trees run low. One trip at a time,
+   *  and up to three together once the town stands idle: 17 waited at home for one transport of three while
+   *  three more lay idle by the shore. */
+  private colonies: Colony[] = [];
   /** Whether wood is being kept for a Storage Pit on another island (home's trees low, none settled). */
   private colonyWood = false;
   /** The woods on another island villagers were last taken to. */
@@ -300,7 +303,7 @@ export class AIController {
 
   /** Starts a wave by sea. The whole wave goes, in as many trips as it takes. */
   private startFerry(w: World, home: Vec2, target: Vec2, ids: number[]): boolean {
-    if (this.colony) return false; // the transport is taking villagers to the woods
+    if (this.colonies.length) return false; // the transport is taking villagers to the woods
     const transports = w.unitsOf(this.player).filter((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle");
     this.needsFerry = !w.unitsOf(this.player).some((u) => u.isTransport);
     if (!transports.length) { this.trainTransport(w); return false; }
@@ -440,7 +443,8 @@ export class AIController {
    *  enemy, where they put up a Storage Pit and cut. More follow while there are idle hands at home; and
    *  when those woods are cut too, the idle there go on to the next, or home. */
   private settle(w: World, home: Vec2, villagers: Unit[]) {
-    if (this.colony) { this.runColony(w, home); return; }
+    for (const c of [...this.colonies]) this.runColony(w, home, c);
+    if (this.colonies.length && !(this.stalled && this.colonies.length < 3)) return;
     if (this.thinks % 10 !== 0) return;
     // Known from the Stone Age on: an island of a few hundred wood is spent on the first houses and the
     // Barracks, and with nothing kept for the transport (Tool Age) and a pit over the sea, the town stood
@@ -453,13 +457,14 @@ export class AIController {
     // with nothing kept the 120 for the Storage Pit over the sea was never there (a town sat on 4000 gold).
     this.colonyWood = woodHome < SETTLE_AT && (this.colonySite !== null || this.findWoods(w, home, this.island?.seen ?? new Uint8Array(0)) !== null);
     if (w.players[this.player].age < 1) return;
-    const free = villagers.filter((u) => u.aboard === null);
+    const crossing = new Set(this.colonies.flatMap((c) => c.ids));
+    const free = villagers.filter((u) => u.aboard === null && !crossing.has(u.id));
     const atHome = free.filter((u) => this.onIsland(w, home, u.pos) && this.byLand(w, home, u.pos));
     const away = free.filter((u) => !this.onIsland(w, home, u.pos));
     // A transport of its own: the army's ferry would otherwise take every one, and the town stood idle with
     // nothing to cut through three waves of attacks.
     const army = new Set(this.ferry?.transports ?? []);
-    const transport = () => w.unitsOf(this.player).find((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle" && !army.has(u.id));
+    const transport = () => w.unitsOf(this.player).find((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle" && !army.has(u.id) && !this.colonies.some((c) => c.transport === u.id));
     const ownTransport = () => this.trainTransport(w, army.size + 1);
     const pitCost = w.buildingCost(this.player, "storage_pit");
 
@@ -493,7 +498,10 @@ export class AIController {
     if (!t) { ownTransport(); return; }
     const island = this.island!.seen;
     const site = this.colonySite && this.woodNear(w, this.colonySite) >= 300 ? this.colonySite : this.findWoods(w, home, island);
-    if (!site || (!pitThere(site) && w.players[this.player].res.wood < pitCost.wood + 10)) return;
+    // Without the wood for a Storage Pit over there, they go all the same once the town stands idle: they cut
+    // till their hands are full, are fetched home with it (below) and put it in; a few such trips pay for the
+    // pit. Waiting for wood only those woods could give, a town of 27 stood idle with 5000 gold to the end.
+    if (!site || (!pitThere(site) && w.players[this.player].res.wood < pitCost.wood + 10 && !this.stalled)) return;
     // The idle first, then woodcutters, then anyone gathering; builders stay.
     const rank = (u: Unit) => (u.order.kind === "idle" ? 0 : u.lastGather === Res.wood ? 1 : u.order.kind === "gather" || u.order.kind === "return" ? 2 : 9);
     this.sail(w, home, t, atHome.filter((u) => rank(u) < 9).sort((a, b) => rank(a) - rank(b)), site, island, site);
@@ -508,7 +516,7 @@ export class AIController {
     // Where the transport waits for them: by home's shore, or the water nearest them on their island.
     const pickup = this.onIsland(w, home, go[0].pos) ? null : this.waterBeside(w, go[0].pos, t.pos);
     if (!this.onIsland(w, home, go[0].pos) && !pickup) return;
-    this.colony = { ids: go.map((u) => u.id), transport: t.id, beach, site, from, pickup, woods, since: w.time, sailed: w.time };
+    this.colonies.push({ ids: go.map((u) => u.id), transport: t.id, beach, site, from, pickup, woods, since: w.time, sailed: w.time });
     if (woods) this.colonySite = woods;
   }
 
@@ -554,8 +562,8 @@ export class AIController {
 
   /** Each think while villagers cross: board, sail when all are on (or after a while), land; then, at
    *  woods, a Storage Pit by the trees, built by all of them, and to work. */
-  private runColony(w: World, home: Vec2) {
-    const c = this.colony!;
+  private runColony(w: World, home: Vec2, c: Colony) {
+    const done = () => { this.colonies = this.colonies.filter((x) => x !== c); };
     const t = w.unit(c.transport);
     const alive = c.ids.map((id) => w.unit(id)).filter((u): u is Unit => !!u);
     const over = (u: Unit) => u.aboard === null && !c.from[w.map.index(u.pos.tile)];
@@ -563,12 +571,20 @@ export class AIController {
     const waiting = alive.filter((u) => u.aboard === null && !over(u));
     if (!t || !alive.length || w.time - c.since > 300) {
       // Sunk, or taking far too long: whoever is over stays and works; the rest go back to work.
-      this.colony = null;
+      done();
       if (t && t.cargo.length && t.unloadAt === null) w.unload(this.player, [t.id], c.beach);
       return;
     }
     if (!waiting.length && !aboard.length) {
-      if (!c.woods) { this.colony = null; return; } // home: back to work there
+      if (!c.woods) {
+        // Home: what they carry goes into the Town Center first. Put to other work with wood in their hands,
+        // they would drop it (a villager keeps one load, of one kind), and the trip would have been for nothing.
+        done();
+        const tc = w.buildingsOf(this.player).find((b) => b.def.id === "town_center" && b.complete);
+        const carriers = landed.filter((u) => u.carry > 0);
+        if (tc && carriers.length) w.smart(this.player, carriers.map((u) => u.id), tc.id, tc.center);
+        return;
+      }
       const pits = () => w.buildingsOf(this.player).filter((b) => b.dropsOff(Res.wood) && b.center.distance(c.woods!) < 10);
       // All of them build it (they still carry what they cut before, so the usual pick of a builder with
       // empty hands would find none). By the trees if there is room, else further out, else where they
@@ -579,7 +595,7 @@ export class AIController {
       // (the wood stays kept for it). Given up at once, the woodcutters cut with nowhere to take it, the
       // wood was spent at home meanwhile, and every island town ran out.
       if (!spot && !pits().length && landed.length && w.time - c.sailed < 60) return;
-      this.colony = null;
+      done();
       if (spot) w.place(this.player, "storage_pit", spot, landed.map((u) => u.id));
       const pit = pits().find((b) => !b.complete);
       if (pit) w.build(this.player, landed.map((u) => u.id), pit.id);
@@ -1050,6 +1066,9 @@ export class AIController {
           foodOut = true;
         }
       }
+      // Nothing wanted left to gather where it stands: what is there all the same (stone, past the 200
+      // it keeps). An island town with no food, wood or gold left stood idle by 1,800 stone, 22 of 22.
+      if (u.order.kind === "idle") for (const r of order) if (want[r] === 0 && this.sendTo(w, u, r, home)) { working[r]++; break; }
     }
   }
 
@@ -1226,7 +1245,7 @@ export class AIController {
     }
     if (this.wantsTransport(w)) this.trainTransport(w);
     // A transport idle away from home, between waves: it waits by home's shore.
-    if (!this.ferry && !this.colony && this.acrossSea && this.thinks % 5 === 0) {
+    if (!this.ferry && !this.colonies.length && this.acrossSea && this.thinks % 5 === 0) {
       for (const t of w.unitsOf(this.player).filter((u) => u.isTransport && !u.cargo.length && u.order.kind === "idle" && u.unloadAt === null)) {
         const shore = this.homeLanding(w, home, t.pos);
         if (shore && t.pos.distance(shore.center) > 6) w.move(this.player, [t.id], shore.center);
