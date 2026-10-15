@@ -668,8 +668,11 @@ export class AIController {
   }
 
   private wantsTransport(w: World) {
-    // Once the first has gone (sunk on the way over), the next is kept for at once.
-    return this.needsFerry && (w.time >= this.level.firstAttack * 0.6 || this.waves > 0) && w.buildingsOf(this.player).some((b) => b.def.on_water && b.complete);
+    // Once the first has gone (sunk on the way over), the next is kept for at once. On an island short of
+    // wood, from the Dock on: a Tiny Small Islands town spent its last trees on houses and boats by minute 9,
+    // had 130 of the 150 when the Tool Age let it buy one, and never left home.
+    const poor = this.woodHome < 1500;
+    return this.needsFerry && (poor || w.time >= this.level.firstAttack * 0.6 || this.waves > 0) && w.buildingsOf(this.player).some((b) => b.def.on_water && b.complete);
   }
 
   private affordable(w: World, cost: ResBag) {
@@ -709,7 +712,11 @@ export class AIController {
     // Houses before we are capped.
     const houseBuilding = bs.some((b) => b.def.id === "house" && !b.complete);
     const room = p.popCap - p.pop - queued;
-    if (p.popCap < w.popMax && room <= 3 && !houseBuilding && p.res.wood >= 30) {
+    // Home's trees all but gone and no transport yet: the wood kept for one is not spent on houses, or the
+    // town is shut on its island for good.
+    const shut = this.acrossSea && this.woodHome < 300 && this.wantsTransport(w) && !w.unitsOf(this.player).some((u) => u.isTransport);
+    const houseWood = shut ? w.unitCost(this.player, w.current(this.player, "light_transport")).get(Res.wood) : 0;
+    if (p.popCap < w.popMax && room <= 3 && !houseBuilding && p.res.wood - houseWood >= 30) {
       this.placeNear(w, "house", home, 3, 12, villagers);
     }
 
@@ -768,7 +775,11 @@ export class AIController {
     if (!building) {
       for (let a = 0; a <= p.age; a++) {
         const want = this.plan(w, a).find((id) => this.count(bs, id) === 0 && w.blockerBuilding(id, this.player) === null && villagers.length >= 6 + a * 3);
-        if (want && this.affordable(w, w.buildingCost(this.player, want))) {
+        // The first Barracks from all there is: with the wood kept for a Storage Pit over the sea, an island
+        // town reached the Tool Age on a Granary and a pit, never had the 125 besides, and trained no soldier
+        // in 90 minutes.
+        const first = this.acrossSea && want === "barracks" && !bs.some((b) => b.def.id === "barracks");
+        if (want && (first ? w.players[this.player].res.covers(w.buildingCost(this.player, want)) : this.affordable(w, w.buildingCost(this.player, want)))) {
           this.placeNear(w, want, home, 5, 15, villagers);
           break;
         }
@@ -1374,7 +1385,9 @@ export class AIController {
     // at 28 with 1,600 food it could not spend, six soldiers against the enemy's 34.
     const p = w.players[this.player];
     const capped = type === "house" && p.pop >= p.popCap - 1;
-    if (this.acrossSea && !(type === "house" && p.age === 0) && !capped && p.res.wood - this.reserve(w).wood < w.buildingCost(this.player, type).wood) return;
+    // And the first Barracks (see economy): without it there is no army at all.
+    const firstBarracks = type === "barracks" && !w.buildingsOf(this.player).some((b) => b.def.id === "barracks");
+    if (this.acrossSea && !(type === "house" && p.age === 0) && !capped && !firstBarracks && p.res.wood - this.reserve(w).wood < w.buildingCost(this.player, type).wood) return;
     const builder = this.pickBuilder(villagers, near);
     if (!builder) return;
     // Further out when the ground near is all built on (a town of farms and houses had no room for a Temple
