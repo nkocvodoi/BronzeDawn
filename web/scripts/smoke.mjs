@@ -241,7 +241,8 @@ await page.mouse.down();
 await page.mouse.move(box.x1, box.y1, { steps: 5 });
 await page.mouse.up();
 check((await g(() => game.selection.length)) === box.n, `drag selects all ${box.n} villagers`);
-await page.waitForTimeout(300);
+// The status box is drawn with the frames: a slow runner (6 a second) takes a while.
+await page.waitForFunction((n) => document.querySelectorAll("#multi [data-pick]").length === n, box.n, { timeout: 5000 }).catch(() => {});
 check((await page.$$("#multi [data-pick]")).length === box.n && (await page.textContent("#owner-line")) === `${box.n} selected` && (await page.textContent("#info-0")).length > 0,
   "the status box shows each one picked, with its hit points");
 check((await page.$$eval("#commands .hk", (k) => k.map((x) => x.textContent))).includes("B"), "the command buttons show their keys");
