@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-15
 
+- [#136](https://github.com/nkocvodoi/BronzeDawn/pull/136) `npm run monkey`: chơi bừa trên Chrome thật (bấm, kéo, phím, bấm nút trong các bảng) và bắt lỗi trang, bảng kẹt, đứng hình, đồng hồ dừng; 8 trận, khoảng 5200 thao tác, không lỗi nào
 - [#135](https://github.com/nkocvodoi/BronzeDawn/pull/135) `npm run ui-shots` chụp 22 màn hình ở 5 cỡ (điện thoại dọc và ngang, laptop, 1080p, 4K) và tự kiểm bố cục. Sửa: trên điện thoại nút Menu ngoài màn hình (giao diện giờ co tới 0,45 lần; cầm dọc thì có dòng nhắc xoay ngang), khung menu chính lẹm mép; trên 4K các bảng bé xíu (giờ phóng theo màn hình, tới 2,2 lần)
 - [#134](https://github.com/nkocvodoi/BronzeDawn/pull/134) Sàng lọc lỗi: `npm run soak` chạy hàng loạt trận máy đấu máy và kiểm luật bất biến (120 trận × 3 lượt: không vỡ, lưu/tải và cùng seed chạy y hệt); F8 lưu báo lỗi mở lại được đúng trận (`npm run report`); `replica/self-test.md` ghi lỗi tìm được. Sửa: thanh máu công trình treo trên cột cờ; máy trên đảo nhỏ đặt Temple sang đảo khác nên kẹt Bronze Age; mất Town Center thì không xây lại
 - [#133](https://github.com/nkocvodoi/BronzeDawn/pull/133) Thanh máu của unit ở một độ cao cố định theo loại unit và hướng quay (trước đây nhảy lên theo dụng cụ đang giơ: câu cá +32 px, đào mỏ +17, xây +13; 3/9 dân bị cao), và nằm trên mọi thứ, không còn bị cây hay nhà che
