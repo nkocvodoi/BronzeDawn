@@ -1309,10 +1309,10 @@ describe("the original's rules", () => {
     expect(w.unitStats(1, "stone_thrower").hp).toBe(Math.round(RULES.units.get("stone_thrower")!.hp * 1.5));
     expect(w.unitCost(2, "centaur_archer").text).toBe(ResBag.of({ food: 60, gold: 40 }).text);
     expect(w.unitStats(2, "centaur_archer").range).toBe(7);
-    expect(w.unitStats(2, "villager").speed).toBeCloseTo(1.3);
-    expect(w.unitStats(3, "wolfkin_raider").train_time).toBeCloseTo(20.4);
+    expect(w.unitStats(2, "villager").speed).toBeCloseTo(1.2);
+    expect(w.unitStats(3, "wolfkin_raider").train_time).toBeCloseTo(21.6);
     expect(w.unitStats(3, "wolfkin_raider").speed).toBeCloseTo(1.8);
-    expect(w.unitStats(3, "villager").hp).toBe(35);
+    expect(w.unitStats(3, "villager").hp).toBe(30);
     for (const c of RULES.civs.filter((x) => x.fantasy)) {
       // What the computer plays to: its own units' buildings.
       expect(civBent(RULES, c).building.size, c.id).toBeGreaterThan(0);

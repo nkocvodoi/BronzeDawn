@@ -8,8 +8,8 @@
    "age": "bronze",
    "trained_at": "archery_range",
    "cost": {
-    "food": 45,
-    "wood": 45
+    "food": 50,
+    "wood": 50
    },
    "train_time": 34,
    "hp": 45,
@@ -69,7 +69,7 @@
    "age": "bronze",
    "trained_at": "barracks",
    "cost": {
-    "food": 45,
+    "food": 50,
     "gold": 25
    },
    "train_time": 30,
@@ -98,7 +98,7 @@
    "age": "bronze",
    "trained_at": "archery_range",
    "cost": {
-    "food": 40,
+    "food": 45,
     "wood": 25,
     "gold": 20
    },
@@ -193,7 +193,7 @@
    "age": "tool",
    "trained_at": "barracks",
    "cost": {
-    "food": 65
+    "food": 70
    },
    "train_time": 24,
    "hp": 50,
@@ -364,7 +364,7 @@
     {
      "type": "gather",
      "resource": "wood",
-     "rate": 1.15,
+     "rate": 1.1,
      "carry": 2
     },
     {
@@ -545,7 +545,7 @@
      "type": "stat",
      "stat": "speed",
      "op": "add",
-     "value": 0.2,
+     "value": 0.1,
      "target": {
       "units": [
        "villager"
@@ -640,7 +640,7 @@
      "type": "stat",
      "stat": "hp",
      "op": "add",
-     "value": 10,
+     "value": 5,
      "target": {
       "units": [
        "villager"
@@ -663,7 +663,7 @@
      "type": "stat",
      "stat": "train_time",
      "op": "mul",
-     "value": 0.85,
+     "value": 0.9,
      "target": {
       "tags": [
        "barracks"
