@@ -17,7 +17,9 @@
     "smoke:art": "node scripts/smoke-art.mjs",
     "import-aoe": "tsx scripts/aoe/export-aoe.ts",
     "sim:civ": "tsx scripts/civ-ai.ts",
-    "sim:races": "tsx scripts/race-winrate.ts"
+    "sim:races": "tsx scripts/race-winrate.ts",
+    "soak": "tsx scripts/soak.ts",
+    "report": "tsx scripts/report.ts"
   },
   "dependencies": {
     "peerjs": "1.5.4",

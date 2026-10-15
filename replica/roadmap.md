@@ -29,7 +29,7 @@ rồi chấm lại.
 | Giao diện | Bố cục kiểu bản gốc, phím xây B + chữ, phím luyện quân của bản gốc, đối tượng nháy khi giao việc, tốc độ 1x đến 3x, hiển thị dân tộc, tùy chọn ruộng tự trồng lại (kiểu AoE2, bật sẵn, tắt trong Menu), thời gian còn lại khi luyện quân, nghiên cứu, lên đời và xây (thanh trên cùng đếm ngược lúc lên đời); trang Help chia tab (Getting started, Mouse, Keys, Build & train, Rules, Civilizations); tự đặt phím tắt và nút chuột giữa / nút phụ (tab Keys, lưu trong trình duyệt) |
 | Hình | Mọi unit, thú, công trình (theo thời đại và kiến trúc), ô đất, cây, mỏ dựng bằng code trong `art3d/` rồi render bằng Blender; hình vẽ bằng code còn làm dự phòng; tường và vách đá nối liền |
 | Gói hình (Art Packs) | Người chơi tự nạp hình, tiếng và bản đồ từ thư mục hoặc zip, lưu trong trình duyệt; `npm run import-aoe` lấy hình, tiếng, số liệu từ bản AoE của chính mình vào `web/assets-local/` (chỉ dev server dùng, không bao giờ vào repo hay bản deploy), kể cả công trường lúc đang xây và vách đá |
-| Kiểm thử | 128 unit test, smoke test bằng chuột và phím thật trên Chrome (cả chơi online), so từng hình với dấu vân tay (`smoke:art`, 2.191 hình), trận AI đấu AI chạy không cần màn hình, CI và deploy lên GitHub Pages |
+| Kiểm thử | 128 unit test, smoke test bằng chuột và phím thật trên Chrome (cả chơi online), so từng hình với dấu vân tay (`smoke:art`, 2.191 hình), trận AI đấu AI chạy không cần màn hình, CI và deploy lên GitHub Pages; `npm run soak` chạy hàng loạt trận máy đấu máy và kiểm luật bất biến (không vỡ, lưu/tải và cùng seed chạy y hệt, không kẹt), F8 trong game lưu một báo lỗi mở lại được đúng trận (`npm run report`); lỗi tìm được ghi ở `replica/self-test.md` |
 
 ## Còn thiếu, theo thứ tự nên làm
 

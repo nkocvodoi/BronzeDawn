@@ -1317,10 +1317,27 @@ export class AIController {
     return mine ? minBy(homes, (h) => h.distance(mine)) : homes[0] ?? null;
   }
 
+  /** The Town Center lost: a new one where the villagers are. Short of its wood, everyone free cuts wood
+   *  for it, to a Storage Pit by the trees put up if there is none: a town with 1700 food and 178 wood stood
+   *  for twenty minutes with half its villagers idle, never to reach the next age. */
   private rebuildTownCenter(w: World, villagers: Unit[]) {
     const v = villagers[0];
-    if (!v || w.blockerBuilding("town_center", this.player) !== null) return;
-    this.placeNear(w, "town_center", v.pos, 2, 12, villagers);
+    if (!v) return;
+    if (w.blockerBuilding("town_center", this.player) === null) { this.placeNear(w, "town_center", v.pos, 2, 12, villagers); return; }
+    const p = w.players[this.player];
+    if (p.res.wood >= w.buildingCost(this.player, "town_center").wood || this.thinks % 3 !== 0) return;
+    const tree = w.nearestNode(Res.wood, v.pos, 40);
+    if (!tree) return;
+    const free = villagers.filter((u) => u.aboard === null && u.order.kind !== "build"
+      && (u.order.kind === "idle" || ((u.order.kind === "gather" || u.order.kind === "return") && u.lastGather !== Res.wood)));
+    const drops = w.buildingsOf(this.player).filter((b) => b.dropsOff(Res.wood));
+    if (!drops.length) {
+      const pit = w.buildingCost(this.player, "storage_pit");
+      const spot = p.res.covers(pit) ? this.findSpot(w, "storage_pit", tree.center, 1, 6, false) : null;
+      if (spot && free.length) w.place(this.player, "storage_pit", spot, free.slice(0, 3).map((u) => u.id));
+      return;
+    }
+    if (free.length) w.gather(this.player, free.map((u) => u.id), tree.id);
   }
 
   // ---- placement
@@ -1341,7 +1358,9 @@ export class AIController {
     if (this.acrossSea && !(type === "house" && p.age === 0) && !capped && p.res.wood - this.reserve(w).wood < w.buildingCost(this.player, type).wood) return;
     const builder = this.pickBuilder(villagers, near);
     if (!builder) return;
-    const spot = this.findSpot(w, type, near, minR, maxR, margin);
+    // Further out when the ground near is all built on (a town of farms and houses had no room for a Temple
+    // within 15 of its centre, and stayed in the Bronze Age with its villagers idle).
+    const spot = this.findSpot(w, type, near, minR, maxR, margin) ?? this.findSpot(w, type, near, maxR + 1, maxR + 15, margin);
     if (spot) w.place(this.player, type, spot, [builder.id]);
   }
 
@@ -1360,7 +1379,12 @@ export class AIController {
         for (let dx = -r; dx <= r; dx++) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
           const origin = new Tile(c.x + dx - half, c.y + dy - half);
-          if (w.canPlace(type, origin, this.player) && this.hasGap(w, origin, size, margin)) return origin;
+          if (!w.canPlace(type, origin, this.player) || !this.hasGap(w, origin, size, margin)) continue;
+          // Across the sea, on the land it is meant for: a small island full of farms and houses had its
+          // Temple and Government Center put on the next island over, where no builder could walk, and the
+          // town stood in the Bronze Age with 9000 gold and its villagers idle.
+          if (this.acrossSea && !this.sameLand(w, near, new Tile(origin.x + half, origin.y + half).center)) continue;
+          return origin;
         }
       }
     }

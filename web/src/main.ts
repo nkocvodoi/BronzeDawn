@@ -2,6 +2,10 @@ import { Application } from "pixi.js";
 import { RULES } from "./core/data";
 import { ASSETS } from "./game/assets";
 import { Game } from "./game/game";
+import { startLog } from "./game/report";
+
+// Console errors and warnings from the start, for a bug report (F8).
+startLog();
 
 // Bronze Dawn in the browser.   ?seed=42 plays a given map.   ?snapshot=600 fast-forwards (for screenshots).
 const params = new URLSearchParams(location.search);

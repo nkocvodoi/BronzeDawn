@@ -27,6 +27,7 @@ import { FogFilter } from "./fog";
 import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 import { SWEEP_RADIUS } from "../core/world";
 import { MouseLock } from "./mouselock";
+import { makeReport } from "./report";
 import { chordOfKey, chordOfMouse, KEY_ACTIONS, KeyAction, KeyMap, prettyChord, RESERVED } from "./keymap";
 import { Sfx, Sound, VoiceKind } from "./sound";
 
@@ -59,19 +60,24 @@ const HIT_BAR_SECONDS = 15;
 /** The part of a picture that is drawn on, from its anchor: how far up its top is, and where its left and
  *  right edges are. A sheet's frame is mostly empty (a ship's is several times the ship), so a health bar
  *  or a flame placed by the frame floated well above the thing. */
-const DRAWN = new WeakMap<Pic, { up: number; left: number; right: number }>();
+const DRAWN = new WeakMap<Pic, { up: number; body: number; left: number; right: number }>();
 function drawnBounds(pic: Pic) {
   let b = DRAWN.get(pic);
   if (b) return b;
   const c = pic.canvas, W = c.width, H = c.height;
-  let top = H, l = W, r = -1;
+  let top = H, l = W, r = -1, body = -1;
   try {
     const d = c.getContext("2d")!.getImageData(0, 0, W, H).data;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 40) { if (y < top) top = y; if (x < l) l = x; if (x > r) r = x; }
+    const rows = new Array<number>(H).fill(0);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 40) { rows[y]++; if (y < top) top = y; if (x < l) l = x; if (x > r) r = x; }
+    // The body's top: the first row as wide as a seventh of the picture, so a flagpole or a spire is not it.
+    const wide = Math.max(4, (r - l + 1) * 0.15);
+    body = rows.findIndex((n) => n >= wide);
   } catch { top = 0; l = 0; r = W - 1; }
   if (r < 0) { top = 0; l = 0; r = W - 1; }
+  if (body < 0) body = top;
   const sx = pic.w / W, sy = pic.h / H;
-  b = { up: pic.h * pic.ay - top * sy, left: l * sx - pic.w * pic.ax, right: (r + 1) * sx - pic.w * pic.ax };
+  b = { up: pic.h * pic.ay - top * sy, body: pic.h * pic.ay - body * sy, left: l * sx - pic.w * pic.ax, right: (r + 1) * sx - pic.w * pic.ax };
   DRAWN.set(pic, b);
   return b;
 }
@@ -1609,6 +1615,36 @@ export class Game {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  /** F8 or the menu's Report a bug: a file with the game as it stands, a picture of the map, the latest
+   *  messages and console errors, the settings and the screen, to send. Opened like a saved game, it is
+   *  that game at that moment. */
+  async reportBug() {
+    const w = this.world, inGame = this.started && !this.ended;
+    let picture: string | null = null;
+    // What the player sees of the map, not the whole of it.
+    try { picture = await this.app.renderer.extract.base64({ target: this.app.stage, frame: this.app.screen.clone(), format: "png" }); } catch { /* a lost context */ }
+    const text = (sel: string) => ((document.querySelector(sel) as HTMLElement | null)?.innerText ?? "").trim();
+    const overlay = document.querySelector("#overlay") as HTMLElement | null;
+    const game = inGame ? {
+      time: clock(w.time), seed: this.seed, size: w.map.width, mapType: this.mapType, me: this.me, watching: this.watching, speed: this.speed,
+      online: !!this.net, players: w.players.map((p) => ({ name: p.name, civ: p.civ?.id ?? null, age: p.age, defeated: p.defeated, pop: p.pop, res: [...p.res.values].map(Math.floor) })),
+      selection: this.selectedEntities().map((e) => `${e.id}:${e instanceof Unit ? e.def.id : e instanceof Building ? e.def.id : e.name}`),
+    } : null;
+    let save: SaveFile | null = null;
+    if (inGame) { try { save = saveWorld(w, this.uiState()); } catch (e) { console.error("report: could not save the game", e); } }
+    const report = makeReport({ game, save, picture, panels: {
+      status: text("#status"), commands: this.hud.commands.map((c) => `${c.key} ${c.title}${c.blocker ? ` (${c.blocker})` : ""}`).join(" | "),
+      messages: text("#messages"), overlay: overlay && !overlay.hidden ? overlay.innerText.slice(0, 4000) : "",
+    } });
+    const blob = await pack(report as unknown as SaveFile);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `bronze-dawn-bug-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.bdreport`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    this.hud.message("Bug report saved: send the .bdreport file (it opens this game where it stands)");
+  }
+
   /** A saved game back on screen, as it was: the world, whose eyes you see it through, the camera. */
   loadGame(file: SaveFile) {
     let w: World;
@@ -1642,7 +1678,7 @@ export class Game {
     this.hud.showOverlay("Saved games", [
       rows ? `<table id="saves" class="diplomacy">${rows}</table>` : `<span id="saves">No saved games yet.</span>`,
       `<span class="choices">${playing ? `<button id="save-btn">Save this game</button><button id="save-file-btn">Save to a file</button>` : ""}`
-        + `<label class="file-btn"><input type="file" id="load-file" accept=".bdsave,.json" hidden><span>Load from a file</span></label>`
+        + `<label class="file-btn"><input type="file" id="load-file" accept=".bdsave,.bdreport,.json" hidden><span>Load from a file</span></label>`
         + `<button id="${playing ? "resume-btn" : "saves-back"}">${playing ? "Return to game (Esc)" : "Back"}</button></span>`,
     ], "menu");
   }
@@ -1675,7 +1711,7 @@ export class Game {
         <li><b>Advance.</b> Build two of ${(tool.requires_from ?? []).map(name).join(", ")}, then press ${kbd("A")} at the ${name("town_center")} (${ResBag.of(tool.cost ?? {}).text}). Each age opens new buildings, soldiers and technologies.</li>
         <li><b>Fight.</b> A ${name("barracks")} (${kbd("B")} then ${kbd("B")}) trains soldiers. Pick them and right-click an enemy. Mix them: archers shoot from afar, cavalry is fast, stone throwers break walls, priests convert.</li>
         <li><b>Win.</b> Destroy every enemy, or keep a Wonder standing, or hold every Ruin or every Artifact, for 15 minutes.</li>
-      </ol><p class="tip">${kbd("?")} or ${kbd("F1")} opens this help at any time · ${kbd("F10")} the menu · ${kbd("Esc")} closes</p>`],
+      </ol><p class="tip">${kbd("?")} or ${kbd("F1")} opens this help at any time · ${kbd("F10")} the menu · ${kbd("Esc")} closes · ${kbd("F8")} saves a bug report to send</p>`],
       ["mouse", "Mouse", table([
         row("Left click, or drag a box", "pick units or a building · Shift adds to what is picked · Double click: all of that kind on screen"),
         row("Right click", "the order the pointer shows: move, gather, hunt, build, repair, attack, convert or heal (priests), or a building's rally point"),
@@ -1832,6 +1868,7 @@ export class Game {
         <hr>
         <button id="saves-open">Save or load a game</button>
         <button id="timeline-btn">Timeline</button>
+        <button id="report-btn">Report a bug <kbd>F8</kbd></button>
         <hr>
         ${out ? "" : `<button id="resign-open" class="danger">Resign</button>`}
         <button data-restart>Quit to a new map</button>
@@ -2703,8 +2740,9 @@ export class Game {
       if (barOn && !v.bar) { v.bar = new Graphics(); this.bars.addChild(v.bar); }
       // A unit's bar at one height for its kind: over its body standing, whatever it holds up or swings (a
       // miner's pick, an angler's rod, a priest's arms raised put the bar 17 to 32 px higher, and it jumped
-      // with every stroke). A building's over its picture as drawn (it changes with the age).
-      const up = v.isUnit && e instanceof Unit ? this.barHeight(e) : drawnBounds(v.pic).up;
+      // with every stroke). A building's over its body as drawn (it changes with the age), not over the top
+      // of its flagpole, where it hung over the building behind and looked like that one's.
+      const up = v.isUnit && e instanceof Unit ? this.barHeight(e) : drawnBounds(v.pic).body;
       if (v.bar && barOn) v.bar.position.set(v.root.x - bw / 2, v.root.y - Math.round(up) - 7);
       if (v.bar) v.bar.visible = barOn && v.root.visible;
       if (v.bar && barOn) {
@@ -3215,6 +3253,7 @@ export class Game {
         if (t.closest("#resume-btn")) { this.hud.hideOverlay(); this.paused = false; return; }
         if (t.closest("#help-open")) { this.showHelp(); return; }
         if (t.closest("#settings-open")) { this.showSettings(); return; }
+        if (t.closest("#report-btn")) { void this.reportBug(); return; }
         if (t.closest("#menu-back")) { this.showMenu(); return; }
         if (t.closest("#keys-open")) { this.showHelp("keys"); return; }
         if (t.closest("#resign-open")) { this.showResign(); return; }
@@ -3626,6 +3665,8 @@ export class Game {
 
   private keyDown(e: KeyboardEvent) {
     const key = e.key;
+    // A bug report, from anywhere: in a game, on the menus, in the help.
+    if (key === "F8") { e.preventDefault(); void this.reportBug(); return; }
     // Typing in a box (a room code, a team) is typing, not orders: the game's keys leave it alone. Enter in
     // the room code box joins.
     const t = e.target as HTMLElement | null;

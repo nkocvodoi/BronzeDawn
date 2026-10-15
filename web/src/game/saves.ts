@@ -1,6 +1,7 @@
 // Saved games in the browser: gzipped, in IndexedDB (a save is too big for localStorage), and to and from a
 // file on disk. Each keeps a few words to list it by.
 import type { SaveFile } from "../core/save";
+import { saveIn } from "./report";
 
 export interface SaveInfo { id: number; name: string; saved: string; time: number }
 interface Stored extends SaveInfo { data: Blob }
@@ -35,7 +36,7 @@ export async function unpack(data: Blob): Promise<SaveFile> {
   const head = new Uint8Array(await data.slice(0, 2).arrayBuffer());
   const gz = head[0] === 0x1f && head[1] === 0x8b;
   const text = gz ? await new Response(data.stream().pipeThrough(new DecompressionStream("gzip"))).text() : await data.text();
-  return JSON.parse(text) as SaveFile;
+  return saveIn(JSON.parse(text)); // a bug report opens the game in it
 }
 
 export async function storeSave(name: string, file: SaveFile): Promise<void> {

@@ -4,6 +4,7 @@
 import { Building, Entity, ResourceNode, Unit } from "../core/entities";
 import { Res, RES_ALL, RES_KEY } from "../core/rules";
 import { scores } from "../core/score";
+import { logMessage } from "./report";
 import { clock } from "../core/sim";
 import type { World } from "../core/world";
 import { iconPic, playerColor, reliefTexture, resourceIcons, statIcons, stoneTexture, type Arch } from "./art";
@@ -454,6 +455,7 @@ export class HUD {
   }
 
   message(text: string, kind: "info" | "warn" = "info") {
+    logMessage(text);
     const d = document.createElement("div");
     d.textContent = text;
     d.className = kind;
