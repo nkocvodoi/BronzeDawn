@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-15
 
+- [#138](https://github.com/nkocvodoi/BronzeDawn/pull/138) Self-test mục 5: chốt giữ luật đồ dân đang mang đi theo lên thuyền
 - [#137](https://github.com/nkocvodoi/BronzeDawn/pull/137) Máy trên đảo cạn sạch không còn đứng không: thiếu gỗ vẫn chở dân sang đảo khác chặt rồi đón về; hết việc cần thì đào đá; tới 3 chuyến thuyền cùng lúc. Đổi luật: đồ dân đang mang đi theo lên thuyền, không mất như trước. Soak 216 trận: số lần kẹt trên bản đồ đảo từ 12 xuống 5
 - [#136](https://github.com/nkocvodoi/BronzeDawn/pull/136) `npm run monkey`: chơi bừa trên Chrome thật (bấm, kéo, phím, bấm nút trong các bảng) và bắt lỗi trang, bảng kẹt, đứng hình, đồng hồ dừng; 8 trận, khoảng 5200 thao tác, không lỗi nào
 - [#135](https://github.com/nkocvodoi/BronzeDawn/pull/135) `npm run ui-shots` chụp 22 màn hình ở 5 cỡ (điện thoại dọc và ngang, laptop, 1080p, 4K) và tự kiểm bố cục. Sửa: trên điện thoại nút Menu ngoài màn hình (giao diện giờ co tới 0,45 lần; cầm dọc thì có dòng nhắc xoay ngang), khung menu chính lẹm mép; trên 4K các bảng bé xíu (giờ phóng theo màn hình, tới 2,2 lần)
