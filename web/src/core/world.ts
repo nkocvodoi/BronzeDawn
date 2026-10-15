@@ -547,6 +547,8 @@ export class World {
     const p = this.players[player];
     if (p.age + 1 >= this.rules.ages.length) return "Already in the last age";
     if (this.buildings.some((b) => b.alive && b.owner === player && b.queue.some((q) => q.kind === "age"))) return "Already advancing";
+    // Ages are researched at a Town Center: without one, none.
+    if (!this.buildings.some((b) => b.alive && b.complete && b.owner === player && b.def.id === "town_center")) return "Needs a Town Center";
     const next = this.rules.ages[p.age + 1];
     const need = next.requires_buildings ?? 0;
     const have = this.ageRequirementCount(player);

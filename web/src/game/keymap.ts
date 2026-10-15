@@ -62,7 +62,7 @@ export const KEY_ACTIONS: KeyAction[] = [
 ];
 
 /** Keys the player cannot take: they open the help and menu, cancel, chat, scroll and zoom. */
-export const RESERVED = new Set(["Escape", "F1", "F10", "Shift+/", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+export const RESERVED = new Set(["Escape", "F1", "F8", "F10", "Shift+/", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
   // Ctrl + "+" and Ctrl + "-" zoom the map, in place of the browser's page zoom.
   "Ctrl+=", "Ctrl+-", "Ctrl+Shift+=", "Ctrl+Shift+-"]);
 

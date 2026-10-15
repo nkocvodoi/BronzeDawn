@@ -6,7 +6,7 @@ import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { crc32, deflateRawSync } from "node:zlib";
+import { crc32, deflateRawSync, gunzipSync } from "node:zlib";
 import { chromium } from "playwright-core";
 
 /** A zip of a folder, its files inside a folder of the same name, as zipping a folder by hand gives:
@@ -574,6 +574,15 @@ await page.click("[data-tribute='1:2:500']");
 check(await g(() => game.world.players[0].res.gold === 75 && game.world.players[1].res.gold >= 500), "500 gold sent from the Market costs 625");
 await page.keyboard.press("Escape");
 check(await g(() => !game.hud.overlayShown && !game.paused), "Esc closes the tribute screen");
+
+// F8: a bug report, with the game in it.
+{
+  const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 15000 }), page.keyboard.press("F8")]);
+  const path = await dl.path();
+  const r = JSON.parse(gunzipSync(readFileSync(path)).toString("utf8"));
+  check(dl.suggestedFilename().endsWith(".bdreport") && r.kind === "bdreport" && r.save?.world && typeof r.picture === "string" && Array.isArray(r.log),
+    "F8 saves a bug report with the game, a picture and the log in it");
+}
 
 // Resign, asked once more: everything of yours falls and the game is lost.
 await page.click("#menu-btn");
