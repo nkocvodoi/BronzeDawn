@@ -898,6 +898,23 @@ describe("the original's rules", () => {
     expect(riders.every((u) => !u.alive)).toBe(true);
   });
 
+  it("a villager's load goes aboard with it and ashore again", () => {
+    const w = blank(40);
+    for (let y = 0; y < 40; y++) for (let x = 12; x < 26; x++) w.map.terrain[y * 40 + x] = Terrain.water;
+    const t = w.spawnUnit("light_transport", 0, new Tile(12, 10).center);
+    const v = w.spawnUnit("villager", 0, new Tile(10, 10).center);
+    v.carry = 8; v.carryRes = Res.wood;
+    w.board(0, [v.id], t.id);
+    run(w, 10);
+    expect(v.aboard).toBe(t.id);
+    expect(v.carry).toBe(8);
+    w.smart(0, [t.id], null, new Tile(30, 12).center);
+    run(w, 30);
+    expect(v.aboard).toBeNull();
+    expect(v.carry).toBe(8);
+    expect(v.carryRes).toBe(Res.wood);
+  });
+
   it("no wild animal, mine or berry bush is put on a sandbank out at sea", () => {
     // The original's island maps have small islands of their own with a mine on each: a few dozen tiles of land,
     // not a sandbank.

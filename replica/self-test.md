@@ -74,17 +74,37 @@ hay đứng dưới nước, **0** công trình chồng nhau, **0** tài nguyên
   Center (Delete), chọn một dân: không còn nút lên đời; đủ 200 gỗ thì xây lại được Town Center.
 - **Duyệt:** [ ]
 
-### 5. Đảo nhà cạn sạch cuối trận: cả thị trấn đứng không (AI) — CHƯA SỬA, cần làm riêng
+### 5. Đảo nhà cạn sạch cuối trận: cả thị trấn đứng không (AI) — đã sửa (đợt 4)
 
 - **Thấy ở đâu:** chạy hàng loạt lần 2, Small Islands, phút 32–44: trận #59 (seed 1059) Palmyran Hardest 27/27 dân
   đứng không; trận #14 (seed 1014) Roman Hard 18/20, Dwarf 15/18; trận #104 Choson 8/8.
-- **Vì sao:** đảo nhà chỉ còn mỏ đá; gỗ và thức ăn gần hết (ví dụ #59: 41 gỗ, 7 thức ăn, 5400 vàng). Đảo khác còn
-  4000 gỗ, 19000 vàng, 18000 đá, nhưng máy chỉ biết chở dân sang **đốn gỗ**, và muốn sang phải có 120 gỗ cho Storage
-  Pit bên đó; ruộng cũng cần gỗ. Thử cho dân sang đốn rồi mang gỗ về nhà khi kẹt: không đỡ (đã bỏ).
-- **Cần làm:** máy biết đưa dân sang đảo khác đào vàng, đá và hái quả, săn, câu cá bằng thuyền khi đảo nhà cạn; giữ
-  lại gỗ cho chuyến đầu từ sớm hơn. Việc lớn của AI trên đảo, nên làm thành một đợt riêng.
-- **Tự kiểm (để thấy lỗi):** New game → Small Islands, cỡ Small, 3–4 máy Hardest, chế độ chỉ xem, tua 10x tới phút
-  40, bấm V xem từng máy.
+- **Vì sao (bốn chỗ):**
+  1. Không đủ 120 gỗ cho Storage Pit bên kia thì máy không chở ai sang, mà gỗ thì chỉ bên kia mới có (#59: 41 gỗ,
+     5400 vàng, cả 27 dân đứng không).
+  2. **Lên thuyền là mất hết đồ đang mang** (luật cũ của game: `carry = 0` khi lên thuyền). Dân chặt gỗ bên kia rồi
+     chở về, tới nơi tay không.
+  3. Về tới nhà, dân bị giao việc khác ngay khi tay còn cầm gỗ, nên gỗ rơi mất (mỗi dân chỉ mang một loại).
+  4. Máy không cho đào đá khi kho đã trên 200, nên dân đứng không ngay cạnh 1800 đá (#122: 22/22). Và mỗi lúc chỉ có
+     một chuyến thuyền 3–5 người, dù 3 thuyền khác nằm không (#122: 17 dân chờ ở nhà).
+- **Sửa:**
+  1. Khi thị trấn đã đứng không, dân vẫn sang dù thiếu gỗ: chặt đầy tay, được đón về, cất vào Town Center; vài
+     chuyến là đủ tiền Storage Pit.
+  2. Đồ đang mang **đi theo dân lên thuyền** và còn nguyên khi lên bờ, như bản gốc. Đây là đổi luật, áp dụng cả cho
+     người chơi.
+  3. Về tới nhà, dân cất đồ vào Town Center trước rồi mới nhận việc.
+  4. Hết việc "cần" thì lấy thứ còn lại (đá), không đứng không. Khi thị trấn đứng không, chạy tới 3 chuyến thuyền
+     cùng lúc.
+- **Đo:** soak 216 trận, 45 phút mỗi trận. Trên 48 trận đảo (Large + Small Islands): main kẹt 12 lần, bản sửa 1–3
+  còn 10, bản cuối còn 5. Bản đồ đất liền (168 trận): 0 kẹt cả trước và sau. Không crash, không lỗi khác. Năm lần
+  còn lại đều là thị trấn tàn (6–9 dân, phút 34–42), trong đó:
+  - #104: thị trấn đang bị đánh sập, 14 lính địch trong làng, mất Town Center.
+  - #167: cả bản đồ cạn thật, còn 160 gỗ; thức ăn nằm sát Town Center địch.
+- **Cần chủ repo quyết:** sửa 2 đổi luật vận chuyển (đồ mang theo lên thuyền). Nếu muốn giữ luật cũ, phải bỏ cả
+  chuyến chở gỗ về.
+- **Tự kiểm:** New game → Small Islands, cỡ Small, 3–4 máy Hardest, chế độ chỉ xem, tua 10x tới phút 30–40, bấm V
+  xem từng máy: khi đảo nhà hết gỗ, thuyền chở dân qua lại, có Storage Pit mọc bên đảo khác. Với chính mình: cho một
+  dân chặt gỗ (thấy bó gỗ trên tay), cho lên thuyền rồi thả xuống bờ khác: vẫn còn bó gỗ, mang tới Storage Pit thì
+  được cộng.
 - **Duyệt:** [ ]
 
 ## Đợt 2: chụp mọi màn hình ở 5 cỡ (2026-10-15)
