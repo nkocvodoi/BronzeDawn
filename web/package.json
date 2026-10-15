@@ -20,7 +20,8 @@
     "sim:races": "tsx scripts/race-winrate.ts",
     "soak": "tsx scripts/soak.ts",
     "report": "tsx scripts/report.ts",
-    "ui-shots": "node scripts/ui-shots.mjs"
+    "ui-shots": "node scripts/ui-shots.mjs",
+    "monkey": "node scripts/monkey.mjs"
   },
   "dependencies": {
     "peerjs": "1.5.4",
