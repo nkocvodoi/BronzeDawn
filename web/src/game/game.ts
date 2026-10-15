@@ -28,6 +28,7 @@ import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 import { SWEEP_RADIUS } from "../core/world";
 import { MouseLock } from "./mouselock";
 import { makeReport } from "./report";
+import { hints } from "../core/hints";
 import { chordOfKey, chordOfMouse, KEY_ACTIONS, KeyAction, KeyMap, prettyChord, RESERVED } from "./keymap";
 import { Sfx, Sound, VoiceKind } from "./sound";
 
@@ -281,6 +282,8 @@ export class Game {
   private keys = new Set<string>();
   /** Whether the command buttons show their key, as the help line does on hovering (on unless turned off). */
   private hotkeys = store.get("bd-hotkeys") !== "off";
+  /** Hints for a new player on the command buttons (core/hints.ts), on unless turned off in Settings. */
+  private hintsOn = store.get("bd-hints") !== "off";
   /** The shortcuts, as the player has set them. */
   readonly keymap = new KeyMap(store);
   /** The slot waiting for a key or mouse button, on the Keys page of the help. */
@@ -1896,6 +1899,7 @@ export class Game {
         ${t("lock-btn", "Keep the mouse in the game", this.lock.wanted, "Alt+Tab or Esc lets go")}
         <h3>Shortcuts</h3>
         ${t("hotkeys-btn", "Show the keys on the buttons", this.hotkeys)}
+        ${t("hints-btn", "Hints for new players", this.hintsOn, "what suits your civilization is lit a little brighter")}
         <button id="keys-open">Change the shortcuts…</button>
       </div>`,
       `<div class="choices"><button id="menu-back">Back</button><button id="resume-btn">Return to game <kbd>Esc</kbd></button></div>`,
@@ -2882,6 +2886,14 @@ export class Game {
   private menu: "main" | "build" = "main";
   private menuFor = "";
 
+  /** The hints, worked out again once a second of the game at most: the buttons are drawn every frame. */
+  private hintCache: { at: number; ids: Set<string> } | null = null;
+  private hintsNow() {
+    const at = Math.floor(this.world.time);
+    if (this.hintCache?.at !== at) this.hintCache = { at, ids: hints(this.world, this.me) };
+    return this.hintCache.ids;
+  }
+
   private commands(sel: Entity[]): Command[] {
     const w = this.world, me = this.me;
     const mine = sel.filter((e) => e.owner === me);
@@ -2893,10 +2905,14 @@ export class Game {
     const del: Command = { key: "Delete", title: "Delete", detail: "Del", blocker: blocked.every((b) => b) ? blocked[0] : null, icon: "delete", pin: true,
       action: () => this.deleteSelection() };
     const units = mine.filter((e): e is Unit => e instanceof Unit);
+    // For a new player: what suits the civilization's strengths, a little brighter until it is done (Settings).
+    const hinted = this.hintsOn ? this.hintsNow() : new Set<string>();
+    const why = `suggested: it suits the ${w.players[me].civ?.name ?? "civilization"}'s strengths`;
     if (units.some((u) => u.isVillager)) {
       if (this.menu === "main") {
+        const toBuild = [...hinted].some((id) => { const d = this.rules.buildings.get(id); return !!d && w.buildingShown(id, me) && this.rules.ages.findIndex((a) => a.id === d.age) <= w.players[me].age; });
         return [
-          { key: "B", title: "Build", detail: "open the build menu", blocker: null, icon: "build", action: () => { this.menu = "build"; } },
+          { key: "B", title: "Build", detail: "open the build menu", blocker: null, icon: "build", hint: toBuild, help: toBuild ? why : undefined, action: () => { this.menu = "build"; } },
           { key: "R", title: "Repair", detail: "click a damaged building; costs resources", blocker: null, icon: "repair",
             action: () => { this.repairPending = true; this.hud.message("Click a damaged building to repair"); } },
           { key: "S", title: "Stop", detail: "", blocker: null, icon: "stop", action: () => this.issue({ k: "stop", ids: [...this.selection] }) },
@@ -2910,7 +2926,7 @@ export class Game {
         // As in the original, a building appears in the menu once your age allows it.
         if (this.rules.ages.findIndex((a) => a.id === def.age) > w.players[me].age) continue;
         out.push({ key: BUILD_KEYS[base], title: def.name, detail: w.buildingCost(me, id).text + (WALL_TIER[id] !== undefined ? " a tile, drag a line" : ` · ${duration(w.buildingStats(me, id).build_time)} for one villager`),
-          blocker: w.blockerBuilding(id, me), icon: id, action: () => { this.beginPlacing(id); this.menu = "main"; } });
+          blocker: w.blockerBuilding(id, me), icon: id, hint: hinted.has(id), help: hinted.has(id) ? why : undefined, action: () => { this.beginPlacing(id); this.menu = "main"; } });
       }
       out.push({ key: "Escape", title: "Back", detail: "", blocker: null, icon: "back", pin: true, action: () => { this.menu = "main"; } });
       return out;
@@ -2984,7 +3000,7 @@ export class Game {
         action: () => { this.showTribute(); this.paused = true; } });
     }
     for (const t of w.techsAt(b, me)) {
-      out.push({ key: spare(), title: t.name, detail: `${ResBag.of(t.cost).text} · ${duration(t.time ?? 30)}`, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules), row: 1, action: () => {
+      out.push({ key: spare(), title: t.name, detail: `${ResBag.of(t.cost).text} · ${duration(t.time ?? 30)}`, blocker: w.blockerTech(t.id, me), icon: t.id, help: describe(t, this.rules) + (hinted.has(t.id) ? `<br>${why}` : ""), hint: hinted.has(t.id), row: 1, action: () => {
         const why = this.issue({ k: "research", building: b.id, tech: t.id });
         if (typeof why === "string") this.hud.message(why, "warn");
       } });
@@ -3219,6 +3235,12 @@ export class Game {
         return;
       }
       if (t.closest("#fs-btn")) { this.toggleFullscreen(); return; }
+      if (t.closest("#hints-btn")) {
+        this.hintsOn = !this.hintsOn;
+        store.set("bd-hints", this.hintsOn ? "on" : "off");
+        document.querySelector("#hints-btn")?.classList.toggle("off", !this.hintsOn);
+        return;
+      }
       if (t.closest("#hotkeys-btn")) {
         this.hotkeys = !this.hotkeys;
         store.set("bd-hotkeys", this.hotkeys ? "on" : "off");
