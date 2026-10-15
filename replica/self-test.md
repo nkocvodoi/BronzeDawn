@@ -99,8 +99,7 @@ hay đứng dưới nước, **0** công trình chồng nhau, **0** tài nguyên
   còn lại đều là thị trấn tàn (6–9 dân, phút 34–42), trong đó:
   - #104: thị trấn đang bị đánh sập, 14 lính địch trong làng, mất Town Center.
   - #167: cả bản đồ cạn thật, còn 160 gỗ; thức ăn nằm sát Town Center địch.
-- **Cần chủ repo quyết:** sửa 2 đổi luật vận chuyển (đồ mang theo lên thuyền). Nếu muốn giữ luật cũ, phải bỏ cả
-  chuyến chở gỗ về.
+- **Chủ repo đã chốt (2026-10-15):** giữ luật mới, đồ dân đang mang đi theo dân lên thuyền.
 - **Tự kiểm:** New game → Small Islands, cỡ Small, 3–4 máy Hardest, chế độ chỉ xem, tua 10x tới phút 30–40, bấm V
   xem từng máy: khi đảo nhà hết gỗ, thuyền chở dân qua lại, có Storage Pit mọc bên đảo khác. Với chính mình: cho một
   dân chặt gỗ (thấy bó gỗ trên tay), cho lên thuyền rồi thả xuống bờ khác: vẫn còn bó gỗ, mang tới Storage Pit thì
