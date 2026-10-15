@@ -6,6 +6,10 @@ liệu đo, cách kiểm tra) nằm trong mô tả của từng PR. Danh sách t
 
 Mỗi PR mới thêm một dòng vào đầu danh sách.
 
+## 2026-10-15
+
+- [#133](https://github.com/nkocvodoi/BronzeDawn/pull/133) Thanh máu của unit ở một độ cao cố định theo loại unit và hướng quay (trước đây nhảy lên theo dụng cụ đang giơ: câu cá +32 px, đào mỏ +17, xây +13; 3/9 dân bị cao), và nằm trên mọi thứ, không còn bị cây hay nhà che
+
 ## 2026-10-14
 
 - [#132](https://github.com/nkocvodoi/BronzeDawn/pull/132) Hết nhấp nháy sáng tối khi lướt bản đồ trên PC đặt Scale 125%/150%: lưới chấm của sương mù và vị trí bản đồ tính theo điểm ảnh thật

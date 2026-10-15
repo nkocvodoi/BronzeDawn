@@ -233,6 +233,8 @@ export class Game {
   private floorOf = new Map<number, Sprite>();
   private entities = new Container();
   private effects = new Container();
+  /** Health bars, over everything on the map (a tree or a house in front never hides one), as the original. */
+  private bars = new Container();
   /** The flags of the selected units' walks: where each is going, and the waypoints after. */
   private routes = new Graphics();
   /** Walks laid with Shift + click, by the group they were laid for: the points clicked, in order. Only these
@@ -317,7 +319,7 @@ export class Game {
     this.popLimit = Number(remembered("bd-pop-limit", (rules.economy.pop_limits ?? []).map(String), String(rules.economy.pop_max)));
     this.world = new World(rules, seed, ["You", "Enemy"]);
     this.entities.sortableChildren = true;
-    this.worldLayer.addChild(this.terrain, this.floors, this.entities, this.effects, this.fogSprite, this.overFog);
+    this.worldLayer.addChild(this.terrain, this.floors, this.entities, this.effects, this.bars, this.fogSprite, this.overFog);
     // Hard black edges and a stipple over explored ground, drawn on the GPU from the smooth fog texture.
     this.fogFilter = new FogFilter(app.renderer.resolution);
     this.fogSprite.filters = [this.fogFilter.filter];
@@ -349,9 +351,9 @@ export class Game {
   /** A new world on screen: everything drawn for the old one goes. */
   private useWorld(w: World) {
     this.world = w;
-    for (const v of this.views.values()) v.root.destroy({ children: true });
+    for (const v of this.views.values()) this.dropView(v);
     this.views.clear();
-    for (const g of this.ghosts.values()) g.view.root.destroy({ children: true });
+    for (const g of this.ghosts.values()) this.dropView(g.view);
     this.ghosts.clear();
     this.seen.clear();
     this.selection = [];
@@ -2296,7 +2298,7 @@ export class Game {
             // carcass to cut up is that carcass now: no fading body as well.
             if (v.isUnit && v.root.visible && !e.deleted && !e.carcass) this.corpse(v);
             if (e.wasBuilding && this.explored(e.at.tile) && !e.deleted) this.rubble(v);
-            v.root.destroy({ children: true });
+            this.dropView(v);
             this.views.delete(e.id);
           }
           this.selection = this.selection.filter((id) => id !== e.id);
@@ -2336,7 +2338,7 @@ export class Game {
           this.sfx("heal", e.at, 1, 0.5);
           // Redraw in the new owner's colours.
           const v = this.views.get(e.id);
-          if (v) { v.root.destroy({ children: true }); this.views.delete(e.id); }
+          if (v) { this.dropView(v); this.views.delete(e.id); }
           if (e.from === this.me) this.selection = this.selection.filter((id) => id !== e.id);
           break;
         }
@@ -2470,6 +2472,21 @@ export class Game {
     v.sprite.height = pic.h;
     v.sprite.scale.x = Math.abs(v.sprite.scale.x) * flip;
     v.sprite.anchor.set(pic.ax, pic.ay);
+  }
+
+  /** Sprite and health bar of a view, gone together (the bar is in its own layer). */
+  private dropView(v: View) {
+    v.bar?.destroy();
+    v.root.destroy({ children: true });
+  }
+
+  /** How high a unit's health bar sits: the top of its kind standing empty-handed, the way it faces now (a
+   *  centaur seen from the side is its horse's length; from the front, its rider). It changes when the unit
+   *  turns, not with what it holds up or swings. */
+  private barHeight(u: Unit): number {
+    const pic = unitPic({ type: u.def.id, owner: 0, facing: "front", pose: "idle", frame: 0, tool: "none", carry: null, t: 0,
+      dir: screenDirection(u.facing.x, u.facing.y), civ: this.civId(u.owner) });
+    return drawnBounds(pic).up;
   }
 
   private civId(owner: number): string | undefined {
@@ -2683,10 +2700,13 @@ export class Game {
       }
       const hit = v.hitAt !== undefined && this.world.time - v.hitAt < HIT_BAR_SECONDS && e.hp < e.maxHp;
       const bw = v.barW, barOn = (sel || hit) && bw > 0 && !frozen;
-      if (barOn && !v.bar) { v.bar = new Graphics(); v.root.addChild(v.bar); }
-      // Just above the top of the picture as drawn (it changes with the pose and the age).
-      if (v.bar && barOn) v.bar.position.set(-bw / 2, -Math.round(drawnBounds(v.pic).up) - 7);
-      if (v.bar) v.bar.visible = barOn;
+      if (barOn && !v.bar) { v.bar = new Graphics(); this.bars.addChild(v.bar); }
+      // A unit's bar at one height for its kind: over its body standing, whatever it holds up or swings (a
+      // miner's pick, an angler's rod, a priest's arms raised put the bar 17 to 32 px higher, and it jumped
+      // with every stroke). A building's over its picture as drawn (it changes with the age).
+      const up = v.isUnit && e instanceof Unit ? this.barHeight(e) : drawnBounds(v.pic).up;
+      if (v.bar && barOn) v.bar.position.set(v.root.x - bw / 2, v.root.y - Math.round(up) - 7);
+      if (v.bar) v.bar.visible = barOn && v.root.visible;
       if (v.bar && barOn) {
         const f = Math.max(0, e.hp / e.maxHp);
         v.bar.clear().rect(0, 0, bw, 4).fill(0x000000).rect(0, 0, bw * f, 4).fill(f > 0.5 ? 0x33cc33 : f > 0.25 ? 0xdddd33 : 0xdd3333);
@@ -2708,7 +2728,7 @@ export class Game {
       show(b, now || this.seen.has(b.id), !now);
     }
     for (const [id, g] of this.ghosts) {
-      if (this.anyVisible(g.tiles)) { g.view.root.destroy({ children: true }); this.ghosts.delete(id); }
+      if (this.anyVisible(g.tiles)) { this.dropView(g.view); this.ghosts.delete(id); }
     }
     for (const n of w.nodes) {
       if (!onScreen(n.center)) { off(n); continue; }
