@@ -106,8 +106,16 @@ export class HUD {
     resourceIcons().forEach((url, i) => { this.res[i].style.backgroundImage = `url(${url})`; });
     // One unit is a pixel of an 800 x 600 screen, so the interface keeps the original's proportions.
     const fit = () => {
-      const u = Math.max(0.75, Math.min(3, Math.min(window.innerWidth / 800, window.innerHeight / 600)));
+      // Down to 0.45 so a phone's screen holds it all: at 0.75 the bar along the top needed 600 px and its Menu
+      // button was off a phone's edge, where it could not be pressed.
+      const u = Math.max(0.45, Math.min(3, Math.min(window.innerWidth / 800, window.innerHeight / 600)));
       document.documentElement.style.setProperty("--u", `${u}px`);
+      // The panels (menus, help) grow from 1x at 1280 x 800 to 2.2x on a 4K screen.
+      const zoom = Math.max(1, Math.min(2.2, Math.min(window.innerWidth / 1280, window.innerHeight / 800)));
+      const root = document.documentElement.style;
+      root.setProperty("--zoom", String(zoom));
+      root.setProperty("--zvw", `${window.innerWidth / zoom}px`);
+      root.setProperty("--zvh", `${window.innerHeight / zoom}px`);
     };
     fit();
     window.addEventListener("resize", fit);

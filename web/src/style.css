@@ -5,6 +5,9 @@
    takes the colours and motifs of your civilization's architecture. Every texture is drawn in code. */
 :root {
   --u: 1px;
+  --zoom: 1;
+  --zvw: 100vw;
+  --zvh: 100vh;
   --edge-light: #f2e2bc;
   --edge-dark: #3a2a14;
   --text: #ffffff;
@@ -179,9 +182,12 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 
 /* ---- start, menu, help and end screens */
 #overlay { position: fixed; inset: 0; display: grid; place-items: center; z-index: 10; background: rgba(0, 0, 0, .35); }
+/* Bigger on a big screen, as the bars round the map are (a 4K screen had a menu a sixth of its height):
+   --zoom from the window, and the screen's size in the zoomed units for the panels' limits. */
+#overlay > * { zoom: var(--zoom, 1); }
 /* Taller than the screen (a laptop, a phone): the card scrolls inside itself; the page never does. */
 #overlay .card {
-  max-width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px);
+  max-width: min(760px, calc(var(--zvw) - 32px)); max-height: calc(var(--zvh) - 24px); max-height: calc(var(--zvh) - 24px);
   overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
   box-sizing: border-box; padding: 26px 36px; text-align: center; color: #fff;
   background: var(--stone) #463c2e; background-size: 64px 64px;
@@ -196,7 +202,7 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay .help p { font-size: 14px; }
 /* The help: pages behind tabs, each short enough to read at a glance; the card keeps one size between pages. */
 #overlay .card.help {
-  width: min(860px, calc(100vw - 32px)); height: min(780px, calc(100dvh - 24px)); max-width: none; padding: 22px 28px;
+  width: min(860px, calc(var(--zvw) - 32px)); height: min(780px, calc(var(--zvh) - 24px)); max-width: none; padding: 22px 28px;
   display: flex; flex-direction: column; overflow: hidden;
 }
 #overlay .help .tabs { gap: 6px; margin: 0 0 12px; }
@@ -227,7 +233,7 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 @keyframes listen { to { filter: brightness(1.25); } }
 #overlay button:disabled { opacity: .5; cursor: default; }
 /* The game menu: groups of buttons between rules, Credits as a quiet link at the foot. */
-#overlay .menu-list { min-width: min(340px, 80vw); }
+#overlay .menu-list { min-width: min(340px, calc(var(--zvw) * 0.8)); }
 #overlay .menu-list hr { width: 100%; border: 0; border-top: 1px solid rgba(200, 164, 98, .35); margin: 4px 0; }
 #overlay button kbd, #overlay .menu kbd {
   display: inline-block; margin-left: 6px; padding: 0 5px; font: 700 12px/1.5 "Alegreya Sans", Arial, sans-serif; color: #fff6dc;
@@ -238,7 +244,7 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay .menu-foot { margin-top: 8px; }
 #overlay button.link { background: none; border: 0; padding: 4px 8px; font-size: 13px; color: #c8b896; text-decoration: underline; }
 /* Settings: a heading for each kind, the switches full width below it. */
-#overlay .settings { display: grid; gap: 7px; min-width: min(420px, 82vw); text-align: left; }
+#overlay .settings { display: grid; gap: 7px; min-width: min(420px, calc(var(--zvw) * 0.82)); text-align: left; }
 #overlay .settings h3 { margin: 10px 0 0; font: 700 15px Cinzel, serif; color: var(--gold); text-shadow: 1px 1px 0 #000; }
 #overlay .settings h3:first-child { margin-top: 0; }
 #overlay .settings > button { text-align: left; }
@@ -309,7 +315,7 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay .seg button.picked { background: linear-gradient(#a8844a, #7a5c2c); color: #fff6dc; }
 #overlay .seg button:not(.picked) { color: #b8a888; }
 #overlay table.diplomacy .bonus { font-size: 11px; color: #c8b896; max-width: 260px; }
-#timeline { display: block; width: min(640px, 80vw); height: 260px; margin: 8px auto 4px; image-rendering: auto; cursor: crosshair; }
+#timeline { display: block; width: min(640px, calc(var(--zvw) * 0.8)); height: 260px; margin: 8px auto 4px; image-rendering: auto; cursor: crosshair; }
 #timeline-read { min-height: 34px; font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
 .timeline-key { font-size: 11px; color: #c8b896; text-align: center; }
 #overlay .tabs button.on { outline: 2px solid var(--gold); }
@@ -317,7 +323,7 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay table.score td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Online: the codes to pass between friends, and who is connected. */
-#overlay textarea { display: block; width: min(560px, 80vw); margin: 6px auto; font: 11px/1.3 ui-monospace, monospace; color: #f3e4bd;
+#overlay textarea { display: block; width: min(560px, calc(var(--zvw) * 0.8)); margin: 6px auto; font: 11px/1.3 ui-monospace, monospace; color: #f3e4bd;
   background: #2a2218; border: 2px solid #c8a462; word-break: break-all; resize: vertical; }
 #overlay ul.friends { list-style: none; padding: 0; margin: 6px 0; }
 #overlay .online-note { display: block; color: var(--gold); font-size: 14px; }
@@ -340,10 +346,19 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 @keyframes bd-dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
 
 /* The main menu, after the original's: a column of framed choices. */
-#overlay .mainmenu { min-width: 420px; text-align: center; }
+#overlay .mainmenu { min-width: min(420px, calc(var(--zvw) - 32px)); text-align: center; }
+/* A phone held upright: too narrow for the game; a word to turn it, over the map while playing. */
+#turn-hint { display: none; }
+@media (orientation: portrait) and (max-width: 600px) {
+  body.playing #turn-hint {
+    display: block; position: fixed; left: 50%; top: calc(var(--top-h) + 8px); transform: translateX(-50%); z-index: 6;
+    padding: 6px 12px; font: 600 13px "Alegreya Sans", Arial, sans-serif; color: #fff6dc; background: rgba(20, 14, 8, .82);
+    border: 1px solid #c8a462; border-radius: 4px; pointer-events: none; white-space: nowrap;
+  }
+}
 #overlay .mainmenu h1 { font-size: 52px; letter-spacing: 2px; margin-bottom: 4px; }
 #overlay .mainmenu .tagline { font-family: Cinzel, serif; font-size: 15px; letter-spacing: 6px; text-transform: uppercase; color: #e8dcc0; }
-#overlay .mainmenu-list { display: flex; flex-direction: column; gap: 12px; margin: 22px auto 10px; width: min(380px, 80vw); }
+#overlay .mainmenu-list { display: flex; flex-direction: column; gap: 12px; margin: 22px auto 10px; width: min(380px, calc(var(--zvw) * 0.8)); }
 #overlay .mainmenu-list button { font-family: Cinzel, serif; font-size: 20px; letter-spacing: 2px; padding: 14px 20px;
   border: 3px solid #d8b870; border-color: #f0d898 #6a4a20 #6a4a20 #f0d898; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .35); }
 #overlay .mainmenu-list button:hover { color: #fff2c0; text-shadow: 0 0 6px rgba(255, 220, 120, .7), 1px 1px 0 #000; }

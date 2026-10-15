@@ -9,6 +9,7 @@ Mỗi đợt sàng lọc thêm vào cuối. Cột "Duyệt" để chủ repo đ�
 | Công cụ | Dùng thế nào | Bắt được gì |
 | --- | --- | --- |
 | **F8** (hoặc Menu → Report a bug) | Bấm khi thấy lỗi. Game tải về một file `.bdreport`: trận đang chơi (lưu nguyên), ảnh khung nhìn, 150 dòng thông báo và lỗi console gần nhất, cài đặt, cỡ màn hình | Gửi file này là đủ: mở bằng Saved Games → Load from a file là vào đúng trận đó, đúng lúc đó. Đọc không cần trình duyệt: `npm run report -- file.bdreport` (in tóm tắt, tách ảnh ra `.png`, chạy tiếp 2 phút xem có vỡ không) |
+| `npm run build && npm run ui-shots` | Chạy từ `web/`. Mở `web/ui-shots/index.html` để lướt ảnh | Mọi màn hình (menu chính, cài đặt trận, chơi online, art pack, lưu/tải, 5 trang Help, trong trận: Town Center, dân, chọn nhiều, Menu, Settings, Timeline, Diplomacy, Tribute, Help, lưu/tải, Resign, màn thua) ở 5 cỡ: điện thoại dọc 390×844 và ngang 844×390, laptop 1366×768, 1920×1080, 4K. Tự kiểm: trang cuộn ngang, bảng lòi ra ngoài màn hình, chữ bị cắt, nút đè nhau (chỉ phần nhìn thấy), nút ngoài màn hình, lỗi console. Những gì cần mắt người (chữ quá nhỏ, cân đối) thì xem ảnh |
 | `npm run soak -- [số trận] [phút] [phần] [số phần]` | Chạy từ `web/`. Ví dụ 8 tiến trình cùng lúc: `npm run soak -- 120 45 0 8` … `7 8` | Máy đấu máy trên mọi kiểu bản đồ, cỡ, 2–8 người, mọi dân tộc và mức AI; mỗi 10 giây game kiểm: không vỡ, unit không ra ngoài bản đồ hay đứng dưới nước, tài nguyên không âm, dân số không quá giới hạn (trừ quân cải đạo), hai công trình không chồng ô, dân không đứng không 3 phút khi còn tài nguyên, không kẹt thời đại 10 phút khi đủ điều kiện; lưu ở phút 8 rồi tải lại phải chạy y hệt; cùng seed hai lần phải ra cùng một trận. Mỗi lỗi ghi số trận, seed, phút: chạy lại được |
 
 ## Đợt 1 (2026-10-15)
@@ -83,6 +84,41 @@ hay đứng dưới nước, **0** công trình chồng nhau, **0** tài nguyên
   lại gỗ cho chuyến đầu từ sớm hơn. Việc lớn của AI trên đảo, nên làm thành một đợt riêng.
 - **Tự kiểm (để thấy lỗi):** New game → Small Islands, cỡ Small, 3–4 máy Hardest, chế độ chỉ xem, tua 10x tới phút
   40, bấm V xem từng máy.
+- **Duyệt:** [ ]
+
+## Đợt 2: chụp mọi màn hình ở 5 cỡ (2026-10-15)
+
+110 ảnh (22 màn hình × 5 cỡ). Lần đầu 25 ảnh báo lỗi; sau khi sửa: 0. Thêm một lỗi chỉ mắt người thấy (mục 8).
+
+### 6. Trên điện thoại, nút Menu nằm ngoài màn hình (giao diện) — đã sửa
+
+- **Thấy ở đâu:** điện thoại dọc 390×844, mọi màn: thanh trên cùng rộng hơn màn hình, nút Menu ở ngoài mép phải,
+  không bấm được; thanh dưới, minimap đè lên nút lệnh.
+- **Vì sao:** giao diện co theo khung 800×600 nhưng không nhỏ hơn 0,75 lần, tức cần ít nhất 600 px ngang.
+- **Sửa:** cho co tới 0,45 lần (vừa màn 390 px); điện thoại cầm dọc khi đang chơi có dòng "Turn your phone sideways
+  to play" (chơi ngang thì dễ nhìn hơn nhiều).
+- **Tự kiểm:** mở game trên điện thoại (hoặc Chrome → Inspect → thiết bị iPhone 12): thanh trên cùng nằm gọn, nút Menu
+  bấm được; cầm dọc thấy dòng nhắc xoay ngang; xoay ngang chơi được.
+- **Duyệt:** [ ]
+
+### 7. Trên điện thoại, khung menu chính lẹm mép phải (giao diện) — đã sửa
+
+- **Thấy ở đâu:** 390×844, màn hình đầu: khung rộng 394 px, lòi ra 17 px.
+- **Vì sao:** khung có độ rộng tối thiểu 420 px.
+- **Sửa:** tối thiểu 420 px hoặc bằng màn hình trừ 32 px, lấy số nhỏ hơn.
+- **Tự kiểm:** màn hình đầu trên điện thoại: khung vừa màn, hai bên có lề.
+- **Duyệt:** [ ]
+
+### 8. Trên màn 4K, mọi bảng (Menu, Settings, Help...) bé xíu (giao diện) — đã sửa
+
+- **Thấy ở đâu:** xem ảnh 3840×2160: bảng Settings chỉ cao 1/6 màn hình, chữ khó đọc, trong khi thanh trên và dưới đã to
+  theo màn hình. Tự kiểm tự động không bắt được (không có gì tràn hay đè), chỉ thấy khi nhìn.
+- **Vì sao:** các bảng có cỡ cố định tính bằng px; chỉ hai thanh quanh bản đồ co giãn.
+- **Sửa:** bảng phóng to theo màn hình, 1 lần ở 1280×800 đến 2,2 lần ở 4K (giới hạn cao và rộng tính lại theo đó, để
+  vẫn vừa màn hình). Timeline đọc chuột theo đúng tỉ lệ đó (thử ở 1280×800 và 4K: trỏ 10%, 50%, 90% đều ra 0:59,
+  5:00, 9:00).
+- **Tự kiểm:** trên màn lớn (hoặc Chrome → Inspect → kéo cửa sổ 3840×2160), mở Menu, Settings, Help, Timeline: bảng
+  to vừa phải, chữ đọc được; trong Timeline, rê chuột thì số đọc đúng chỗ con trỏ.
 - **Duyệt:** [ ]
 
 ### Đã sửa trước đợt này

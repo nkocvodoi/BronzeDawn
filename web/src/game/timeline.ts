@@ -85,8 +85,9 @@ export function drawTimeline(canvas: HTMLCanvasElement, readout: HTMLElement, w:
   draw(null);
   read(points.length - 1);
   canvas.onmousemove = (e) => {
-    const r = canvas.getBoundingClientRect();
-    const t = ((e.clientX - r.left - L) / W) * end;
+    // The pointer in the canvas's own units: on a big screen the panel is zoomed, and the box it is in is not.
+    const r = canvas.getBoundingClientRect(), k0 = r.width > 0 ? canvas.offsetWidth / r.width : 1;
+    const t = (((e.clientX - r.left) * k0 - L) / W) * end;
     let k = 0;
     for (let i = 0; i < points.length; i++) if (Math.abs(points[i].t - t) < Math.abs(points[k].t - t)) k = i;
     draw(k); read(k);
