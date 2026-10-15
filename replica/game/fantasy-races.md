@@ -481,6 +481,24 @@ nửa trận). Mốc của dân tộc gốc chạy cùng cách: Greek 45%, Egypt
 
 Mỗi con số là 102 trận, sai số khoảng ±5%. Lần sau: thêm bản đồ có nước cho cả bốn tộc, và mức AI Moderate.
 
+**Cân bằng lại (2026-10-15).** Đo lại sau #127 (máy Elf biết xây Archery Range) thì Elf lên 67%, Dwarf 62%. Lần này
+đo thêm Coastal và mức Moderate, 10 seed mỗi cặp (170 trận, sai số khoảng ±4%). Mốc: Greek 46% (Hard), 48% (Moderate).
+
+Đếm quân máy luyện cho thấy cả hai bên gần như chỉ dùng clubman, slinger, bowman, axeman. Unit riêng ra ít (vài chục
+trên vài trăm), nên tăng giá chúng không đổi được tỉ lệ thắng của Centaur và Beastfolk (đã thử, rồi trả về). Thứ
+quyết định là bonus chung: tốc độ người dân, máu người dân, tốc độ chặt gỗ.
+
+| Tộc | Trước (Hard / Moderate) | Chỉnh | Hard | Moderate | Coastal (Hard) |
+| --- | --- | --- | --- | --- | --- |
+| Elf | 67% | gỗ ×1.15 → ×1.1, `glade_archer` 45f 45w → 50f 50w | 53% | 57% | 39% |
+| Dwarf | 62% | `ironclad` 45f 25g → 50f 25g, `deep_arbalest` 40f → 45f | 54% | 54% | 36% |
+| Centaur | 62% / 66% | tốc độ người dân +0.2 → +0.1 | 56% | 55% | 37% |
+| Beastfolk | 60% / 67% | máu người dân +10 → +5, luyện barracks ×0.85 → ×0.9, `wolfkin_raider` 65f → 70f | 56% | 62% | 39% |
+
+Coastal đo trước các lần chỉnh: cả bốn tộc 36–39%, cao hơn Greek (30%); bản đồ đó nghiêng về các dân tộc mạnh thủy
+quân (Phoenician, Minoan, Palmyran) nên không chỉnh theo nó. Beastfolk ở Moderate còn hơi cao (62%): máy Moderate
+đánh sớm (phút 12) và Beastfolk dồn axeman, wolfkin.
+
 ### Hình (Blender, `art3d/races.py`)
 
 Theo ý chủ repo, phong cách anime Nhật hơn châu Âu: đầu hơi to, tóc thành mảng rõ. Elf mặc bikini da gấu (người trưởng thành, không khỏa thân); các tộc khác mặc đủ đồ.
