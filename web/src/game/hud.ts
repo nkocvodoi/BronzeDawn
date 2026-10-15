@@ -21,6 +21,8 @@ export interface Command {
   pin?: boolean;
   /** Which row it lives in, as in the original: training and orders on top, research and advancing below. */
   row?: 0 | 1;
+  /** Lit a little brighter: a hint for a new player (what suits the civilization). */
+  hint?: boolean;
 }
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -448,7 +450,7 @@ export class HUD {
     const menu = cmds.map((c) => c.title).join("|");
     if (menu !== this.menuKey) { this.menuKey = menu; this.page = 0; }
     const shown = this.layout(cmds, menu);
-    const sig = `${this.page}#${this.hotkeys}#` + shown.map((c) => (c ? `${c.key}|${c.title}|${c.blocker}` : "-")).join(";");
+    const sig = `${this.page}#${this.hotkeys}#` + shown.map((c) => (c ? `${c.key}|${c.title}|${c.blocker}|${c.hint ? 1 : 0}` : "-")).join(";");
     this.shown = shown;
     if (sig === this.signature) return;
     this.signature = sig;
@@ -458,7 +460,7 @@ export class HUD {
       if (!c) return `<button class="empty" tabindex="-1" aria-hidden="true"></button>`;
       const icon = c.icon ? `<img src="${this.iconUrl(c.icon)}" alt="${c.title}">` : `<span>${c.title}</span>`;
       const key = this.hotkeys && c.key ? `<kbd class="hk">${keyName(c.key)}</kbd>` : "";
-      return `<button data-i="${i}" class="${c.blocker ? "off" : ""}" aria-label="${c.title}">${icon}${key}</button>`;
+      return `<button data-i="${i}" class="${[c.blocker ? "off" : "", c.hint ? "hint" : ""].join(" ").trim()}" aria-label="${c.title}">${icon}${key}</button>`;
     }).join("");
   }
 
