@@ -8,6 +8,7 @@ import { scores } from "../src/core/score";
 import { runMatch } from "../src/core/sim";
 import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
+import { hints } from "../src/core/hints";
 import { civBent } from "../src/core/civbent";
 import { describeCiv } from "../src/game/describe";
 import { TRIBUTE_AMOUNTS, Victory, World, WorldOptions, SWEEP_RADIUS } from "../src/core/world";
@@ -1241,6 +1242,20 @@ describe("the original's rules", () => {
     const learn = (id: string) => (w as unknown as { applyTech(p: unknown, t: unknown): void }).applyTech(p, RULES.techs.get(id));
     learn("war_galley_tech"); learn("trireme_tech");
     expect(w.blockerTech("catapult_trireme_tech", 0)).toBeNull();
+  });
+  it("hints light what suits the civilization, until it is built or researched", () => {
+    const w = new World(RULES, 1, ["A", "B"], 24, false, { civs: ["hittite", "greek"] });
+    const h = hints(w, 0);
+    expect(h.has("archery_range")).toBe(true);
+    expect(h.has("leather_armor_archers")).toBe(true);
+    expect(h.has("stable")).toBe(false);
+    expect(hints(w, 1).size).toBe(0); // the Greeks' bonus is not their army's
+    w.addBuilding("archery_range", 0, new Tile(2, 2), true);
+    (w as unknown as { applyTech(p: unknown, t: unknown): void }).applyTech(w.players[0], RULES.techs.get("leather_armor_archers"));
+    const after = hints(w, 0);
+    expect(after.has("archery_range")).toBe(false);
+    expect(after.has("leather_armor_archers")).toBe(false);
+    expect(after.has("scale_armor_archers")).toBe(true);
   });
   it("each civilization lacks what its tech tree lacks", () => {
     const w = new World(RULES, 1, ["A", "B", "C"], 24, false, { civs: ["egyptian", "greek", "roman"] });
