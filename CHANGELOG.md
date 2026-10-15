@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-15
 
+- [#139](https://github.com/nkocvodoi/BronzeDawn/pull/139) Cân bằng lại 4 tộc fantasy (đo 170 trận mỗi tộc, ở mức Hard và Moderate): Elf gỗ ×1.1, Glade Archer 50f 50w; Dwarf Ironclad 50f, Deep Arbalest 45f; Centaur tốc độ dân +0.1; Beastfolk máu dân +5, luyện barracks ×0.9, Wolfkin 70f. Tỉ lệ thắng ở Hard giờ 53–56%
 - [#138](https://github.com/nkocvodoi/BronzeDawn/pull/138) Self-test mục 5: chốt giữ luật đồ dân đang mang đi theo lên thuyền
 - [#137](https://github.com/nkocvodoi/BronzeDawn/pull/137) Máy trên đảo cạn sạch không còn đứng không: thiếu gỗ vẫn chở dân sang đảo khác chặt rồi đón về; hết việc cần thì đào đá; tới 3 chuyến thuyền cùng lúc. Đổi luật: đồ dân đang mang đi theo lên thuyền, không mất như trước. Soak 216 trận: số lần kẹt trên bản đồ đảo từ 12 xuống 5
 - [#136](https://github.com/nkocvodoi/BronzeDawn/pull/136) `npm run monkey`: chơi bừa trên Chrome thật (bấm, kéo, phím, bấm nút trong các bảng) và bắt lỗi trang, bảng kẹt, đứng hình, đồng hồ dừng; 8 trận, khoảng 5200 thao tác, không lỗi nào
