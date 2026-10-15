@@ -6,6 +6,10 @@ liệu đo, cách kiểm tra) nằm trong mô tả của từng PR. Danh sách t
 
 Mỗi PR mới thêm một dòng vào đầu danh sách.
 
+## 2026-10-16
+
+- [#142](https://github.com/nkocvodoi/BronzeDawn/pull/142) Máy trên đảo: Barracks đầu tiên không còn bị giữ gỗ cho Storage Pit bên kia biển (có trận 90 phút máy không có lính nào); đảo ít gỗ thì giữ gỗ cho thuyền chở quân từ khi có Dock. Phần giao tranh khi đổ bộ còn mở, ghi trong roadmap
+
 ## 2026-10-15
 
 - [#140](https://github.com/nkocvodoi/BronzeDawn/pull/140) Gợi ý cho người mới: công trình quân sự và nâng cấp hợp với thế mạnh dân tộc (Hittite: Siege Workshop, Archery Range, giáp cung thủ...) sáng hơn có viền vàng cho tới khi đã xây hoặc nghiên cứu; bật sẵn, tắt được trong Cài đặt
