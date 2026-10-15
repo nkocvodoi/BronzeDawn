@@ -10,6 +10,7 @@
 import math
 import random
 
+import arch
 import lib
 import models
 import stoneage
@@ -19,9 +20,13 @@ AGES = ["stone", "tool", "bronze", "iron"]
 
 
 class Style:
-    def __init__(self, age):
+    """The materials of an age, in an architecture (arch.py) or, with "default", the style everyone shared."""
+
+    def __init__(self, age, arch_name="default"):
         self.age = age
+        self.arch = arch_name
         i = AGES.index(age)
+        self.i = i
         self.wall = lib.mat(f"wall{i}", [(0.60, 0.45, 0.30), (0.68, 0.52, 0.36), (0.86, 0.80, 0.68), (0.74, 0.70, 0.62)][i], 0.95,
                             grain=[0.3, 0.35, 0.18, 0.25][i], grain_size=0.02)
         self.roof = lib.mat(f"roof{i}", [(0.74, 0.60, 0.30), (0.70, 0.56, 0.28), (0.70, 0.36, 0.22), (0.62, 0.28, 0.18)][i], 0.9,
@@ -32,6 +37,15 @@ class Style:
         self.team = lib.team_mat("teamcloth")
         self.thatch = i < 2
         self.stone = i >= 2
+        if arch_name != "default":
+            p = arch.palette(arch_name, i)
+            self.wall = lib.mat(f"{arch_name}-wall{i}", p["wall"], 0.95, grain=0.22, grain_size=0.02)
+            self.roof = lib.mat(f"{arch_name}-roof{i}", p["roof"], 0.9, grain=0.3, grain_size=0.015)
+            self.trim = lib.mat(f"{arch_name}-trim{i}", p["trim"], 0.8, grain=0.12)
+            self.accent = lib.mat(f"{arch_name}-accent", p["accent"], 0.6, grain=0.1)
+            self.accent2 = lib.mat(f"{arch_name}-accent2", p["accent2"], 0.7, grain=0.1)
+            # Built, not thatched: every architecture has its own walls and roofs from the Tool Age on.
+            self.thatch = False
 
 
 # ---- shapes
@@ -56,6 +70,8 @@ def prism(name, w, d, h, loc, m, along="x"):
 
 def hall(st, name, x, y, w, d, h, roof="gable", along="x", roof_h=None):
     """A rectangular building: walls, then a roof of the age's kind."""
+    if st.arch != "default":
+        return arch.hall(st, name, x, y, w, d, h, roof, along, roof_h)
     lib.box(f"{name}-walls", (w, d, h), (x, y, h / 2), st.wall, bevel=0.02)
     rh = roof_h if roof_h is not None else (0.42 if st.thatch else 0.3) * min(w, d)
     over = 0.08
@@ -72,6 +88,9 @@ def hall(st, name, x, y, w, d, h, roof="gable", along="x", roof_h=None):
 
 def door(st, x, y, w, h, side="front"):
     """A door on the side facing the viewer: front is -Y, right is +X."""
+    if st.arch != "default":
+        arch.door(st, x, y, w, h, side)
+        return
     if side == "front":
         lib.box("door", (w, 0.03, h), (x, y, h / 2), st.dark)
     else:
@@ -79,6 +98,9 @@ def door(st, x, y, w, h, side="front"):
 
 
 def columns(st, x0, x1, y, h, n, r=0.045):
+    if st.arch != "default":
+        arch.columns(st, x0, x1, y, h, n, r)
+        return
     for i in range(n):
         x = x0 + (x1 - x0) * i / max(1, n - 1)
         lib.cyl(f"col{i}{y:.2f}", r, h, (x, y, h / 2), st.trim, verts=12)
