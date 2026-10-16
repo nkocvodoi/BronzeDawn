@@ -634,8 +634,9 @@ def finish(k, key):
 
 
 def make(race, key, age):
+    import race_compounds  # the compounds of the approved plan, built on this file's Kits and plain buildings
     k = KITS[race](race, age)
-    BUILDERS[key](k)
+    race_compounds.BUILDERS[key](k)
     finish(k, key)
 
 

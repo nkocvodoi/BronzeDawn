@@ -120,8 +120,8 @@ code { background: var(--bg); padding: 0 3px; border-radius: 3px; }
 <span class="count"></span><button id="export">Tải file duyệt (JSON)</button></header>
 <main>
 <p class="intro">Mỗi thẻ là một việc trong <code>replica/fantasy-art-plan.md</code>. Hàng "Hiện tại" là hình trên <code>${esc(base)}</code>. Hàng "Cải thiện" là
-hình vừa render với các quy tắc chung (bước 1): công trình cắt gọn vào giữa khung, đồ vật và nguồn sáng riêng của tộc ở mép sân, nhà và
-Granary nhỏ lại 20%. "Đề xuất sửa" là phần mình sẽ làm ở bước 2, vẽ lại từng công trình. Chọn Duyệt, Sửa hoặc Bỏ và ghi chú nếu cần.
+hình vừa render (bước 1 và bản đầu của bước 2): mỗi công trình là một khu nhiều phần theo đề xuất, có nhà phụ, rào, đồ nghề, đèn của tộc, cắt gọn vào giữa khung; nhà và
+Granary nhỏ lại 20%. "Đề xuất sửa" là bản kế hoạch đã duyệt; ghi chú chỗ nào chưa đạt để mình làm tiếp. Chọn Duyệt, Sửa hoặc Bỏ.
 Lựa chọn được lưu trong trình duyệt này. Xong thì bấm "Tải file duyệt" rồi gửi file đó lại cho mình.</p>
 ${cards.join("\n")}
 </main>
