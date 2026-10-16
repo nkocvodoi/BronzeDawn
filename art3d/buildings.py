@@ -465,6 +465,202 @@ def tc_yard(st):
             lib.box("tc-forumbeam", (1.3, 0.1, 0.06), (0, -0.82, 0.53), st.trim)
 
 
+# ---- houses and granaries of each architecture (round 4 of replica/art-plan.md)
+
+def thatch_roof(name, w, d, h, loc, along="x"):
+    """A thatched gable, lumpy, of straw in streaks."""
+    m = lib.mat("thatchroof", (0.66, 0.54, 0.30), 0.95, grain=0.4, grain_size=0.01, kind=("thatch", 0.05, 0, 0.5))
+    o = prism(name, w, d, h, loc, m, along)
+    lib.lumpy(o, 0.012, 0.04)
+    return o
+
+
+def side_stair(st, x, y, h, name="stair", n=5, along_x=True):
+    """Steps up the outside of a wall to a flat roof."""
+    for k in range(n):
+        t = k / n
+        size = (0.12, 0.12, h * (k + 1) / n)
+        loc = (x + t * 0.5, y, size[2] / 2) if along_x else (x, y + t * 0.5, size[2] / 2)
+        lib.box(f"{name}{k}", size, loc, st.wall)
+
+
+def house_yard(st, x0, y0, x1, y1, h=0.18, name="hyard"):
+    """A low wall round a house's yard, open at the front."""
+    m = st.wall
+    lib.box(f"{name}-back", (x1 - x0, 0.05, h), ((x0 + x1) / 2, y1, h / 2), m)
+    lib.box(f"{name}-left", (0.05, y1 - y0, h), (x0, (y0 + y1) / 2, h / 2), m)
+    lib.box(f"{name}-right", (0.05, y1 - y0, h * 0.8), (x1, (y0 + y1) / 2, h * 0.4), m)
+
+
+def house_arch(st, a):
+    """A house of an architecture in an age: see replica/art-plan.md, House."""
+    i = st.i
+    m = mats()
+    clay = lib.mat("clay", (0.70, 0.40, 0.24), 0.8)
+    if a == "egyptian":
+        h = 0.42 + 0.06 * i
+        hall(st, "house", 0, 0.15, 1.0, 0.85, h, roof="flat")
+        door(st, 0.1, -0.28, 0.2, 0.3)
+        side_stair(st, -0.62, -0.2, h, "stair", along_x=False)
+        if i >= 2:
+            columns(st, -0.3, 0.4, -0.45, h * 0.8, 3, r=0.03)
+            lib.box("porchroof", (0.85, 0.3, 0.04), (0.05, -0.42, h * 0.82), st.wood)
+        if i >= 3:
+            hall(st, "upper", -0.2, 0.3, 0.55, 0.5, h + 0.32, roof="flat")
+            house_yard(st, -0.9, -0.85, 0.9, 0.75)
+    elif a == "babylonian":
+        if i == 1:
+            # A reed house (mudhif): a vault of reed bundles over arched ribs, the ends latticed.
+            reed = lib.mat("reed", (0.74, 0.62, 0.36), 0.95, grain=0.35, grain_size=0.008, kind=("thatch", 0.03, 0, 0.45))
+            lib.cyl("vault", 0.42, 1.1, (0, 0.15, 0.06), reed, rot=(0, R(90), 0), verts=20)
+            lib.box("vaultfloor", (1.12, 0.86, 0.08), (0, 0.15, 0.04), reed)
+            for k in range(6):
+                lib.cyl(f"rib{k}", 0.43, 0.03, (-0.5 + k * 0.2, 0.15, 0.06), lib.mat("reedrib", (0.56, 0.46, 0.26), 0.9), rot=(0, R(90), 0), verts=20)
+            lib.box("reeddoor", (0.2, 0.02, 0.28), (0.56, 0.15, 0.14), st.dark, rot=(0, 0, R(90)))
+        else:
+            h = 0.48 + 0.05 * i
+            hall(st, "house", 0, 0.2, 1.0, 0.8, h)
+            door(st, 0.1, -0.21, 0.2, 0.3)
+            house_yard(st, -0.9, -0.85, 0.9, 0.8)
+            if i >= 3:
+                well(st, -0.55, -0.45, "hwell")
+    elif a == "asian":
+        if i == 1:
+            # On stilts of bamboo, a thatched roof.
+            for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1), (0, -1), (0, 1)):
+                lib.cyl(f"stilt{dx}{dy}", 0.025, 0.28, (dx * 0.45, 0.15 + dy * 0.32, 0.14), lib.mat("bamboo", (0.48, 0.58, 0.26), 0.7, grain=0.2), verts=6)
+            lib.box("floor", (1.0, 0.75, 0.05), (0, 0.15, 0.3), m["wood"])
+            lib.box("walls", (0.9, 0.65, 0.3), (0, 0.15, 0.47), lib.mat("bamboowall", (0.70, 0.62, 0.42), 0.9, grain=0.3, kind=("thatch", 0.025, 0, 0.35)))
+            thatch_roof("roof", 1.15, 0.9, 0.38, (0, 0.15, 0.62))
+            lib.box("ladder", (0.1, 0.02, 0.34), (0.2, -0.27, 0.16), m["wood"], rot=(R(20), 0, 0))
+        else:
+            hall(st, "house", 0, 0.15, 1.0, 0.8, 0.45)
+            door(st, 0.1, -0.26, 0.2, 0.3)
+            if i >= 3:
+                hall(st, "upper", 0, 0.25, 0.65, 0.5, 0.9)
+            bamboo("hbamboo", -0.75, 0.6, 5, 0.6)
+            fence = lib.mat("bamboo", (0.48, 0.58, 0.26), 0.7, grain=0.2)
+            for k in range(9):
+                lib.cyl(f"fence{k}", 0.012, 0.2, (-0.85 + k * 0.1, -0.85, 0.1), fence, verts=4)
+            lib.ball("waterjar", 0.07, (0.65, -0.55, 0.07), clay, scale=(1, 1, 1.1), sub=2)
+    elif a == "greek":
+        if i == 1:
+            rubble = lib.mat("rubble", (0.58, 0.54, 0.48), 0.95, grain=0.35, kind=("brick", 0.09, 0.07, 0.6))
+            lib.box("walls", (1.0, 0.8, 0.42), (0, 0.15, 0.21), rubble, bevel=0.02)
+            thatch_roof("roof", 1.15, 0.95, 0.32, (0, 0.15, 0.42))
+            door(st, 0.1, -0.26, 0.2, 0.3)
+        else:
+            hall(st, "house", 0, 0.2, 1.0, 0.75, 0.48)
+            door(st, 0.1, -0.18, 0.2, 0.3)
+            house_yard(st, -0.9, -0.85, 0.9, 0.8)
+            if i >= 3:
+                columns(st, -0.35, 0.35, -0.3, 0.42, 3, r=0.03)
+                well(st, -0.55, -0.5, "hwell")
+    else:  # roman
+        if i == 1:
+            lib.box("walls", (1.0, 0.8, 0.42), (0, 0.15, 0.21), st.wall, bevel=0.02)
+            thatch_roof("roof", 1.15, 0.95, 0.32, (0, 0.15, 0.42))
+            door(st, 0.1, -0.26, 0.2, 0.3)
+        elif i == 2:
+            hall(st, "house", 0, 0.15, 1.05, 0.85, 0.48)
+            arch.arch_door(st, 0.1, -0.29, 0.2, 0.32)
+        else:
+            # A house round an atrium open to the sky, a pool under the opening, pots of flowers.
+            w, d, h = 1.3, 1.1, 0.46
+            for k, (size, loc) in enumerate((((w, 0.3, h), (0, 0.55, h / 2)), ((0.3, d, h), (-0.5, 0.1, h / 2)),
+                                              ((0.3, d, h), (0.5, 0.1, h / 2)), ((w, 0.25, h), (0, -0.33, h / 2)))):
+                lib.box(f"wing{k}", size, loc, st.wall, bevel=0.01)
+            for k, (pw, pd, loc, along) in enumerate(((w + 0.1, 0.4, (0, 0.55, h), "x"), (w + 0.1, 0.35, (0, -0.33, h), "x"))):
+                prism(f"atriumroof{k}", pw, pd, 0.16, loc, st.roof, along)
+            lib.box("impluvium", (0.3, 0.25, 0.02), (0, 0.1, 0.02), lib.mat("poolwater", (0.18, 0.34, 0.40), 0.15))
+            arch.arch_door(st, 0.0, -0.46, 0.2, 0.3)
+            for k, x in enumerate((-0.45, 0.45)):
+                lib.cyl(f"flowerpot{k}", 0.05, 0.08, (x, -0.6, 0.04), clay, verts=10)
+                lib.ball(f"flowers{k}", 0.06, (x, -0.6, 0.12), lib.mat("flowers", (0.70, 0.30, 0.36), 0.8), sub=1)
+    banner(st, -0.3, -0.32 if a != "roman" or i < 3 else -0.47, 0.3, 0.1, 0.13)
+    # A few things of the household by the door.
+    for k in range(2):
+        lib.ball(f"hjar{k}", 0.04, (0.55 + k * 0.08, -0.62, 0.05), clay, scale=(1, 1, 1.3), sub=1)
+    lib.box("hcrate", (0.08, 0.08, 0.07), (-0.6, -0.65, 0.035), m["wood"], bevel=0.006)
+
+
+def beehive(st, name, x, y, r=0.24, h=0.6, ladder=True):
+    """A silo of mud brick shaped like a beehive, a hatch near the top and a ladder to it."""
+    lib.ball(f"{name}", r, (x, y, h * 0.42), st.wall, scale=(1, 1, h / (r * 1.6)), sub=3)
+    lib.box(f"{name}-hatch", (0.07, 0.02, 0.07), (x, y - r * 0.9, h * 0.72), st.dark)
+    if ladder:
+        lib.box(f"{name}-ladder", (0.07, 0.02, h * 0.8), (x + 0.04, y - r - 0.06, h * 0.4), mats()["wood"], rot=(R(18), 0, 0))
+
+
+def granary_arch(st, a):
+    """A granary of an architecture in an age: see replica/art-plan.md, Granary."""
+    i = st.i
+    m = mats()
+    # The drying floor before it, sacks, baskets of grain, a hand mill, a cart.
+    court("dryfloor", 1.4, 0.8, (0.35, -0.75, 0.01))
+    grain_m = lib.mat("grainheap", (0.86, 0.72, 0.40), 0.95, grain=0.3, grain_size=0.01)
+    for k in range(3):
+        lib.cyl(f"grainpile{k}", 0.12, 0.08, (0.05 + k * 0.3, -0.75, 0.05), grain_m, verts=12, r2=0.02)
+    sack = lib.mat("sack", (0.74, 0.66, 0.50), 1.0, grain=0.3)
+    for k in range(4):
+        lib.ball(f"gsack{k}", 0.055, (0.95 + (k % 2) * 0.1, -0.45 + (k // 2) * 0.12, 0.05), sack, scale=(1, 1, 1.1), sub=1)
+    lib.cyl("quern", 0.07, 0.05, (-0.25, -0.9, 0.03), m["stone"], verts=12)
+    lib.cyl("quern2", 0.065, 0.03, (-0.25, -0.9, 0.07), m["stone"], verts=12)
+    if a == "egyptian":
+        if i >= 3:
+            lib.box("silobase", (2.5, 0.9, 0.12), (0.1, 0.5, 0.06), st.trim)
+        z = 0.12 if i >= 3 else 0.0
+        for k, x in enumerate((-0.85, -0.2, 0.45, 1.05)):
+            beehive(st, f"silo{k}", x, 0.5, 0.31, 0.85 + 0.05 * i, ladder=k % 2 == 0)
+            if z:
+                for o in [ob for ob in lib.bpy.context.scene.objects if ob.name.startswith(f"silo{k}")]:
+                    o.location.z += z
+    elif a == "babylonian":
+        lib.box("platform", (2.5, 1.0, 0.2), (0.0, 0.5, 0.1), st.wall, bevel=0.01)
+        if i >= 3:
+            hall(st, "store", 0.0, 0.5, 2.1, 0.8, 0.7)
+            lib.box("storeglaze", (2.11, 0.81, 0.08), (0.0, 0.5, 0.52), st.accent)
+        else:
+            for k, x in enumerate((-0.8, 0.0, 0.8)):
+                lib.cyl(f"silo{k}", 0.36, 0.42, (x, 0.5, 0.41), st.wall, verts=20)
+                lib.ball(f"dome{k}", 0.36, (x, 0.5, 0.62), st.wall, scale=(1, 1, 0.8), sub=3)
+    elif a == "asian":
+        if i >= 3:
+            for k, x in enumerate((-0.65, 0.55)):
+                lib.cyl(f"roundstore{k}", 0.42, 0.65, (x, 0.5, 0.33), st.wall, verts=20)
+                arch.asian_roof(st, f"rsroof{k}", x, 0.5, 0.7, 0.7, 0.65, tiers=2)
+        else:
+            # Raised on posts against damp and rats.
+            for dx in (-0.95, -0.35, 0.25, 0.85):
+                for dy in (0.1, 0.9):
+                    lib.cyl(f"stilt{dx}{dy}", 0.04, 0.36, (dx, dy, 0.18), m["wood"], verts=6)
+            lib.box("floor", (2.0, 0.95, 0.06), (-0.05, 0.5, 0.38), m["wood"])
+            lib.box("store", (1.85, 0.85, 0.5), (-0.05, 0.5, 0.66), st.wall, bevel=0.01)
+            lib.box("storeladder", (0.1, 0.02, 0.4), (0.4, -0.03, 0.2), m["wood"], rot=(R(18), 0, 0))
+            if i == 1:
+                thatch_roof("roof", 2.1, 1.1, 0.48, (-0.05, 0.5, 0.91))
+            else:
+                arch.asian_roof(st, "roof", -0.05, 0.5, 1.85, 0.85, 0.91)
+    elif a == "greek":
+        hall(st, "store", -0.35, 0.55, 1.6, 0.85, 0.7)
+        if i >= 3:
+            columns(st, -1.05, 0.35, 0.05, 0.62, 6)
+        clayjar = lib.mat("pithos", (0.66, 0.40, 0.26), 0.85, grain=0.2)
+        for k, (x, y) in enumerate(((0.75, 0.75), (1.05, 0.5), (0.8, 0.25), (1.1, 0.95), (0.55, 0.45))):
+            lib.ball(f"pithos{k}", 0.16, (x, y, 0.12), clayjar, scale=(1, 1, 1.25), sub=2)
+    else:  # roman: a long storehouse round a court
+        hall(st, "horreum", -0.1, 0.85, 2.0, 0.5, 0.55)
+        hall(st, "horreum-l", -0.85, 0.15, 0.5, 0.9, 0.5, along="y")
+        for k in range(4):
+            arch.arch_door(st, -0.85 + k * 0.5, 0.59, 0.16, 0.3)
+        lib.box("cart", (0.34, 0.2, 0.07), (0.6, -0.3, 0.13), m["wood"], bevel=0.01)
+        for dy in (-0.12, 0.12):
+            lib.cyl(f"wheel{dy}", 0.085, 0.025, (0.6, -0.3 + dy, 0.085), m["wood"], rot=(R(90), 0, 0), verts=12)
+        for k in range(3):
+            lib.ball(f"cartsack{k}", 0.05, (0.5 + k * 0.1, -0.3, 0.2), sack, scale=(1, 1, 1.1), sub=1)
+    flag(st, 1.2, -1.2, 0.8)
+
+
 # ---- the buildings. Each takes a Style.
 
 def town_center(st):
@@ -498,6 +694,9 @@ def house(st):
         models.house()
         return
     ground(2)
+    a = getattr(st, "arch", "default")
+    if a != "default":
+        return house_arch(st, a)
     if st.age == "tool":
         hall(st, "house", 0, 0.1, 1.2, 1.0, 0.45, along="x")
         door(st, 0.1, -0.41, 0.22, 0.32)
@@ -515,6 +714,9 @@ def house(st):
 
 def granary(st):
     ground(3)
+    a = getattr(st, "arch", "default")
+    if a != "default":
+        return granary_arch(st, a)
     if st.thatch:
         # Stores raised on posts out of the damp, and a thatched hall.
         for i, (x, y) in enumerate(((-0.7, 0.6), (0.2, 0.75), (0.85, 0.0))):
