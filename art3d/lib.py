@@ -22,9 +22,12 @@ PPU = 64 * RES / math.sqrt(2)
 ELEVATION = math.radians(30)
 
 TEAM = (1.0, 0.0, 1.0)
-# A hard sun and a dim sky: strong light and shade, as pre-rendered sprites had.
-SUN = 5.2
-SKY = 0.3
+# A hard sun and a dim sky: strong light and shade, as pre-rendered sprites had. Set against the original's
+# pictures with art3d/compare.py: brighter by a third and with sides in shade lit nearly as the sunny ones,
+# ours read as flat and washed out beside them.
+SUN = 7.5
+SKY = 0.1
+EXPOSURE = -0.3  # in stops
 
 
 def reset():
@@ -42,7 +45,7 @@ def reset():
     s.render.filter_size = 1.2
     s.view_settings.view_transform = "Standard"
     s.view_settings.look = "None"
-    s.view_settings.exposure = 0.0
+    s.view_settings.exposure = EXPOSURE
     s.view_settings.gamma = 1.0
     gpu()
     world()
@@ -141,7 +144,54 @@ def linear(c):
     return tuple(x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c)
 
 
-def mat(name, color, rough=0.8, metal=0.0, team=False, emit=None, grain=0.28, grain_size=0.03):
+def courses(nt, color, kind):
+    """A wall's or roof's courses: bricks or blocks with dark joints between them, or the streaks of thatch,
+    as the colour and as a little relief. `kind` is (pattern, width, height, depth): pattern "brick" or
+    "thatch", the size of one in units (a tile is one), how dark the joints are (0 to 1). Laid out across
+    the faces whichever way they face: along X + Y and up Z, so a wall facing either way of the screen gets
+    rows, and a roof gets rows up its slope."""
+    pattern, w, h, depth = kind
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    xyz = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(coord.outputs["Object"], xyz.inputs[0])
+    u = nt.nodes.new("ShaderNodeMath")
+    u.operation = "ADD"
+    nt.links.new(xyz.outputs["X"], u.inputs[0])
+    nt.links.new(xyz.outputs["Y"], u.inputs[1])
+    uv = nt.nodes.new("ShaderNodeCombineXYZ")
+    nt.links.new(u.outputs[0], uv.inputs["X"])
+    nt.links.new(xyz.outputs["Z"], uv.inputs["Y"])
+    if pattern == "brick":
+        t = nt.nodes.new("ShaderNodeTexBrick")
+        t.inputs["Scale"].default_value = 1.0
+        t.inputs["Brick Width"].default_value = w
+        t.inputs["Row Height"].default_value = h
+        t.inputs["Mortar Size"].default_value = min(w, h) * 0.12
+        t.inputs["Mortar Smooth"].default_value = 0.1
+        t.offset = 0.5
+        # One brick a little lighter or darker than the next, the joints dark.
+        t.inputs["Color1"].default_value = (*linear(tuple(min(1, x * 1.08) for x in color)), 1)
+        t.inputs["Color2"].default_value = (*linear(tuple(x * 0.84 for x in color)), 1)
+        t.inputs["Mortar"].default_value = (*linear(tuple(x * (1 - depth) for x in color)), 1)
+        t.inputs["Bias"].default_value = 0.0
+        nt.links.new(uv.outputs[0], t.inputs["Vector"])
+        return t.outputs["Color"], t.outputs["Fac"]
+    # Thatch: bundles of straw in streaks down the slope, each a little darker at its foot.
+    wave = nt.nodes.new("ShaderNodeTexWave")
+    wave.wave_type = "BANDS"
+    wave.bands_direction = "X"
+    wave.inputs["Scale"].default_value = 1 / w
+    wave.inputs["Distortion"].default_value = 6.0
+    wave.inputs["Detail"].default_value = 4.0
+    nt.links.new(uv.outputs[0], wave.inputs["Vector"])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = (*linear(tuple(x * (1 - depth) for x in color)), 1)
+    ramp.color_ramp.elements[1].color = (*linear(tuple(min(1, x * 1.1) for x in color)), 1)
+    nt.links.new(wave.outputs["Fac"], ramp.inputs["Fac"])
+    return ramp.outputs["Color"], wave.outputs["Fac"]
+
+
+def mat(name, color, rough=0.8, metal=0.0, team=False, emit=None, grain=0.28, grain_size=0.03, kind=None):
     key = (name, team)
     if key in MATS:
         return MATS[key]
@@ -166,6 +216,33 @@ def mat(name, color, rough=0.8, metal=0.0, team=False, emit=None, grain=0.28, gr
         ramp.color_ramp.elements[0].color, ramp.color_ramp.elements[1].color = (*lo, 1), (*hi, 1)
         nt.links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
         nt.links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+    if kind and not team:
+        # Courses over the speckle: the speckle's tone, multiplied by the bricks and their joints, and the
+        # joints sunk a little so the sun picks out each course.
+        laid, fac = courses(nt, color, kind)
+        speck = bsdf.inputs["Base Color"].links[0].from_socket if bsdf.inputs["Base Color"].links else None
+        mixc = nt.nodes.new("ShaderNodeMix")
+        mixc.data_type = "RGBA"
+        mixc.blend_type = "MULTIPLY" if speck else "MIX"
+        mixc.inputs["Factor"].default_value = 1.0
+        if speck:
+            nt.links.new(speck, mixc.inputs["A"])
+            # Normalised against the base colour, so the speckle keeps the brightness it had.
+            norm = nt.nodes.new("ShaderNodeMix")
+            norm.data_type = "RGBA"
+            norm.blend_type = "DIVIDE"
+            norm.inputs["Factor"].default_value = 1.0
+            nt.links.new(laid, norm.inputs["A"])
+            norm.inputs["B"].default_value = (*linear(color), 1)
+            nt.links.new(norm.outputs["Result"], mixc.inputs["B"])
+        else:
+            nt.links.new(laid, mixc.inputs["B"])
+        nt.links.new(mixc.outputs["Result"], bsdf.inputs["Base Color"])
+        bump = nt.nodes.new("ShaderNodeBump")
+        bump.inputs["Strength"].default_value = 0.6
+        bump.inputs["Distance"].default_value = 0.01
+        nt.links.new(fac, bump.inputs["Height"])
+        nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
     bsdf.inputs["Roughness"].default_value = rough
     bsdf.inputs["Metallic"].default_value = metal
     if emit:
@@ -392,8 +469,8 @@ def check_edges(arr, what):
 
 # ---- pixel art: the look of a sprite from the late 90s
 
-LEVELS = 20        # steps per colour channel
-SATURATE = 1.18
+LEVELS = 48        # steps per colour channel: at 20 a wall's courses ran together into flat bands
+SATURATE = 0.92    # the original's colours are earthy; at 1.18 ours were half as saturated again
 OUTLINE = 0.55     # how dark the outermost pixels of the model are made
 RIM = True         # off for things on water, whose thin light rings would all turn to rim
 

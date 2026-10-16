@@ -22,10 +22,13 @@ class Style:
     def __init__(self, age):
         self.age = age
         i = AGES.index(age)
+        # Mud plastered, then mud brick, then whitewashed blocks, then cut stone; thatch, then tile.
         self.wall = lib.mat(f"wall{i}", [(0.60, 0.45, 0.30), (0.68, 0.52, 0.36), (0.86, 0.80, 0.68), (0.74, 0.70, 0.62)][i], 0.95,
-                            grain=[0.3, 0.35, 0.18, 0.25][i], grain_size=0.02)
+                            grain=[0.3, 0.35, 0.18, 0.25][i], grain_size=0.02,
+                            kind=[None, ("brick", 0.16, 0.07, 0.55), ("brick", 0.26, 0.11, 0.3), ("brick", 0.3, 0.13, 0.6)][i])
         self.roof = lib.mat(f"roof{i}", [(0.74, 0.60, 0.30), (0.70, 0.56, 0.28), (0.70, 0.36, 0.22), (0.62, 0.28, 0.18)][i], 0.9,
-                            grain=0.4, grain_size=0.012 if i < 2 else 0.02)
+                            grain=0.4, grain_size=0.012 if i < 2 else 0.02,
+                            kind=[("thatch", 0.05, 0, 0.5), ("thatch", 0.05, 0, 0.5), ("brick", 0.09, 0.06, 0.55), ("brick", 0.09, 0.06, 0.6)][i])
         self.trim = lib.mat(f"trim{i}", [(0.40, 0.25, 0.12), (0.42, 0.27, 0.13), (0.62, 0.58, 0.50), (0.90, 0.88, 0.84)][i], 0.8)
         self.wood = lib.mat("wood", (0.40, 0.25, 0.12), 0.8)
         self.dark = lib.mat("door", (0.12, 0.08, 0.05), 1.0)
@@ -114,7 +117,8 @@ def ground(size, color=(0.46, 0.37, 0.25)):
     """Trodden earth or paving under a building, inside its tiles, ragged at the edge so it fades into the
     ground round it rather than standing on it like a board."""
     bpy = lib.bpy
-    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=size * 0.6, depth=0.012, location=(0, 0, 0.006))
+    # Kept close to the walls, as the original's: a wide flat yard read as a board the building stood on.
+    bpy.ops.mesh.primitive_cylinder_add(vertices=96, radius=size * 0.54, depth=0.012, location=(0, 0, 0.006))
     p = bpy.context.object
     p.name = "yard"
     rnd = random.Random(size * 7)
@@ -123,11 +127,19 @@ def ground(size, color=(0.46, 0.37, 0.25)):
         r = math.hypot(x, y)
         if r < 1e-6:
             continue
-        # Squared off toward the tiles' corners, wavering.
+        # Squared off toward the tiles' corners, ragged.
         k = max(abs(x), abs(y)) / r
-        f = (0.86 + 0.14 * k) / (0.84 + rnd.uniform(-0.04, 0.04))
+        f = (0.86 + 0.14 * k) / (0.84 + rnd.uniform(-0.09, 0.09))
         v.co.x, v.co.y = x / f, y / f
-    lib.setmat(p, lib.mat("yard", color, 1.0, grain=0.35, grain_size=0.05))
+    lib.setmat(p, lib.mat("yard", color, 1.0, grain=0.55, grain_size=0.025))
+    # Pebbles and clods about the edge of the yard.
+    pebble = lib.mat("pebble", (0.52, 0.48, 0.42), 0.95, grain=0.3)
+    clod = lib.mat("clod", tuple(x * 0.7 for x in color), 1.0, grain=0.3)
+    for i in range(int(14 * size)):
+        a = rnd.uniform(0, 2 * math.pi)
+        r = size * rnd.uniform(0.4, 0.55)
+        q = lib.ball(f"pebble{i}", rnd.uniform(0.018, 0.035), (r * math.cos(a), r * math.sin(a), 0.012), pebble if i % 3 else clod, sub=1)
+        q.scale = (1.3, 1.0, 0.6)
 
 
 # ---- the buildings. Each takes a Style.
