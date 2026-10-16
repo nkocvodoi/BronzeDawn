@@ -60,3 +60,33 @@ dời tâm (`center`) trong code.
   cạnh, nên một dãy ô thành một sống núi liền.
 - **Bóng:** render sẵn vào hình (game không tự vẽ bóng). Nắng chiếu từ trên bên trái, bóng đổ sang phải.
 - **Màu:** ghi màu đúng như nhìn trên màn hình (sRGB); `lib.mat` tự chuyển sang màu tuyến tính cho Blender.
+
+## So với hình của bản gốc
+
+`compare.py` đặt từng hình của Bronze Dawn cạnh hình của AoE gốc cùng loại, rồi chấm điểm trên 100 cho mức gần
+bản gốc. Công trình được so theo kiến trúc và thời đại, unit theo khung đứng yên quay ra người xem, tài nguyên
+theo hình đầu tiên. Cần một bản sao repo riêng tư `BronzeDawn-aoe-data`, và Pillow, numpy (chạy bằng python3
+thường, không chạy trong Blender).
+
+```bash
+python3 art3d/compare.py                                   # bản gốc ở web/assets-local/
+python3 art3d/compare.py --aoe ../BronzeDawn-aoe-data      # hoặc chỉ đường tới nó
+python3 art3d/compare.py --only house,clubman,tree         # vài thứ
+open web/art-compare/index.html
+```
+
+Tám thước đo, mỗi thước 100 là như bản gốc, gấp đôi hay bằng nửa là 35:
+
+- **Cỡ:** diện tích phần hình, không tính bóng đổ.
+- **Chi tiết:** độ gắt giữa các điểm ảnh liền nhau bên trong hình.
+- **Tương phản:** độ chênh sáng tối trong hình.
+- **Độ sáng, Độ đậm màu.**
+- **Bảng màu:** phần màu trùng với bản gốc.
+- **Màu phe:** phần trăm hình tô #FF00FF.
+- **Viền tối:** độ tối ở mép hình.
+
+Trang báo cáo xếp hình kém nhất lên đầu, hiện hai hình trên nền cỏ và ghi cụ thể hình của ta lệch thế nào
+(ví dụ "ít chi tiết hơn 2.0×"). `scores.json` chứa cùng các số đó để so trước và sau mỗi lần chỉnh.
+
+Trang báo cáo **chứa hình của bản gốc**. Nó nằm ở `web/art-compare/`, thư mục này đã nằm trong .gitignore.
+Không đăng, không chia sẻ trang này.
