@@ -661,6 +661,63 @@ def granary_arch(st, a):
     flag(st, 1.2, -1.2, 0.8)
 
 
+# ---- statues and trees of round 5
+
+def cypress(name, x, y, h=0.75):
+    m = lib.mat("cypress", (0.20, 0.34, 0.20), 0.8, grain=0.3, grain_size=0.02)
+    lib.cyl(name, 0.07, h, (x, y, h / 2), m, verts=10, r2=0.02)
+
+
+def goddess(st, x, y, name="goddess", kind="greek", k=1.6):
+    """A goddess of the hunt with her bow, standing on a plinth: Greek (a chiton, as Artemis is shown) or
+    Egyptian (a sheath dress and a crown, as Neith is shown). `k` her size: at 1 she was lost in the yard."""
+    stone = lib.mat("statuestone", (0.82, 0.78, 0.70), 0.7, grain=0.15) if kind == "greek" else st.trim
+    m = mats()
+    lib.box(f"{name}-plinth", (0.22 * k, 0.22 * k, 0.2 * k), (x, y, 0.1 * k), st.trim, bevel=0.01)
+    lib.cyl(f"{name}-robe", 0.07 * k, 0.36 * k, (x, y, (0.2 + 0.18) * k), stone, verts=12, r2=0.045 * k)
+    lib.cyl(f"{name}-chest", 0.05 * k, 0.12 * k, (x, y, 0.62 * k), stone, verts=10)
+    lib.ball(f"{name}-head", 0.04 * k, (x, y, 0.72 * k), stone, sub=1)
+    if kind == "egyptian":
+        lib.cyl(f"{name}-crown", 0.035 * k, 0.08 * k, (x, y, 0.79 * k), st.accent2 if hasattr(st, "accent2") else stone, verts=8, r2=0.025 * k)
+    else:
+        lib.ball(f"{name}-hair", 0.035 * k, (x, y + 0.02 * k, 0.75 * k), stone, sub=1)
+    lib.cyl(f"{name}-bow", 0.008 * k, 0.42 * k, (x + 0.09 * k, y - 0.02 * k, 0.56 * k), m["wood"] if kind == "egyptian" else stone, rot=(0, R(8), 0), verts=5)
+    lib.cyl(f"{name}-arm", 0.016 * k, 0.16 * k, (x + 0.06 * k, y, 0.6 * k), stone, rot=(0, R(60), 0), verts=6)
+
+
+def seated_colossus(st, x, y, name="colossus"):
+    """A king seated on his throne, in stone, his hands on his knees, a headdress."""
+    m = st.trim
+    lib.box(f"{name}-throne", (0.22, 0.24, 0.32), (x, y + 0.04, 0.16), m, bevel=0.01)
+    lib.box(f"{name}-lap", (0.2, 0.2, 0.06), (x, y - 0.06, 0.34), m)
+    lib.box(f"{name}-body", (0.16, 0.12, 0.26), (x, y + 0.02, 0.48), m)
+    lib.box(f"{name}-head", (0.1, 0.1, 0.1), (x, y + 0.02, 0.66), m)
+    lib.box(f"{name}-headdress", (0.14, 0.06, 0.12), (x, y + 0.04, 0.64), getattr(st, "accent", m))
+
+
+def buddha(st, x, y, name="buddha", size=1.0):
+    """A seated Buddha on a lotus throne, gilded."""
+    gold = lib.mat("gilt", (0.86, 0.68, 0.30), 0.35, metal=0.8)
+    stone = lib.mat("lotusstone", (0.62, 0.60, 0.56), 0.9)
+    k = size
+    lib.cyl(f"{name}-plinth", 0.3 * k, 0.16 * k, (x, y, 0.08 * k), stone, verts=16)
+    lib.cyl(f"{name}-lotus", 0.26 * k, 0.08 * k, (x, y, 0.2 * k), lib.mat("lotuspink", (0.78, 0.52, 0.52), 0.8), verts=16, r2=0.3 * k)
+    lib.ball(f"{name}-legs", 0.2 * k, (x, y, 0.3 * k), gold, scale=(1.2, 0.9, 0.45), sub=2)
+    lib.cyl(f"{name}-body", 0.12 * k, 0.32 * k, (x, y + 0.02 * k, 0.48 * k), gold, verts=12, r2=0.09 * k)
+    lib.ball(f"{name}-head", 0.08 * k, (x, y + 0.02 * k, 0.72 * k), gold, sub=2)
+    lib.ball(f"{name}-knot", 0.035 * k, (x, y + 0.02 * k, 0.81 * k), gold, sub=1)
+    lib.cyl(f"{name}-halo", 0.16 * k, 0.015 * k, (x, y + 0.08 * k, 0.72 * k), gold, rot=(R(90), 0, 0), verts=20)
+
+
+def arched_gate(st, x, y, w=0.7, h=0.75, name="archgate"):
+    """A gate of stone with a round-headed arch through it, a banner on each pier."""
+    lib.box(f"{name}-block", (w + 0.3, 0.2, h), (x, y, h / 2), st.wall, bevel=0.01)
+    lib.box(f"{name}-cap", (w + 0.36, 0.24, 0.05), (x, y, h + 0.025), st.trim)
+    arch.arch_door(st, x, y - 0.11, w * 0.6, h * 0.75)
+    for sx in (-1, 1):
+        lib.box(f"{name}-banner{sx}", (0.09, 0.012, 0.18), (x + sx * (w / 2 + 0.06), y - 0.11, h * 0.62), st.team)
+
+
 # ---- the buildings. Each takes a Style.
 
 def town_center(st):
@@ -1019,7 +1076,10 @@ def archery_range_iron(st):
         lib.box(f"tower{k}", (0.26, 0.26, th), (x, y, th / 2), st.wall, bevel=0.01)
         for j, (dx, dy) in enumerate(((-0.09, -0.09), (0.09, -0.09), (0.09, 0.09), (-0.09, 0.09))):
             lib.box(f"merlon{k}{j}", (0.07, 0.07, 0.07), (x + dx, y + dy, th + 0.035), st.wall)
-    gateway(st, 0.25, 0.95, -1.3, 0.66, name="agate")
+    if getattr(st, "arch", "default") == "roman":
+        arched_gate(st, 0.6, -1.3, 0.6, 0.75, "agate")
+    else:
+        gateway(st, 0.25, 0.95, -1.3, 0.66, name="agate")
     paving("path", 0.6, 1.4, (0.6, -0.65, 0.01))
     # The bank and the targets before it.
     soil = lib.mat("bank", (0.34, 0.27, 0.18), 1.0, grain=0.45, grain_size=0.03)
@@ -1050,10 +1110,14 @@ def archery_range_iron(st):
     lean_to("galroof", -0.55, -1.0, 1.4, 0.66, 0.53, st.roof)
     for k, x in enumerate((-0.85, -0.55, -0.25)):
         lib.box(f"screen{k}", (0.03, 0.4, 0.22), (x, -1.0, 0.11), st.wall)
-    # The armoury in the back corner: a pediment over the door, bows and sheaves of arrows before it.
-    hall(st, "armoury", -0.78, 0.72, 0.85, 0.75, 0.56, roof="gable", along="y")
-    columns(st, -1.08, -0.48, 0.3, 0.5, 4)
-    door(st, -0.78, 0.33, 0.3, 0.38)
+    # The armoury in the back corner: a pediment over the door, bows and sheaves of arrows before it; for the
+    # Egyptians and Greeks the goddess of the hunt there instead (round 5, the owner's note).
+    if getattr(st, "arch", "default") in ("egyptian", "greek"):
+        goddess(st, -0.78, 0.72, "goddess", st.arch)
+    else:
+        hall(st, "armoury", -0.78, 0.72, 0.85, 0.75, 0.56, roof="gable", along="y")
+        columns(st, -1.08, -0.48, 0.3, 0.5, 4)
+        door(st, -0.78, 0.33, 0.3, 0.38)
     for k in range(4):
         lib.cyl(f"bow{k}", 0.009, 0.44, (-0.35 + k * 0.08, 0.2, 0.22), st.wood, verts=5, rot=(R(10), 0, 0))
     basket = lib.mat("basket", (0.55, 0.40, 0.20), 0.9, grain=0.4, grain_size=0.01)
@@ -1077,11 +1141,16 @@ def archery_range(st):
     ground(3)
     enclosure(st, 1.3, 0.34, (0.25, 0.95))
     gateway(st, 0.25, 0.95, -1.3, 0.62)
-    if st.thatch:
+    a = getattr(st, "arch", "default")
+    if a in ("egyptian", "greek"):
+        # The goddess of the hunt in place of the armoury (round 5, the owner's note).
+        goddess(st, -0.75, 0.75, "goddess", a)
+    elif st.thatch:
         hall(st, "armoury", -0.75, 0.75, 0.9, 0.8, 0.45, along="y")
+        door(st, -0.75, 0.34, 0.24, 0.34)
     else:
         hall(st, "armoury", -0.75, 0.75, 0.9, 0.8, 0.55, roof="flat" if st.age == "bronze" else "gable", along="y")
-    door(st, -0.75, 0.34, 0.24, 0.34)
+        door(st, -0.75, 0.34, 0.24, 0.34)
     straw = lib.mat("straw", (0.82, 0.70, 0.38), 0.95, grain=0.4, grain_size=0.01)
     rings = [lib.mat("ring-white", (0.90, 0.86, 0.76), 0.8, grain=0.1), lib.mat("ring-red", (0.66, 0.18, 0.12), 0.8, grain=0.1),
              lib.mat("ring-black", (0.10, 0.08, 0.06), 0.8, grain=0.05)]
@@ -1113,6 +1182,8 @@ def archery_range(st):
     # Where they shoot from: a shelter on posts along the front, a rail before it, bows on a rack and
     # baskets of arrows.
     roof = st.roof if not st.thatch else lib.mat("thatchshelter", (0.66, 0.54, 0.30), 0.95, grain=0.4, grain_size=0.01)
+    if a == "asian":
+        roof = lib.mat("tentcloth", (0.84, 0.78, 0.62), 0.9, grain=0.2)  # a shelter of cloth (the owner's note)
     # Left of the way in, so the gate stays clear.
     for k, x in enumerate((-0.95, -0.5, -0.05)):
         lib.cyl(f"shelterpost{k}", 0.025, 0.5, (x, -0.95, 0.25), st.wood, verts=6)
@@ -1442,6 +1513,62 @@ def market_iron(st):
     flag(st, 1.2, 1.15, 1.0)
 
 
+def market_bronze_east(st, a):
+    """The Bronze Age's market of the east (round 5): simpler than the Iron Age's. Egyptian stalls under reed
+    mats among date palms; Babylonian long tents of cloth, heaps of pots, palms; Asian stalls under small
+    curved thatched roofs and parasols, a well."""
+    ground(3, (0.62, 0.52, 0.36))
+    enclosure(st, 1.3, 0.24, (-0.35, 0.35), name="mwall")
+    gateway(st, -0.35, 0.35, -1.3, 0.62, name="mgate")
+    m = mats()
+    clay = lib.mat("clay", (0.70, 0.40, 0.24), 0.8)
+    basket = lib.mat("basket", (0.55, 0.40, 0.20), 0.9, grain=0.4, grain_size=0.01)
+    spots = [(-0.5, 0.95, "front"), (0.2, 0.95, "front"), (0.85, 0.95, "front"), (-0.98, -0.5, "right"), (-0.98, 0.2, "right")]
+    if a == "egyptian":
+        reed = lib.mat("reedmat", (0.74, 0.62, 0.38), 0.95, grain=0.35, grain_size=0.008, kind=("thatch", 0.03, 0, 0.4))
+        grain_m = lib.mat("grainheap", (0.86, 0.72, 0.40), 0.95, grain=0.3, grain_size=0.01)
+        for k, (x, y, f) in enumerate(spots):
+            sx, sy = (0.55, 0.36) if f == "front" else (0.36, 0.55)
+            for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                lib.cyl(f"rs{k}post{dx}{dy}", 0.014, 0.4, (x + dx * sx / 2, y + dy * sy / 2, 0.2), m["wood"], verts=5)
+            lean_to(f"rs{k}mat", x, y, sx + 0.08, sy + 0.08, 0.4, reed, down=f)
+            lib.cyl(f"rs{k}grain", 0.08, 0.07, (x, y, 0.035), grain_m, verts=12, r2=0.01)
+            lib.ball(f"rs{k}jar", 0.04, (x + 0.12, y - 0.05, 0.05), clay, scale=(1, 1, 1.3), sub=1)
+        for k, (x, y, h) in enumerate(((0.35, -0.2, 0.9), (-0.3, -0.6, 0.8), (0.95, -0.55, 0.85))):
+            arch.palm(st, f"mdate{k}", x, y, h)
+        well(st, 0.3, 0.3, "mwell")
+    elif a == "babylonian":
+        tent = [lib.mat("tent-red", (0.62, 0.22, 0.16), 0.9, grain=0.2), lib.mat("tent-ochre", (0.80, 0.58, 0.26), 0.9, grain=0.2)]
+        for k, (x, y, f) in enumerate(((-0.1, 0.95, "front"), (-0.98, -0.15, "right"))):
+            w, d = (2.0, 0.5) if f == "front" else (0.5, 1.5)
+            for j in range(4):
+                t = -0.5 + j / 3
+                px, py = (x + t * w, y - d / 2) if f == "front" else (x + d / 2, y + t * d)
+                lib.cyl(f"tentpole{k}{j}", 0.014, 0.4, (px, py, 0.2), m["wood"], verts=5)
+            lean_to(f"tent{k}", x, y, w, d, 0.42, tent[k], down=f)
+        for k, (x, y) in enumerate(((0.2, 0.55), (0.55, 0.6), (-0.6, -0.4), (-0.65, 0.3))):
+            for j in range(3):
+                lib.ball(f"potheap{k}{j}", 0.045, (x + (j - 1) * 0.07, y, 0.05 + (j == 1) * 0.06), clay, scale=(1, 1, 1.2), sub=1)
+        for k, (x, y, h) in enumerate(((0.45, -0.25, 0.9), (1.0, -0.6, 0.8), (0.95, 0.3, 0.85))):
+            arch.palm(st, f"mpalm{k}", x, y, h)
+    else:  # asian
+        for k, (x, y, f) in enumerate(spots[:4]):
+            for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                lib.box(f"as{k}post{dx}{dy}", (0.035, 0.035, 0.38), (x + dx * 0.22, y + dy * 0.15, 0.19), st.trim)
+            lib.box(f"as{k}counter", (0.4, 0.22, 0.12), (x, y, 0.06), m["wood"], bevel=0.01)
+            arch.asian_roof(st, f"as{k}roof", x, y, 0.44, 0.3, 0.38)
+            lib.cyl(f"as{k}basket", 0.05, 0.05, (x - 0.1, y, 0.15), basket, verts=10)
+        parasol = lib.mat("parasol-red", (0.66, 0.20, 0.14), 0.9)
+        for k, (x, y) in enumerate(((0.3, -0.3), (0.95, -0.7))):
+            lib.box(f"ptable{k}", (0.28, 0.18, 0.1), (x, y, 0.05), m["wood"], bevel=0.008)
+            lib.cyl(f"ppole{k}", 0.01, 0.42, (x, y, 0.21), m["wood"], verts=5)
+            lib.cyl(f"parasol{k}", 0.22, 0.08, (x, y, 0.44), parasol, verts=16, r2=0.02)
+        well(st, -0.3, -0.5, "mwell")
+        bamboo("mbamboo", 1.05, 0.55, 6, 0.7)
+        pine("mpine", -0.85, 0.85, 0.85, lean=0.06)
+    flag(st, 1.2, 1.15, 1.0)
+
+
 # The markets of the east are their own, with more trees: see market_iron.
 EAST_MARKETS = {"asian": market_asian, "egyptian": market_egyptian, "babylonian": market_babylonian}
 
@@ -1452,6 +1579,8 @@ def market(st):
     a well in the square."""
     if st.age == "iron":
         return market_iron(st)
+    if st.age == "bronze" and getattr(st, "arch", "default") in EAST_MARKETS:
+        return market_bronze_east(st, st.arch)
     ground(3, (0.62, 0.56, 0.44) if st.stone else (0.50, 0.40, 0.27))
     enclosure(st, 1.3, 0.26, (-0.35, 0.35), name="mwall")
     gateway(st, -0.35, 0.35, -1.3, 0.68, name="mgate")
@@ -1722,9 +1851,11 @@ def temple(st):
     lib.box("entab", (2.1, 1.75, 0.12), (0, 0.15, base + 0.96), st.trim, bevel=0.01)
     prism("pediment", 2.15, 1.8, 0.35, (0, 0.15, base + 1.02), st.roof, "y")
     door(st, 0, -0.41, 0.35, 0.55)
-    # A fire on an altar before it.
+    # A fire on an altar before it, cypresses either side.
     lib.box("altar", (0.25, 0.25, 0.2), (0.6, -1.15, 0.1), st.trim)
     lib.ball("fire", 0.07, (0.6, -1.15, 0.25), lib.mat("flame", (1, 0.6, 0.1), 1.0, emit=(1.0, 0.5, 0.1)), sub=1)
+    for k, (x, y) in enumerate(((-1.2, -1.0), (1.2, 0.4), (1.15, -0.6))):
+        cypress(f"tcypress{k}", x, y, 0.8)
     banner(st, -0.6, -0.72, 0.6, 0.14, 0.3)
 
 
@@ -1736,7 +1867,26 @@ def academy(st):
     columns(st, -0.6, 1.1, -0.85, 0.7, 6)
     lib.box("lintel", (1.9, 0.12, 0.08), (0.25, -0.85, 0.74), st.trim)
     court("court", 1.5, 1.1, (0.3, 0.05, 0.02))
-    lib.cyl("statue", 0.08, 0.4, (0.3, 0.0, 0.22), st.trim, verts=10)
+    # The court of each architecture (round 5): a fountain for the Greeks, steps and straw men to
+    # practise the sword on for the Romans, a colonnade and a statue for the Egyptians, a yard for
+    # the martial arts for the Asians.
+    a = getattr(st, "arch", "default")
+    if a == "greek":
+        fountain(st, 0.35, 0.05, "afountain")
+    elif a == "roman":
+        steps(st, 0.0, 0.42, 1.2, 0.2, n=3)
+        for k, (x, y) in enumerate(((0.0, -0.1), (0.4, -0.2), (0.8, -0.05))):
+            dummy(st, x, y, f"adummy{k}")
+    elif a == "egyptian":
+        colonnade(st, (-0.45, 0.4), (1.05, 0.4), 0.55, 5, "acol")
+        sphinx(st, 0.35, -0.2, "asphinx")
+    elif a == "asian":
+        weapon_rack(st, 0.95, 0.15, "arack-a", along_x=False)
+        weapon_rack(st, -0.3, 0.35, "arack-b", shields=0)
+        for k, (x, y) in enumerate(((0.2, -0.1), (0.6, -0.15))):
+            dummy(st, x, y, f"adummy{k}")
+    else:
+        lib.cyl("statue", 0.08, 0.4, (0.3, 0.0, 0.22), st.trim, verts=10)
     banner(st, 0.9, 0.49, 0.5)
     flag(st, 1.15, 1.15, 1.2)
 

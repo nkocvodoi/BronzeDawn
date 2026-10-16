@@ -54,18 +54,25 @@ def egyptian_temple(st):
     lib.box("architrave", (1.9, 0.18, 0.08), (0, 0.15, 0.79), st.trim)
     lib.box("architrave-band", (1.92, 0.19, 0.025), (0, 0.15, 0.76), st.accent)
     pylon_gate(st, "gate", 0, -0.65, w=2.0, h=1.15, depth=0.4)
+    # An avenue of sphinxes to the gate, facing across the way (round 5).
+    for k, (x, y) in enumerate(((-0.45, -1.05), (0.45, -1.05), (-0.45, -1.3), (0.45, -1.3))):
+        b.sphinx(st, x, y, f"avenue{k}", facing=-math.pi / 2 if x < 0 else math.pi / 2)
 
 
 def egyptian_wonder(st):
     b.ground(5, (0.84, 0.74, 0.52))
     # A pyramid with a gilded cap, a gate and obelisks at its foot.
     s, h = 4.0, 2.4
-    lib.cyl("pyramid", s / math.sqrt(2), h, (0, 0.2, h / 2), st.trim, verts=4, r2=0.04, rot=(0, 0, R(45)), smooth_it=False)
+    blocks = lib.mat("pyramidblocks", (0.86, 0.80, 0.64), 0.9, grain=0.25, kind=("brick", 0.24, 0.12, 0.45))
+    lib.cyl("pyramid", s / math.sqrt(2), h, (0, 0.2, h / 2), blocks, verts=4, r2=0.04, rot=(0, 0, R(45)), smooth_it=False)
     gold = lib.mat("gold", (0.95, 0.78, 0.30), 0.3, metal=0.9)
     lib.cyl("cap", 0.2, 0.25, (0, 0.2, h - 0.1), gold, verts=4, r2=0.0, rot=(0, 0, R(45)), smooth_it=False)
     pylon_gate(st, "gate", 0, -1.9, w=1.6, h=0.8)
-    for x in (-1.4, 1.4):
-        obelisk(st, f"obl{x}", x, -2.1, 1.0)
+    # The temple at its foot, and an avenue of obelisks (round 5).
+    hall(st, "foottemple", 1.55, -1.2, 0.8, 0.6, 0.5)
+    columns(st, 1.25, 1.85, -1.55, 0.45, 4, r=0.04)
+    for k, (x, y) in enumerate(((-1.4, -2.1), (1.4, -2.1), (-1.0, -2.25), (1.0, -2.25))):
+        obelisk(st, f"obl{k}", x, y, 1.0 if k < 2 else 0.8)
 
 
 def egyptian_government_center(st):
@@ -77,6 +84,8 @@ def egyptian_government_center(st):
     b.banner(st, -0.5, -0.12, 0.5)
     b.banner(st, 0.5, -0.12, 0.5)
     b.flag(st, 0.9, 0.9, 1.6)
+    for k, x in enumerate((-0.6, 0.6)):
+        b.seated_colossus(st, x, -0.85, f"colossus{k}")
 
 
 def ziggurat(st, name, x, y, base, tiers, step_h, shrink=0.72, shrine=True):
@@ -88,7 +97,10 @@ def ziggurat(st, name, x, y, base, tiers, step_h, shrink=0.72, shrine=True):
         z += step_h
         w *= shrink
     slope = math.atan2(z, base * 0.5)
-    lib.box(f"{name}-stair", (base * 0.18, base * 0.62, 0.03), (x, y - base * 0.3, z * 0.48), st.trim, rot=(-slope, 0, 0))
+    # The great stair up the front, wide, with balustrades either side (round 5).
+    lib.box(f"{name}-stair", (base * 0.26, base * 0.62, 0.04), (x, y - base * 0.3, z * 0.48), st.trim, rot=(-slope, 0, 0))
+    for sx in (-1, 1):
+        lib.box(f"{name}-balustrade{sx}", (0.05, base * 0.62, 0.08), (x + sx * base * 0.13, y - base * 0.3, z * 0.48 + 0.05), st.wall, rot=(-slope, 0, 0))
     if shrine:
         lib.box(f"{name}-shrine", (w * 0.8, w * 0.8, step_h * 0.9), (x, y, z + step_h * 0.45), st.accent, bevel=0.01)
         crenels(st, f"{name}-sh", x, y, w * 0.8, w * 0.8, z + step_h * 0.9, m=st.accent, size=0.06)
@@ -143,6 +155,10 @@ def babylonian_government_center(st):
     lib.box("apadana-roof", (2.2, 0.55, 0.08), (0, -0.2, 0.8), st.trim)
     crenels(st, "ap", 0, -0.2, 2.2, 0.55, 0.84, size=0.08)
     b.flag(st, 0.9, 0.9, 1.6)
+    lib.box("apadana-glaze", (2.21, 1.31, 0.08), (0, 0.4, 0.62), st.accent)
+    b.court("apcourt", 1.8, 0.55, (0, -0.85, 0.01))
+    for k, x in enumerate((-1.15, 1.15)):
+        palm(st, f"gpalm{k}", x, -0.9, 0.85)
 
 
 def pagoda(st, name, x, y, base, tiers, storey=0.34):
@@ -181,13 +197,25 @@ def asian_town_center(st):
 def asian_temple(st):
     b.ground(3, (0.60, 0.56, 0.48))
     pagoda(st, "pagoda", 0.1, 0.2, 1.2, 3)
+    rim = lib.mat("pondstone", (0.50, 0.48, 0.44), 0.95, grain=0.3)
+    b.pond("tpond", 0.95, -0.85, 0.36, rim)
+    for k, sx in enumerate((-1, 1)):
+        lib.box(f"tbridge{k}", (0.2, 0.14, 0.03), (0.95 + sx * 0.08, -0.85, 0.05), st.trim, rot=(0, R(-22 * sx), 0))
+    for k, (x, y) in enumerate(((-0.75, -0.95), (0.3, -1.15))):
+        lantern(st, f"tlantern{k}", x, y)
 
 
 def asian_wonder(st):
     b.ground(5, (0.60, 0.56, 0.48))
+    b.paving("wcourt", 4.4, 4.4, (0, 0, 0.012), color=(0.64, 0.62, 0.58))
     pagoda(st, "great", 0, 0.3, 2.3, 5, storey=0.42)
     for x in (-1.9, 1.9):
         lantern(st, f"wl{x}", x, -1.9)
+    # A low wall round the court, open at the front, and a seated Buddha before the pagoda (round 5).
+    for k, (size, loc) in enumerate((((4.6, 0.1, 0.22), (0, 2.25, 0.11)), ((0.1, 4.6, 0.22), (-2.25, 0, 0.11)),
+                                      ((0.1, 4.6, 0.16), (2.25, 0, 0.08)), ((1.6, 0.1, 0.16), (-1.45, -2.25, 0.08)), ((1.6, 0.1, 0.16), (1.45, -2.25, 0.08)))):
+        lib.box(f"wwall{k}", size, loc, st.wall, bevel=0.01)
+    b.buddha(st, 0.0, -1.45, "buddha", size=1.4)
 
 
 def asian_government_center(st):
@@ -195,6 +223,10 @@ def asian_government_center(st):
     lib.box("terrace", (2.4, 1.9, 0.12), (0, 0.15, 0.06), st.accent2, bevel=0.01)
     hall(st, "hall", 0, 0.25, 2.1, 1.3, 0.75)
     b.flag(st, 1.0, 0.95, 1.8)
+    for k in range(3):
+        lib.box(f"gstair{k}", (0.7, 0.14, 0.04 * (3 - k)), (0, -0.85 + k * 0.1, 0.02 * (3 - k)), st.accent2)
+    for k, x in enumerate((-0.7, 0.7)):
+        lantern(st, f"glantern{k}", x, -1.05)
 
 
 def greek_town_center(st):
@@ -226,6 +258,9 @@ def greek_wonder(st):
             lib.cyl(f"wcol{x}{k}", 0.075, 1.1, (x, y, base + 0.55), st.trim, verts=20, smooth_it=False)
     pediment(st, "wroof", 0, 0.3, 3.2, 2.5, base + 1.1)
     statue(st, "athena", 1.8, -1.6, 0.7)
+    statue(st, "athena2", -1.8, -1.6, 0.7)
+    for k, x in enumerate((-2.0, -1.5, 1.5, 2.0)):
+        b.cypress(f"wcypress{k}", x, 1.9, 0.9)
 
 
 def greek_government_center(st):
@@ -236,6 +271,10 @@ def greek_government_center(st):
     columns(st, -0.95, 0.95, -0.45, 0.85, 6)
     pediment(st, "roof", 0, 0.1, 2.1, 1.85, base + 0.85)
     b.flag(st, 1.05, 1.05, 2.0)
+    # Stepped seats where the council met in the open, a statue by them (round 5).
+    for k in range(4):
+        lib.box(f"seat{k}", (0.3, 0.9 - k * 0.12, 0.06), (1.15 - k * 0.06, -0.7, 0.03 + k * 0.06), st.trim)
+    statue(st, "gstatue", -1.1, -1.0, 0.45)
 
 
 def roman_town_center(st):
@@ -260,8 +299,10 @@ def roman_temple(st):
     dome = lib.mat("dome", (0.66, 0.66, 0.62), 0.6) if st.i >= 3 else st.roof
     lib.ball("dome", 0.86, (0, 0.35, base + 0.8), dome, scale=(1, 1, 0.6), sub=3)
     lib.cyl("oculus", 0.12, 0.05, (0, 0.35, base + 1.3), st.trim, verts=16)
-    columns(st, -0.6, 0.6, -0.65, 0.8, 4, r=0.05)
+    columns(st, -0.6, 0.6, -0.65, 0.8, 6, r=0.05)
+    columns(st, -0.6, 0.6, -0.3, 0.8, 4, r=0.045)
     pediment(st, "porch", 0, -0.45, 1.4, 0.6, base + 0.8)
+    b.paving("tsquare", 2.4, 0.5, (0, -1.15, 0.012), color=(0.70, 0.66, 0.58))
 
 
 def tube(name, r, thick, h, loc, m, verts=48):
@@ -300,6 +341,12 @@ def roman_wonder(st):
         tube(f"seats{k}", 1.98 - k * 0.15, 0.16, top, (0, 0.2, top / 2), seats if k % 2 else st.trim, verts=40)
     lib.cyl("arena", 1.1, 0.12, (0, 0.2, 0.06), lib.mat("sand", (0.86, 0.78, 0.58), 1.0), verts=40)
     b.flag(st, 1.5, -1.3, 2.4)
+    # Masts round the top with the owner's pennants, as the awning's were (round 5).
+    for j in range(8):
+        a = 2 * math.pi * j / 8 + 0.2
+        mx, my = math.cos(a) * 2.1, 0.2 + math.sin(a) * 2.1
+        lib.cyl(f"mast{j}", 0.015, 0.45, (mx, my, 1.95), st.wood, verts=6)
+        lib.box(f"pennant{j}", (0.02, 0.14, 0.08), (mx, my - 0.07, 2.12), st.team)
 
 
 def roman_government_center(st):
@@ -310,6 +357,10 @@ def roman_government_center(st):
     pediment(st, "roof", 0, 0.05, 1.9, 1.8, base + 0.9)
     lib.ball("dome", 0.4, (0, 0.55, base + 1.35), lib.mat("dome", (0.66, 0.66, 0.62), 0.6), scale=(1, 1, 0.7), sub=3)
     b.flag(st, 1.0, 1.0, 2.2)
+    b.paving("forum", 2.4, 0.55, (0, -1.1, 0.012), color=(0.70, 0.66, 0.58))
+    for k, x in enumerate((-1.05, 1.05)):
+        lib.cyl(f"forumcol{k}", 0.05, 0.75, (x, -1.1, 0.375), st.trim, verts=12)
+    statue(st, "curiastatue", 0.0, -1.15, 0.45)
 
 
 SPECIAL = {
