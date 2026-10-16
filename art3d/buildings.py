@@ -311,9 +311,110 @@ def gateway(st, x0, x1, y, h, name="gate"):
     lib.box(f"{name}banner", (0.14, 0.012, 0.12), ((x0 + x1) / 2, y - 0.045, h - 0.12), st.team)
 
 
+def colonnade(st, a, b, h, n, name):
+    """A row of `n` columns from point a to point b (x, y)."""
+    (x0, y0), (x1, y1) = a, b
+    if abs(y1 - y0) < 1e-6:
+        columns(st, x0, x1, y0, h, n)
+        return
+    for i in range(n):
+        t = i / max(1, n - 1)
+        lib.cyl(f"{name}{i}", 0.045, h, (x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, h / 2), st.trim, verts=12)
+
+
+def lean_to(name, x, y, w, d, z, m, down="front"):
+    """A roof of one slope, `w` by `d`, its high edge at the back, falling toward `down` ("front", -Y,
+    or "right", +X)."""
+    rot = (R(-14), 0, 0) if down == "front" else (0, R(14), 0)
+    lib.box(name, (w, d, 0.03), (x, y, z), m, rot=rot, bevel=0.005)
+
+
+def propylon(st, x, y, w, h, name="propylon"):
+    """A gateway of the Iron Age: steps, four columns, a beam and a pediment, banners either side."""
+    m = st.trim
+    steps(st, x, y, w + 0.1, 0.36, n=2, h=0.035)
+    for k, dx in enumerate((-w / 2, -w / 6, w / 6, w / 2)):
+        for dy in (-0.12, 0.12):
+            lib.cyl(f"{name}col{k}{dy}", 0.04, h, (x + dx, y + dy, 0.07 + h / 2), m, verts=12)
+    lib.box(f"{name}beam", (w + 0.16, 0.34, 0.07), (x, y, 0.07 + h + 0.035), m, bevel=0.005)
+    prism(f"{name}pediment", w + 0.2, 0.38, 0.16, (x, y, 0.07 + h + 0.07), st.roof, "x")
+    for k, dx in enumerate((-w / 2 - 0.14, w / 2 + 0.14)):
+        lib.box(f"{name}pier{k}", (0.12, 0.12, h + 0.1), (x + dx, y, (h + 0.1) / 2), st.wall, bevel=0.01)
+        lib.box(f"{name}banner{k}", (0.1, 0.012, 0.2), (x + dx, y - 0.065, h - 0.1), st.team)
+
+
+def paving(name, w, d, loc, color=(0.66, 0.62, 0.54)):
+    """Stone slabs laid over a yard."""
+    m = lib.mat(f"paving-{name}", color, 0.9, grain=0.2, grain_size=0.02, kind=("brick", 0.22, 0.2, 0.35))
+    lib.box(name, (w, d, 0.02), loc, m)
+
+
+def archery_range_iron(st):
+    """The Iron Age's range, a soldiers' training ground: a wall of dressed stone with towers at the corners,
+    a covered gallery to shoot from along the front, an earth bank behind the targets to stop the arrows, cut
+    stones marking the distances, the armoury with a pediment, a statue of an archer by the gate."""
+    ground(3, (0.58, 0.52, 0.40))
+    enclosure(st, 1.3, 0.4, (0.25, 0.95), name="awall")
+    for k, (x, y) in enumerate(((-1.3, 1.3), (1.3, 1.3), (-1.3, -1.3), (1.3, -1.3))):
+        th = 0.62 if y > 0 else 0.5
+        lib.box(f"tower{k}", (0.26, 0.26, th), (x, y, th / 2), st.wall, bevel=0.01)
+        for j, (dx, dy) in enumerate(((-0.09, -0.09), (0.09, -0.09), (0.09, 0.09), (-0.09, 0.09))):
+            lib.box(f"merlon{k}{j}", (0.07, 0.07, 0.07), (x + dx, y + dy, th + 0.035), st.wall)
+    gateway(st, 0.25, 0.95, -1.3, 0.66, name="agate")
+    paving("path", 0.6, 1.4, (0.6, -0.65, 0.01))
+    # The bank and the targets before it.
+    soil = lib.mat("bank", (0.34, 0.27, 0.18), 1.0, grain=0.45, grain_size=0.03)
+    prism("bank", 1.6, 0.5, 0.46, (0.5, 1.02, 0.0), soil, "x")
+    turf = lib.mat("turf", (0.30, 0.40, 0.18), 1.0, grain=0.4, grain_size=0.02)
+    lib.box("bankturf", (1.6, 0.08, 0.03), (0.5, 1.02, 0.45), turf)
+    straw = lib.mat("straw", (0.82, 0.70, 0.38), 0.95, grain=0.4, grain_size=0.01)
+    rings = [lib.mat("ring-white", (0.90, 0.86, 0.76), 0.8, grain=0.1), lib.mat("ring-red", (0.66, 0.18, 0.12), 0.8, grain=0.1),
+             lib.mat("ring-black", (0.10, 0.08, 0.06), 0.8, grain=0.05)]
+    for k, x in enumerate((0.0, 0.5, 1.0)):
+        y = 0.78
+        for d in (-0.13, 0.13):
+            lib.box(f"frame{k}{d}", (0.035, 0.035, 0.5), (x + d, y + 0.05, 0.25), st.wood)
+        lib.box(f"framebar{k}", (0.34, 0.035, 0.035), (x, y + 0.05, 0.5), st.wood)
+        lib.cyl(f"butt{k}", 0.19, 0.1, (x, y, 0.32), straw, rot=(R(90), 0, 0), verts=18)
+        for j, (r, m) in enumerate(zip((0.14, 0.095, 0.045), rings)):
+            lib.cyl(f"ring{k}{j}", r, 0.012, (x, y - 0.054 - j * 0.004, 0.32), m, rot=(R(90), 0, 0), verts=18, smooth_it=False)
+        for j in range(3):
+            lib.cyl(f"arrow{k}{j}", 0.005, 0.2, (x + (j - 1) * 0.06, y - 0.14, 0.32 + ((j * 37) % 5 - 2) * 0.03), st.wood,
+                    rot=(R(90), 0, 0), verts=4, smooth_it=False)
+    # Cut stones marking the distances.
+    marker = lib.mat("marker", (0.70, 0.67, 0.60), 0.9, grain=0.2)
+    for k, (x, y) in enumerate(((0.0, 0.25), (0.5, 0.25), (1.0, 0.25), (0.0, -0.2), (0.5, -0.2), (1.0, -0.2))):
+        lib.box(f"marker{k}", (0.06, 0.06, 0.1), (x, y, 0.05), marker, bevel=0.01)
+    # The gallery along the front, left of the gate: columns, a tiled roof of one slope, low screens
+    # between the places to shoot from.
+    colonnade(st, (-1.15, -0.72), (0.05, -0.72), 0.48, 5, "gal")
+    lean_to("galroof", -0.55, -1.0, 1.4, 0.66, 0.53, st.roof)
+    for k, x in enumerate((-0.85, -0.55, -0.25)):
+        lib.box(f"screen{k}", (0.03, 0.4, 0.22), (x, -1.0, 0.11), st.wall)
+    # The armoury in the back corner: a pediment over the door, bows and sheaves of arrows before it.
+    hall(st, "armoury", -0.78, 0.72, 0.85, 0.75, 0.56, roof="gable", along="y")
+    columns(st, -1.08, -0.48, 0.3, 0.5, 4)
+    door(st, -0.78, 0.33, 0.3, 0.38)
+    for k in range(4):
+        lib.cyl(f"bow{k}", 0.009, 0.44, (-0.35 + k * 0.08, 0.2, 0.22), st.wood, verts=5, rot=(R(10), 0, 0))
+    basket = lib.mat("basket", (0.55, 0.40, 0.20), 0.9, grain=0.4, grain_size=0.01)
+    for k, x in enumerate((-1.05, -0.95)):
+        lib.cyl(f"quiver{k}", 0.05, 0.16, (x, 0.15, 0.08), basket, verts=10)
+    # A statue of an archer by the gate, on a plinth.
+    bronze = lib.mat("statue", (0.40, 0.33, 0.20), 0.4, metal=0.6, grain=0.1)
+    lib.box("plinth", (0.16, 0.16, 0.18), (1.1, -0.95, 0.09), marker, bevel=0.01)
+    lib.cyl("statue-legs", 0.03, 0.12, (1.1, -0.95, 0.24), bronze, verts=8)
+    lib.cyl("statue-body", 0.04, 0.13, (1.1, -0.95, 0.36), bronze, verts=8)
+    lib.ball("statue-head", 0.03, (1.1, -0.95, 0.46), bronze, sub=1)
+    lib.cyl("statue-bow", 0.006, 0.26, (1.05, -0.98, 0.38), bronze, verts=4, rot=(R(15), 0, 0))
+    flag(st, -1.15, -1.1, 1.0)
+
+
 def archery_range(st):
     """A walled range: targets of straw with painted rings along the back wall, facing the way in; a line to
     shoot from, racks of bows and baskets of arrows by it; the armoury in the back corner."""
+    if st.age == "iron":
+        return archery_range_iron(st)
     ground(3)
     enclosure(st, 1.3, 0.34, (0.25, 0.95))
     gateway(st, 0.25, 0.95, -1.3, 0.62)
@@ -386,10 +487,84 @@ def stable(st):
     flag(st, 1.15, 1.1, 1.0)
 
 
+def tholos(st, x, y, name="tholos"):
+    """A round pavilion: a step, a ring of columns, a conical roof of tiles with a finial."""
+    lib.cyl(f"{name}base", 0.44, 0.05, (x, y, 0.025), st.trim, verts=24)
+    lib.cyl(f"{name}step", 0.4, 0.05, (x, y, 0.075), st.trim, verts=24)
+    for i in range(8):
+        a = 2 * math.pi * i / 8
+        lib.cyl(f"{name}col{i}", 0.035, 0.4, (x + 0.33 * math.cos(a), y + 0.33 * math.sin(a), 0.3), st.trim, verts=10)
+    lib.cyl(f"{name}ring", 0.38, 0.06, (x, y, 0.53), st.trim, verts=24)
+    lib.cyl(f"{name}frieze", 0.381, 0.02, (x, y, 0.51), st.team, verts=24)
+    lib.cyl(f"{name}roof", 0.46, 0.26, (x, y, 0.69), st.roof, verts=24, r2=0.04)
+    lib.ball(f"{name}finial", 0.035, (x, y, 0.84), st.trim, sub=1)
+    # A table of fish and meat inside.
+    lib.cyl(f"{name}table", 0.14, 0.12, (x, y, 0.16), st.wood, verts=12)
+
+
+def fountain(st, x, y, name="fountain"):
+    """A round basin of water with a pillar in the middle and water falling from its spout."""
+    lib.cyl(f"{name}basin", 0.36, 0.14, (x, y, 0.07), st.trim, verts=24)
+    lib.cyl(f"{name}water", 0.31, 0.01, (x, y, 0.135), lib.mat("fountainwater", (0.22, 0.38, 0.46), 0.15), verts=24)
+    lib.cyl(f"{name}pillar", 0.06, 0.42, (x, y, 0.3), st.trim, verts=12)
+    lib.ball(f"{name}bowl", 0.1, (x, y, 0.52), st.trim, scale=(1, 1, 0.45), sub=2)
+    lib.cyl(f"{name}fall", 0.02, 0.38, (x, y, 0.33), lib.mat("fountainfall", (0.70, 0.82, 0.88), 0.1), verts=8)
+
+
+def market_iron(st):
+    """The Iron Age's market, a square of stone: a gateway with columns and a pediment, a colonnade along the
+    back and left walls with shops of stone behind it, the square paved, in the middle a round pavilion (the
+    architectures of the east have a fountain there), jars on racks, scales, a cart by the gate."""
+    ground(3, (0.62, 0.56, 0.44))
+    paving("square", 2.5, 2.5, (0, 0, 0.012))
+    enclosure(st, 1.3, 0.3, (-0.42, 0.42), name="mwall")
+    propylon(st, 0.0, -1.3, 0.62, 0.52)
+    # Shops behind a colonnade: their fronts with doors, the columns before them, a tiled roof over both.
+    lib.box("shops-back", (2.5, 0.06, 0.5), (0.0, 1.15, 0.25), st.wall, bevel=0.01)
+    for k, x in enumerate((-0.75, -0.25, 0.25, 0.75)):
+        lib.box(f"shopdoor-b{k}", (0.2, 0.03, 0.3), (x, 1.115, 0.15), st.dark)
+    colonnade(st, (-0.85, 0.85), (1.2, 0.85), 0.5, 6, "stoa-b")
+    lean_to("stoaroof-b", 0.18, 1.06, 2.25, 0.55, 0.55, st.roof)
+    lib.box("stoa-b-frieze", (2.2, 0.012, 0.035), (0.18, 0.8, 0.5), st.team)
+    lib.box("shops-left", (0.06, 1.95, 0.5), (-1.15, -0.1, 0.25), st.wall, bevel=0.01)
+    for k, y in enumerate((-0.75, -0.25, 0.25)):
+        lib.box(f"shopdoor-l{k}", (0.03, 0.2, 0.3), (-1.115, y, 0.15), st.dark)
+    colonnade(st, (-0.85, -0.95), (-0.85, 0.85), 0.5, 5, "stoa-l")
+    lean_to("stoaroof-l", -1.06, -0.05, 0.55, 2.0, 0.55, st.roof, down="right")
+    # The middle of the square.
+    if getattr(st, "arch", "default") in ("default", "greek", "roman"):
+        tholos(st, 0.3, 0.05)
+    else:
+        fountain(st, 0.3, 0.05)
+    clay = lib.mat("clay", (0.70, 0.40, 0.24), 0.8)
+    # Jars on a rack by the shops, a pair of scales, sacks.
+    lib.box("jarrack", (0.5, 0.12, 0.04), (0.75, 0.62, 0.12), st.wood)
+    for j in range(4):
+        lib.ball(f"amphora{j}", 0.04, (0.57 + j * 0.12, 0.62, 0.2), clay, scale=(1, 1, 1.6), sub=2)
+    lib.cyl("scalepost", 0.012, 0.3, (-0.45, 0.45, 0.15), st.wood, verts=6)
+    lib.box("scalebeam", (0.26, 0.012, 0.012), (-0.45, 0.45, 0.3), st.wood)
+    metal = lib.mat("brass", (0.62, 0.48, 0.22), 0.4, metal=0.7)
+    for dx in (-0.12, 0.12):
+        lib.cyl(f"scalepan{dx}", 0.04, 0.01, (-0.45 + dx, 0.45, 0.22), metal, verts=10)
+    sack = lib.mat("sack", (0.74, 0.66, 0.50), 1.0, grain=0.3)
+    for k, (x, y) in enumerate(((-0.6, -0.55), (-0.5, -0.62), (-0.62, -0.68))):
+        lib.ball(f"sack{k}", 0.055, (x, y, 0.06), sack, scale=(1, 1, 1.1), sub=1)
+    # A cart by the gate.
+    lib.box("cart", (0.36, 0.22, 0.08), (0.75, -0.85, 0.14), st.wood, bevel=0.01)
+    for dy in (-0.13, 0.13):
+        lib.cyl(f"wheel{dy}", 0.09, 0.025, (0.75, -0.85 + dy, 0.09), st.wood, rot=(R(90), 0, 0), verts=12)
+    lib.box("shaft", (0.3, 0.025, 0.025), (0.45, -0.85, 0.12), st.wood)
+    for j in range(3):
+        lib.ball(f"cartjar{j}", 0.035, (0.68 + j * 0.07, -0.85, 0.22), clay, scale=(1, 1, 1.4), sub=1)
+    flag(st, 1.2, 1.15, 1.0)
+
+
 def market(st):
     """A walled market: a gate at the front, stalls along the back and left walls under awnings of plain
     cloth with their wares (pots, baskets of fruit, sacks, bolts of cloth), the storehouse in the back corner,
     a well in the square."""
+    if st.age == "iron":
+        return market_iron(st)
     ground(3, (0.62, 0.56, 0.44) if st.stone else (0.50, 0.40, 0.27))
     enclosure(st, 1.3, 0.26, (-0.35, 0.35), name="mwall")
     gateway(st, -0.35, 0.35, -1.3, 0.68, name="mgate")
