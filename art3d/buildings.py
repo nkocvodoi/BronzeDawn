@@ -699,13 +699,13 @@ def market_egyptian(st):
 
 
 def market_babylonian(st):
-    """A market of the Babylonian architecture: a gateway of blue glazed brick with a lion on it, rows of
-    small domed shops along the back and left walls, carpets laid out before them, spices and pots, a fountain
-    in the middle under date palms, the square paved in brick."""
+    """A market of the Babylonian architecture: an opening in the wall for a way in (the glazed lion gate
+    stood over the square like a block, and was taken out), rows of small domed shops along the back and left
+    walls, carpets laid out before them, spices and pots, a fountain in the middle under date palms, the square
+    paved in brick."""
     ground(3, (0.66, 0.56, 0.40))
     paving("square", 2.5, 2.5, (0, 0, 0.012), color=(0.70, 0.56, 0.40))
     enclosure(st, 1.3, 0.28, (-0.32, 0.32), name="mwall")
-    arch.lion_gate(st, "gate", 0.0, -1.3)
 
     def domed(k, x, y, facing):
         lib.box(f"cell{k}", (0.4, 0.4, 0.34), (x, y, 0.17), st.wall, bevel=0.01)
