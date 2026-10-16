@@ -42,6 +42,7 @@ def egyptian_town_center(st):
         hall(st, "upper", 0.45, 0.6, 0.8, 0.7, h + 0.3)
     pylon_gate(st, "gate", 0.0, -0.55, w=1.6, h=h + 0.35)
     b.flag(st, -0.75, 0.75, h + 0.9)
+    b.tc_yard(st)
 
 
 def egyptian_temple(st):
@@ -101,13 +102,15 @@ def babylonian_town_center(st):
     for sx in (-1, 1):
         lib.box(f"tower{sx}", (0.42, 0.42, h + 0.3), (sx * 0.85, -0.45, (h + 0.3) / 2), st.wall, bevel=0.01)
         crenels(st, f"tw{sx}", sx * 0.85, -0.45, 0.42, 0.42, h + 0.3, size=0.08)
-    lib.box("gatewall", (1.3, 0.3, h * 0.8), (0, -0.45, h * 0.4), st.accent if st.i >= 2 else st.wall)
+    # The gate wall of brick with a band of blue glaze: the whole of it glazed, with lions, read as a block
+    # and was taken out (replica/art-plan.md, round 1).
+    lib.box("gatewall", (1.3, 0.3, h * 0.8), (0, -0.45, h * 0.4), st.wall)
+    if st.i >= 2:
+        lib.box("gateglaze", (1.31, 0.31, 0.08), (0, -0.45, h * 0.62), st.accent)
     crenels(st, "gw", 0, -0.45, 1.3, 0.3, h * 0.8, size=0.08)
     arch_door(st, 0, -0.61, 0.36, 0.55)
-    if st.i >= 2:
-        for sx in (-1, 1):
-            lib.box(f"lion{sx}", (0.24, 0.02, 0.1), (sx * 0.4, -0.61, h * 0.5), st.accent2)
     b.flag(st, 0.85, 0.9, h + 0.8)
+    b.tc_yard(st)
 
 
 def babylonian_temple(st):
@@ -172,6 +175,7 @@ def asian_town_center(st):
     lib.box("gatebeam", (1.2, 0.08, 0.07), (0, -1.1, 0.72), st.trim)
     lib.box("gatebeam2", (1.0, 0.06, 0.05), (0, -1.1, 0.6), st.trim)
     b.flag(st, 1.0, 0.95, h + 1.0)
+    b.tc_yard(st)
 
 
 def asian_temple(st):
@@ -203,6 +207,7 @@ def greek_town_center(st):
     pediment(st, "roof", 0, 0.25, 2.2, 1.55, base + h)
     b.door(st, 0, -0.01, 0.3, 0.45)
     b.flag(st, 1.05, 1.05, h + 1.1)
+    b.tc_yard(st)
 
 
 def greek_wonder(st):
@@ -244,6 +249,7 @@ def roman_town_center(st):
     b.prism("naveroof", 1.55, 1.65, 0.35, (0, 0.25, h + 0.4), st.roof, "y")
     b.prism("aisleroof", 2.35, 1.65, 0.18, (0, 0.25, h), st.roof, "x")
     b.flag(st, 1.0, 1.0, h + 1.2)
+    b.tc_yard(st)
 
 
 def roman_temple(st):

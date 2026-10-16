@@ -219,12 +219,256 @@ def clutter(size, rnd):
             lib.cyl(name, 0.008, 0.26, (x, y, 0.1), wood, verts=4, rot=(R(rnd.uniform(15, 30)), 0, rnd.uniform(0, 3)))
 
 
+# ---- things that stand about the compounds (round 2 of replica/art-plan.md)
+
+def mats():
+    """The materials the props share, made once a scene."""
+    return dict(
+        straw=lib.mat("straw", (0.82, 0.70, 0.38), 0.95, grain=0.4, grain_size=0.01),
+        hay=lib.mat("hay", (0.86, 0.74, 0.40), 0.95, grain=0.4, grain_size=0.01),
+        wood=lib.mat("wood", (0.40, 0.25, 0.12), 0.8),
+        log=lib.mat("logbark", (0.36, 0.26, 0.16), 0.95, grain=0.4, grain_size=0.01),
+        cut=lib.mat("logend", (0.70, 0.56, 0.36), 0.9, grain=0.3),
+        stone=lib.mat("cutstone", (0.62, 0.60, 0.56), 0.9, grain=0.25),
+        rope=lib.mat("rope", (0.62, 0.52, 0.34), 0.95),
+        water=lib.mat("troughwater", (0.24, 0.40, 0.46), 0.15),
+        bronze=lib.mat("statue", (0.40, 0.33, 0.20), 0.4, metal=0.6, grain=0.1),
+        gold=lib.mat("ore", (0.80, 0.62, 0.22), 0.5, metal=0.5, grain=0.3, grain_size=0.01),
+        hide=lib.mat("hide", (0.56, 0.38, 0.22), 0.9, grain=0.35, grain_size=0.02),
+        iron=lib.mat("ironwork", (0.30, 0.30, 0.32), 0.5, metal=0.7),
+        fire=lib.mat("flame", (1.0, 0.55, 0.15), 1.0, emit=(1.0, 0.5, 0.1)),
+    )
+
+
+def well(st, x, y, name="well"):
+    m = mats()
+    lib.cyl(f"{name}-ring", 0.13, 0.15, (x, y, 0.075), m["stone"], verts=16)
+    lib.cyl(f"{name}-water", 0.1, 0.01, (x, y, 0.148), lib.mat("wellwater", (0.06, 0.10, 0.12), 0.2), verts=14)
+    for dx in (-0.12, 0.12):
+        lib.cyl(f"{name}-post{dx}", 0.014, 0.34, (x + dx, y, 0.17), m["wood"], verts=6)
+    lib.cyl(f"{name}-beam", 0.012, 0.3, (x, y, 0.33), m["wood"], rot=(0, R(90), 0), verts=6)
+    lib.cyl(f"{name}-bucket", 0.03, 0.05, (x, y, 0.25), m["wood"], verts=8)
+
+
+def dummy(st, x, y, name="dummy"):
+    """A straw man on a post to hit at, a crossbar for arms."""
+    m = mats()
+    lib.cyl(f"{name}-post", 0.015, 0.42, (x, y, 0.21), m["wood"], verts=6)
+    lib.cyl(f"{name}-body", 0.055, 0.18, (x, y, 0.3), m["straw"], verts=10)
+    lib.ball(f"{name}-head", 0.04, (x, y, 0.44), m["straw"], sub=1)
+    lib.cyl(f"{name}-arms", 0.012, 0.26, (x, y, 0.35), m["wood"], rot=(0, R(90), 0), verts=5)
+
+
+def weapon_rack(st, x, y, name="rack", along_x=True, shields=2):
+    """Spears leaning on a rail, and a shield or two in the owner's colour."""
+    m = mats()
+    for d in (-0.2, 0.2):
+        px, py = (x + d, y) if along_x else (x, y + d)
+        lib.cyl(f"{name}-post{d}", 0.014, 0.36, (px, py, 0.18), m["wood"], verts=6)
+    lib.box(f"{name}-rail", (0.46, 0.025, 0.025) if along_x else (0.025, 0.46, 0.025), (x, y, 0.32), m["wood"])
+    for k in range(5):
+        t = (k - 2) * 0.08
+        px, py = (x + t, y + 0.03) if along_x else (x + 0.03, y + t)
+        lib.cyl(f"{name}-spear{k}", 0.008, 0.62, (px, py, 0.3), m["wood"], rot=(R(-8), 0, 0) if along_x else (0, R(8), 0), verts=5)
+        lib.cyl(f"{name}-tip{k}", 0.012, 0.05, (px, py - 0.04 if along_x else py, 0.62), m["iron"], verts=4, r2=0.0)
+    for k in range(shields):
+        t = (k - 0.5) * 0.22
+        px, py = (x + t, y - 0.06) if along_x else (x - 0.06, y + t)
+        lib.cyl(f"{name}-shield{k}", 0.085, 0.02, (px, py, 0.1), st.team, rot=(R(78), 0, 0) if along_x else (0, R(-78), 0), verts=14)
+
+
+def horse(name, x, y, facing=0.0, coat=(0.42, 0.28, 0.18)):
+    """A horse standing, tied: body, neck and head, four legs, a tail."""
+    m = lib.mat(f"horse{coat[0]:.2f}", coat, 0.7, grain=0.2)
+    dark = lib.mat("mane", (0.16, 0.12, 0.10), 0.8)
+    # Built about the origin and moved after (lib.adopt keeps where a part stands in the world).
+    root = lib.empty(name, (0, 0, 0))
+    lib.ball(f"{name}-body", 0.1, (0, 0, 0.22), m, parent=root, scale=(1.7, 0.75, 0.8), sub=2)
+    for dx in (-0.12, 0.12):
+        for dy in (-0.045, 0.045):
+            lib.cyl(f"{name}-leg{dx}{dy}", 0.016, 0.18, (dx, dy, 0.09), m, parent=root, verts=6)
+    lib.cyl(f"{name}-neck", 0.04, 0.16, (0.17, 0, 0.32), m, parent=root, rot=(0, R(35), 0), verts=8)
+    lib.box(f"{name}-head", (0.12, 0.05, 0.05), (0.24, 0, 0.38), m, parent=root, rot=(0, R(30), 0))
+    lib.box(f"{name}-mane", (0.12, 0.015, 0.03), (0.16, 0, 0.36), dark, parent=root, rot=(0, R(35), 0))
+    lib.cyl(f"{name}-tail", 0.014, 0.14, (-0.19, 0, 0.18), dark, parent=root, rot=(0, R(-25), 0), verts=5)
+    root.location = (x, y, 0)
+    root.rotation_euler = (0, 0, facing)
+    return root
+
+
+def trough(x, y, name="trough", along_x=True):
+    m = mats()
+    size = (0.36, 0.1, 0.08) if along_x else (0.1, 0.36, 0.08)
+    lib.box(f"{name}", size, (x, y, 0.04), m["wood"], bevel=0.008)
+    lib.box(f"{name}-water", (size[0] - 0.03, size[1] - 0.03, 0.01), (x, y, 0.078), m["water"])
+
+
+def log_pile(x, y, n=6, name="logs", along_x=True, r=0.035, length=0.45):
+    """Logs stacked in a pyramid, their cut ends toward the viewer."""
+    m = mats()
+    k = 0
+    for row in range(3):
+        for j in range(n - row * 2):
+            if j >= n - row * 2:
+                break
+            off = (j - (n - row * 2 - 1) / 2) * r * 2
+            px, py = (x + off, y) if along_x else (x, y + off)
+            rot = (R(90), 0, 0) if along_x else (0, R(90), 0)
+            lib.cyl(f"{name}{k}", r, length, (px, py, r + row * r * 1.7), m["log"], rot=rot, verts=8)
+            k += 1
+
+
+def stone_blocks(x, y, name="blocks", k=1.0):
+    """Cut blocks of stone, stacked two high, `k` their size."""
+    m = mats()
+    for j, (dx, dy, dz) in enumerate(((0, 0, 0), (0.16, 0, 0), (0.08, 0.02, 0.1), (-0.14, 0.1, 0), (0.3, 0.08, 0), (0.22, 0.04, 0.1))):
+        lib.box(f"{name}{j}", (0.15 * k, 0.11 * k, 0.1 * k), (x + dx * k, y + dy * k, (0.05 + dz) * k), m["stone"], bevel=0.01, rot=(0, 0, dx * 0.6))
+
+
+def ore_heap(x, y, name="ore", r=0.17):
+    m = mats()
+    o = lib.cyl(f"{name}", r, r * 0.85, (x, y, r * 0.42), m["gold"], verts=14, r2=r * 0.18)
+    lib.lumpy(o, r * 0.12, r * 0.3)
+    for k in range(6):
+        lib.ball(f"{name}-nugget{k}", r * 0.15, (x + r * 0.95 * math.cos(k * 1.1), y + r * 0.95 * math.sin(k * 1.1), r * 0.12), m["gold"], sub=1)
+
+
+def hide_rack(x, y, name="hiderack"):
+    """A hide stretched on a frame of poles to dry."""
+    m = mats()
+    for d in (-0.15, 0.15):
+        lib.cyl(f"{name}-pole{d}", 0.012, 0.4, (x + d, y, 0.2), m["wood"], verts=5)
+    lib.cyl(f"{name}-bar", 0.01, 0.34, (x, y, 0.38), m["wood"], rot=(0, R(90), 0), verts=5)
+    lib.box(f"{name}-hide", (0.26, 0.012, 0.28), (x, y, 0.22), m["hide"], rot=(R(6), 0, 0))
+
+
+def crane(st, x, y, h=0.9, name="crane"):
+    """A wooden crane: a mast, a boom leaning out, a rope with a stone hanging from it."""
+    m = mats()
+    lib.cyl(f"{name}-mast", 0.025, h, (x, y, h / 2), m["wood"], verts=6)
+    lib.cyl(f"{name}-boom", 0.018, 0.7, (x + 0.24, y - 0.12, h - 0.1), m["wood"], rot=(R(-35), R(55), 0), verts=6)
+    lib.cyl(f"{name}-rope", 0.004, 0.42, (x + 0.48, y - 0.24, h - 0.4), m["rope"], verts=4)
+    lib.box(f"{name}-load", (0.12, 0.1, 0.08), (x + 0.48, y - 0.24, h - 0.64), m["stone"], bevel=0.01)
+    for d in (-0.14, 0.14):
+        lib.cyl(f"{name}-leg{d}", 0.015, 0.35, (x + d, y + 0.1, 0.12), m["wood"], rot=(R(30), R(d * 120), 0), verts=5)
+
+
+def catapult_frame(st, x, y, name="catapult", done=0.6):
+    """A stone thrower half built: its base of beams, the uprights, the arm lying across them, a wheel
+    leaning by it."""
+    m = mats()
+    for d in (-0.12, 0.12):
+        lib.box(f"{name}-side{d}", (0.6, 0.05, 0.05), (x, y + d, 0.05), m["wood"])
+    for d in (-0.22, 0.0, 0.22):
+        lib.box(f"{name}-cross{d}", (0.05, 0.3, 0.04), (x + d, y, 0.08), m["wood"])
+    if done > 0.4:
+        for d in (-0.12, 0.12):
+            lib.box(f"{name}-up{d}", (0.05, 0.05, 0.32), (x + 0.05, y + d, 0.24), m["wood"])
+        lib.box(f"{name}-axle", (0.05, 0.3, 0.05), (x + 0.05, y, 0.38), m["wood"])
+    lib.cyl(f"{name}-arm", 0.022, 0.7, (x - 0.1, y, 0.14), m["wood"], rot=(0, R(80), 0), verts=6)
+    lib.cyl(f"{name}-wheel", 0.12, 0.03, (x + 0.42, y - 0.2, 0.12), m["wood"], rot=(R(80), 0, 0), verts=12)
+    for k in range(3):
+        lib.ball(f"{name}-shot{k}", 0.04, (x - 0.35 + k * 0.09, y - 0.25, 0.04), m["stone"], sub=1)
+
+
+def sphinx(st, x, y, name="sphinx", facing=-math.pi / 2):
+    """A small sphinx on a plinth: a lion's body lying, a man's head with a headdress."""
+    m = st.trim
+    root = lib.empty(name, (0, 0, 0))
+    lib.box(f"{name}-plinth", (0.3, 0.14, 0.06), (0, 0, 0.03), m, parent=root)
+    lib.ball(f"{name}-body", 0.06, (-0.03, 0, 0.1), m, parent=root, scale=(2.0, 0.9, 0.7), sub=1)
+    lib.box(f"{name}-paws", (0.1, 0.08, 0.03), (0.1, 0, 0.075), m, parent=root)
+    lib.box(f"{name}-head", (0.06, 0.06, 0.08), (0.08, 0, 0.16), m, parent=root)
+    root.location = (x, y, 0)
+    root.rotation_euler = (0, 0, facing + math.pi / 2)
+
+
+def rider_statue(st, x, y, name="rider"):
+    """A rider on a horse, of bronze, on a stone plinth."""
+    m = mats()
+    lib.box(f"{name}-plinth", (0.3, 0.16, 0.2), (x, y, 0.1), st.trim, bevel=0.01)
+    h = horse(f"{name}-horse", x, y, facing=0.0, coat=(0.40, 0.33, 0.20))
+    h.location = (x, y, 0.2)
+    lib.cyl(f"{name}-body", 0.03, 0.14, (x, y, 0.5), m["bronze"], verts=8)
+    lib.ball(f"{name}-head", 0.025, (x, y, 0.6), m["bronze"], sub=1)
+
+
+def altar(st, x, y, name="altar"):
+    """A stone altar with a fire on it."""
+    m = mats()
+    lib.box(f"{name}", (0.18, 0.14, 0.16), (x, y, 0.08), st.trim, bevel=0.01)
+    lib.ball(f"{name}-fire", 0.05, (x, y, 0.2), m["fire"], scale=(1, 1, 1.4), sub=1)
+
+
+def censer(st, x, y, name="censer"):
+    """A bronze incense burner on three legs, smoke above it."""
+    m = mats()
+    for k in range(3):
+        a = k * 2 * math.pi / 3
+        lib.cyl(f"{name}-leg{k}", 0.01, 0.1, (x + 0.05 * math.cos(a), y + 0.05 * math.sin(a), 0.05), m["bronze"], verts=4)
+    lib.ball(f"{name}-bowl", 0.08, (x, y, 0.14), m["bronze"], scale=(1, 1, 0.7), sub=2)
+    lib.cyl(f"{name}-lid", 0.05, 0.06, (x, y, 0.22), m["bronze"], verts=8, r2=0.01)
+
+
+def tc_yard(st):
+    """The front yard of a Town Center (round 2 of the plan): what each architecture has there, age by age, at
+    the front corners so the hall stays in view."""
+    a, i = getattr(st, "arch", "default"), getattr(st, "i", 1)
+    L, Rt = (-1.02, -1.0), (0.98, -0.98)
+    log_pile(0.55, -1.15, 4, "tc-logs")
+    if i == 1 or a == "default":
+        well(st, *L, "tc-well")
+    if a == "egyptian":
+        if i >= 2:
+            rim = st.trim
+            lib.box("tc-poolrim", (0.5, 0.36, 0.06), (Rt[0], Rt[1], 0.03), rim)
+            lib.box("tc-pool", (0.42, 0.28, 0.02), (Rt[0], Rt[1], 0.06), lib.mat("poolwater", (0.18, 0.34, 0.40), 0.15))
+            papyrus("tc-papyrus", Rt[0] - 0.2, Rt[1] + 0.15)
+            sphinx(st, L[0] + 0.05, L[1] + 0.05, "tc-sphinx")
+        if i >= 3:
+            for k, x in enumerate((-0.62, 0.62)):
+                arch.obelisk(st, f"tc-obelisk{k}", x, -1.18, 0.7)
+    elif a == "babylonian":
+        if i >= 2:
+            landmarks_ziggurat = __import__("landmarks").ziggurat
+            landmarks_ziggurat(st, "tc-terrace", Rt[0], Rt[1], 0.5, 2, 0.12, shrine=False)
+        if i >= 3:
+            bush = lib.mat("bush", (0.26, 0.38, 0.18), 0.9, grain=0.35, grain_size=0.02)
+            for k in range(6):
+                lib.lumpy(lib.ball(f"tc-roofgarden{k}", 0.08, (-0.7 + k * 0.32, -0.32, 0.98), bush, scale=(1.2, 1, 0.7), sub=2), 0.02, 0.05)
+            arch.palm(st, "tc-palm", L[0], L[1] + 0.1, 0.85)
+    elif a == "asian":
+        if i >= 2:
+            censer(st, 0.62, -0.78, "tc-censer")
+        if i >= 3:
+            rim = lib.mat("pondstone", (0.50, 0.48, 0.44), 0.95, grain=0.3)
+            pond("tc-pond", Rt[0], Rt[1], 0.3, rim)
+            for k, x in enumerate((-0.85, 0.85)):
+                lib.cyl(f"tc-sidepost{k}a", 0.035, 0.5, (x - 0.12, -1.1, 0.25), st.trim, verts=8)
+                lib.cyl(f"tc-sidepost{k}b", 0.035, 0.5, (x + 0.12, -1.1, 0.25), st.trim, verts=8)
+                arch.asian_roof(st, f"tc-sideroof{k}", x, -1.1, 0.24, 0.08, 0.5)
+    elif a == "greek":
+        if i == 2:
+            fountain(st, Rt[0], Rt[1], "tc-fountain")
+        if i >= 3:
+            altar(st, L[0] + 0.05, L[1] + 0.05, "tc-hearth")
+            arch.statue(st, "tc-statue", Rt[0], Rt[1], 0.45)
+            cypress = lib.mat("cypress", (0.20, 0.34, 0.20), 0.8, grain=0.3, grain_size=0.02)
+            for k, x in enumerate((-0.55, 0.55)):
+                lib.cyl(f"tc-cypress{k}", 0.07, 0.7, (x, -1.2, 0.35), cypress, verts=10, r2=0.02)
+    elif a == "roman":
+        if i >= 2:
+            fountain(st, Rt[0], Rt[1], "tc-fountain")
+        if i >= 3:
+            rider_statue(st, L[0] + 0.05, L[1] + 0.05, "tc-rider")
+            colonnade(st, (-0.6, -0.82), (0.6, -0.82), 0.5, 5, "tc-forum")
+            lib.box("tc-forumbeam", (1.3, 0.1, 0.06), (0, -0.82, 0.53), st.trim)
+
+
 # ---- the buildings. Each takes a Style.
 
 def town_center(st):
-    if st.age == "stone":
-        models.town_center()
-        return
+    # The Stone Age's is stoneage.town_center (see BUILDERS).
     if st.age == "tool":
         ground(3)
         hall(st, "main", -0.2, 0.2, 1.7, 1.5, 0.6, along="x")
@@ -234,6 +478,7 @@ def town_center(st):
         palisade(st, -1.4, 1.4, 1.4, 1.4)
         flag(st, -0.2, 0.2, 1.45)
         banner(st, 0.5, -0.56, 0.32)
+        tc_yard(st)
         return
     ground(3, (0.62, 0.58, 0.50))
     base = steps(st, -0.15, 0.15, 2.0, 1.9)
@@ -243,6 +488,7 @@ def town_center(st):
     door(st, -0.15, -0.71, 0.36, 0.5)
     hall(st, "tower", 0.95, 0.95, 0.6, 0.6, 1.0 if st.age == "iron" else 0.8, roof="flat")
     flag(st, 0.95, 0.95, (1.0 if st.age == "iron" else 0.8) + 0.5)
+    tc_yard(st)
     banner(st, -0.75, -0.72, 0.5)
     banner(st, 0.45, -0.72, 0.5)
 
@@ -292,44 +538,101 @@ def granary(st):
 
 
 def storage_pit(st):
+    """A storage yard of the plan's round 2, open, not a closed house: a lean-to on posts over the stacks,
+    logs, cut stone, a heap of gold ore, hides on frames to dry; a low wall and a crane from the Bronze Age;
+    a Roman ox cart with stone."""
+    a = getattr(st, "arch", "default")
     ground(3, (0.42, 0.33, 0.22))
-    # The pit, and what is kept in it: logs, ore, cut stone.
-    lib.box("pit", (1.5, 1.3, 0.05), (-0.25, 0.25, 0.025), lib.mat("pitdark", (0.25, 0.18, 0.11), 1.0))
-    if st.thatch:
-        for i, (dx, dy) in enumerate(((-0.75, -0.4), (0.25, -0.4), (0.25, 0.9), (-0.75, 0.9))):
-            lib.cyl(f"post{i}", 0.035, 0.7, (dx, dy, 0.35), st.wood, verts=6)
-        r = prism("shelter", 1.3, 1.6, 0.4, (-0.25, 0.25, 0.7), st.roof, "x")
-        lib.lumpy(r, 0.012, 0.04)
-    else:
-        hall(st, "shed", -0.25, 0.35, 1.4, 1.2, 0.6, along="x")
-        lib.box("opening", (1.0, 0.03, 0.45), (-0.25, -0.26, 0.23), st.dark)
-    for k in range(5):
-        lib.cyl(f"log{k}", 0.06, 0.7, (0.75, -0.9 + k * 0.13, 0.06), st.wood, rot=(0, R(90), 0), verts=8)
-    stone = lib.mat("cutstone", (0.62, 0.60, 0.56), 0.9)
-    for k in range(4):
-        lib.box(f"block{k}", (0.16, 0.12, 0.1), (-0.9 + k * 0.2, -1.05, 0.05), stone, bevel=0.01)
-    flag(st, 1.15, 1.0, 0.8)
+    m = mats()
+    # The lean-to: posts and a roof of one slope; reed mats for the Egyptians, the age's roof otherwise.
+    roof = lib.mat("reedmat", (0.74, 0.62, 0.38), 0.95, grain=0.35, grain_size=0.008, kind=("thatch", 0.03, 0, 0.4)) if a == "egyptian" or st.thatch else st.roof
+    for k, (x, y) in enumerate(((-1.1, 0.4), (-0.1, 0.4), (0.9, 0.4), (-1.1, 1.05), (-0.1, 1.05), (0.9, 1.05))):
+        if a == "asian":
+            lib.box(f"post{k}", (0.05, 0.05, 0.6), (x, y, 0.3), st.trim)
+        else:
+            lib.cyl(f"post{k}", 0.03, 0.6, (x, y, 0.3), m["wood"] if (st.thatch or a in ("egyptian", "default")) else st.trim, verts=6)
+    lean_to("leanto", -0.1, 0.72, 2.2, 0.85, 0.62, roof)
+    # Under the lean-to, logs; out in the yard, where they show: more logs, cut stone, gold ore, hides.
+    log_pile(-0.65, 0.75, 6, "logs-a", r=0.05, length=0.6)
+    log_pile(0.4, 0.75, 5, "logs-b", r=0.05, length=0.6)
+    log_pile(0.55, -0.15, 7, "logs-c", r=0.055, length=0.7)
+    stone_blocks(-0.85, -0.45, "blocks", k=1.6)
+    ore_heap(-0.1, -0.2, "ore", r=0.28)
+    for k, x in enumerate((0.85, 1.12)):
+        hide_rack(x, -0.75 + k * 0.1, f"hide{k}")
+    if st.age in ("bronze", "iron"):
+        enclosure(st, 1.3, 0.24, (-0.35, 0.35), name="pwall", crenel=a == "babylonian")
+        crane(st, -0.2, -0.6, 0.9, "crane")
+    if a == "roman":
+        lib.box("cart", (0.34, 0.2, 0.07), (0.7, -0.95, 0.13), m["wood"], bevel=0.01)
+        for dy in (-0.12, 0.12):
+            lib.cyl(f"wheel{dy}", 0.085, 0.025, (0.7, -0.95 + dy, 0.085), m["wood"], rot=(R(90), 0, 0), verts=12)
+        lib.box("cartstone", (0.14, 0.1, 0.08), (0.7, -0.95, 0.21), m["stone"], bevel=0.01)
+    flag(st, 1.15, 1.1, 0.8)
 
 
 def barracks(st):
-    ground(3)
-    if st.age == "stone":
-        models.hut("hall", -0.2, 0.2, 0.75, 0.48, 0.9, door_angle=-45)
-        palisade(st, -1.4, -1.4, 1.4, -1.4, 0.35)
+    """A barracks of the plan's round 2: walls round a drill yard, the soldiers' hall at the back and a second
+    along the left wall, straw men to hit, racks of spears and shields, a target for javelins. Each
+    architecture's way: Egyptian pylons at the gate from the Bronze Age, Babylonian battlements, Asian halls
+    and a gate of two roofs in the Iron Age, a Greek sand court with a colonnade, a Roman camp of rows of
+    huts and a standard."""
+    a = getattr(st, "arch", "default")
+    ground(3)  # The Stone Age's is stoneage.barracks (see BUILDERS).
+    wh = 0.32 if st.age == "tool" else 0.4
+    enclosure(st, 1.3, wh, (-0.3, 0.3), name="bwall", crenel=a == "babylonian",
+              towers=(0.18 if st.age == "bronze" else 0.28) if a in ("egyptian", "roman") and st.age != "tool" else 0.0)
+    # The gate.
+    if a == "egyptian" and st.age != "tool":
+        for k, x in enumerate((-0.42, 0.42)):
+            arch.tapered(f"pylon{k}", 0.24, 0.22, 0.66, (x, -1.3, 0.0), st.wall, top=0.8)
+            lib.box(f"pylonband{k}", (0.22, 0.23, 0.04), (x, -1.3, 0.56), st.accent)
+            lib.box(f"pylonbanner{k}", (0.1, 0.012, 0.18), (x, -1.42, 0.4), st.team)
+    elif a == "asian" and st.age == "iron":
+        for k, x in enumerate((-0.32, 0.32)):
+            lib.box(f"gatepost{k}", (0.07, 0.07, 0.6), (x, -1.3, 0.3), st.trim)
+        lib.box("gatebeam", (0.74, 0.08, 0.06), (0, -1.3, 0.58), st.trim)
+        arch.asian_roof(st, "gateroof", 0, -1.3, 0.5, 0.12, 0.61, tiers=2)
     else:
-        top = hall(st, "hall", -0.2, 0.25, 2.1, 1.3, 0.62 if st.age == "tool" else 0.75,
-                   roof="flat" if st.age == "bronze" else "gable", along="x")
-        door(st, -0.2, -0.41, 0.36, 0.48)
+        gateway(st, -0.3, 0.3, -1.3, 0.62 if st.age != "tool" else 0.55, name="bgate")
+    h = 0.55 if st.age == "tool" else 0.62
+    roof = "flat" if (st.age == "bronze" and a == "default") else "gable"
+    # Halls: a Roman camp has rows of huts; the others a hall at the back and one along the left wall.
+    if a == "roman":
+        for k, y in enumerate((0.95, 0.45)):
+            hall(st, f"row{k}", -0.25, y, 1.8, 0.36, h * 0.85, along="x")
+            for j in range(4):
+                door(st, -0.95 + j * 0.45, y - 0.185, 0.14, 0.26)
+        # The standard: a pole with discs and a gilded bird at the top.
+        m = mats()
+        lib.cyl("signum", 0.012, 0.9, (0.75, 0.15, 0.45), m["wood"], verts=6)
+        for j in range(3):
+            lib.cyl(f"signumdisc{j}", 0.045, 0.015, (0.75, 0.13, 0.55 + j * 0.1), m["gold"], rot=(R(90), 0, 0), verts=12)
+        lib.ball("signumbird", 0.04, (0.75, 0.15, 0.94), m["gold"], scale=(1.4, 0.6, 0.8), sub=1)
+        lib.box("signumbanner", (0.12, 0.012, 0.1), (0.75, 0.13, 0.48), st.team)
+    else:
+        hall(st, "hall", 0.1, 0.85, 2.0, 0.65, h, roof=roof, along="x")
+        door(st, 0.1, 0.52, 0.3, 0.4)
+        hall(st, "bunk", -0.88, -0.2, 0.55, 1.15, h * 0.85, roof=roof, along="y")
+        door(st, -0.6, -0.2, 0.22, 0.32, side="right")
+    # The yard: sand for the Greek wrestlers' court, earth for the rest.
+    if a == "greek":
+        sand = lib.mat("sandcourt", (0.80, 0.70, 0.50), 1.0, grain=0.35, grain_size=0.02)
+        lib.box("sand", (1.4, 1.1, 0.015), (0.35, -0.35, 0.012), sand)
         if st.age == "iron":
-            columns(st, -1.1, 0.7, -0.52, 0.75, 6)
-        banner(st, -0.8, -0.42, 0.45)
-        banner(st, 0.4, -0.42, 0.45)
-    # A rack of spears and shields by the door.
-    for k in range(5):
-        lib.cyl(f"spear{k}", 0.012, 0.6, (0.75 + k * 0.08, -0.9, 0.3), st.wood, rot=(R(-10), 0, 0), verts=6)
-    for k in range(2):
-        lib.cyl(f"shield{k}", 0.1, 0.02, (0.8 + k * 0.25, -1.0, 0.12), st.team, rot=(R(80), 0, 0), verts=14)
-    flag(st, 1.15, 1.1, 1.0)
+            colonnade(st, (-0.35, 0.4), (1.1, 0.4), 0.45, 5, "gcol")
+    else:
+        court("yard", 1.6, 1.3, (0.3, -0.35, 0.01))
+    for k, (x, y) in enumerate(((0.05, -0.2), (0.45, -0.25), (0.85, -0.2))):
+        dummy(st, x, y, f"dummy{k}")
+    weapon_rack(st, 0.85, -0.9, "rack-a")
+    weapon_rack(st, -0.6, -0.95, "rack-b", shields=1)
+    # A javelin target: a board on two legs.
+    m = mats()
+    lib.box("jtarget", (0.2, 0.03, 0.22), (1.05, 0.25, 0.22), m["straw"])
+    for d in (-0.08, 0.08):
+        lib.cyl(f"jleg{d}", 0.01, 0.3, (1.05 + d, 0.27, 0.15), m["wood"], verts=4)
+    flag(st, 1.15, 1.1, 1.05)
 
 
 def dock(st):
@@ -355,7 +658,7 @@ def dock(st):
     flag(st, -1.2, -1.2, 0.9)
 
 
-def enclosure(st, half, h, gap, name="enc"):
+def enclosure(st, half, h, gap, name="enc", crenel=False, towers=0.0):
     """A low wall round a yard of `half` each way from the middle, open at the front (-Y) between gap[0] and
     gap[1] on X: a fence of stakes while buildings are thatched, a built wall after. The front and right
     walls, the ones toward the viewer, stand lower, so the yard behind them shows."""
@@ -370,9 +673,22 @@ def enclosure(st, half, h, gap, name="enc"):
         along_x = abs(y1 - y0) < 1e-6
         size = (length + 0.08, 0.08, hh) if along_x else (0.08, length + 0.08, hh)
         lib.box(f"{name}{k}", size, ((x0 + x1) / 2, (y0 + y1) / 2, hh / 2), st.wall, bevel=0.01)
-        # A coping along the top.
+        # A coping along the top, or battlements.
         top = (size[0] + 0.03, size[1] + 0.03, 0.03)
         lib.box(f"{name}{k}-cap", top, ((x0 + x1) / 2, (y0 + y1) / 2, hh + 0.015), st.trim, bevel=0.005)
+        if crenel:
+            for j in range(int(length / 0.14)):
+                t = -length / 2 + 0.07 + j * 0.14
+                mx, my = ((x0 + x1) / 2 + t, (y0 + y1) / 2) if along_x else ((x0 + x1) / 2, (y0 + y1) / 2 + t)
+                lib.box(f"{name}{k}-merlon{j}", (0.07, 0.09, 0.06) if along_x else (0.09, 0.07, 0.06), (mx, my, hh + 0.06), st.wall)
+    # Square towers at the corners, `towers` above the wall.
+    if towers and not st.thatch:
+        for k, (x, y) in enumerate(((-half, half), (half, half), (-half, -half), (half, -half))):
+            th = h + towers if y > 0 else h * 0.7 + towers
+            lib.box(f"{name}-tower{k}", (0.24, 0.24, th), (x, y, th / 2), st.wall, bevel=0.01)
+            lib.box(f"{name}-towercap{k}", (0.28, 0.28, 0.03), (x, y, th + 0.015), st.trim)
+            for j, (dx, dy) in enumerate(((-0.09, -0.09), (0.09, -0.09), (0.09, 0.09), (-0.09, 0.09))):
+                lib.box(f"{name}-tm{k}{j}", (0.06, 0.06, 0.06), (x + dx, y + dy, th + 0.06), st.wall)
 
 
 def gateway(st, x0, x1, y, h, name="gate"):
@@ -564,18 +880,39 @@ def archery_range(st):
 
 
 def stable(st):
+    """A stable of the plan's round 2: the stalls at the back, a paddock fenced with rails before them, horses,
+    a trough, hay, saddles on the rail. In the Iron Age the stalls are stone and the yard walled."""
     ground(3, (0.48, 0.40, 0.26))
-    hall(st, "stalls", -0.3, 0.5, 2.2, 0.9, 0.5 if st.thatch else 0.6, along="x")
+    a = getattr(st, "arch", "default")
+    h = 0.5 if st.thatch else 0.6
+    hall(st, "stalls", -0.25, 0.8, 2.2, 0.75, h, along="x")
     for k in range(4):
-        lib.box(f"stall{k}", (0.4, 0.03, 0.4), (-1.1 + k * 0.55, 0.04, 0.2), st.dark)
-    # A fenced paddock with hay.
-    for x in (-1.3, 0.0, 1.3):
-        lib.cyl(f"fpost{x}", 0.025, 0.3, (x, -1.25, 0.15), st.wood, verts=6)
-    lib.box("rail", (2.6, 0.02, 0.025), (0, -1.25, 0.24), st.wood)
-    lib.box("rail2", (2.6, 0.02, 0.025), (0, -1.25, 0.14), st.wood)
-    hay = lib.mat("hay", (0.86, 0.74, 0.40), 0.95, grain=0.4, grain_size=0.01)
+        lib.box(f"stall{k}", (0.36, 0.03, 0.36), (-1.05 + k * 0.52, 0.42, 0.18), st.dark)
+    if st.age == "iron":
+        enclosure(st, 1.3, 0.3, (0.2, 0.8), name="swall", crenel=a == "babylonian")
+        gateway(st, 0.2, 0.8, -1.3, 0.55, name="sgate")
+    m = mats()
+    # The paddock: posts and two rails round the front of the yard.
+    rails = [((-1.15, -1.1), (1.15, -1.1)), ((1.15, -1.1), (1.15, 0.3)), ((-1.15, -1.1), (-1.15, 0.3))]
+    for k, ((x0, y0), (x1, y1)) in enumerate(rails):
+        n = int(math.hypot(x1 - x0, y1 - y0) / 0.38) + 1
+        for j in range(n + 1):
+            t = j / n
+            lib.cyl(f"fpost{k}{j}", 0.018, 0.28, (x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, 0.14), m["wood"], verts=6)
+        along_x = abs(y1 - y0) < 1e-6
+        length = math.hypot(x1 - x0, y1 - y0)
+        for z in (0.12, 0.24):
+            lib.box(f"rail{k}{z}", (length, 0.018, 0.02) if along_x else (0.018, length, 0.02), ((x0 + x1) / 2, (y0 + y1) / 2, z), m["wood"])
+    horse("horse-a", 0.2, -0.45, facing=R(20))
+    horse("horse-b", -0.55, -0.15, facing=R(160), coat=(0.62, 0.58, 0.54))
+    if st.age != "tool":
+        horse("horse-c", 0.75, 0.05, facing=R(-70), coat=(0.20, 0.14, 0.10))
+    trough(-0.2, 0.22, "trough")
     for k in range(3):
-        lib.ball(f"hay{k}", 0.15, (0.6 + k * 0.25, -0.5, 0.08), hay, scale=(1.2, 1, 0.6), sub=2)
+        lib.ball(f"hay{k}", 0.13, (0.8 + (k % 2) * 0.18, 0.3 + k * 0.05, 0.07), m["hay"], scale=(1.2, 1, 0.6), sub=2)
+    for k, x in enumerate((-0.6, -0.3)):
+        lib.box(f"saddle{k}", (0.1, 0.08, 0.05), (x, -1.1, 0.27), m["hide"], bevel=0.01)
+    lib.box("bucket", (0.06, 0.06, 0.06), (0.4, 0.25, 0.03), m["wood"])
     flag(st, 1.15, 1.1, 1.0)
 
 
@@ -1019,14 +1356,25 @@ def academy(st):
 
 
 def siege_workshop(st):
+    """A siege workshop of the plan's round 2: the shop with its wide bay at the back, a yard before it with a
+    stone thrower half built, beams and logs, a crane, a pile of shot, a wheel and sawhorses."""
     ground(3, (0.48, 0.40, 0.26))
-    hall(st, "shop", -0.5, 0.5, 1.8, 1.4, 0.8, along="x")
-    lib.box("bay", (1.0, 0.03, 0.62), (-0.5, -0.21, 0.31), st.dark)
-    # A catapult frame being built, and timber.
-    lib.box("frame", (0.5, 0.7, 0.06), (0.75, -0.75, 0.15), st.wood)
-    lib.cyl("arm", 0.025, 0.8, (0.75, -0.75, 0.45), st.wood, rot=(R(-40), 0, 0), verts=6)
-    for k in range(4):
-        lib.cyl(f"beam{k}", 0.05, 0.9, (-0.5 + k * 0.03, -1.05 + k * 0.1, 0.05 + (k % 2) * 0.08), st.wood, rot=(0, R(90), 0), verts=6)
+    a = getattr(st, "arch", "default")
+    hall(st, "shop", -0.35, 0.75, 1.9, 0.9, 0.8, along="x")
+    lib.box("bay", (1.0, 0.03, 0.6), (-0.35, 0.29, 0.3), st.dark)
+    enclosure(st, 1.3, 0.3, (-0.4, 0.4), name="wwall", crenel=a == "babylonian")
+    gateway(st, -0.4, 0.4, -1.3, 0.62, name="wgate")
+    court("yard", 2.0, 1.3, (0.0, -0.35, 0.01))
+    catapult_frame(st, 0.2, -0.3, "catapult")
+    log_pile(-0.8, -0.6, 5, "beams", along_x=False)
+    crane(st, 0.85, 0.3, 0.95, "crane")
+    m = mats()
+    for k in range(6):
+        lib.ball(f"shot{k}", 0.045, (0.85 + (k % 3) * 0.09, -0.85 + (k // 3) * 0.09, 0.045 + (k // 3) * 0.05), m["stone"], sub=1)
+    for k, x in enumerate((-0.25, 0.1)):
+        for d in (-0.08, 0.08):
+            lib.cyl(f"saw{k}{d}", 0.01, 0.18, (x + d, -0.95, 0.08), m["wood"], rot=(0, R(d * 200), 0), verts=4)
+        lib.box(f"sawbeam{k}", (0.22, 0.03, 0.03), (x, -0.95, 0.16), m["wood"])
     flag(st, 1.15, 1.1, 1.3)
 
 
