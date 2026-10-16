@@ -271,8 +271,6 @@ def main():
     # picture, so the first is enough for the ages before it. --only takes "barracks" or "barracks@bronze".
     style = arch_arg()
     for key, make in blds.BUILDERS.items():
-        if style and key == "farm":
-            continue  # a field is a field in every land
         first = max(blds.FIRST[key], 1) if style else blds.FIRST[key]
         ages = blds.AGES[first:] if key not in blds.ONE_LOOK else [blds.AGES[first]]
         for age in ages:

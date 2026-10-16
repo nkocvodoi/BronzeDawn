@@ -636,26 +636,75 @@ def barracks(st):
 
 
 def dock(st):
-    # On the water: a deck on piles, with a shed and a crane.
-    deck = lib.mat("deck", (0.55, 0.38, 0.20), 0.85, grain=0.4, grain_size=0.02)
-    lib.box("deck", (2.8, 2.8, 0.08), (0, 0, 0.12), deck, bevel=0.01)
-    for x in (-1.3, 0, 1.3):
-        for y in (-1.3, 0, 1.3):
-            lib.cyl(f"pile{x}{y}", 0.05, 0.3, (x, y, 0.0), st.wood, verts=8)
-    if st.thatch:
-        r = prism("shed", 1.3, 1.0, 0.45, (-0.5, 0.6, 0.6), st.roof, "x")
+    """A dock of round 3 of the plan: smaller, a deck on piles with a pier out into the water, nets drying on a
+    frame, baskets of fish, a boat tied alongside, a shed of the age; from the Bronze Age each architecture's own
+    quay: Egyptian stone with lotus columns and a reed boat, Babylonian brick with glaze and a round coracle,
+    an Asian pavilion on piles with lanterns, a Greek quay with a colonnade and jars, a Roman quay with arches
+    and a crane."""
+    a = getattr(st, "arch", "default")
+    m = mats()
+    deck = lib.mat("deck", (0.55, 0.38, 0.20), 0.85, grain=0.4, grain_size=0.02, kind=("brick", 0.6, 0.1, 0.5))
+    stone = a != "default" and st.age in ("bronze", "iron") and a != "asian"
+    quay = st.trim if stone else deck
+    # The deck at the back, the pier toward the viewer.
+    lib.box("deck", (2.2, 1.2, 0.1), (-0.1, 0.65, 0.12), quay, bevel=0.01)
+    lib.box("pier", (0.55, 1.6, 0.08), (0.75, -0.45, 0.1), deck, bevel=0.01)
+    piles = [(x, y) for x in (-1.15, -0.1, 0.95) for y in (0.1, 1.2)] + [(0.5, -0.4), (1.0, -0.4), (0.5, -1.2), (1.0, -1.2)]
+    for k, (x, y) in enumerate(piles):
+        lib.cyl(f"pile{k}", 0.045, 0.32, (x, y, 0.0), m["wood"] if not stone or y < 0 else st.wall, verts=8)
+    # The shed or quay house of the age and architecture.
+    if a == "asian" and st.age != "tool":
+        for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+            lib.box(f"pavpost{dx}{dy}", (0.05, 0.05, 0.42), (-0.5 + dx * 0.45, 0.75 + dy * 0.35, 0.38), st.trim)
+        arch.asian_roof(st, "pavroof", -0.5, 0.75, 0.9, 0.7, 0.59, tiers=2 if st.age == "iron" else 1)
+        arch.lantern(st, "dock-lantern", 0.4, 0.25)
+    elif a == "egyptian" and stone:
+        columns(st, -1.0, 0.0, 0.3, 0.5, 4)
+        lib.box("shade", (1.2, 0.8, 0.05), (-0.5, 0.65, 0.68), st.roof)
+        arch.cornice(st, "shadecornice", -0.5, 0.65, 1.15, 0.75, 0.7)
+    elif a == "greek" and stone:
+        columns(st, -1.0, 0.0, 0.3, 0.5, 5)
+        prism("stoaroof", 1.25, 0.85, 0.2, (-0.5, 0.65, 0.68), st.roof, "x")
+        for k in range(3):
+            lib.ball(f"amphora{k}", 0.04, (0.2 + k * 0.1, 0.3, 0.24), lib.mat("clay", (0.70, 0.40, 0.24), 0.8), scale=(1, 1, 1.6), sub=1)
+    elif a == "roman" and stone:
+        lib.box("arcade", (1.2, 0.7, 0.5), (-0.5, 0.75, 0.42), st.wall, bevel=0.01)
+        for k in range(3):
+            arch.arch_door(st, -0.9 + k * 0.4, 0.39, 0.2, 0.36)
+        prism("arcaderoof", 1.35, 0.85, 0.22, (-0.5, 0.75, 0.67), st.roof, "x")
+        crane(st, 0.3, 0.9, 1.0, "dock-crane")
+    elif a == "babylonian" and stone:
+        lib.box("quayhouse", (1.0, 0.7, 0.45), (-0.5, 0.75, 0.39), st.wall, bevel=0.01)
+        lib.box("quayglaze", (1.01, 0.71, 0.07), (-0.5, 0.75, 0.5), st.accent)
+        arch.crenels(st, "quaytop", -0.5, 0.75, 1.0, 0.7, 0.62, size=0.08)
+        arch.arch_door(st, -0.5, 0.39, 0.2, 0.3)
+    elif st.thatch:
+        r = prism("shed", 1.1, 0.8, 0.4, (-0.5, 0.75, 0.55), st.roof, "x")
         lib.lumpy(r, 0.012, 0.04)
-        for dx, dy in ((-0.6, -0.4), (0.6, -0.4), (0.6, 0.4), (-0.6, 0.4)):
-            lib.cyl(f"shedpost{dx}{dy}", 0.03, 0.5, (-0.5 + dx, 0.6 + dy, 0.4), st.wood, verts=6)
+        for dx, dy in ((-0.5, -0.32), (0.5, -0.32), (0.5, 0.32), (-0.5, 0.32)):
+            lib.cyl(f"shedpost{dx}{dy}", 0.03, 0.4, (-0.5 + dx, 0.75 + dy, 0.37), m["wood"], verts=6)
     else:
-        lib.box("shedwall", (1.3, 1.0, 0.5), (-0.5, 0.6, 0.41), st.wall, bevel=0.02)
-        prism("shedroof", 1.45, 1.15, 0.35, (-0.5, 0.6, 0.66), st.roof, "x")
-    # A crane, and a boat's frame on the slip.
-    lib.cyl("crane", 0.04, 1.2, (0.9, 0.9, 0.76), st.wood, verts=8)
-    lib.cyl("boom", 0.03, 0.9, (0.9, 0.5, 1.3), st.wood, rot=(R(70), 0, 0), verts=8)
-    for k in range(5):
-        lib.cyl(f"rib{k}", 0.015, 0.4, (0.5, -0.9 + k * 0.18, 0.3), st.wood, rot=(0, R(90), 0), verts=6)
-    flag(st, -1.2, -1.2, 0.9)
+        hall(st, "shed", -0.5, 0.75, 1.0, 0.7, 0.42, along="x")
+    # Nets on a frame, baskets of fish, ropes, the boat tied alongside the pier.
+    net = lib.mat("net", (0.52, 0.48, 0.38), 0.9, grain=0.3, kind=("brick", 0.04, 0.04, 0.6))
+    for d in (-0.22, 0.22):
+        lib.cyl(f"netpole{d}", 0.012, 0.42, (-1.0 + d, 0.2, 0.37), m["wood"], verts=5)
+    lib.box("net", (0.44, 0.012, 0.28), (-1.0, 0.2, 0.38), net)
+    fish = lib.mat("fishscale", (0.62, 0.66, 0.68), 0.4, metal=0.3)
+    basket = lib.mat("basket", (0.55, 0.40, 0.20), 0.9, grain=0.4, grain_size=0.01)
+    for k, (x, y) in enumerate(((0.62, 0.2), (0.85, 0.15), (0.72, -0.1))):
+        lib.cyl(f"fishbasket{k}", 0.05, 0.06, (x, y, 0.17), basket, verts=10)
+        lib.ball(f"fish{k}", 0.025, (x, y, 0.21), fish, scale=(1.6, 0.7, 0.5), sub=1)
+    boat_m = lib.mat("reedboat", (0.70, 0.60, 0.34), 0.9, grain=0.35, kind=("thatch", 0.02, 0, 0.4)) if a == "egyptian" else m["wood"]
+    if a == "babylonian" and stone:
+        lib.ball("coracle", 0.18, (0.25, -0.8, 0.06), boat_m, scale=(1, 1, 0.35), sub=2)
+    else:
+        lib.ball("boat", 0.14, (0.3, -0.75, 0.07), boat_m, scale=(1.0, 3.0, 0.4), sub=2)
+        if a == "egyptian":
+            for sy in (-1, 1):
+                lib.cyl(f"boatend{sy}", 0.03, 0.18, (0.3, -0.75 + sy * 0.4, 0.14), boat_m, rot=(R(-30 * sy), 0, 0), verts=6, r2=0.012)
+    lib.cyl("mooring", 0.03, 0.12, (0.55, -0.7, 0.18), m["wood"], verts=6)
+    flag(st, -1.1, 1.1, 0.95)
 
 
 def enclosure(st, half, h, gap, name="enc", crenel=False, towers=0.0):
@@ -1269,20 +1318,155 @@ def market(st):
 
 
 def farm(st):
-    # Ploughed rows with grain, inside a low edge. Farms are the same in every age.
-    soil = lib.mat("soil", (0.42, 0.30, 0.18), 1.0, grain=0.35, grain_size=0.03)
-    grain_ = lib.mat("grain", (0.80, 0.70, 0.30), 0.9, grain=0.4, grain_size=0.008)
+    """A field of round 3 of the plan: ridged rows with the crop standing in them, green going to gold, a
+    scarecrow at a corner; an Egyptian irrigation channel along one side, Asian paddies under water with rice
+    in rows and dikes between them."""
+    a = getattr(st, "arch", "default")
+    soil = lib.mat("soil", (0.40, 0.28, 0.17), 1.0, grain=0.35, grain_size=0.03)
     lib.box("field", (2.9, 2.9, 0.03), (0, 0, 0.015), soil)
-    for k in range(9):
-        y = -1.25 + k * 0.31
-        row = lib.box(f"row{k}", (2.6, 0.14, 0.09), (0, y, 0.07), grain_, bevel=0.03)
-        lib.lumpy(row, 0.025, 0.03)
-    for (x0, y0, x1, y1) in ((-1.45, -1.45, 1.45, -1.45), (1.45, -1.45, 1.45, 1.45)):
-        lib.box(f"edge{x0}{y0}", (abs(x1 - x0) + 0.05, abs(y1 - y0) + 0.05, 0.05), ((x0 + x1) / 2, (y0 + y1) / 2, 0.025), soil)
+    rnd = random.Random(7)
+    if a == "asian":
+        water = lib.mat("paddywater", (0.30, 0.42, 0.36), 0.15)
+        rice = lib.mat("rice", (0.42, 0.62, 0.22), 0.9, grain=0.3)
+        for qx in (-0.72, 0.72):
+            for qy in (-0.72, 0.72):
+                lib.box(f"paddy{qx}{qy}", (1.3, 1.3, 0.02), (qx, qy, 0.035), water)
+                for i in range(7):
+                    for j in range(7):
+                        lib.cyl(f"rice{qx}{qy}{i}{j}", 0.022, 0.11, (qx - 0.54 + i * 0.18, qy - 0.54 + j * 0.18, 0.09), rice, verts=5, r2=0.0)
+        dike = lib.mat("dike", (0.36, 0.30, 0.18), 1.0, grain=0.3)
+        lib.mottle(dike, MOSS, 0.15, 0.4)
+        for k, (size, loc) in enumerate((((2.9, 0.12, 0.06), (0, 0, 0.04)), ((0.12, 2.9, 0.06), (0, 0, 0.04)), ((2.9, 0.1, 0.06), (0, -1.42, 0.04)), ((0.1, 2.9, 0.06), (1.42, 0, 0.04)))):
+            lib.box(f"dike{k}", size, loc, dike)
+    else:
+        ridge = lib.mat("ridge", (0.46, 0.33, 0.20), 1.0, grain=0.35, grain_size=0.03)
+        crops = [lib.mat("crop-green", (0.46, 0.58, 0.22), 0.9), lib.mat("crop-ripe", (0.82, 0.70, 0.30), 0.9, grain=0.3),
+                 lib.mat("crop-gold", (0.88, 0.76, 0.36), 0.9, grain=0.3)]
+        length = 2.6 if a != "egyptian" else 2.3
+        cx = 0.0 if a != "egyptian" else -0.15
+        for k in range(9):
+            y = -1.25 + k * 0.31
+            lib.box(f"ridge{k}", (length, 0.2, 0.04), (cx, y, 0.04), ridge, bevel=0.02)
+            # The crop standing in the row: a lumpy band, green in some rows and gold in others, tufts on it.
+            c = crops[(k * 2) % 3]
+            band = lib.box(f"crop{k}", (length - 0.08, 0.15, 0.1), (cx, y, 0.11), c, bevel=0.04)
+            lib.lumpy(band, 0.03, 0.03)
+            for j in range(12):
+                x = cx - length / 2 + 0.1 + j * (length - 0.2) / 11 + rnd.uniform(-0.03, 0.03)
+                lib.cyl(f"ear{k}{j}", 0.03, rnd.uniform(0.08, 0.12), (x, y + rnd.uniform(-0.03, 0.03), 0.2), crops[(k * 2 + j) % 3], verts=5, r2=0.004)
+        if a == "egyptian":
+            lib.box("channel", (0.22, 2.9, 0.02), (1.32, 0, 0.04), lib.mat("channelwater", (0.20, 0.36, 0.42), 0.15))
+            papyrus("farm-papyrus", 1.32, 1.2, 4)
+    # The scarecrow at the front corner.
+    m = mats()
+    lib.cyl("scarepost", 0.012, 0.42, (1.2, -1.2, 0.21), m["wood"], verts=5)
+    lib.cyl("scarearms", 0.01, 0.3, (1.2, -1.2, 0.34), m["wood"], rot=(0, R(90), 0), verts=5)
+    lib.cyl("scarecoat", 0.05, 0.16, (1.2, -1.2, 0.3), lib.mat("sack", (0.74, 0.66, 0.50), 1.0, grain=0.3), verts=8, r2=0.03)
+    lib.ball("scarehead", 0.035, (1.2, -1.2, 0.43), m["straw"], sub=1)
+
+
+def ballista_top(st, h, name="ballista"):
+    """A bolt thrower on a tower's top: a stock on a post, two arms and their string, a bolt laid in it."""
+    m = mats()
+    lib.cyl(f"{name}-post", 0.03, 0.14, (0, 0, h + 0.07), m["wood"], verts=6)
+    lib.box(f"{name}-stock", (0.06, 0.46, 0.05), (0, -0.05, h + 0.16), m["wood"], rot=(R(8), 0, 0))
+    for sx in (-1, 1):
+        lib.box(f"{name}-arm{sx}", (0.24, 0.035, 0.035), (sx * 0.12, -0.22, h + 0.18), m["wood"], rot=(0, 0, R(sx * 18)))
+    lib.cyl(f"{name}-string", 0.004, 0.46, (0, -0.2, h + 0.18), m["rope"], rot=(0, R(90), 0), verts=4)
+    lib.cyl(f"{name}-bolt", 0.008, 0.4, (0, -0.1, h + 0.2), m["iron"], rot=(R(90), 0, 0), verts=4)
 
 
 def tower(st, kind):
+    """A tower of each architecture, a grade taller and better built at each step from Watch to Ballista
+    (round 3 of replica/art-plan.md): Egyptian leaning pylon towers, Babylonian brick towers with
+    battlements and glaze, Asian timber towers of storeys under curved roofs, Greek round stone towers with
+    a conical roof, Roman square stone towers with arched windows; the default style keeps its own."""
+    a = getattr(st, "arch", "default")
+    grade = ["watch_tower", "sentry_tower", "guard_tower", "ballista_tower"].index(kind)
+    h = [1.25, 1.45, 1.7, 1.85][grade]
     ground(2)
+    if a == "default":
+        return tower_default(st, kind)
+    m = mats()
+    if a == "egyptian":
+        w = 0.7 + 0.06 * grade
+        arch.tapered("towerbody", w, w, h, (0, 0, 0), st.wall, top=0.78)
+        arch.cornice(st, "towercornice", 0, 0, w * 0.8, w * 0.8, h)
+        lib.box("towerband", (w * 0.86, w * 0.86, 0.05), (0, 0, h * 0.72), st.accent)
+        top = h + 0.1
+        if grade == 0:
+            # Palm logs and a shade of matting over the top.
+            for k in range(5):
+                lib.cyl(f"roofpole{k}", 0.015, 0.6, (-0.24 + k * 0.12, 0, top + 0.05), m["log"], rot=(R(90), 0, 0), verts=5)
+        for sx in (-1, 1):
+            lib.cyl(f"mast{sx}", 0.01, 0.5, (sx * w * 0.3, -w * 0.42, top + 0.2), m["wood"], verts=5)
+            lib.box(f"pennant{sx}", (0.015, 0.12, 0.07), (sx * w * 0.3, -w * 0.42 - 0.07, top + 0.38), st.team)
+        door(st, 0.0, -w * 0.47, 0.18, 0.3)
+    elif a == "babylonian":
+        w = 0.72 + 0.05 * grade
+        lib.box("towerbody", (w, w, h), (0, 0, h / 2), st.wall, bevel=0.01)
+        for sx in (-1, 1):
+            lib.box(f"buttress{sx}", (0.08, 0.06, h), (sx * w * 0.3, -w / 2 - 0.02, h / 2), st.wall)
+        if grade >= 1:
+            lib.box("towerglaze", (w + 0.02, w + 0.02, 0.09), (0, 0, h * 0.75), st.accent)
+        arch.crenels(st, "towertop", 0, 0, w, w, h, size=0.09)
+        top = h + 0.1
+        arch.arch_door(st, 0, -w / 2 - 0.01, 0.18, 0.32)
+    elif a == "asian":
+        storeys = [1, 2, 2, 3][grade]
+        w = 0.62 + 0.04 * grade
+        z = 0.0
+        if grade == 0:
+            # A lookout on four posts.
+            for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                lib.box(f"leg{dx}{dy}", (0.06, 0.06, 0.8), (dx * w * 0.42, dy * w * 0.42, 0.4), st.trim)
+            lib.box("deck", (w + 0.1, w + 0.1, 0.05), (0, 0, 0.8), m["wood"])
+            z = 0.82
+        for k in range(storeys):
+            sh = 0.42 if grade else 0.3
+            ww = w * (1 - 0.12 * k)
+            lib.box(f"storey{k}", (ww, ww, sh), (0, 0, z + sh / 2), st.wall, bevel=0.01)
+            for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+                lib.box(f"post{k}{dx}{dy}", (0.05, 0.05, sh), (dx * ww / 2, dy * ww / 2, z + sh / 2), st.trim)
+            z = arch.asian_roof(st, f"roof{k}", 0, 0, ww, ww, z + sh) - 0.05
+        top = z
+        if grade == 0:
+            lib.box("ladder", (0.08, 0.02, 0.8), (0.1, -w * 0.5, 0.4), m["wood"], rot=(R(12), 0, 0))
+        else:
+            door(st, 0, -w / 2, 0.16, 0.28)
+    elif a == "greek":
+        r = 0.36 + 0.03 * grade
+        lib.cyl("towerbody", r, h, (0, 0, h / 2), st.wall, verts=20, r2=r * 0.92)
+        lib.cyl("towerring", r * 0.98, 0.05, (0, 0, h * 0.62), st.trim, verts=20)
+        lib.cyl("towerparapet", r * 0.98, 0.12, (0, 0, h + 0.06), st.trim, verts=20)
+        lib.cyl("towerroof", r * 1.08, 0.38, (0, 0, h + 0.31), st.roof, verts=20, r2=0.03)
+        top = h + 0.5
+        door(st, 0.0, -r, 0.18, 0.3)
+        for k in range(3):
+            lib.box(f"window{k}", (0.05, 0.03, 0.12), (-0.18 + k * 0.18, -r * 0.92, h * 0.82), st.dark)
+    else:  # roman
+        w = 0.7 + 0.05 * grade
+        lib.box("towerbody", (w, w, h), (0, 0, h / 2), st.wall, bevel=0.01)
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                lib.box(f"quoin{sx}{sy}", (0.08, 0.08, h), (sx * w / 2, sy * w / 2, h / 2), st.trim)
+        for k in range(2):
+            lib.box(f"window{k}", (0.1, 0.03, 0.16), (-0.15 + k * 0.3, -w / 2, h * 0.75), st.dark)
+        arch.arch_door(st, 0, -w / 2 - 0.01, 0.2, 0.34)
+        lib.box("towercap", (w + 0.08, w + 0.08, 0.05), (0, 0, h + 0.025), st.trim)
+        if grade >= 2:
+            arch.crenels(st, "towertop", 0, 0, w, w, h + 0.05, size=0.09)
+            top = h + 0.15
+        else:
+            r_ = lib.cyl("towerroof", w * 0.8, 0.35, (0, 0, h + 0.22), st.roof, verts=4, r2=0.02)
+            r_.rotation_euler = (0, 0, R(45))
+            top = h + 0.4
+    if kind == "ballista_tower":
+        ballista_top(st, top if a in ("babylonian", "roman") else top - 0.05)
+    flag(st, 0.0, 0.25, top + 0.45)
+
+
+def tower_default(st, kind):
     if kind == "watch_tower":
         for dx, dy in ((-0.35, -0.35), (0.35, -0.35), (0.35, 0.35), (-0.35, 0.35)):
             lib.cyl(f"leg{dx}{dy}", 0.05, 1.4, (dx, dy, 0.7), st.wood, verts=8, r2=0.035)
@@ -1416,6 +1600,8 @@ BUILDERS = {
 }
 # The Stone Age's own, in stoneage.py.
 for _key, _make in stoneage.BUILDERS.items():
+    # The Stone Age's dock was as big as a Town Center: three quarters of it now, as the other ages'.
+    _make = smaller(_make, 0.75) if _key == "dock" else _make
     BUILDERS[_key] = (lambda stone, later: lambda st: stone(st) if st.age == "stone" else later(st))(_make, BUILDERS[_key])
 # The age each first appears in (the game's own), and the ages that get their own picture after it. A farm
 # and the towers are each of one time only.
