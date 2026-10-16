@@ -3809,6 +3809,136 @@
      ],
      "scale": 1.0
     }
+   },
+   "egyptian": {
+    "bronze": {
+     "file": "art3d/town_center-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/town_center-egyptian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/town_center-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "bronze": {
+     "file": "art3d/town_center-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/town_center-greek-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/town_center-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "bronze": {
+     "file": "art3d/town_center-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/town_center-roman-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/town_center-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "bronze": {
+     "file": "art3d/town_center-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/town_center-asian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/town_center-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "bronze": {
+     "file": "art3d/town_center-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/town_center-babylonian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/town_center-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
    }
   },
   "house": {
@@ -3978,6 +4108,136 @@
      "anchor": [
       94.0,
       178.5
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "bronze": {
+     "file": "art3d/house-egyptian-bronze.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/house-egyptian-iron.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/house-egyptian-tool.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "iron": {
+     "file": "art3d/house-greek-iron.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/house-greek-tool.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/house-greek-bronze.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "iron": {
+     "file": "art3d/house-roman-iron.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/house-roman-tool.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/house-roman-bronze.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "iron": {
+     "file": "art3d/house-asian-iron.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/house-asian-tool.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/house-asian-bronze.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "iron": {
+     "file": "art3d/house-babylonian-iron.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/house-babylonian-tool.png",
+     "anchor": [
+      94.0,
+      144.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/house-babylonian-bronze.png",
+     "anchor": [
+      94.0,
+      144.7
      ],
      "scale": 1.0
     }
@@ -4153,6 +4413,136 @@
      ],
      "scale": 1.0
     }
+   },
+   "greek": {
+    "tool": {
+     "file": "art3d/granary-greek-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/granary-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/granary-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "tool": {
+     "file": "art3d/granary-asian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/granary-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/granary-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "tool": {
+     "file": "art3d/granary-egyptian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/granary-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/granary-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "tool": {
+     "file": "art3d/granary-roman-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/granary-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/granary-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "tool": {
+     "file": "art3d/granary-babylonian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/granary-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/granary-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
    }
   },
   "barracks": {
@@ -4322,6 +4712,136 @@
      "anchor": [
       126.0,
       215.2
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "iron": {
+     "file": "art3d/barracks-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/barracks-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/barracks-egyptian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "bronze": {
+     "file": "art3d/barracks-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/barracks-greek-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/barracks-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "bronze": {
+     "file": "art3d/barracks-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/barracks-roman-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/barracks-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "bronze": {
+     "file": "art3d/barracks-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/barracks-asian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/barracks-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "bronze": {
+     "file": "art3d/barracks-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "tool": {
+     "file": "art3d/barracks-babylonian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/barracks-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
      ],
      "scale": 1.0
     }
@@ -4497,6 +5017,136 @@
      ],
      "scale": 1.0
     }
+   },
+   "greek": {
+    "tool": {
+     "file": "art3d/dock-greek-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/dock-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/dock-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "tool": {
+     "file": "art3d/dock-asian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/dock-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/dock-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "tool": {
+     "file": "art3d/dock-egyptian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/dock-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/dock-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "tool": {
+     "file": "art3d/dock-roman-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/dock-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/dock-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "tool": {
+     "file": "art3d/dock-babylonian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/dock-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/dock-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
    }
   },
   "temple": {
@@ -4586,6 +5236,96 @@
      "anchor": [
       126.0,
       266.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "iron": {
+     "file": "art3d/temple-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/temple-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "iron": {
+     "file": "art3d/temple-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/temple-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "iron": {
+     "file": "art3d/temple-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/temple-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "iron": {
+     "file": "art3d/temple-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/temple-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "iron": {
+     "file": "art3d/temple-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/temple-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
      ],
      "scale": 1.0
     }
@@ -4681,6 +5421,96 @@
      ],
      "scale": 1.0
     }
+   },
+   "egyptian": {
+    "iron": {
+     "file": "art3d/wonder-egyptian-iron.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/wonder-egyptian-bronze.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "iron": {
+     "file": "art3d/wonder-greek-iron.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/wonder-greek-bronze.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "iron": {
+     "file": "art3d/wonder-roman-iron.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/wonder-roman-bronze.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "iron": {
+     "file": "art3d/wonder-asian-iron.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/wonder-asian-bronze.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "iron": {
+     "file": "art3d/wonder-babylonian-iron.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/wonder-babylonian-bronze.png",
+     "anchor": [
+      190.0,
+      289.2
+     ],
+     "scale": 1.0
+    }
    }
   },
   "watch_tower": {
@@ -4730,6 +5560,56 @@
      "anchor": [
       94.0,
       212.3
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "tool": {
+     "file": "art3d/watch_tower-greek-tool.png",
+     "anchor": [
+      94.0,
+      170.8
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "tool": {
+     "file": "art3d/watch_tower-asian-tool.png",
+     "anchor": [
+      94.0,
+      170.8
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "tool": {
+     "file": "art3d/watch_tower-egyptian-tool.png",
+     "anchor": [
+      94.0,
+      170.8
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "tool": {
+     "file": "art3d/watch_tower-roman-tool.png",
+     "anchor": [
+      94.0,
+      170.8
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "tool": {
+     "file": "art3d/watch_tower-babylonian-tool.png",
+     "anchor": [
+      94.0,
+      170.8
      ],
      "scale": 1.0
     }
@@ -4785,6 +5665,56 @@
      ],
      "scale": 1.0
     }
+   },
+   "greek": {
+    "bronze": {
+     "file": "art3d/sentry_tower-greek-bronze.png",
+     "anchor": [
+      94.0,
+      163.3
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "bronze": {
+     "file": "art3d/sentry_tower-asian-bronze.png",
+     "anchor": [
+      94.0,
+      163.3
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "bronze": {
+     "file": "art3d/sentry_tower-egyptian-bronze.png",
+     "anchor": [
+      94.0,
+      163.3
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "bronze": {
+     "file": "art3d/sentry_tower-roman-bronze.png",
+     "anchor": [
+      94.0,
+      163.3
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "bronze": {
+     "file": "art3d/sentry_tower-babylonian-bronze.png",
+     "anchor": [
+      94.0,
+      163.3
+     ],
+     "scale": 1.0
+    }
    }
   },
   "guard_tower": {
@@ -4837,6 +5767,56 @@
      ],
      "scale": 1.0
     }
+   },
+   "greek": {
+    "iron": {
+     "file": "art3d/guard_tower-greek-iron.png",
+     "anchor": [
+      94.0,
+      174.3
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "iron": {
+     "file": "art3d/guard_tower-asian-iron.png",
+     "anchor": [
+      94.0,
+      174.3
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "iron": {
+     "file": "art3d/guard_tower-egyptian-iron.png",
+     "anchor": [
+      94.0,
+      174.3
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "iron": {
+     "file": "art3d/guard_tower-roman-iron.png",
+     "anchor": [
+      94.0,
+      174.3
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "iron": {
+     "file": "art3d/guard_tower-babylonian-iron.png",
+     "anchor": [
+      94.0,
+      174.3
+     ],
+     "scale": 1.0
+    }
    }
   },
   "ballista_tower": {
@@ -4886,6 +5866,56 @@
      "anchor": [
       94.0,
       226.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "iron": {
+     "file": "art3d/ballista_tower-greek-iron.png",
+     "anchor": [
+      94.0,
+      181.9
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "iron": {
+     "file": "art3d/ballista_tower-asian-iron.png",
+     "anchor": [
+      94.0,
+      181.9
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "iron": {
+     "file": "art3d/ballista_tower-egyptian-iron.png",
+     "anchor": [
+      94.0,
+      181.9
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "iron": {
+     "file": "art3d/ballista_tower-roman-iron.png",
+     "anchor": [
+      94.0,
+      181.9
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "iron": {
+     "file": "art3d/ballista_tower-babylonian-iron.png",
+     "anchor": [
+      94.0,
+      181.9
      ],
      "scale": 1.0
     }
@@ -4981,6 +6011,96 @@
      ],
      "scale": 1.0
     }
+   },
+   "egyptian": {
+    "iron": {
+     "file": "art3d/government_center-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/government_center-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "iron": {
+     "file": "art3d/government_center-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/government_center-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "iron": {
+     "file": "art3d/government_center-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/government_center-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "iron": {
+     "file": "art3d/government_center-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/government_center-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "iron": {
+     "file": "art3d/government_center-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/government_center-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
    }
   },
   "academy": {
@@ -5073,6 +6193,96 @@
      ],
      "scale": 1.0
     }
+   },
+   "greek": {
+    "bronze": {
+     "file": "art3d/academy-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/academy-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "bronze": {
+     "file": "art3d/academy-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/academy-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "bronze": {
+     "file": "art3d/academy-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/academy-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "bronze": {
+     "file": "art3d/academy-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/academy-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "bronze": {
+     "file": "art3d/academy-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/academy-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
    }
   },
   "siege_workshop": {
@@ -5122,6 +6332,56 @@
      "anchor": [
       126.0,
       215.2
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "iron": {
+     "file": "art3d/siege_workshop-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "iron": {
+     "file": "art3d/siege_workshop-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "iron": {
+     "file": "art3d/siege_workshop-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "iron": {
+     "file": "art3d/siege_workshop-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "iron": {
+     "file": "art3d/siege_workshop-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
      ],
      "scale": 1.0
     }
@@ -5257,6 +6517,136 @@
      ],
      "scale": 1.0
     }
+   },
+   "greek": {
+    "tool": {
+     "file": "art3d/archery_range-greek-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/archery_range-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/archery_range-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "tool": {
+     "file": "art3d/archery_range-asian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/archery_range-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/archery_range-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "tool": {
+     "file": "art3d/archery_range-egyptian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/archery_range-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/archery_range-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "tool": {
+     "file": "art3d/archery_range-roman-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/archery_range-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/archery_range-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "tool": {
+     "file": "art3d/archery_range-babylonian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/archery_range-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/archery_range-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
    }
   },
   "stable": {
@@ -5389,6 +6779,136 @@
      ],
      "scale": 1.0
     }
+   },
+   "greek": {
+    "tool": {
+     "file": "art3d/stable-greek-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/stable-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/stable-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "tool": {
+     "file": "art3d/stable-asian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/stable-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/stable-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "tool": {
+     "file": "art3d/stable-egyptian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/stable-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/stable-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "tool": {
+     "file": "art3d/stable-roman-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/stable-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/stable-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "tool": {
+     "file": "art3d/stable-babylonian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/stable-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/stable-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
    }
   },
   "market": {
@@ -5518,6 +7038,136 @@
      "anchor": [
       126.0,
       215.2
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "tool": {
+     "file": "art3d/market-greek-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/market-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/market-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "tool": {
+     "file": "art3d/market-asian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/market-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/market-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "tool": {
+     "file": "art3d/market-egyptian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/market-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/market-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "tool": {
+     "file": "art3d/market-roman-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/market-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/market-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "tool": {
+     "file": "art3d/market-babylonian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/market-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/market-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
      ],
      "scale": 1.0
     }
@@ -5702,6 +7352,136 @@
      "anchor": [
       126.0,
       215.2
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "tool": {
+     "file": "art3d/storage_pit-greek-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/storage_pit-greek-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/storage_pit-greek-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "tool": {
+     "file": "art3d/storage_pit-asian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/storage_pit-asian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/storage_pit-asian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "tool": {
+     "file": "art3d/storage_pit-egyptian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/storage_pit-egyptian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/storage_pit-egyptian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "tool": {
+     "file": "art3d/storage_pit-roman-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/storage_pit-roman-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/storage_pit-roman-iron.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "tool": {
+     "file": "art3d/storage_pit-babylonian-tool.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "bronze": {
+     "file": "art3d/storage_pit-babylonian-bronze.png",
+     "anchor": [
+      126.0,
+      176.7
+     ],
+     "scale": 1.0
+    },
+    "iron": {
+     "file": "art3d/storage_pit-babylonian-iron.png",
+     "anchor": [
+      126.0,
+      176.7
      ],
      "scale": 1.0
     }

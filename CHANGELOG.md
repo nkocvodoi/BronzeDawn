@@ -13,6 +13,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-15
 
+- [#141](https://github.com/nkocvodoi/BronzeDawn/pull/141) Công trình theo 5 bộ kiến trúc như AoE gốc (Ai Cập, Babylon, Châu Á, Hy Lạp, La Mã), 200 hình tự dựng bằng Blender: mỗi bộ có tường, mái, cửa, cột riêng, cùng Town Center, Temple, Government Center và Wonder riêng (kim tự tháp, vườn treo, chùa 5 tầng, đền trên acropolis, đấu trường)
 - [#140](https://github.com/nkocvodoi/BronzeDawn/pull/140) Gợi ý cho người mới: công trình quân sự và nâng cấp hợp với thế mạnh dân tộc (Hittite: Siege Workshop, Archery Range, giáp cung thủ...) sáng hơn có viền vàng cho tới khi đã xây hoặc nghiên cứu; bật sẵn, tắt được trong Cài đặt
 - [#139](https://github.com/nkocvodoi/BronzeDawn/pull/139) Cân bằng lại 4 tộc fantasy (đo 170 trận mỗi tộc, ở mức Hard và Moderate): Elf gỗ ×1.1, Glade Archer 50f 50w; Dwarf Ironclad 50f, Deep Arbalest 45f; Centaur tốc độ dân +0.1; Beastfolk máu dân +5, luyện barracks ×0.9, Wolfkin 70f. Tỉ lệ thắng ở Hard giờ 53–56%
 - [#138](https://github.com/nkocvodoi/BronzeDawn/pull/138) Self-test mục 5: chốt giữ luật đồ dân đang mang đi theo lên thuyền
