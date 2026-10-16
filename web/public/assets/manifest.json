@@ -2083,12 +2083,12 @@
   "beastfolk/villager": {
    "file": "art3d/beastfolk-villager.png",
    "frame": [
-    110,
-    95
+    130,
+    100
    ],
    "anchor": [
-    53.0,
-    69.0
+    63.0,
+    73.0
    ],
    "scale": 1.0,
    "directions": 8,
@@ -2618,12 +2618,12 @@
   "beastfolk/villager:axe": {
    "file": "art3d/beastfolk-villager-axe.png",
    "frame": [
-    110,
-    95
+    130,
+    100
    ],
    "anchor": [
-    53.0,
-    69.0
+    63.0,
+    73.0
    ],
    "scale": 1.0,
    "directions": 8,
@@ -2648,12 +2648,12 @@
   "beastfolk/villager:pick": {
    "file": "art3d/beastfolk-villager-pick.png",
    "frame": [
-    110,
-    95
+    130,
+    100
    ],
    "anchor": [
-    53.0,
-    69.0
+    63.0,
+    73.0
    ],
    "scale": 1.0,
    "directions": 8,
@@ -2678,12 +2678,12 @@
   "beastfolk/villager:hammer": {
    "file": "art3d/beastfolk-villager-hammer.png",
    "frame": [
-    110,
-    95
+    130,
+    100
    ],
    "anchor": [
-    53.0,
-    69.0
+    63.0,
+    73.0
    ],
    "scale": 1.0,
    "directions": 8,
@@ -2708,12 +2708,12 @@
   "beastfolk/villager:basket": {
    "file": "art3d/beastfolk-villager-basket.png",
    "frame": [
-    110,
-    95
+    130,
+    100
    ],
    "anchor": [
-    53.0,
-    69.0
+    63.0,
+    73.0
    ],
    "scale": 1.0,
    "directions": 8,
@@ -2738,12 +2738,12 @@
   "beastfolk/villager:butcher": {
    "file": "art3d/beastfolk-villager-butcher.png",
    "frame": [
-    110,
-    95
+    130,
+    100
    ],
    "anchor": [
-    53.0,
-    69.0
+    63.0,
+    73.0
    ],
    "scale": 1.0,
    "directions": 8,
@@ -2858,12 +2858,12 @@
   "beastfolk/villager:fight": {
    "file": "art3d/beastfolk-villager-fight.png",
    "frame": [
-    110,
-    95
+    130,
+    100
    ],
    "anchor": [
-    53.0,
-    69.0
+    63.0,
+    73.0
    ],
    "scale": 1.0,
    "directions": 8,
@@ -5337,7 +5337,7 @@
      "file": "art3d/wonder-bronze.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     },
@@ -5345,7 +5345,7 @@
      "file": "art3d/wonder-iron.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     }
@@ -5355,7 +5355,7 @@
      "file": "art3d/elf-wonder-bronze.png",
      "anchor": [
       190.0,
-      435.4
+      466.9
      ],
      "scale": 1.0
     },
@@ -5363,7 +5363,7 @@
      "file": "art3d/elf-wonder-iron.png",
      "anchor": [
       190.0,
-      435.4
+      466.9
      ],
      "scale": 1.0
     }
@@ -5373,7 +5373,7 @@
      "file": "art3d/dwarf-wonder-bronze.png",
      "anchor": [
       190.0,
-      435.4
+      466.9
      ],
      "scale": 1.0
     },
@@ -5381,7 +5381,7 @@
      "file": "art3d/dwarf-wonder-iron.png",
      "anchor": [
       190.0,
-      435.4
+      466.9
      ],
      "scale": 1.0
     }
@@ -5391,7 +5391,7 @@
      "file": "art3d/centaur-wonder-bronze.png",
      "anchor": [
       190.0,
-      435.4
+      466.9
      ],
      "scale": 1.0
     },
@@ -5399,7 +5399,7 @@
      "file": "art3d/centaur-wonder-iron.png",
      "anchor": [
       190.0,
-      435.4
+      466.9
      ],
      "scale": 1.0
     }
@@ -5409,7 +5409,7 @@
      "file": "art3d/beastfolk-wonder-bronze.png",
      "anchor": [
       190.0,
-      435.4
+      466.9
      ],
      "scale": 1.0
     },
@@ -5417,7 +5417,7 @@
      "file": "art3d/beastfolk-wonder-iron.png",
      "anchor": [
       190.0,
-      435.4
+      466.9
      ],
      "scale": 1.0
     }
@@ -5427,7 +5427,7 @@
      "file": "art3d/wonder-egyptian-iron.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     },
@@ -5435,7 +5435,7 @@
      "file": "art3d/wonder-egyptian-bronze.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     }
@@ -5445,7 +5445,7 @@
      "file": "art3d/wonder-greek-iron.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     },
@@ -5453,7 +5453,7 @@
      "file": "art3d/wonder-greek-bronze.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     }
@@ -5463,7 +5463,7 @@
      "file": "art3d/wonder-roman-iron.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     },
@@ -5471,7 +5471,7 @@
      "file": "art3d/wonder-roman-bronze.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     }
@@ -5481,7 +5481,7 @@
      "file": "art3d/wonder-asian-iron.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     },
@@ -5489,7 +5489,7 @@
      "file": "art3d/wonder-asian-bronze.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     }
@@ -5499,7 +5499,7 @@
      "file": "art3d/wonder-babylonian-iron.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     },
@@ -5507,7 +5507,7 @@
      "file": "art3d/wonder-babylonian-bronze.png",
      "anchor": [
       190.0,
-      289.2
+      307.7
      ],
      "scale": 1.0
     }
@@ -5926,7 +5926,7 @@
     "bronze": {
      "file": "art3d/government_center-bronze.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -5934,7 +5934,7 @@
     "iron": {
      "file": "art3d/government_center-iron.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -5944,7 +5944,7 @@
     "bronze": {
      "file": "art3d/centaur-government_center-bronze.png",
      "anchor": [
-      126.0,
+      141.0,
       215.2
      ],
      "scale": 1.0
@@ -5952,7 +5952,7 @@
     "iron": {
      "file": "art3d/centaur-government_center-iron.png",
      "anchor": [
-      126.0,
+      141.0,
       215.2
      ],
      "scale": 1.0
@@ -5962,7 +5962,7 @@
     "bronze": {
      "file": "art3d/beastfolk-government_center-bronze.png",
      "anchor": [
-      126.0,
+      141.0,
       215.2
      ],
      "scale": 1.0
@@ -5970,7 +5970,7 @@
     "iron": {
      "file": "art3d/beastfolk-government_center-iron.png",
      "anchor": [
-      126.0,
+      141.0,
       215.2
      ],
      "scale": 1.0
@@ -5980,7 +5980,7 @@
     "bronze": {
      "file": "art3d/dwarf-government_center-bronze.png",
      "anchor": [
-      126.0,
+      141.0,
       215.2
      ],
      "scale": 1.0
@@ -5988,7 +5988,7 @@
     "iron": {
      "file": "art3d/dwarf-government_center-iron.png",
      "anchor": [
-      126.0,
+      141.0,
       215.2
      ],
      "scale": 1.0
@@ -5998,7 +5998,7 @@
     "bronze": {
      "file": "art3d/elf-government_center-bronze.png",
      "anchor": [
-      126.0,
+      141.0,
       215.2
      ],
      "scale": 1.0
@@ -6006,7 +6006,7 @@
     "iron": {
      "file": "art3d/elf-government_center-iron.png",
      "anchor": [
-      126.0,
+      141.0,
       215.2
      ],
      "scale": 1.0
@@ -6016,7 +6016,7 @@
     "iron": {
      "file": "art3d/government_center-egyptian-iron.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -6024,7 +6024,7 @@
     "bronze": {
      "file": "art3d/government_center-egyptian-bronze.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -6034,7 +6034,7 @@
     "iron": {
      "file": "art3d/government_center-greek-iron.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -6042,7 +6042,7 @@
     "bronze": {
      "file": "art3d/government_center-greek-bronze.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -6052,7 +6052,7 @@
     "iron": {
      "file": "art3d/government_center-roman-iron.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -6060,7 +6060,7 @@
     "bronze": {
      "file": "art3d/government_center-roman-bronze.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -6070,7 +6070,7 @@
     "iron": {
      "file": "art3d/government_center-asian-iron.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -6078,7 +6078,7 @@
     "bronze": {
      "file": "art3d/government_center-asian-bronze.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -6088,7 +6088,7 @@
     "iron": {
      "file": "art3d/government_center-babylonian-iron.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -6096,7 +6096,7 @@
     "bronze": {
      "file": "art3d/government_center-babylonian-bronze.png",
      "anchor": [
-      126.0,
+      141.0,
       176.7
      ],
      "scale": 1.0
@@ -7177,6 +7177,56 @@
    "default": {
     "tool": {
      "file": "art3d/farm-tool.png",
+     "anchor": [
+      126.0,
+      124.5
+     ],
+     "scale": 1.0
+    }
+   },
+   "greek": {
+    "tool": {
+     "file": "art3d/farm-greek-tool.png",
+     "anchor": [
+      126.0,
+      124.5
+     ],
+     "scale": 1.0
+    }
+   },
+   "egyptian": {
+    "tool": {
+     "file": "art3d/farm-egyptian-tool.png",
+     "anchor": [
+      126.0,
+      124.5
+     ],
+     "scale": 1.0
+    }
+   },
+   "roman": {
+    "tool": {
+     "file": "art3d/farm-roman-tool.png",
+     "anchor": [
+      126.0,
+      124.5
+     ],
+     "scale": 1.0
+    }
+   },
+   "asian": {
+    "tool": {
+     "file": "art3d/farm-asian-tool.png",
+     "anchor": [
+      126.0,
+      124.5
+     ],
+     "scale": 1.0
+    }
+   },
+   "babylonian": {
+    "tool": {
+     "file": "art3d/farm-babylonian-tool.png",
      "anchor": [
       126.0,
       124.5
