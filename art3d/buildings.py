@@ -33,7 +33,7 @@ class Style:
         i = AGES.index(age)
         self.i = i
         # Mud plastered, then mud brick, then whitewashed blocks, then cut stone; thatch, then tile.
-        self.wall = lib.mat(f"wall{i}", [(0.60, 0.45, 0.30), (0.68, 0.52, 0.36), (0.86, 0.80, 0.68), (0.74, 0.70, 0.62)][i], 0.95,
+        self.wall = lib.mat(f"wall{i}", [(0.60, 0.45, 0.30), (0.68, 0.52, 0.36), (0.86, 0.80, 0.68), (0.90, 0.87, 0.80)][i], 0.95,
                             grain=[0.3, 0.35, 0.18, 0.25][i], grain_size=0.02,
                             kind=WALL_COURSES[i])
         self.roof = lib.mat(f"roof{i}", [(0.74, 0.60, 0.30), (0.70, 0.56, 0.28), (0.70, 0.36, 0.22), (0.62, 0.28, 0.18)][i], 0.9,
@@ -140,9 +140,22 @@ def steps(st, x, y, w, d, n=3, h=0.04):
     return n * h
 
 
-def ground(size, color=(0.46, 0.37, 0.25)):
-    """Trodden earth or paving under a building, inside its tiles, ragged at the edge so it fades into the
-    ground round it rather than standing on it like a board."""
+EARTH = (0.44, 0.36, 0.24)
+MOSS = (0.34, 0.42, 0.20)
+
+
+def earthy(color):
+    """A yard's colour brought to trodden earth: a pale one (paving, sand, a court) was read as concrete."""
+    c = tuple(0.45 * x + 0.55 * e for x, e in zip(color, EARTH))
+    lum = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+    k = min(1.0, 0.46 / max(lum, 1e-6))
+    return tuple(x * k for x in c)
+
+
+def ground(size, color=EARTH):
+    """Trodden earth under a building, inside its tiles, ragged at the edge so it fades into the ground round it
+    rather than standing on it like a board; moss and grass in patches over it, and the small things of a
+    lived-in yard about its edge (jars, sacks, crates, firewood, baskets, tufts of grass, bushes, tools)."""
     bpy = lib.bpy
     # Kept close to the walls, as the original's: a wide flat yard read as a board the building stood on.
     bpy.ops.mesh.primitive_cylinder_add(vertices=96, radius=size * 0.54, depth=0.012, location=(0, 0, 0.006))
@@ -158,15 +171,52 @@ def ground(size, color=(0.46, 0.37, 0.25)):
         k = max(abs(x), abs(y)) / r
         f = (0.86 + 0.14 * k) / (0.84 + rnd.uniform(-0.09, 0.09))
         v.co.x, v.co.y = x / f, y / f
-    lib.setmat(p, lib.mat("yard", color, 1.0, grain=0.55, grain_size=0.025))
-    # Pebbles and clods about the edge of the yard.
+    yard = lib.mat("yard", earthy(color), 1.0, grain=0.55, grain_size=0.025)
+    lib.mottle(yard, MOSS, scale=0.3, cover=0.32)
+    lib.setmat(p, yard)
+    clutter(size, rnd)
+
+
+def clutter(size, rnd):
+    """The small things about the edge of a yard: a ring just inside the edge, most toward the viewer, where
+    they show and do not stand in front of the building."""
     pebble = lib.mat("pebble", (0.52, 0.48, 0.42), 0.95, grain=0.3)
-    clod = lib.mat("clod", tuple(x * 0.7 for x in color), 1.0, grain=0.3)
-    for i in range(int(14 * size)):
-        a = rnd.uniform(0, 2 * math.pi)
-        r = size * rnd.uniform(0.4, 0.55)
-        q = lib.ball(f"pebble{i}", rnd.uniform(0.018, 0.035), (r * math.cos(a), r * math.sin(a), 0.012), pebble if i % 3 else clod, sub=1)
-        q.scale = (1.3, 1.0, 0.6)
+    clay = lib.mat("clay", (0.70, 0.40, 0.24), 0.8)
+    sack = lib.mat("sack", (0.74, 0.66, 0.50), 1.0, grain=0.3)
+    wood = lib.mat("wood", (0.40, 0.25, 0.12), 0.8)
+    basket = lib.mat("basket", (0.55, 0.40, 0.20), 0.9, grain=0.4, grain_size=0.01)
+    grass = lib.mat("tuft", (0.36, 0.48, 0.20), 0.9, grain=0.3)
+    bush = lib.mat("bush", (0.26, 0.38, 0.18), 0.9, grain=0.35, grain_size=0.02)
+    n = int(7 * size)
+    for i in range(n):
+        # Two in three on the half toward the viewer (the -Y, +X side).
+        a = rnd.uniform(-math.pi * 0.85, math.pi * 0.35) if rnd.random() < 0.67 else rnd.uniform(0, 2 * math.pi)
+        r = size * rnd.uniform(0.44, 0.56)
+        x, y = r * math.cos(a), r * math.sin(a)
+        kind = rnd.choice(("pebble", "pebble", "tuft", "tuft", "tuft", "pot", "sack", "crate", "logs", "basket", "bush", "tool"))
+        name = f"clutter{i}"
+        if kind == "pebble":
+            q = lib.ball(name, rnd.uniform(0.02, 0.04), (x, y, 0.014), pebble, sub=1)
+            q.scale = (1.3, 1.0, 0.6)
+        elif kind == "tuft":
+            for j in range(3):
+                lib.cyl(f"{name}-{j}", 0.012, rnd.uniform(0.05, 0.09), (x + rnd.uniform(-0.03, 0.03), y + rnd.uniform(-0.03, 0.03), 0.03),
+                        grass, verts=4, r2=0.0, rot=(rnd.uniform(-0.3, 0.3), rnd.uniform(-0.3, 0.3), 0))
+        elif kind == "pot":
+            lib.ball(name, rnd.uniform(0.035, 0.05), (x, y, 0.045), clay, scale=(1, 1, 1.3), sub=1)
+        elif kind == "sack":
+            lib.ball(name, rnd.uniform(0.04, 0.055), (x, y, 0.04), sack, scale=(1, 1, 1.1), sub=1)
+        elif kind == "crate":
+            lib.box(name, (0.09, 0.09, 0.08), (x, y, 0.04), wood, rot=(0, 0, rnd.uniform(0, 1.5)), bevel=0.006)
+        elif kind == "logs":
+            for j in range(3):
+                lib.cyl(f"{name}-{j}", 0.018, 0.2, (x + (j - 1) * 0.02, y, 0.02 + (j == 1) * 0.03), wood, rot=(0, R(90), rnd.uniform(0, 3)), verts=6)
+        elif kind == "basket":
+            lib.cyl(name, 0.04, 0.045, (x, y, 0.022), basket, verts=10)
+        elif kind == "bush":
+            lib.lumpy(lib.ball(name, rnd.uniform(0.05, 0.08), (x, y, 0.04), bush, scale=(1.2, 1.0, 0.75), sub=2), 0.015, 0.05)
+        else:
+            lib.cyl(name, 0.008, 0.26, (x, y, 0.1), wood, verts=4, rot=(R(rnd.uniform(15, 30)), 0, rnd.uniform(0, 3)))
 
 
 # ---- the buildings. Each takes a Style.
@@ -370,9 +420,24 @@ def propylon(st, x, y, w, h, name="propylon"):
         lib.box(f"{name}banner{k}", (0.1, 0.012, 0.2), (x + dx, y - 0.065, h - 0.1), st.team)
 
 
+def court(name, w, d, loc):
+    """The floor of a court within walls: trodden earth a little lighter than outside, moss in it, a few flags of
+    stone set in it. (A pale flat floor was read as concrete.)"""
+    m = lib.mat(f"court-{name}", earthy((0.62, 0.56, 0.44)), 1.0, grain=0.5, grain_size=0.025)
+    lib.mottle(m, MOSS, scale=0.25, cover=0.28)
+    lib.box(name, (w, d, 0.02), loc, m)
+    flag_m = lib.mat("flagstone", (0.58, 0.55, 0.50), 0.9, grain=0.25)
+    rnd = random.Random(int(w * 100 + d * 10))
+    x0, y0, z0 = loc
+    for k in range(int(w * d * 4)):
+        lib.box(f"{name}-flag{k}", (rnd.uniform(0.08, 0.14), rnd.uniform(0.07, 0.12), 0.012),
+                (x0 + rnd.uniform(-w / 2.4, w / 2.4), y0 + rnd.uniform(-d / 2.4, d / 2.4), z0 + 0.012), flag_m, rot=(0, 0, rnd.uniform(-0.2, 0.2)))
+
+
 def paving(name, w, d, loc, color=(0.66, 0.62, 0.54)):
     """Stone slabs laid over a yard."""
     m = lib.mat(f"paving-{name}", color, 0.9, grain=0.2, grain_size=0.02, kind=("brick", 0.22, 0.2, 0.35))
+    lib.mottle(m, MOSS, scale=0.12, cover=0.14)
     lib.box(name, (w, d, 0.02), loc, m)
 
 
@@ -947,7 +1012,7 @@ def academy(st):
     hall(st, "left", -0.95, 0.0, 0.6, 1.2, 0.7, roof="gable", along="y")
     columns(st, -0.6, 1.1, -0.85, 0.7, 6)
     lib.box("lintel", (1.9, 0.12, 0.08), (0.25, -0.85, 0.74), st.trim)
-    lib.box("court", (1.5, 1.1, 0.02), (0.3, 0.05, 0.02), lib.mat("paving", (0.74, 0.70, 0.62), 0.9, grain=0.2))
+    court("court", 1.5, 1.1, (0.3, 0.05, 0.02))
     lib.cyl("statue", 0.08, 0.4, (0.3, 0.0, 0.22), st.trim, verts=10)
     banner(st, 0.9, 0.49, 0.5)
     flag(st, 1.15, 1.15, 1.2)
@@ -984,8 +1049,17 @@ def wonder(st):
     flag(st, 0, 0, z + 1.6)
 
 
+def smaller(make, k=0.78):
+    """A builder whose model is scaled down about the middle of its tiles: the original's houses and granaries
+    are smaller than its other buildings, and ours stood a third to a half larger than its."""
+    def made(st):
+        make(st)
+        lib.scale_all(k)
+    return made
+
+
 BUILDERS = {
-    "town_center": town_center, "house": house, "granary": granary, "storage_pit": storage_pit, "barracks": barracks,
+    "town_center": town_center, "house": smaller(house), "granary": smaller(granary), "storage_pit": storage_pit, "barracks": barracks,
     "dock": dock, "archery_range": archery_range, "stable": stable, "market": market, "farm": farm,
     "watch_tower": lambda st: tower(st, "watch_tower"), "sentry_tower": lambda st: tower(st, "sentry_tower"),
     "guard_tower": lambda st: tower(st, "guard_tower"), "ballista_tower": lambda st: tower(st, "ballista_tower"),
@@ -1007,8 +1081,8 @@ SIZE = {"town_center": 3, "house": 2, "watch_tower": 2, "sentry_tower": 2, "guar
 def frame_of(key):
     """Picture size (px, at twice the game's size), the scene point it is centred on, and the anchor."""
     n = SIZE.get(key, 3)
-    tall = {"wonder": 3.0, "watch_tower": 2.4, "sentry_tower": 2.2, "guard_tower": 2.5, "ballista_tower": 2.7, "farm": 0.3}.get(key, 1.7)
-    w = int(n * 128 + 120)
+    tall = {"wonder": 3.5, "watch_tower": 2.4, "sentry_tower": 2.2, "guard_tower": 2.5, "ballista_tower": 2.7, "farm": 0.3}.get(key, 1.7)
+    w = int(n * 128 + 120 + (60 if key == "government_center" else 0))  # the Roman one's porch ran out of it
     h = int(n * 64 + tall * 0.866 * lib.PPU + 70)
     lift = tall * 0.45
     return (w, h), (0.0, 0.0, lift), (n / 2, -n / 2, 0)

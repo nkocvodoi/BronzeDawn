@@ -1,4 +1,6 @@
-# Kế hoạch sửa hình công trình (đề xuất, chờ duyệt)
+# Kế hoạch sửa hình công trình
+
+**Trạng thái:** chủ repo đã duyệt cả 97 mục ngày 2026-10-16, thêm một ý: Wonder Châu Á có tượng Phật.
 
 Viết ngày 2026-10-16 sau khi xem cả 235 cặp hình của `art3d/compare.py`: 19 loại công trình, 5 kiến trúc (Ai Cập,
 Babylon, Châu Á, Hy Lạp, La Mã), mọi thời đại, đặt cạnh bản gốc. Điểm lúc viết: 65/100 (60 trước đợt vân vật liệu).
@@ -171,7 +173,7 @@ chỉ dùng để so phong cách và mức chi tiết.
 
 - **egyptian:** Kim tự tháp: các lớp khối đá thấy rõ, đền nhỏ ở chân, lối đi có obelisk.
 - **babylonian:** Ziggurat: bỏ cổng xanh, thêm vườn trên các tầng.
-- **asian:** Tháp chùa: thêm sân đá và tường thấp quanh.
+- **asian:** Tháp chùa: thêm sân đá và tường thấp quanh, và một tượng Phật ngồi trước tháp (chủ repo thêm khi duyệt).
 - **greek:** Đền lớn trên bệ: thêm tượng và bậc thềm.
 - **roman:** Đấu trường: tầng vòm rõ hơn, cờ trên đỉnh.
 

@@ -263,6 +263,46 @@ def mat(name, color, rough=0.8, metal=0.0, team=False, emit=None, grain=0.28, gr
     return m
 
 
+def mottle(m, color, scale=0.35, cover=0.3, name="mottle"):
+    """Patches of another colour over a material: moss and grass on trodden earth, weeds between paving
+    stones. `scale` is the size of a patch in units, `cover` how much of the surface they take (0 to 1)."""
+    if m.get(name):
+        return m
+    nt = m.node_tree
+    bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
+    base = bsdf.inputs["Base Color"]
+    src = base.links[0].from_socket if base.links else None
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 1 / scale
+    noise.inputs["Detail"].default_value = 5
+    noise.inputs["Roughness"].default_value = 0.65
+    nt.links.new(coord.outputs["Object"], noise.inputs["Vector"])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 1 - cover - 0.04
+    ramp.color_ramp.elements[1].position = 1 - cover + 0.04
+    nt.links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+    # The patch itself speckled, lighter and darker, as grass is.
+    speck = nt.nodes.new("ShaderNodeTexNoise")
+    speck.inputs["Scale"].default_value = 60
+    nt.links.new(coord.outputs["Object"], speck.inputs["Vector"])
+    tint = nt.nodes.new("ShaderNodeValToRGB")
+    tint.color_ramp.elements[0].color = (*linear(tuple(x * 0.7 for x in color)), 1)
+    tint.color_ramp.elements[1].color = (*linear(tuple(min(1, x * 1.2) for x in color)), 1)
+    nt.links.new(speck.outputs["Fac"], tint.inputs["Fac"])
+    mix = nt.nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    nt.links.new(ramp.outputs["Color"], mix.inputs["Factor"])
+    if src:
+        nt.links.new(src, mix.inputs["A"])
+    else:
+        mix.inputs["A"].default_value = base.default_value
+    nt.links.new(tint.outputs["Color"], mix.inputs["B"])
+    nt.links.new(mix.outputs["Result"], base)
+    m[name] = True
+    return m
+
+
 def team_mat(name="team", rough=0.75):
     return mat(name, TEAM, rough=rough, team=True)
 

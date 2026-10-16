@@ -47,7 +47,7 @@ def egyptian_town_center(st):
 def egyptian_temple(st):
     b.ground(3, (0.80, 0.72, 0.54))
     # A hall of papyrus columns behind a pylon gate.
-    lib.box("court", (2.2, 1.6, 0.04), (0, 0.35, 0.02), st.trim)
+    b.paving("court", 2.2, 1.6, (0, 0.35, 0.02), color=(0.80, 0.74, 0.60))  # stone flags, weeds in the joints
     hall(st, "sanctuary", 0, 0.8, 1.6, 0.8, 0.85)
     columns(st, -0.85, 0.85, 0.15, 0.75, 5, r=0.06)
     lib.box("architrave", (1.9, 0.18, 0.08), (0, 0.15, 0.79), st.trim)
