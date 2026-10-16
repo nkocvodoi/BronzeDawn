@@ -11,6 +11,7 @@
 # As buildings.py: one unit is one tile, tiles from -size/2 to size/2, the front toward the viewer (+X, -Y).
 
 import math
+import random
 
 import lib
 from buildings import AGES, FIRST, ONE_LOOK, prism
@@ -550,8 +551,92 @@ BUILDERS = {
 }
 
 
+# ---- what every race's buildings get once laid out (replica/fantasy-art-plan.md, "all"): the race's own small
+# things about the yard, its own light, and the house and granary brought down to the size of everyone's.
+
+LIGHT = {"elf": (0.55, 0.95, 0.75), "dwarf": (1.0, 0.45, 0.12), "centaur": (1.0, 0.80, 0.42), "beastfolk": (1.0, 0.55, 0.18)}
+
+
+def glow(k, name, x, y, z, r=0.03):
+    lib.ball(name, r, (x, y, z), lib.mat(f"{k.race}-glow", LIGHT[k.race], 1.0, emit=LIGHT[k.race]), sub=1)
+
+
+def prop(k, name, x, y, kind):
+    """One of a race's own things, at (x, y) on the ground."""
+    if k.race == "elf":
+        if kind == 0:  # glowing mushrooms
+            for j in range(3):
+                dx, dy = (j - 1) * 0.05, (j % 2) * 0.04
+                lib.cyl(f"{name}-stem{j}", 0.01, 0.06, (x + dx, y + dy, 0.03), lib.mat("stem", (0.86, 0.84, 0.76), 0.9), verts=6)
+                lib.ball(f"{name}-cap{j}", 0.03, (x + dx, y + dy, 0.065), lib.mat("elf-glow", LIGHT["elf"], 1.0, emit=LIGHT["elf"]), scale=(1, 1, 0.5), sub=1)
+        elif kind == 1:  # a moonstone lantern on a curled post
+            lib.cyl(f"{name}-post", 0.012, 0.3, (x, y, 0.15), k.bark, verts=6)
+            glow(k, f"{name}-stone", x, y, 0.32, 0.035)
+        else:  # flowers in a pot of woven twigs
+            lib.cyl(f"{name}-pot", 0.04, 0.05, (x, y, 0.025), k.bark, verts=10)
+            for j in range(4):
+                lib.ball(f"{name}-fl{j}", 0.018, (x + 0.025 * math.cos(j * 1.6), y + 0.025 * math.sin(j * 1.6), 0.07),
+                         lib.mat("flower", (0.92, 0.86, 0.95), 0.8), sub=1)
+    elif k.race == "dwarf":
+        if kind == 0:  # a barrel bound in bronze
+            lib.cyl(f"{name}-barrel", 0.045, 0.1, (x, y, 0.05), k.wood, verts=12)
+            lib.cyl(f"{name}-hoop", 0.047, 0.012, (x, y, 0.07), k.bronze, verts=12)
+        elif kind == 1:  # an anvil on a block, and a brazier
+            lib.box(f"{name}-block", (0.08, 0.08, 0.06), (x, y, 0.03), k.wood)
+            lib.box(f"{name}-anvil", (0.11, 0.05, 0.04), (x, y, 0.08), k.dstone)
+            lib.cyl(f"{name}-braz", 0.035, 0.05, (x + 0.1, y, 0.025), k.bronze, verts=8)
+            glow(k, f"{name}-coal", x + 0.1, y, 0.055, 0.025)
+        else:  # a cart of ore
+            lib.box(f"{name}-cart", (0.12, 0.08, 0.05), (x, y, 0.045), k.wood, bevel=0.006)
+            for j in range(3):
+                lib.ball(f"{name}-ore{j}", 0.025, (x - 0.03 + j * 0.03, y, 0.08), k.rock, sub=1)
+    elif k.race == "centaur":
+        if kind == 0:  # a rug laid out
+            lib.box(f"{name}-rug", (0.16, 0.1, 0.006), (x, y, 0.004), k.sky)
+            lib.box(f"{name}-rugband", (0.16, 0.03, 0.007), (x, y, 0.005), k.team)
+        elif kind == 1:  # a lantern on a pole
+            lib.cyl(f"{name}-pole", 0.01, 0.34, (x, y, 0.17), k.wood, verts=6)
+            lib.box(f"{name}-arm", (0.07, 0.01, 0.01), (x + 0.03, y, 0.33), k.wood)
+            glow(k, f"{name}-lamp", x + 0.06, y, 0.3, 0.025)
+        else:  # a saddle on a stand, a water jar
+            lib.box(f"{name}-stand", (0.1, 0.04, 0.07), (x, y, 0.035), k.wood)
+            lib.ball(f"{name}-saddle", 0.045, (x, y, 0.08), lib.mat("leather", (0.48, 0.30, 0.16), 0.7), scale=(1.2, 0.8, 0.5), sub=1)
+            lib.ball(f"{name}-jar", 0.035, (x + 0.09, y, 0.04), k.canvas2, scale=(1, 1, 1.3), sub=1)
+    else:
+        if kind == 0:  # a heap of bones and a skull
+            for j in range(3):
+                lib.cyl(f"{name}-bone{j}", 0.01, 0.12, (x + j * 0.02, y, 0.012), k.bone, rot=(0, R(90), j), verts=5)
+            k.skull(x + 0.06, y + 0.03, 0.04)
+        elif kind == 1:  # a fire ringed with stones
+            for j in range(6):
+                a = j * math.pi / 3
+                lib.ball(f"{name}-st{j}", 0.02, (x + 0.06 * math.cos(a), y + 0.06 * math.sin(a), 0.012), k.mud, sub=1)
+            glow(k, f"{name}-fire", x, y, 0.035, 0.035)
+        else:  # a drum of hide
+            lib.cyl(f"{name}-drum", 0.045, 0.07, (x, y, 0.035), k.hide, verts=12)
+            lib.cyl(f"{name}-skin", 0.046, 0.008, (x, y, 0.072), k.bone, verts=12)
+
+
+def finish(k, key):
+    if key in ("dock",) or key.endswith("tower"):
+        return
+    size = 5 if key == "wonder" else 2 if key == "house" else 3
+    rnd = random.Random(f"{k.race}-{key}-{k.tier}")  # the same picture on every render
+    # Along the front edges of the yard, where they show and stand in front of nothing.
+    n = 3 + k.tier + (3 if key in ("town_center", "temple", "wonder", "government_center") else 0)
+    c = size / 2 - 0.2
+    for i in range(n):
+        t = (i + 0.5) / n
+        x, y = (-c + t * 2 * c, -c) if i % 2 == 0 else (c, -c + t * 2 * c)
+        prop(k, f"race-prop{i}", x + rnd.uniform(-0.08, 0.08), y + rnd.uniform(-0.08, 0.08), (i + k.tier) % 3)
+    if key in ("house", "granary"):
+        lib.scale_all(0.8)  # everyone's were a quarter bigger than the original's (art-plan.md, "co")
+
+
 def make(race, key, age):
-    BUILDERS[key](KITS[race](race, age))
+    k = KITS[race](race, age)
+    BUILDERS[key](k)
+    finish(k, key)
 
 
 def ages_of(key):

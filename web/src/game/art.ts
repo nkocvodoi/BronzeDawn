@@ -2578,6 +2578,17 @@ function techGlyph(p: PixelCanvas, g: string) {
     case "wall": for (let y = 8; y < 20; y += 3) for (let x = 3 + ((y / 3) & 1) * 2; x < 21; x += 4) { p.rect(x, y, 3, 2, C.stone); p.set(x + 2, y + 1, C.stoneDark); } for (let x = 3; x < 21; x += 4) p.rect(x, 5, 2, 3, C.stone); break;
     case "temple": p.poly([[3, 9], [12, 3], [21, 9]], C.tile); p.rect(4, 9, 16, 2, C.white); for (let x = 5; x < 20; x += 3) p.rect(x, 11, 2, 7, x < 12 ? C.white : C.robeDark); p.rect(3, 18, 18, 2, C.robeDark); break;
     case "age": p.ellipse(12, 13, 8, 8, C.goldDark); p.ellipse(12, 13, 6, 6, C.gold); for (let i = 0; i < 8; i++) { const a = (i * Math.PI) / 4; p.set(Math.round(12 + Math.cos(a) * 9.5), Math.round(13 + Math.sin(a) * 9.5), C.glow); } p.poly([[9, 16], [12, 8], [15, 16]], C.bronzeDark); break;
+    case "moon": // a crescent moon and an arrow across it
+      p.ellipse(11, 11, 7, 7, C.ivory); p.ellipse(14, 9, 6, 6, rgb(0x2a3a5a)); L(4, 20, 19, 5, C.woodLight); p.poly([[19, 5], [15, 6], [18, 9]], C.ironLight);
+      L(4, 20, 6, 17, C.leaf); L(5, 21, 8, 19, C.leaf); break;
+    case "delve": // a pick over a gem
+      p.poly([[12, 13], [17, 17], [12, 21], [7, 17]], rgb(0x4ab0c8)); p.poly([[12, 13], [17, 17], [12, 17]], rgb(0x9ae0f0));
+      L(5, 13, 17, 4, C.wood); L(6, 13, 18, 4, C.woodDark); p.poly([[14, 2], [21, 6], [19, 8], [13, 4]], C.ironDark); p.set(17, 4, C.ironLight); break;
+    case "hoofbow": // a horseshoe and an arrow
+      for (let i = -6; i <= 6; i++) { p.set(12 + i, 14 + Math.round(Math.sqrt(36 - i * i) * 0.9), C.iron); p.set(12 + i, 15 + Math.round(Math.sqrt(36 - i * i) * 0.9), C.ironDark); }
+      p.rect(5, 8, 2, 7, C.iron); p.rect(17, 8, 2, 7, C.iron); L(3, 6, 20, 6, C.woodLight); p.poly([[21, 6], [17, 4], [17, 8]], C.ironLight); L(3, 6, 5, 4, C.red); break;
+    case "claw": // three red claw marks
+      for (let k = 0; k < 3; k++) { L(6 + k * 5, 4, 3 + k * 5, 20, C.red); L(7 + k * 5, 4, 4 + k * 5, 20, lighten(C.red, 0.3)); } break;
     default: p.rect(5, 5, 14, 15, C.ivory); p.rect(5, 5, 14, 2, C.thatchDark); p.rect(5, 18, 14, 2, C.thatchDark); for (let y = 9; y < 17; y += 2) L(7, y, 16 - (y % 3), y, C.woodDark); break;
   }
 }
@@ -2586,6 +2597,8 @@ const TECH_WORDS: [RegExp, string][] = [
   [/^delete$/, "delete"], [/^stop$/, "stop"], [/^next$/, "next"], [/^back$/, "back"], [/^flag$/, "flag"],
   [/^(build|repair)$/, "hammer"], [/^(attack_move|attack_ground)$/, "sword"], [/^stand_ground$/, "shield"], [/^unload$/, "back"],
   [/^(stone|tool|bronze|iron)_age$|^age_|advance|ascend/, "age"],
+  // The fantasy races' own techs (replica/fantasy-art-plan.md, "icon-tech").
+  [/^moonlit_volley$/, "moon"], [/^deep_delving$/, "delve"], [/^galloping_volley$/, "hoofbow"], [/^blood_of_the_wild$/, "claw"],
   [/coin|gold|bank|market|trade|currency|tax|mint|tribute/, "coin"],
   [/shield/, "shield"],
   [/armor|armour|mail|leather|scale|plate|chain/, "armor"],
