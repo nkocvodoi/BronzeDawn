@@ -531,17 +531,223 @@ def tholos(st, x, y, name="tholos"):
 
 def fountain(st, x, y, name="fountain"):
     """A round basin of water with a pillar in the middle and water falling from its spout."""
-    lib.cyl(f"{name}basin", 0.36, 0.14, (x, y, 0.07), st.trim, verts=24)
-    lib.cyl(f"{name}water", 0.31, 0.01, (x, y, 0.135), lib.mat("fountainwater", (0.22, 0.38, 0.46), 0.15), verts=24)
-    lib.cyl(f"{name}pillar", 0.06, 0.42, (x, y, 0.3), st.trim, verts=12)
-    lib.ball(f"{name}bowl", 0.1, (x, y, 0.52), st.trim, scale=(1, 1, 0.45), sub=2)
-    lib.cyl(f"{name}fall", 0.02, 0.38, (x, y, 0.33), lib.mat("fountainfall", (0.70, 0.82, 0.88), 0.1), verts=8)
+    lib.cyl(f"{name}basin", 0.36, 0.1, (x, y, 0.05), st.trim, verts=24)
+    lib.cyl(f"{name}water", 0.32, 0.01, (x, y, 0.1), lib.mat("fountainwater", (0.30, 0.56, 0.66), 0.1), verts=24)
+    if hasattr(st, "accent"):
+        lib.cyl(f"{name}band", 0.362, 0.03, (x, y, 0.07), st.accent, verts=24)
+    lib.cyl(f"{name}pillar", 0.04, 0.32, (x, y, 0.2), st.trim, verts=12)
+    lib.ball(f"{name}bowl", 0.08, (x, y, 0.38), st.trim, scale=(1, 1, 0.4), sub=2)
+    lib.cyl(f"{name}fall", 0.015, 0.28, (x, y, 0.24), lib.mat("fountainfall", (0.78, 0.88, 0.92), 0.1), verts=8)
+
+
+# ---- trees and water for the markets of the east
+
+def pine(name, x, y, h=0.9, lean=0.0):
+    """A pine: a bare trunk leaning a little, flat tiers of dark needles."""
+    bark = lib.mat("pinebark", (0.36, 0.26, 0.18), 0.9, grain=0.4, grain_size=0.01)
+    needles = lib.mat("pine", (0.18, 0.30, 0.18), 0.9, grain=0.35, grain_size=0.02)
+    lib.cyl(f"{name}-trunk", 0.03, h, (x + lean / 2, y, h / 2), bark, verts=6, r2=0.02, rot=(0, R(lean * 40), 0))
+    for k, (z, r) in enumerate(((0.55, 0.24), (0.72, 0.19), (0.86, 0.13))):
+        o = lib.ball(f"{name}-tier{k}", r, (x + lean, y, h * z), needles, scale=(1.2, 1.0, 0.35), sub=2)
+        lib.lumpy(o, 0.03, 0.08)
+
+
+def willow(name, x, y, h=0.7):
+    """A weeping willow: a stout trunk, a round crown and long fronds hanging from it."""
+    bark = lib.mat("willowbark", (0.38, 0.32, 0.24), 0.9, grain=0.4, grain_size=0.01)
+    leaf = lib.mat("willow", (0.46, 0.58, 0.30), 0.85, grain=0.3, grain_size=0.015)
+    lib.cyl(f"{name}-trunk", 0.04, h, (x, y, h / 2), bark, verts=7, r2=0.03)
+    lib.lumpy(lib.ball(f"{name}-crown", 0.22, (x, y, h), leaf, scale=(1.1, 1.1, 0.7), sub=2), 0.03, 0.08)
+    for k in range(10):
+        a = 2 * math.pi * k / 10
+        lib.box(f"{name}-frond{k}", (0.03, 0.03, 0.36), (x + math.cos(a) * 0.2, y + math.sin(a) * 0.2, h - 0.2), leaf)
+
+
+def bamboo(name, x, y, n=7, h=0.8):
+    """A clump of bamboo: thin green canes of a few heights, leaves at the top."""
+    cane = lib.mat("bamboo", (0.48, 0.58, 0.26), 0.7, grain=0.2)
+    leaf = lib.mat("bambooleaf", (0.34, 0.50, 0.22), 0.8, grain=0.3)
+    rnd = random.Random(int(x * 100 + y * 10))
+    for k in range(n):
+        cx, cy, ch = x + rnd.uniform(-0.08, 0.08), y + rnd.uniform(-0.08, 0.08), h * rnd.uniform(0.7, 1.0)
+        lib.cyl(f"{name}-cane{k}", 0.01, ch, (cx, cy, ch / 2), cane, verts=5)
+        lib.ball(f"{name}-leaves{k}", 0.06, (cx, cy, ch), leaf, scale=(1.3, 1.0, 0.5), sub=1)
+
+
+def papyrus(name, x, y, n=6):
+    """Papyrus at the water's edge: green stems with a tuft at the top."""
+    stem = lib.mat("papyrus", (0.38, 0.52, 0.22), 0.8, grain=0.2)
+    rnd = random.Random(int(x * 100 + y * 10))
+    for k in range(n):
+        cx, cy, ch = x + rnd.uniform(-0.06, 0.06), y + rnd.uniform(-0.06, 0.06), rnd.uniform(0.25, 0.4)
+        lib.cyl(f"{name}-stem{k}", 0.006, ch, (cx, cy, ch / 2), stem, verts=4)
+        lib.ball(f"{name}-tuft{k}", 0.035, (cx, cy, ch), stem, scale=(1.2, 1.2, 0.6), sub=1)
+
+
+def pond(name, x, y, r, rim):
+    """Still water ringed with stones, lotus leaves on it."""
+    lib.cyl(f"{name}-water", r, 0.02, (x, y, 0.012), lib.mat("pondwater", (0.16, 0.30, 0.32), 0.15), verts=28)
+    rnd = random.Random(int(r * 100))
+    for k in range(16):
+        a = 2 * math.pi * k / 16 + rnd.uniform(-0.1, 0.1)
+        q = lib.ball(f"{name}-rim{k}", rnd.uniform(0.035, 0.05), (x + math.cos(a) * r, y + math.sin(a) * r, 0.02), rim, sub=1)
+        q.scale = (1.3, 1.0, 0.6)
+    pad = lib.mat("lotuspad", (0.30, 0.50, 0.24), 0.7)
+    for k in range(5):
+        a = rnd.uniform(0, 2 * math.pi)
+        d = rnd.uniform(0.1, r * 0.75)
+        lib.cyl(f"{name}-pad{k}", 0.035, 0.006, (x + math.cos(a) * d, y + math.sin(a) * d, 0.026), pad, verts=10)
+
+
+def market_asian(st):
+    """A market of the Asian architecture: a gateway of red posts under a tiled roof turned up at the corners,
+    rows of shops of timber and plaster along the back and left walls, a pond in the middle with a little
+    arched bridge and stone lanterns, stalls under round parasols, pines, a willow by the water, bamboo."""
+    ground(3, (0.56, 0.50, 0.38))
+    enclosure(st, 1.3, 0.26, (-0.42, 0.42), name="mwall")
+    # The gateway.
+    for k, x in enumerate((-0.36, -0.12, 0.12, 0.36)):
+        ph = 0.6 if abs(x) < 0.2 else 0.48
+        lib.box(f"gatepost{k}", (0.06, 0.06, ph), (x, -1.3, ph / 2), st.trim)
+    lib.box("gatebeam", (0.86, 0.07, 0.06), (0.0, -1.3, 0.58), st.trim)
+    lib.box("gatesign", (0.2, 0.02, 0.1), (0.0, -1.34, 0.5), st.team)
+    arch.asian_roof(st, "gateroof", 0.0, -1.3, 0.6, 0.1, 0.61)
+    # Shops along the back and left walls.
+    hall(st, "shops-b", 0.25, 0.98, 1.8, 0.48, 0.42)
+    for k, x in enumerate((-0.35, 0.25, 0.85)):
+        door(st, x, 0.735, 0.2, 0.28)
+    hall(st, "shops-l", -0.98, -0.2, 0.48, 1.3, 0.42)
+    for k, y in enumerate((-0.6, 0.0)):
+        door(st, -0.735, y, 0.2, 0.28, side="right")
+    # The pond, a bridge over it, lanterns.
+    rim = lib.mat("pondstone", (0.50, 0.48, 0.44), 0.95, grain=0.3)
+    pond("pond", 0.3, -0.2, 0.5, rim)
+    # The bridge across its near end.
+    for k, sx in enumerate((-1, 1)):
+        lib.box(f"bridge{k}", (0.24, 0.16, 0.03), (0.3 + sx * 0.1, -0.58, 0.06), st.wood, rot=(0, R(-22 * sx), 0))
+        lib.box(f"bridgerail{k}", (0.24, 0.02, 0.06), (0.3 + sx * 0.1, -0.66, 0.1), st.trim, rot=(0, R(-22 * sx), 0))
+    arch.lantern(st, "lantern-a", -0.25, -0.75)
+    arch.lantern(st, "lantern-b", 0.95, 0.35)
+    # Stalls under parasols.
+    cloths = [lib.mat("parasol-cream", (0.88, 0.82, 0.66), 0.9), lib.mat("parasol-red", (0.66, 0.20, 0.14), 0.9)]
+    clay = lib.mat("clay", (0.70, 0.40, 0.24), 0.8)
+    silk = lib.mat("silk", (0.80, 0.66, 0.30), 0.6)
+    for k, (x, y) in enumerate(((-0.35, 0.4), (0.95, -0.75))):
+        lib.box(f"table{k}", (0.3, 0.2, 0.1), (x, y, 0.05), st.wood, bevel=0.008)
+        lib.cyl(f"parasolpole{k}", 0.01, 0.42, (x, y, 0.21), st.wood, verts=5)
+        lib.cyl(f"parasol{k}", 0.24, 0.08, (x, y, 0.44), cloths[k], verts=16, r2=0.02)
+        for j in range(3):
+            if j % 2:
+                lib.box(f"bolt{k}{j}", (0.07, 0.05, 0.035), (x + (j - 1) * 0.09, y, 0.12), silk, bevel=0.008)
+            else:
+                lib.ball(f"pot{k}{j}", 0.035, (x + (j - 1) * 0.09, y, 0.13), clay, scale=(1, 1, 1.2), sub=1)
+    # Trees.
+    pine("pine-a", -0.75, -0.95, 0.85, lean=0.08)
+    pine("pine-b", 1.05, 0.6, 0.95, lean=-0.06)
+    willow("willow", 0.95, 0.15, 0.65)
+    bamboo("bamboo-a", -1.1, 0.75, 8, 0.85)
+    bamboo("bamboo-b", 1.12, -1.1, 6, 0.7)
+    bamboo("bamboo-c", -0.2, 0.62, 5, 0.6)
+    flag(st, 1.2, 1.15, 1.0)
+
+
+def market_egyptian(st):
+    """A market of the Egyptian architecture: a gateway between two leaning pylons, stalls under reed mats
+    along the walls with heaps of grain, baskets and linen, a pool of water in the middle with papyrus at its
+    edge and a shaduf to draw from it, date palms all about."""
+    ground(3, (0.76, 0.66, 0.46))
+    enclosure(st, 1.3, 0.26, (-0.42, 0.42), name="mwall")
+    for k, x in enumerate((-0.5, 0.5)):
+        arch.tapered(f"pylon{k}", 0.26, 0.22, 0.7, (x, -1.3, 0.0), st.wall, top=0.8)
+        lib.box(f"pylonband{k}", (0.24, 0.23, 0.04), (x, -1.3, 0.6), st.accent)
+        lib.box(f"pylonbanner{k}", (0.1, 0.012, 0.2), (x, -1.42, 0.42), st.team)
+    lib.box("lintel", (0.86, 0.16, 0.07), (0.0, -1.3, 0.62), st.trim)
+    lib.box("lintelband", (0.86, 0.17, 0.025), (0.0, -1.3, 0.6), st.accent)
+    reed = lib.mat("reedmat", (0.74, 0.62, 0.38), 0.95, grain=0.35, grain_size=0.008, kind=("thatch", 0.03, 0, 0.4))
+    grain = lib.mat("grainheap", (0.86, 0.72, 0.40), 0.95, grain=0.3, grain_size=0.01)
+    linen = lib.mat("linen", (0.92, 0.90, 0.82), 0.9)
+    basket = lib.mat("basket", (0.55, 0.40, 0.20), 0.9, grain=0.4, grain_size=0.01)
+    clay = lib.mat("clay", (0.70, 0.40, 0.24), 0.8)
+
+    def mat_stall(k, x, y, facing):
+        sx, sy = (0.55, 0.36) if facing == "front" else (0.36, 0.55)
+        for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+            lib.cyl(f"rs{k}post{dx}{dy}", 0.014, 0.42, (x + dx * sx / 2, y + dy * sy / 2, 0.21), st.wood, verts=5)
+        lean_to(f"rs{k}mat", x, y, sx + 0.08, sy + 0.08, 0.42, reed, down=facing)
+        # Wares on mats on the ground: a heap of grain, a basket, folded linen, a jar.
+        lib.cyl(f"rs{k}grain", 0.09, 0.08, (x - 0.12, y - 0.04, 0.04), grain, verts=12, r2=0.01)
+        lib.cyl(f"rs{k}basket", 0.06, 0.06, (x + 0.05, y - 0.06, 0.03), basket, verts=10)
+        lib.box(f"rs{k}linen", (0.1, 0.07, 0.04), (x + 0.15, y + 0.04, 0.02), linen, bevel=0.008)
+        lib.ball(f"rs{k}jar", 0.04, (x - 0.02, y + 0.1, 0.05), clay, scale=(1, 1, 1.3), sub=1)
+
+    for k, x in enumerate((-0.45, 0.2, 0.85)):
+        mat_stall(k, x, 1.0, "front")
+    for k, y in enumerate((-0.6, 0.15)):
+        mat_stall(k + 3, -1.0, y, "right")
+    # The pool, papyrus about it, a shaduf at its edge.
+    lib.box("poolrim", (0.86, 0.6, 0.06), (0.3, -0.15, 0.03), st.trim)
+    lib.box("pool", (0.76, 0.5, 0.02), (0.3, -0.15, 0.06), lib.mat("poolwater", (0.18, 0.34, 0.40), 0.15))
+    for k, (x, y) in enumerate(((-0.12, -0.42), (0.72, 0.12), (0.7, -0.44))):
+        papyrus(f"papyrus{k}", x, y)
+    lib.cyl("shadufpost", 0.025, 0.42, (-0.15, 0.2, 0.21), st.wood, verts=6)
+    lib.cyl("shadufpole", 0.012, 0.75, (0.0, 0.08, 0.46), st.wood, verts=5, rot=(R(30), R(-55), 0))
+    lib.ball("shadufweight", 0.045, (-0.3, 0.32, 0.36), lib.mat("mudball", (0.46, 0.36, 0.24), 0.95), sub=1)
+    lib.cyl("shadufbucket", 0.03, 0.05, (0.2, -0.08, 0.2), basket, verts=8)
+    for k, (x, y, h) in enumerate(((-0.8, -0.95, 0.9), (1.05, 0.55, 1.0), (1.0, -0.95, 0.8), (-0.35, 0.55, 0.85), (0.85, 0.85, 0.95))):
+        arch.palm(st, f"date{k}", x, y, h)
+    flag(st, 1.2, 1.15, 1.0)
+
+
+def market_babylonian(st):
+    """A market of the Babylonian architecture: a gateway of blue glazed brick with a lion on it, rows of
+    small domed shops along the back and left walls, carpets laid out before them, spices and pots, a fountain
+    in the middle under date palms, the square paved in brick."""
+    ground(3, (0.66, 0.56, 0.40))
+    paving("square", 2.5, 2.5, (0, 0, 0.012), color=(0.70, 0.56, 0.40))
+    enclosure(st, 1.3, 0.28, (-0.32, 0.32), name="mwall")
+    arch.lion_gate(st, "gate", 0.0, -1.3)
+
+    def domed(k, x, y, facing):
+        lib.box(f"cell{k}", (0.4, 0.4, 0.34), (x, y, 0.17), st.wall, bevel=0.01)
+        lib.ball(f"dome{k}", 0.19, (x, y, 0.34), st.trim, scale=(1, 1, 0.75), sub=2)
+        if facing == "front":
+            lib.box(f"celldoor{k}", (0.14, 0.02, 0.22), (x, y - 0.205, 0.11), st.dark)
+            lib.box(f"cellband{k}", (0.41, 0.41, 0.04), (x, y, 0.3), st.accent)
+        else:
+            lib.box(f"celldoor{k}", (0.02, 0.14, 0.22), (x + 0.205, y, 0.11), st.dark)
+            lib.box(f"cellband{k}", (0.41, 0.41, 0.04), (x, y, 0.3), st.accent)
+
+    for k, x in enumerate((-0.7, -0.25, 0.2, 0.65, 1.1)):
+        domed(k, x, 1.05, "front")
+    for k, y in enumerate((-0.85, -0.4, 0.05, 0.5)):
+        domed(k + 5, -1.05, y, "right")
+    # Carpets, spices, pots.
+    rugs = [lib.mat("rug-red", (0.60, 0.16, 0.12), 0.9, grain=0.3, grain_size=0.01), lib.mat("rug-blue", (0.16, 0.24, 0.50), 0.9, grain=0.3, grain_size=0.01),
+            lib.mat("rug-ochre", (0.80, 0.56, 0.20), 0.9, grain=0.3, grain_size=0.01)]
+    for k, (x, y, w, d) in enumerate(((-0.25, 0.68, 0.34, 0.22), (0.45, 0.68, 0.3, 0.22), (-0.68, -0.2, 0.22, 0.32))):
+        lib.box(f"rug{k}", (w, d, 0.012), (x, y, 0.025), rugs[k % 3])
+        lib.box(f"rugborder{k}", (w * 0.8, d * 0.7, 0.013), (x, y, 0.026), rugs[(k + 1) % 3])
+    spices = [lib.mat("spice-red", (0.72, 0.20, 0.10), 0.9), lib.mat("spice-yellow", (0.86, 0.70, 0.18), 0.9),
+              lib.mat("spice-brown", (0.50, 0.30, 0.16), 0.9)]
+    for k in range(3):
+        lib.cyl(f"spice{k}", 0.05, 0.06, (0.95 + k * 0.12 - 0.12, 0.68, 0.04), spices[k], verts=10, r2=0.01)
+    clay = lib.mat("clay", (0.70, 0.40, 0.24), 0.8)
+    for k, (x, y) in enumerate(((-0.68, 0.35), (-0.6, 0.45), (-0.7, 0.55))):
+        lib.ball(f"bpot{k}", 0.045, (x, y, 0.06), clay, scale=(1, 1, 1.3), sub=1)
+    # A fountain under palms.
+    fountain(st, 0.35, -0.1)
+    for k, (x, y, h) in enumerate(((-0.25, -0.75, 0.85), (1.05, -0.7, 0.95), (1.05, 0.4, 0.8), (-0.4, 0.3, 0.9))):
+        arch.palm(st, f"date{k}", x, y, h)
+    flag(st, 1.2, 1.15, 1.0)
 
 
 def market_iron(st):
     """The Iron Age's market, a square of stone: a gateway with columns and a pediment, a colonnade along the
-    back and left walls with shops of stone behind it, the square paved, in the middle a round pavilion (the
-    architectures of the east have a fountain there), jars on racks, scales, a cart by the gate."""
+    back and left walls with shops of stone behind it, the square paved, in the middle a round pavilion, jars
+    on racks, scales, a cart by the gate. The Asian, Egyptian and Babylonian markets are their own."""
+    a = getattr(st, "arch", "default")
+    if a in EAST_MARKETS:
+        return EAST_MARKETS[a](st)
     ground(3, (0.62, 0.56, 0.44))
     paving("square", 2.5, 2.5, (0, 0, 0.012))
     enclosure(st, 1.3, 0.3, (-0.42, 0.42), name="mwall")
@@ -559,10 +765,7 @@ def market_iron(st):
     colonnade(st, (-0.85, -0.95), (-0.85, 0.85), 0.5, 5, "stoa-l")
     lean_to("stoaroof-l", -1.06, -0.05, 0.55, 2.0, 0.55, st.roof, down="right")
     # The middle of the square.
-    if getattr(st, "arch", "default") in ("default", "greek", "roman"):
-        tholos(st, 0.3, 0.05)
-    else:
-        fountain(st, 0.3, 0.05)
+    tholos(st, 0.3, 0.05)
     clay = lib.mat("clay", (0.70, 0.40, 0.24), 0.8)
     # Jars on a rack by the shops, a pair of scales, sacks.
     lib.box("jarrack", (0.5, 0.12, 0.04), (0.75, 0.62, 0.12), st.wood)
@@ -584,6 +787,10 @@ def market_iron(st):
     for j in range(3):
         lib.ball(f"cartjar{j}", 0.035, (0.68 + j * 0.07, -0.85, 0.22), clay, scale=(1, 1, 1.4), sub=1)
     flag(st, 1.2, 1.15, 1.0)
+
+
+# The markets of the east are their own, with more trees: see market_iron.
+EAST_MARKETS = {"asian": market_asian, "egyptian": market_egyptian, "babylonian": market_babylonian}
 
 
 def market(st):
