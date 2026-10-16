@@ -278,20 +278,95 @@ def dock(st):
     flag(st, -1.2, -1.2, 0.9)
 
 
+def enclosure(st, half, h, gap, name="enc"):
+    """A low wall round a yard of `half` each way from the middle, open at the front (-Y) between gap[0] and
+    gap[1] on X: a fence of stakes while buildings are thatched, a built wall after. The front and right
+    walls, the ones toward the viewer, stand lower, so the yard behind them shows."""
+    near = h * 0.7
+    sides = [((-half, half), (half, half), h), ((-half, -half), (-half, half), h), ((half, -half), (half, half), near),
+             ((-half, -half), (gap[0], -half), near), ((gap[1], -half), (half, -half), near)]
+    for k, ((x0, y0), (x1, y1), hh) in enumerate(sides):
+        if st.thatch:
+            palisade(st, x0, y0, x1, y1, h=hh + 0.08)
+            continue
+        length = math.hypot(x1 - x0, y1 - y0)
+        along_x = abs(y1 - y0) < 1e-6
+        size = (length + 0.08, 0.08, hh) if along_x else (0.08, length + 0.08, hh)
+        lib.box(f"{name}{k}", size, ((x0 + x1) / 2, (y0 + y1) / 2, hh / 2), st.wall, bevel=0.01)
+        # A coping along the top.
+        top = (size[0] + 0.03, size[1] + 0.03, 0.03)
+        lib.box(f"{name}{k}-cap", top, ((x0 + x1) / 2, (y0 + y1) / 2, hh + 0.015), st.trim, bevel=0.005)
+
+
+def gateway(st, x0, x1, y, h, name="gate"):
+    """Two posts and a beam over the way in, a little banner in the owner's colour on the beam."""
+    m = st.wood if st.thatch else st.trim
+    for k, x in enumerate((x0, x1)):
+        if st.thatch:
+            lib.cyl(f"{name}post{k}", 0.04, h, (x, y, h / 2), m, verts=8)
+        else:
+            lib.box(f"{name}post{k}", (0.12, 0.12, h), (x, y, h / 2), st.wall, bevel=0.01)
+            lib.box(f"{name}cap{k}", (0.15, 0.15, 0.04), (x, y, h + 0.02), m, bevel=0.005)
+    lib.box(f"{name}beam", (x1 - x0 + 0.16, 0.08, 0.07), ((x0 + x1) / 2, y, h - 0.02), m, bevel=0.005)
+    lib.box(f"{name}banner", (0.14, 0.012, 0.12), ((x0 + x1) / 2, y - 0.045, h - 0.12), st.team)
+
+
 def archery_range(st):
+    """A walled range: targets of straw with painted rings along the back wall, facing the way in; a line to
+    shoot from, racks of bows and baskets of arrows by it; the armoury in the back corner."""
     ground(3)
+    enclosure(st, 1.3, 0.34, (0.25, 0.95))
+    gateway(st, 0.25, 0.95, -1.3, 0.62)
     if st.thatch:
-        hall(st, "hall", -0.5, 0.5, 1.4, 1.1, 0.5, along="y")
+        hall(st, "armoury", -0.75, 0.75, 0.9, 0.8, 0.45, along="y")
     else:
-        hall(st, "hall", -0.5, 0.5, 1.4, 1.2, 0.6, roof="flat" if st.age == "bronze" else "gable", along="y")
-    door(st, 0.21, 0.4, 0.3, 0.4, side="right")
-    # Straw butts with targets, along the range.
+        hall(st, "armoury", -0.75, 0.75, 0.9, 0.8, 0.55, roof="flat" if st.age == "bronze" else "gable", along="y")
+    door(st, -0.75, 0.34, 0.24, 0.34)
     straw = lib.mat("straw", (0.82, 0.70, 0.38), 0.95, grain=0.4, grain_size=0.01)
-    for k, y in enumerate((-0.4, 0.3, 1.0)):
-        lib.cyl(f"butt{k}", 0.17, 0.3, (1.1, y, 0.3), straw, rot=(0, R(90), 0), verts=14)
-        lib.cyl(f"target{k}", 0.1, 0.02, (0.94, y, 0.3), st.team, rot=(0, R(90), 0), verts=14)
-    for k in range(4):
-        lib.cyl(f"bow{k}", 0.008, 0.4, (-0.9 + k * 0.12, -0.9, 0.2), st.wood, verts=5)
+    rings = [lib.mat("ring-white", (0.90, 0.86, 0.76), 0.8, grain=0.1), lib.mat("ring-red", (0.66, 0.18, 0.12), 0.8, grain=0.1),
+             lib.mat("ring-black", (0.10, 0.08, 0.06), 0.8, grain=0.05)]
+    def target(k, x, y, along_x=True):
+        """Two legs behind, a round butt of straw on them, its painted face toward the range (-Y when
+        along the back wall, +X along the left one), arrows in it."""
+        face = (R(90), 0, 0) if along_x else (0, R(90), 0)
+        back = (0, 0.1) if along_x else (-0.1, 0)
+        out = (0, -1) if along_x else (1, 0)
+        for d in (-0.13, 0.13):
+            lx, ly = (x + d, y + back[1]) if along_x else (x + back[0], y + d)
+            lib.box(f"leg{k}{d}", (0.03, 0.03, 0.46), (lx, ly, 0.23), st.wood, rot=(R(-12), 0, 0) if along_x else (0, R(12), 0))
+        lib.cyl(f"butt{k}", 0.2, 0.11, (x, y, 0.36), straw, rot=face, verts=18)
+        for j, (r, m) in enumerate(zip((0.15, 0.1, 0.045), rings)):
+            o = 0.058 + j * 0.004
+            lib.cyl(f"ring{k}{j}", r, 0.012, (x + out[0] * o, y + out[1] * o, 0.36), m, rot=face, verts=18, smooth_it=False)
+        for j in range(3):
+            t, az = (j - 1) * 0.06, 0.36 + ((j * 37) % 5 - 2) * 0.03
+            ax, ay = (x + t, y - 0.14) if along_x else (x + 0.14, y + t)
+            lib.cyl(f"arrow{k}{j}", 0.005, 0.2, (ax, ay, az), st.wood, rot=face, verts=4, smooth_it=False)
+
+    for k, x in enumerate((0.1, 0.6, 1.05)):
+        target(k, x, 1.0)
+    for k, y in enumerate((-0.45, 0.05)):
+        target(k + 3, -1.0, y, along_x=False)
+    # Bales against the wall between the targets.
+    for k, x in enumerate((0.3, 0.8)):
+        lib.box(f"bale{k}", (0.22, 0.16, 0.14), (x, 1.12, 0.07), straw, bevel=0.02)
+    # Where they shoot from: a shelter on posts along the front, a rail before it, bows on a rack and
+    # baskets of arrows.
+    roof = st.roof if not st.thatch else lib.mat("thatchshelter", (0.66, 0.54, 0.30), 0.95, grain=0.4, grain_size=0.01)
+    # Left of the way in, so the gate stays clear.
+    for k, x in enumerate((-0.95, -0.5, -0.05)):
+        lib.cyl(f"shelterpost{k}", 0.025, 0.5, (x, -0.95, 0.25), st.wood, verts=6)
+        lib.cyl(f"railpost{k}", 0.02, 0.2, (x, -0.5, 0.1), st.wood, verts=6)
+    lib.box("shelter", (1.05, 0.36, 0.03), (-0.5, -1.03, 0.52), roof, rot=(R(10), 0, 0))
+    lib.box("rail", (1.0, 0.03, 0.03), (-0.5, -0.5, 0.2), st.wood)
+    for k in range(5):
+        lib.cyl(f"bow{k}", 0.009, 0.44, (-0.95 + k * 0.1, -0.85, 0.23), st.wood, verts=5, rot=(R(10), 0, 0))
+    lib.box("rack", (0.56, 0.04, 0.04), (-0.75, -0.82, 0.4), st.wood)
+    basket = lib.mat("basket", (0.55, 0.40, 0.20), 0.9, grain=0.4, grain_size=0.01)
+    for k, x in enumerate((-0.05, 0.6)):
+        lib.cyl(f"quiver{k}", 0.06, 0.18, (x, -0.75, 0.09), basket, verts=10)
+        for j in range(5):
+            lib.cyl(f"shaft{k}{j}", 0.005, 0.14, (x + (j - 2) * 0.018, -0.75, 0.22), st.wood, verts=4, smooth_it=False)
     flag(st, -1.15, -1.1, 1.0)
 
 
@@ -312,17 +387,73 @@ def stable(st):
 
 
 def market(st):
+    """A walled market: a gate at the front, stalls along the back and left walls under awnings of plain
+    cloth with their wares (pots, baskets of fruit, sacks, bolts of cloth), the storehouse in the back corner,
+    a well in the square."""
     ground(3, (0.62, 0.56, 0.44) if st.stone else (0.50, 0.40, 0.27))
-    hall(st, "store", -0.6, 0.6, 1.2, 1.1, 0.55 if st.thatch else 0.65, roof="flat" if st.age == "bronze" else "gable", along="x")
-    door(st, -0.6, 0.04, 0.25, 0.36)
-    # Stalls under awnings in the player's colour, with pots and baskets.
-    for k, (x, y) in enumerate(((0.75, -0.2), (0.0, -0.9), (0.85, -1.0))):
-        for dx, dy in ((-0.25, -0.18), (0.25, -0.18), (0.25, 0.18), (-0.25, 0.18)):
-            lib.cyl(f"spost{k}{dx}{dy}", 0.018, 0.42, (x + dx, y + dy, 0.21), st.wood, verts=6)
-        lib.box(f"awning{k}", (0.6, 0.45, 0.02), (x, y, 0.43), st.team, rot=(R(8), 0, 0))
-        lib.box(f"counter{k}", (0.5, 0.3, 0.12), (x, y, 0.06), st.wood, bevel=0.01)
+    enclosure(st, 1.3, 0.26, (-0.35, 0.35), name="mwall")
+    gateway(st, -0.35, 0.35, -1.3, 0.68, name="mgate")
+    hall(st, "store", -0.8, 0.8, 0.8, 0.8, 0.5 if st.thatch else 0.6, roof="flat" if st.age == "bronze" else "gable", along="x")
+    door(st, -0.8, 0.39, 0.22, 0.32)
+    cloth = [lib.mat("cloth-cream", (0.86, 0.80, 0.64), 0.9, grain=0.2), lib.mat("cloth-ochre", (0.78, 0.55, 0.24), 0.9, grain=0.2),
+             lib.mat("cloth-red", (0.58, 0.22, 0.15), 0.9, grain=0.2), lib.mat("cloth-green", (0.36, 0.44, 0.26), 0.9, grain=0.2)]
+    clay = lib.mat("clay", (0.70, 0.40, 0.24), 0.8)
+    basket = lib.mat("basket", (0.55, 0.40, 0.20), 0.9, grain=0.4, grain_size=0.01)
+    sack = lib.mat("sack", (0.74, 0.66, 0.50), 1.0, grain=0.3)
+    fruit = [lib.mat("fruit-orange", (0.86, 0.50, 0.14), 0.6), lib.mat("fruit-green", (0.46, 0.60, 0.20), 0.6),
+             lib.mat("fruit-red", (0.66, 0.16, 0.12), 0.6)]
+
+    def stall(k, x, y, facing):
+        """One stall against a wall, open toward the square; `facing` is the way it opens: "front" (-Y) or
+        "right" (+X)."""
+        w, d = 0.5, 0.32
+        sx, sy = (w, d) if facing == "front" else (d, w)
+        for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+            tall = (dy > 0) if facing == "front" else (dx < 0)
+            ph = 0.5 if tall else 0.4
+            lib.cyl(f"st{k}post{dx}{dy}", 0.016, ph, (x + dx * sx / 2, y + dy * sy / 2, ph / 2), st.wood, verts=6)
+        # The awning slopes down toward the square.
+        rot = (R(-12), 0, 0) if facing == "front" else (0, R(-12), 0)
+        lib.box(f"st{k}awning", (sx + 0.08, sy + 0.08, 0.02), (x, y, 0.46), cloth[k % len(cloth)], rot=rot)
+        cx, cy = (x, y - d * 0.15) if facing == "front" else (x + d * 0.15, y)
+        lib.box(f"st{k}counter", (sx * 0.9, sy * 0.55, 0.13) if facing == "front" else (sx * 0.55, sy * 0.9, 0.13),
+                (cx, cy, 0.065), st.wood, bevel=0.01)
+        # Wares on the counter and in front of it.
         for j in range(3):
-            lib.ball(f"pot{k}{j}", 0.05, (x - 0.15 + j * 0.15, y, 0.16), lib.mat("clay", (0.70, 0.40, 0.24), 0.8), scale=(1, 1, 1.2), sub=2)
+            t = (j - 1) * 0.14
+            px, py = (cx + t, cy) if facing == "front" else (cx, cy + t)
+            kind = (k + j) % 3
+            if kind == 0:
+                lib.ball(f"st{k}pot{j}", 0.045, (px, py, 0.17), clay, scale=(1, 1, 1.25), sub=2)
+            elif kind == 1:
+                lib.cyl(f"st{k}basket{j}", 0.05, 0.04, (px, py, 0.15), basket, verts=10)
+                for q in range(3):
+                    lib.ball(f"st{k}fruit{j}{q}", 0.02, (px + (q - 1) * 0.022, py, 0.18), fruit[(k + q) % 3], sub=1)
+            else:
+                lib.box(f"st{k}bolt{j}", (0.09, 0.05, 0.04), (px, py, 0.15), cloth[(k + j + 1) % len(cloth)], bevel=0.01)
+        sx2, sy2 = (cx + 0.18, cy - 0.2) if facing == "front" else (cx + 0.2, cy - 0.18)
+        lib.ball(f"st{k}sack", 0.055, (sx2, sy2, 0.05), sack, scale=(1, 1, 1.1), sub=1)
+
+    for k, x in enumerate((0.1, 0.75)):
+        stall(k, x, 1.02, "front")
+    for k, y in enumerate((-0.55, 0.12)):
+        stall(k + 2, -1.02, y, "right")
+    # A row down the middle of the square, open toward the gate.
+    for k, x in enumerate((-0.25, 0.4)):
+        stall(k + 4, x, 0.2, "front")
+    # A well by the gate: a ring of stone, dark water, a beam and a bucket over it.
+    stone = lib.mat("wellstone", (0.48, 0.45, 0.40), 0.95, grain=0.35, grain_size=0.015)
+    lib.cyl("well", 0.15, 0.16, (0.85, -0.7, 0.08), stone, verts=18)
+    lib.cyl("water", 0.11, 0.01, (0.85, -0.7, 0.155), lib.mat("wellwater", (0.06, 0.10, 0.12), 0.2), verts=16)
+    for dx in (-0.13, 0.13):
+        lib.cyl(f"wellpost{dx}", 0.015, 0.36, (0.85 + dx, -0.7, 0.18), st.wood, verts=6)
+    lib.cyl("wellbeam", 0.012, 0.3, (0.85, -0.7, 0.35), st.wood, rot=(0, R(90), 0), verts=6)
+    lib.cyl("bucket", 0.03, 0.05, (0.85, -0.7, 0.27), st.wood, verts=8)
+    # Crates and jars by the gate.
+    for k, (x, y) in enumerate(((-0.6, -1.05), (-0.48, -1.0), (0.55, -1.05))):
+        lib.box(f"crate{k}", (0.11, 0.11, 0.1), (x, y, 0.05), st.wood, bevel=0.008)
+    for k, x in enumerate((-0.75, -0.66)):
+        lib.ball(f"jar{k}", 0.05, (x, -0.9, 0.06), clay, scale=(1, 1, 1.3), sub=2)
     flag(st, 1.2, 1.15, 1.0)
 
 
