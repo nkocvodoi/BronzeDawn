@@ -96,12 +96,14 @@ def pairs(ours, orig, only):
         if not mine:
             continue
         for arch, looks in by_arch.items():
+            ours_looks = mine.get(arch) or mine.get("default", {})
             for age in AGES:
-                if age not in looks:
+                # Every age where either side's picture changes, each against the other's picture of that age.
+                if age not in looks and age not in ours_looks:
                     continue
-                o = looks[age]
+                o = look_at(looks, age)
                 m = look_at(mine.get(arch, {}), age) or look_at(mine.get("default", {}), age)
-                if m:
+                if m and o:
                     out.append(("building", f"{b} · {arch} · {age}", m, o))
     for u, o in orig.get("units", {}).items():
         m = ours.get("units", {}).get(u)
@@ -209,11 +211,63 @@ def colour(v):
     return "#3fa34d" if v >= 75 else "#d9a400" if v >= 50 else "#d6452f"
 
 
+# The reviewer's marks and notes, kept in the browser as they are typed and written out as a file for whoever
+# makes the next round of changes.
+REVIEW_JS = """
+const KEY = "bd-art-review";
+let marks = {};
+try { marks = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { marks = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch (e) {} count(); };
+const rows = [...document.querySelectorAll(".row")];
+function count() {
+  const n = Object.values(marks).filter((m) => m.rating || (m.note || "").trim()).length;
+  document.querySelector("#done").textContent = `${n} / ${rows.length} hình đã góp ý`;
+}
+for (const r of rows) {
+  const k = r.dataset.name, sel = r.querySelector("select"), note = r.querySelector("textarea");
+  const m = marks[k] || {};
+  sel.value = m.rating || ""; note.value = m.note || "";
+  const put = () => { marks[k] = { rating: sel.value ? Number(sel.value) : null, note: note.value, score: Number(r.dataset.score) }; save(); };
+  sel.addEventListener("change", put); note.addEventListener("input", put);
+}
+function filter() {
+  const q = document.querySelector("#q").value.trim().toLowerCase(), only = document.querySelector("#only").checked;
+  for (const r of rows) {
+    const m = marks[r.dataset.name] || {};
+    const hit = !q || r.dataset.name.toLowerCase().includes(q);
+    r.style.display = hit && (!only || m.rating || (m.note || "").trim()) ? "" : "none";
+  }
+}
+document.querySelector("#q").addEventListener("input", filter);
+document.querySelector("#only").addEventListener("change", filter);
+const out = () => JSON.stringify({ when: new Date().toISOString(), marks }, null, 1);
+document.querySelector("#export").addEventListener("click", () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([out()], { type: "application/json" }));
+  a.download = "art-review.json"; a.click();
+});
+document.querySelector("#copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(out()); document.querySelector("#copy").textContent = "Đã chép"; } catch (e) { alert(out()); }
+});
+document.querySelector("#load").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try { const d = JSON.parse(await f.text()); marks = d.marks || d; save(); location.reload(); } catch (err) { alert("Không đọc được file: " + err); }
+});
+count();
+"""
+
+
 def page(rows, means, kinds):
     css = """body{font:14px system-ui,sans-serif;background:#1f2320;color:#e9ece8;margin:16px}h1{font-size:20px}
 table{border-collapse:collapse}td,th{padding:4px 8px;border-bottom:1px solid #333;text-align:left;vertical-align:middle}
-.row{display:grid;grid-template-columns:60px 170px auto auto 1fr;gap:16px;align-items:end;padding:14px 0;border-bottom:1px solid #444}
-@media (max-width:900px){.row{grid-template-columns:60px 1fr}.row table{grid-column:1/-1}}
+.row{display:grid;grid-template-columns:52px 140px minmax(0,320px) minmax(0,320px) minmax(220px,1fr) 260px;gap:14px;align-items:end;padding:14px 0;border-bottom:1px solid #444}
+.pic img{max-width:100%;height:auto}
+@media (max-width:1200px){.row{grid-template-columns:52px 1fr 1fr}.row table,.row .rev{grid-column:1/-1}.row>div:nth-child(2){grid-column:2/-1}}
+.bar-top{position:sticky;top:0;background:#1f2320;padding:10px 0;border-bottom:1px solid #555;display:flex;gap:12px;flex-wrap:wrap;align-items:center;z-index:2}
+.bar-top input[type=search]{padding:6px 8px;background:#2b302c;color:#e9ece8;border:1px solid #555;border-radius:6px;min-width:220px}
+button,label.btn{padding:6px 12px;background:#3a4a3c;color:#e9ece8;border:1px solid #5a6a5c;border-radius:6px;cursor:pointer;font:inherit}
+.rev{display:flex;flex-direction:column;gap:6px}.rev select,.rev textarea{background:#2b302c;color:#e9ece8;border:1px solid #555;border-radius:6px;font:inherit;padding:6px}
+.rev textarea{min-height:84px;resize:vertical}
 .pic{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:#aab}
 .score{font-size:22px;font-weight:700;min-width:60px}.bar{display:inline-block;height:8px;border-radius:4px;vertical-align:middle;margin-right:6px}
 .m td{padding:2px 8px;border:0}.warn{color:#d6452f}img{image-rendering:pixelated}"""
@@ -228,15 +282,24 @@ table{border-collapse:collapse}td,th{padding:4px 8px;border-bottom:1px solid #33
     for k, (sc, med) in means.items():
         out.append(f"<tr><td>{MEASURES[k][0]}</td><td><span class=bar style='width:{sc:.0f}px;background:{colour(sc)}'></span>{sc:.0f}</td><td>{html.escape(advice(k, med))}</td>"
                    f"<td style='color:#aab;max-width:520px'>{html.escape(EXPLAIN[k])}</td></tr>")
-    out.append("</table><h2>Từng hình, kém nhất trước</h2>")
+    out.append("</table><h2>Từng hình</h2>"
+               "<div class=bar-top><input id=q type=search placeholder='Lọc theo tên: market, egyptian, iron…'>"
+               "<label><input id=only type=checkbox> chỉ hình đã góp ý</label><span id=done></span>"
+               "<button id=export>Tải file góp ý</button><button id=copy>Chép góp ý</button>"
+               "<label class=btn>Nạp file góp ý<input id=load type=file accept='.json' hidden></label></div>")
     for kind, name, total, s, oi, mi in rows:
         cells = "".join(
             f"<tr><td>{MEASURES[k][0]}</td><td><span class=bar style='width:{v[0] * 0.6:.0f}px;background:{colour(v[0])}'></span>{v[0]:.0f}</td>"
             f"<td class='{'warn' if v[0] < 50 else ''}'>{html.escape(advice(k, v[1]))}</td></tr>" for k, v in s.items())
-        out.append(f"<div class=row><div class=score style='color:{colour(total)}'>{total:.0f}</div>"
+        opts = "".join(f"<option value={v}>{v} · {t}</option>" for v, t in ((5, "đẹp như gốc"), (4, "ổn"), (3, "tạm"), (2, "xấu"), (1, "làm lại")))
+        out.append(f"<div class=row data-name='{html.escape(name, quote=True)}' data-score='{total:.1f}'>"
+                   f"<div class=score style='color:{colour(total)}'>{total:.0f}</div>"
                    f"<div><b>{html.escape(name)}</b><br><span style='color:#99a'>{kind}</span></div>"
                    f"<div class=pic><img src='{on_grass(oi)}'>bản gốc</div><div class=pic><img src='{on_grass(mi)}'>Bronze Dawn</div>"
-                   f"<table class=m>{cells}</table></div>")
+                   f"<table class=m>{cells}</table>"
+                   f"<div class=rev><select><option value=''>Chấm (so với bản gốc)…</option>{opts}</select>"
+                   f"<textarea placeholder='Góp ý, đề xuất chỉnh sửa…'></textarea></div></div>")
+    out.append(f"<script>{REVIEW_JS}</script>")
     return "\n".join(out)
 
 
@@ -247,6 +310,7 @@ def main():
     ap.add_argument("--out", default=os.path.join(ROOT, "web", "art-compare"))
     ap.add_argument("--only", default="", help="names to keep, comma separated (house,clubman,tree)")
     ap.add_argument("--json", action="store_true", help="print the scores as JSON too")
+    ap.add_argument("--sort", choices=("score", "name"), default="score", help="worst first, or by name to go through in order")
     args = ap.parse_args()
     if not os.path.exists(os.path.join(args.aoe, "manifest.json")):
         sys.exit(f"No original art at {args.aoe}: clone BronzeDawn-aoe-data there (see its README) or pass --aoe")
@@ -265,7 +329,9 @@ def main():
         report.append({"kind": kind, "name": name, "score": round(total, 1), **{k: {"score": round(v[0], 1), "value": round(v[1], 3)} for k, v in s.items()}})
     if not rows:
         sys.exit("Nothing to compare")
-    rows.sort(key=lambda r: r[2])
+    ages = {a: i for i, a in enumerate(AGES)}
+    by_name = lambda r: [ages.get(p, p) for p in r[1].split(" · ")]  # noqa: E731  house · egyptian · tool, in age order
+    rows.sort(key=by_name if args.sort == "name" else (lambda r: r[2]))
     means = {}
     for k in MEASURES:
         means[k] = (float(np.mean([r[3][k][0] for r in rows])), float(np.median([r[3][k][1] for r in rows])))

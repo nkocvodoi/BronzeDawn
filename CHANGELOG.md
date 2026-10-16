@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-16
 
+- [#144](https://github.com/nkocvodoi/BronzeDawn/pull/144) Công trình theo 5 bộ kiến trúc (Ai Cập, Babylon, Châu Á, Hy Lạp, La Mã; thay cho #141) và kế hoạch sửa hình đã duyệt: tường, mái có vân gạch, đá, ngói; nắng gắt hơn, màu đất; nền đất có rêu và đồ vật; công trình thành khu (doanh trại có sân tập, chuồng ngựa có bãi quây, bãi chứa ngoài trời); tháp, bến, ruộng riêng từng kiến trúc; nhà và kho lúa riêng từng đời; chợ và trường bắn làm lại; tượng Phật ở tháp chùa. Render lại cả 635 hình. So với bản gốc: 59 → 67/100
 - [#143](https://github.com/nkocvodoi/BronzeDawn/pull/143) `python3 art3d/compare.py`: đặt hình của Bronze Dawn cạnh hình AoE gốc (từ repo riêng BronzeDawn-aoe-data) và chấm 8 thước đo (cỡ, chi tiết, tương phản, độ sáng, độ đậm màu, bảng màu, màu phe, viền tối). Lần đầu: 59/100, yếu nhất là chi tiết (ít hơn 2 lần) và bảng màu (35% trùng)
 - [#142](https://github.com/nkocvodoi/BronzeDawn/pull/142) Máy trên đảo: Barracks đầu tiên không còn bị giữ gỗ cho Storage Pit bên kia biển (có trận 90 phút máy không có lính nào); đảo ít gỗ thì giữ gỗ cho thuyền chở quân từ khi có Dock. Phần giao tranh khi đổ bộ còn mở, ghi trong roadmap
 

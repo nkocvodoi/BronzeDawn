@@ -36,6 +36,8 @@ sys.path.insert(0, HERE)
 import lib  # noqa: E402
 import models  # noqa: E402
 import animals  # noqa: E402
+import arch  # noqa: E402
+import landmarks  # noqa: E402
 import buildings as blds  # noqa: E402
 import machines  # noqa: E402
 import race_buildings  # noqa: E402
@@ -59,6 +61,12 @@ def args():
     if "--only" in a:
         only = set(a[a.index("--only") + 1].split(","))
     return only, "--quick" in a
+
+
+def arch_arg():
+    """--arch egyptian: the buildings of one architecture (arch.py), from the Tool Age on."""
+    a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    return a[a.index("--arch") + 1] if "--arch" in a else None
 
 
 def bigger(key):
@@ -261,15 +269,24 @@ def main():
         units[unit] = unit_sheet(unit, make, [("idle", "idle", 4, 3), ("walk", "walk", 12, 14), ("attack", attack, 10, 10)], frame, anchor, quick, tmp)
     # Every building in the style of each age from its first; the game falls back to an earlier age's
     # picture, so the first is enough for the ages before it. --only takes "barracks" or "barracks@bronze".
+    style = arch_arg()
     for key, make in blds.BUILDERS.items():
-        ages = blds.AGES[blds.FIRST[key]:] if key not in blds.ONE_LOOK else [blds.AGES[blds.FIRST[key]]]
+        first = max(blds.FIRST[key], 1) if style else blds.FIRST[key]
+        ages = blds.AGES[first:] if key not in blds.ONE_LOOK else [blds.AGES[first]]
         for age in ages:
             if not (only is None or key in only or f"{key}@{age}" in only):
                 continue
             size, center, anchor = blds.frame_of(key)
-            spec = still(f"{key}-{age}", lambda make=make, age=age: make(blds.Style(age)), size, anchor, tmp, center,
-                         ground=key != "dock")
-            buildings.setdefault(key, {}).setdefault("default", {})[age] = spec
+            if style:
+                def made(make=make, age=age, key=key):
+                    st = blds.Style(age, style)
+                    (landmarks.SPECIAL.get((style, key)) or make)(st)
+                    arch.decorate(st, key, blds.SIZE.get(key, 3))
+                spec = still(f"{key}-{style}-{age}", made, size, anchor, tmp, center, ground=key != "dock")
+            else:
+                spec = still(f"{key}-{age}", lambda make=make, age=age: make(blds.Style(age)), size, anchor, tmp, center,
+                             ground=key != "dock")
+            buildings.setdefault(key, {}).setdefault(style or "default", {})[age] = spec
     # The fantasy races' own buildings, as the game picks them first for a civilization: buildings[id][race][age].
     # --only takes "buildings-elf", "elf-house" or "elf-house@tool".
     for race in race_buildings.KITS:
