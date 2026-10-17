@@ -349,3 +349,98 @@ class Treant(soldiers.Soldier):
 
 
 UNITS["grove_warden"] = (Treant, "slash")
+
+
+# ---- the elves age by age (replica/elf-ages-plan.md, approved 2026-10-17): over the bear fur, a layer more with
+# each age, never covering less of her than the swimsuit she wears now and never more than a cape behind.
+#   Tool    a leather wrap at the hips, vine bracelets, laced sandals, a satchel across her
+#   Bronze  a short cape of jade silk, a torc of green bronze, leaves in her hair, an embroidered belt
+#   Iron    a white cape hemmed in silver, a circlet of silver leaves, a moonstone at her breast, white boots
+# Blades go from stone to green bronze to silver.
+
+ELF_AGES = ["stone", "tool", "bronze", "iron"]
+# The age each common unit of the elves is first trained in, which is the dress it wears.
+ELF_UNIT_AGE = {"clubman": 0, "axeman": 1, "slinger": 1, "bowman": 1, "scout": 1, "short_swordsman": 2, "broad_swordsman": 2,
+                "hoplite": 2, "improved_bowman": 2, "cavalry": 2, "priest": 2, "long_swordsman": 3, "phalanx": 3,
+                "horse_archer": 3, "heavy_horse_archer": 3}
+
+
+def elf_dress(rig, tier):
+    if tier <= 0:
+        return rig
+    t, n, hips = rig.torso, rig.neck, rig.hips
+    leather = lib.mat("elfleather", (0.50, 0.32, 0.18), 0.75, grain=0.3, grain_size=0.01)
+    vine = lib.mat("vine", (0.30, 0.50, 0.22), 0.8)
+    jade = lib.mat("jadesilk", (0.36, 0.66, 0.58), 0.45)
+    bronze = lib.mat("verdigris", (0.36, 0.60, 0.50), 0.45, 0.6)
+    white = lib.mat("elfwhite", (0.95, 0.94, 0.91), 0.5)
+    silver = lib.mat("silver", (0.86, 0.88, 0.92), 0.25, 0.95)
+    moon = lib.mat("moonstone", (0.70, 1.0, 0.86), 0.2, emit=(0.55, 0.95, 0.75))
+    blade = {1: lib.mat("flintblade", (0.36, 0.34, 0.36), 0.4), 2: bronze, 3: silver}[tier]
+    for o in list(rig.root.children_recursive):
+        if o.type == "MESH" and o.active_material and o.active_material.name.split(".")[0] in ("iron", "flint"):
+            o.active_material = blade
+    # Tool: the wrap at the hips (sides only, over the fur), bracelets, sandals, a satchel.
+    lib.cyl("elf-wrap", 0.112, 0.07, (0, 0.0, 0.40), leather if tier < 3 else white, t, r2=0.12, verts=20).scale = (1.12, 1.0, 1)
+    for side in ("L", "R"):
+        e = rig.elbows.get(side) if hasattr(rig, "elbows") else None
+        if e is not None:
+            x = 0.112 if side == "L" else -0.112
+            lib.cyl(f"elf-bracelet{side}", 0.03, 0.02, (x, 0, 0.40), vine if tier == 1 else bronze if tier == 2 else silver, e, verts=10)
+        kn = rig.knees.get(side) if hasattr(rig, "knees") else None
+        if kn is not None:
+            lx = (0.112 if side == "L" else -0.112) * 0.45
+            if tier == 3:
+                lib.cyl(f"elf-boot{side}", 0.038, 0.16, (lx, 0, 0.1), white, kn, r2=0.03, verts=10)
+            else:
+                for j in range(2):
+                    lib.cyl(f"elf-lace{side}{j}", 0.036, 0.012, (lx, 0, 0.05 + j * 0.05), leather, kn, verts=10)
+    if tier == 1:
+        lib.box("elf-satchelstrap", (0.02, 0.2, 0.012), (0, 0, 0.56), leather, t, rot=(0, R(35), 0))
+        lib.ball("elf-satchel", 0.04, (0.09, 0.06, 0.45), leather, t, scale=(1, 0.6, 1))
+    if tier >= 2:
+        # A cape from the shoulders, behind: jade silk, then white hemmed in silver.
+        lib.box("elf-cape", (0.2, 0.012, 0.32), (0, 0.075, 0.5), jade if tier == 2 else white, t, rot=(R(-6), 0, 0))
+        if tier == 3:
+            lib.box("elf-capehem", (0.205, 0.014, 0.02), (0, 0.08, 0.345), silver, t)
+        lib.cyl("elf-belt", 0.11, 0.025, (0, 0, 0.455), jade if tier == 2 else silver, t, verts=20)
+    if tier == 2:
+        lib.cyl("elf-torc", 0.04, 0.015, (0, 0, 0.705), bronze, n, verts=14)
+        for j, x in enumerate((-0.06, 0.06)):
+            lib.ball(f"elf-hairleaf{j}", 0.018, (x, 0.02, 0.85), vine, n, scale=(1.4, 0.5, 0.8))
+    if tier == 3:
+        lib.cyl("elf-circlet", 0.083, 0.014, (0, 0, 0.83), silver, n, verts=16)
+        for j in range(3):
+            lib.ball(f"elf-circletleaf{j}", 0.014, (-0.03 + j * 0.03, -0.075, 0.845), silver, n, scale=(0.8, 0.4, 1.4))
+        lib.ball("elf-moonstone", 0.014, (0, -0.07, 0.66), moon, t)
+    return rig
+
+
+class Elk(soldiers.Horse):
+    """The elves ride great elk, brown, and white in the Iron Age: a horse's build with antlers."""
+
+    def __init__(self, coat=(0.52, 0.38, 0.24)):
+        super().__init__(coat)
+
+    def head(self):
+        super().head()
+        antler = lib.mat("antler", (0.86, 0.80, 0.66), 0.7)
+        y, z = -0.24, self.HIGH + 0.1
+        for k in (-1, 1):
+            lib.cyl(f"antler{k}", 0.01, 0.22, (0.03 * k, y - 0.06, z + 0.35), antler, self.neck, rot=(R(-15), R(30 * k), 0), verts=5, r2=0.004)
+            for j in range(2):
+                lib.cyl(f"tine{k}{j}", 0.007, 0.1, (0.06 * k, y - 0.08 + 0.03 * j, z + 0.38 + 0.05 * j), antler, self.neck,
+                        rot=(R(-40), R(60 * k), 0), verts=4, r2=0.002)
+
+
+def elf_unit_aged(unit):
+    """A common unit as an elf in the dress of the age it is first trained in; riders on elk."""
+    tier = ELF_UNIT_AGE.get(unit, 0)
+    kit = soldiers.KITS[unit]
+    if unit not in ("scout", "cavalry", "horse_archer", "heavy_horse_archer"):
+        return elf_dress(soldier_of(ELF, kit), tier)
+    rider = elf_dress(finish(soldiers.Soldier(unit, ELF, kit)), tier)
+    beast = Elk((0.92, 0.90, 0.86) if tier >= 3 else (0.52, 0.38, 0.24))
+    rider.root.location = (0, 0.02, soldiers.Horse.HIGH + 0.02 - 0.42)
+    lib.adopt(rider.root, beast.body)
+    return soldiers.Mount(rider, beast)

@@ -85,6 +85,29 @@ for (const [race, raceName] of Object.entries(RACES)) {
       row("before", before.buildings?.[key]?.[race]) + row("after", nowBy));
   }
 }
+// The elves' villagers and soldiers (replica/elf-ages-plan.md): a still frame of each sheet, facing the viewer
+// and turned, before and after; villagers age by age.
+const elfPlan = existsSync("../replica/elf-ages-plan.md") ? readFileSync("../replica/elf-ages-plan.md", "utf8") : "";
+const sprite = (side, spec, label) => {
+  const src = spec ? pic(side, spec.file) : null;
+  if (!src) return `<figure><div class="none">chưa có</div><figcaption>${label}</figcaption></figure>`;
+  const row = (spec.anims.idle ?? spec.anims.walk).row;
+  return `<figure><canvas class="sprite" data-src="${src}" data-fw="${spec.frame[0]}" data-fh="${spec.frame[1]}" data-row="${row}"></canvas><figcaption>${label}</figcaption></figure>`;
+};
+if (Object.keys(now.units ?? {}).some((k) => k.includes("@"))) {
+  cards.push(`<h2 id="elf-units">Elf: dân và lính</h2>`);
+  const tools = Object.keys(now.units).filter((k) => k.startsWith("elf/villager") && !k.includes("@"));
+  for (const key of tools) {
+    const ages = ["", "@tool", "@bronze", "@iron"];
+    const rows = `<div class="row"><span class="side">Hiện tại (main)</span>${sprite("before", before.units?.[key], "mọi đời")}</div>` +
+      `<div class="row"><span class="side">Cải thiện</span>${ages.map((a) => sprite("after", now.units[key + a], AGE_NAME[a.slice(1) || "stone"])).join("")}</div>`;
+    card(`elf-units/${key}`, `Elf: ${key.replace("elf/", "")}`, `<b>Đề xuất:</b> dân phục theo đời (villager trong elf-ages-plan.md).`, rows);
+  }
+  for (const key of Object.keys(now.units).filter((k) => k.startsWith("elf/") && !k.startsWith("elf/villager"))) {
+    const rows = `<div class="row"><span class="side">Hiện tại (main)</span>${sprite("before", before.units?.[key], "")}</div><div class="row"><span class="side">Cải thiện</span>${sprite("after", now.units[key], "")}</div>`;
+    card(`elf-units/${key}`, `Elf: ${key.replace("elf/", "")}`, `<b>Đề xuất:</b> quân phục theo đời lính xuất hiện (soldiers trong elf-ages-plan.md).`, rows);
+  }
+}
 for (const sec of ["units", "icons", "hud", "fx"]) for (const [k, v] of Object.entries(items[sec] ?? {})) card(`${sec}/${k}`, `${sec}: ${k}`, md(v));
 
 const page = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -144,6 +167,17 @@ document.getElementById("export").onclick = () => {
   a.download = "fantasy-art-review.json"; a.click();
 };
 count();
+// Each sprite sheet's still frame, facing the viewer and turned (directions 0 and 1), twice the size.
+for (const c of document.querySelectorAll("canvas.sprite")) {
+  const img = new Image();
+  img.onload = () => {
+    const fw = +c.dataset.fw, fh = +c.dataset.fh, row = +c.dataset.row;
+    c.width = fw * 4; c.height = fh * 2;
+    const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
+    for (let d = 0; d < 2; d++) g.drawImage(img, 0, (row + d) * fh, fw, fh, d * fw * 2, 0, fw * 2, fh * 2);
+  };
+  img.src = c.dataset.src;
+}
 </script></body></html>`;
 mkdirSync(dirname(join(OUT, "index.html")), { recursive: true });
 writeFileSync(join(OUT, "index.html"), page);
