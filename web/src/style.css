@@ -445,3 +445,11 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
   border: 1px solid #b8913f; border-radius: 3px; outline: none; }
 #messages .chat { color: #f3e6c4; font-weight: 400; }
 #messages .chat b { font-weight: 700; }
+
+/* Watching through a computer's eyes: whose, under the top bar. */
+#pov {
+  position: fixed; top: calc(var(--u) * 30); left: 50%; transform: translateX(-50%); z-index: 4; pointer-events: none;
+  padding: 3px 12px; background: rgba(0, 0, 0, .55); border: 1px solid rgba(200, 164, 98, .6); color: #e8dcc0;
+  font-size: calc(var(--u) * 12); text-shadow: 1px 1px 0 #000; white-space: nowrap;
+}
+#pov span { color: #b8a888; font-size: .85em; margin-left: 8px; }

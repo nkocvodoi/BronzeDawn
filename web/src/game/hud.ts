@@ -83,6 +83,7 @@ export class HUD {
   private grid = $("#commands");
   private tip = $("#tooltip");
   private messages = $("#messages");
+  private pov = $("#pov");
   private overlay = $("#overlay");
   private scores = $("#scores");
   readonly minimap = $<HTMLCanvasElement>("#minimap");
@@ -462,6 +463,12 @@ export class HUD {
       const key = this.hotkeys && c.key ? `<kbd class="hk">${keyName(c.key)}</kbd>` : "";
       return `<button data-i="${i}" class="${[c.blocker ? "off" : "", c.hint ? "hint" : ""].join(" ").trim()}" aria-label="${c.title}">${icon}${key}</button>`;
     }).join("");
+  }
+
+  /** While watching through a computer's eyes, whose: a label under the top bar in its colour (null: none). */
+  setPov(name: string | null, color = "#fff") {
+    this.pov.hidden = name === null;
+    if (name !== null) this.pov.innerHTML = `Watching <b style="color:${color}">${name}</b> <span>Tab: next · Shift+Tab: back · F: follow</span>`;
   }
 
   message(text: string, kind: "info" | "warn" = "info") {
