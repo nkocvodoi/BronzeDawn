@@ -323,6 +323,30 @@ body:not(.playing) #topbar { transform: translateY(-100%); }
 #overlay .seg button.picked { background: linear-gradient(#a8844a, #7a5c2c); color: #fff6dc; }
 #overlay .seg button:not(.picked) { color: #b8a888; }
 #overlay table.diplomacy .bonus { font-size: 11px; color: #c8b896; max-width: 260px; }
+/* The Diplomacy screen, after the original's: one row a player, Ally / Neutral / Enemy as boxes to tick,
+   then a column of tribute for each resource under "Pay Tribute". */
+#overlay .diplo-card { max-width: min(860px, calc(100vw - 32px)); }
+#overlay .card.still { animation: none; }
+#overlay table.diplo { border: 2px solid; border-color: #1e1208 #c8a462 #c8a462 #1e1208; background: rgba(0, 0, 0, .25); }
+#overlay table.diplo th { padding: 4px 8px; font-weight: 600; font-size: 13px; color: #e8dcc0; border-bottom: 1px solid rgba(200, 164, 98, .5); text-align: center; }
+#overlay table.diplo tr.top th { border-bottom: none; color: var(--gold); padding-bottom: 0; }
+#overlay table.diplo th:first-child { text-align: left; }
+#overlay table.diplo td { padding: 5px 8px; }
+#overlay table.diplo td.who { min-width: 130px; }
+#overlay table.diplo td.who small { display: block; font-size: 11px; color: #c8b896; font-weight: 400; }
+#overlay table.diplo td.civ { color: #f3e4bd; cursor: help; text-decoration: underline dotted rgba(200, 164, 98, .6); }
+#overlay table.diplo td.you { text-align: center; color: #c8b896; font-style: italic; }
+#overlay table.diplo td.tick, #overlay table.diplo td.pay { text-align: center; }
+#overlay table.diplo tr.me td { background: rgba(200, 164, 98, .08); }
+#overlay table.diplo button.box { width: 20px; height: 20px; padding: 0; border-color: #1e1208 #c8a462 #c8a462 #1e1208; background: #2a2218; position: relative; }
+#overlay table.diplo button.box.on::after { content: ""; position: absolute; inset: 4px; background: var(--gold); box-shadow: 0 0 4px rgba(232, 200, 120, .8); }
+#overlay table.diplo td.pay button { min-width: 52px; font-size: 13px; padding: 3px 8px; font-variant-numeric: tabular-nums; }
+#overlay .check.allied { width: fit-content; margin: 8px auto; }
+@media (max-width: 620px) {
+  #overlay table.diplo { font-size: 12px; }
+  #overlay table.diplo td, #overlay table.diplo th { padding: 3px 3px; }
+  #overlay table.diplo td.pay button { min-width: 36px; padding: 2px 4px; }
+}
 #timeline { display: block; width: min(640px, calc(var(--zvw) * 0.8)); height: 260px; margin: 8px auto 4px; image-rendering: auto; cursor: crosshair; }
 #timeline-read { min-height: 34px; font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
 .timeline-key { font-size: 11px; color: #c8b896; text-align: center; }

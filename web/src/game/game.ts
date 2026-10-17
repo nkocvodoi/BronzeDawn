@@ -57,6 +57,11 @@ const GATHER_STAND = 0.22;
 /** The original's limit on how many units one selection holds. */
 /** How long a health bar stays up over something that was hit, in game seconds. */
 const HIT_BAR_SECONDS = 15;
+/** The health bar of what is not yours or an ally's: violet, unlike the green, yellow and red of your own;
+ *  a darker violet when nearly dead. */
+const ENEMY_BAR = 0xb45cff, ENEMY_BAR_LOW = 0x7a2fc0;
+/** The Diplomacy screen's tribute columns, in the order of the resources across the top of the screen. */
+const DIPLO_RES: Res[] = [Res.wood, Res.food, Res.gold, Res.stone];
 
 /** The part of a picture that is drawn on, from its anchor: how far up its top is, and where its left and
  *  right edges are. A sheet's frame is mostly empty (a ship's is several times the ship), so a health bar
@@ -2022,24 +2027,58 @@ export class Game {
 
   /** The players and their civilizations, with what each civilization is good at; and, as in the original's
    *  Diplomacy screen, how you stand toward each (ally, neutral, enemy) and tribute to send them. */
-  private showDiplomacy() {
+  /** What the Diplomacy screen will do on OK, as in the original: stances changed and tribute added up
+   *  100 a click, nothing sent until OK; Clear Tributes empties the tribute, Cancel drops it all. */
+  private diploDraft: { stance: Map<number, Stance>; tribute: Map<string, number> } | null = null;
+
+  /** The Diplomacy screen, laid out as the original's: a row for each player with its name in its colour and
+   *  its civilization (bonuses on hover), Ally, Neutral and Enemy to tick, and a column of tribute for each
+   *  resource; Allied Victory below, then OK, Clear Tributes and Cancel. */
+  private showDiplomacy(fresh = true) {
     const w = this.world, me = this.me;
+    if (fresh || !this.diploDraft) this.diploDraft = { stance: new Map(), tribute: new Map() };
+    const d = this.diploDraft;
     const word: Record<Stance, string> = { ally: "Ally", neutral: "Neutral", enemy: "Enemy" };
     const fee = w.tributeFee(me);
+    const res = DIPLO_RES;
     const rows = w.players.map((p) => {
       const bonuses = p.civ ? describeCiv(p.civ, this.rules, w.fullTechTree).join("; ") : "no bonuses";
-      const name = `<td style="color:${playerColor(p.id)}"><b>${p.name}</b>${p.defeated ? " (out)" : ""}</td><td>${p.civ?.name ?? "-"}</td>`;
-      if (this.watching || p.id === me) return `<tr>${name}<td>${this.watching ? "Computer" : "You"}</td><td></td><td></td><td class="bonus">${bonuses}</td></tr>`;
-      const mine = STANCES.map((s) => `<button data-stance="${p.id}:${s}"${w.stance[me][p.id] === s ? ' class="picked"' : ""}>${word[s]}</button>`).join("");
-      const tribute = p.defeated ? "" : ([Res.food, Res.wood, Res.gold, Res.stone] as Res[]).map((r) => `<button data-tribute="${p.id}:${r}">100 ${RES_NAME[r]}</button>`).join("");
-      return `<tr>${name}<td><span class="seg">${mine}</span></td><td>${word[w.stance[p.id][me]]}</td><td><span class="seg">${tribute}</span></td><td class="bonus">${bonuses}</td></tr>`;
+      const toYou = this.watching || p.id === me ? "" : `<small>to you: ${word[w.stance[p.id][me]]}</small>`;
+      const name = `<td class="who" style="color:${playerColor(p.id)}"><b>${p.name}</b>${p.defeated ? " (out)" : ""}${toYou}</td>`
+        + `<td class="civ" title="${bonuses.replace(/"/g, "&quot;")}">${p.civ?.name ?? "-"}</td>`;
+      if (this.watching || p.id === me) {
+        return `<tr class="${p.id === me ? "me" : ""}">${name}<td colspan="3" class="you">${this.watching ? "Computer" : "You"}</td><td colspan="${res.length}"></td></tr>`;
+      }
+      const now = d.stance.get(p.id) ?? w.stance[me][p.id];
+      const ticks = STANCES.map((st) => `<td class="tick"><button data-dstance="${p.id}:${st}" class="box${now === st ? " on" : ""}" aria-label="${word[st]}" title="${word[st]}"></button></td>`).join("");
+      const pay = res.map((r) => {
+        const n = d.tribute.get(`${p.id}:${r}`) ?? 0;
+        return `<td class="pay">${p.defeated ? "" : `<button data-dtribute="${p.id}:${r}" title="Click: 100 ${RES_NAME[r]} more (costs ${w.tributeCost(me, 100)})">${n}</button>`}</td>`;
+      }).join("");
+      return `<tr>${name}${ticks}${pay}</tr>`;
     }).join("");
-    const head = this.watching ? "" : `<tr><th></th><th></th><th>You toward them</th><th>Them toward you</th><th>Tribute${fee ? ` (costs ${Math.round(fee * 100)}% more)` : " (free)"}</th><th></th></tr>`;
+    const head = `<tr class="top"><th></th><th></th><th colspan="3"></th><th colspan="${res.length}">${this.watching ? "" : `Pay Tribute (${fee ? `cost ${Math.round(fee * 100)}%` : "free"})`}</th></tr>`
+      + `<tr><th>Player</th><th>Civilization</th><th>Ally</th><th>Neutral</th><th>Enemy</th>${res.map((r) => `<th class="res">${RES_NAME[r][0].toUpperCase() + RES_NAME[r].slice(1)}</th>`).join("")}</tr>`;
     this.hud.showOverlay("Diplomacy", [
-      `<table class="diplomacy">${head}${rows}</table>`,
-      this.watching ? "" : "Units and towers attack only enemies. An alliance holds when both sides have set it. A computer that is neutral toward you may become your ally if you send it enough.",
-      `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`,
-    ], "menu");
+      `<table class="diplomacy diplo">${head}${rows}</table>`,
+      this.watching ? "" : `<label class="check allied"><input type="checkbox" checked disabled><span>Allied Victory<small>allies left standing win together; an alliance holds when both sides tick Ally</small></span></label>`,
+      this.watching ? `<span class="choices"><button id="resume-btn">Close (Esc)</button></span>`
+        : `<span class="choices"><button id="diplo-ok">OK</button><button id="diplo-clear">Clear Tributes</button><button id="resume-btn">Cancel</button></span>`,
+    ], `menu diplo-card${fresh ? "" : " still"}`); // drawn again after a click: no opening animation
+  }
+
+  /** OK in the Diplomacy screen: the stances changed, then the tribute, in that order; what cannot be paid
+   *  for is said and left out. */
+  private diploApply() {
+    const d = this.diploDraft, w = this.world, me = this.me;
+    this.diploDraft = null;
+    if (!d) return;
+    for (const [to, stance] of d.stance) if (w.stance[me][to] !== stance) this.issue({ k: "stance", to, stance });
+    for (const [key, amount] of d.tribute) {
+      const [to, r] = key.split(":").map(Number);
+      const why = this.issue({ k: "tribute", to, res: r as Res, amount });
+      if (typeof why === "string") this.hud.message(`${w.players[to].name}: ${why}`);
+    }
   }
 
   /** The Market's tribute screen: the players still in the game, allies first, and 100, 500 or 1000 of each
@@ -2071,6 +2110,25 @@ export class Game {
 
   /** A click in the Diplomacy or tribute screen: a new stance, or some of a resource sent. */
   private diplomacyClick(t: HTMLElement): boolean {
+    // The Diplomacy screen: ticks and tribute wait for OK.
+    const ds = t.closest("[data-dstance]") as HTMLElement | null, dt = t.closest("[data-dtribute]") as HTMLElement | null;
+    if (ds || dt) {
+      const d = this.diploDraft ??= { stance: new Map(), tribute: new Map() };
+      if (ds) { const [pid, st] = ds.dataset.dstance!.split(":"); d.stance.set(Number(pid), st as Stance); }
+      else {
+        const key = dt!.dataset.dtribute!, r = Number(key.split(":")[1]) as Res;
+        const next = (d.tribute.get(key) ?? 0) + 100;
+        // Everything already put down for this resource, to anyone, and this 100 more, must be there to pay.
+        let total = 0;
+        for (const [k, n] of d.tribute) if (Number(k.split(":")[1]) === r && k !== key) total += this.world.tributeCost(this.me, n);
+        if (total + this.world.tributeCost(this.me, next) > this.world.players[this.me].res.get(r)) this.hud.message(`Not enough ${RES_NAME[r]}`, "warn");
+        else d.tribute.set(key, next);
+      }
+      this.showDiplomacy(false);
+      return true;
+    }
+    if (t.closest("#diplo-clear")) { if (this.diploDraft) this.diploDraft.tribute.clear(); this.showDiplomacy(false); return true; }
+    if (t.closest("#diplo-ok")) { this.diploApply(); this.hud.hideOverlay(); this.paused = false; return true; }
     const st = t.closest("[data-stance]") as HTMLElement | null, tr = t.closest("[data-tribute]") as HTMLElement | null;
     if (!st && !tr) return false;
     if (st) {
@@ -2717,14 +2775,15 @@ export class Game {
       return x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1;
     };
     // Off the screen, out of the scene altogether: the renderer neither walks nor sorts what is not in it.
-    const off = (e: Entity) => { const v = this.views.get(e.id); if (v) { v.root.visible = false; if (v.root.parent) this.entities.removeChild(v.root); } };
+    // The bars hang in a layer of their own, so whatever hides a view hides its bar too: a soldier gone
+    // aboard a transport, out of sight in the fog or off the screen left its bar where it last stood.
+    const off = (e: Entity) => { const v = this.views.get(e.id); if (v) { v.root.visible = false; if (v.bar) v.bar.visible = false; if (v.root.parent) this.entities.removeChild(v.root); } };
     const show = (e: Entity, vis: boolean, frozen = false) => {
       // Killed since the last step (the Delete key acts at once, between steps), it stays in the world's
       // lists until the next one: its view is gone or going (hidden here while the game is paused), and must
       // not be made again.
       let v = this.views.get(e.id);
-      if (!e.alive) { if (v) v.root.visible = false; return; }
-      if (!vis) { if (v) v.root.visible = false; return; }
+      if (!e.alive || !vis) { if (v) { v.root.visible = false; if (v.bar) v.bar.visible = false; } return; }
       if (!v) v = this.makeView(e);
       v.root.visible = true;
       if (!v.root.parent) this.entities.addChild(v.root);
@@ -2751,7 +2810,11 @@ export class Game {
       if (v.bar) v.bar.visible = barOn && v.root.visible;
       if (v.bar && barOn) {
         const f = Math.max(0, e.hp / e.maxHp);
-        v.bar.clear().rect(0, 0, bw, 4).fill(0x000000).rect(0, 0, bw * f, 4).fill(f > 0.5 ? 0x33cc33 : f > 0.25 ? 0xdddd33 : 0xdd3333);
+        // Yours and your allies' green, yellow, red as they weaken; anyone else's violet, so in a fight it is
+        // plain at a glance which bars are the enemy's (animals keep the first).
+        const theirs = e.owner >= 0 && e.owner !== this.me && !this.world.allied(this.me, e.owner) && !this.watching;
+        const fill = theirs ? (f > 0.25 ? ENEMY_BAR : ENEMY_BAR_LOW) : f > 0.5 ? 0x33cc33 : f > 0.25 ? 0xdddd33 : 0xdd3333;
+        v.bar.clear().rect(0, 0, bw, 4).fill(0x000000).rect(0, 0, bw * f, 4).fill(fill);
       }
     };
     const w = this.world;
