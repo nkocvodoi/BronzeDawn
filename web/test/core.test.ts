@@ -8,7 +8,7 @@ import { scores } from "../src/core/score";
 import { runMatch } from "../src/core/sim";
 import { MapType, startTiles } from "../src/core/mapgen";
 import { AIController } from "../src/core/ai";
-import { hints } from "../src/core/hints";
+import { hints, hintsWhy } from "../src/core/hints";
 import { civBent } from "../src/core/civbent";
 import { describeCiv } from "../src/game/describe";
 import { TRIBUTE_AMOUNTS, Victory, World, WorldOptions, SWEEP_RADIUS } from "../src/core/world";
@@ -1249,7 +1249,11 @@ describe("the original's rules", () => {
     expect(h.has("archery_range")).toBe(true);
     expect(h.has("leather_armor_archers")).toBe(true);
     expect(h.has("stable")).toBe(false);
-    expect(hints(w, 1).size).toBe(0); // the Greeks' bonus is not their army's
+    // The Greeks' bonus is small (quicker Academy infantry), but it is theirs: the Academy and its line.
+    const greek = hints(w, 1);
+    expect(greek.has("academy")).toBe(true);
+    expect(greek.has("phalanx_tech")).toBe(true);
+    expect(greek.has("archery_range")).toBe(false);
     w.addBuilding("archery_range", 0, new Tile(2, 2), true);
     (w as unknown as { applyTech(p: unknown, t: unknown): void }).applyTech(w.players[0], RULES.techs.get("leather_armor_archers"));
     const after = hints(w, 0);
@@ -1257,6 +1261,17 @@ describe("the original's rules", () => {
     expect(after.has("leather_armor_archers")).toBe(false);
     expect(after.has("scale_armor_archers")).toBe(true);
   });
+  it("every civilization gets hints, even one with no army bonus", () => {
+    for (const c of RULES.civs) {
+      const w = new World(RULES, 1, ["A", "B"], 24, false, { civs: [c.id, null] });
+      const h = hintsWhy(w, 0);
+      expect([...h.ids].some((id) => RULES.buildings.has(id)), c.id).toBe(true);
+      expect([...h.ids].some((id) => RULES.techs.has(id)), c.id).toBe(true);
+    }
+    // The Shang's bonuses are cheap villagers and strong walls: the line they have most of instead.
+    expect(hintsWhy(new World(RULES, 1, ["A", "B"], 24, false, { civs: ["shang", null] }), 0).reason).toBe("line");
+  });
+
   it("each civilization lacks what its tech tree lacks", () => {
     const w = new World(RULES, 1, ["A", "B", "C"], 24, false, { civs: ["egyptian", "greek", "roman"] });
     expect(w.blockerUnit("cavalry", 0)).toContain("Not available");      // no Cavalry for the Egyptians

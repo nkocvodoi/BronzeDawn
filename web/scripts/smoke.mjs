@@ -130,12 +130,21 @@ check((await page.textContent("#civ-info")).includes("+0.3 speed for Hoplite"), 
 await page.click("[data-start=normal]");
 await page.click("#diplomacy-btn");
 const diplomacy = await page.textContent("#overlay");
-check(diplomacy.includes("Greek") && diplomacy.includes("+0.3 speed for Hoplite") && diplomacy.includes("Enemy"), "Diplomacy lists your civilization with its bonuses, and the enemy's");
-await page.click("[data-stance='1:neutral']");
-check(await g(() => game.world.stance[0][1] === "neutral" && game.world.stance[1][0] === "enemy"), "Diplomacy sets you neutral toward the computer; it stays your enemy");
-await page.click("[data-stance='1:enemy']");
-await page.click("[data-tribute='1:3']");
+const civTips = await page.$$eval("#overlay td.civ", (cs) => cs.map((c) => c.getAttribute("title")).join(" "));
+check(diplomacy.includes("Greek") && civTips.includes("+0.3 speed for Hoplite") && diplomacy.includes("Enemy") && diplomacy.includes("Pay Tribute"), "Diplomacy lists the players, their civilizations (bonuses on hover), stances and tribute");
+// As in the original, nothing changes until OK: a tick and 100 stone put down, then OK.
+await page.click("[data-dstance='1:neutral']");
+await page.click("[data-dtribute='1:3']");
+check(await g(() => game.world.stance[0][1] === "enemy" && game.world.players[0].res.stone === 150), "Diplomacy waits for OK");
+check((await page.textContent("[data-dtribute='1:3']")) === "100", "a tribute click puts down 100");
+await page.click("#diplo-ok");
+check(await g(() => game.world.stance[0][1] === "neutral" && game.world.stance[1][0] === "enemy"), "OK sets you neutral toward the computer; it stays your enemy");
 check(await g(() => game.world.players[0].res.stone === 25 && game.world.players[1].res.stone === 250), "tribute: 100 stone sent costs 125");
+await page.click("#diplomacy-btn");
+await page.click("[data-dstance='1:enemy']");
+await page.click("#diplo-ok");
+check(await g(() => game.world.stance[0][1] === "enemy"), "and back to enemy");
+await page.click("#diplomacy-btn");
 await page.keyboard.press("Escape");
 check((await g(() => game.speed)) === 1.5, "the start screen sets the game speed");
 check(/^\d+:\d\d · x1\.5$/.test(await page.textContent("#match-time")), `the top bar shows the match time and the speed (${await page.textContent("#match-time")})`);
@@ -583,6 +592,23 @@ check(await g(() => !game.hud.overlayShown && !game.paused), "Esc closes the tri
   const r = JSON.parse(gunzipSync(readFileSync(path)).toString("utf8"));
   check(dl.suggestedFilename().endsWith(".bdreport") && r.kind === "bdreport" && r.save?.world && typeof r.picture === "string" && Array.isArray(r.log),
     "F8 saves a bug report with the game, a picture and the log in it");
+}
+
+// A health bar goes with its unit: one gone aboard a transport (off the map) leaves no bar behind. And an
+// enemy's bar is not your green.
+{
+  const ids = await g(() => {
+    const w = game.world, v = w.unitsOf(0).find((u) => u.isVillager && u.aboard === null);
+    const P = v.pos.constructor, e = w.spawnUnit("clubman", 1, new P(v.pos.x + 1, v.pos.y));
+    game.selection = [v.id, e.id];
+    return [v.id, e.id];
+  });
+  await page.waitForFunction((ids) => ids.every((id) => game.views.get(id)?.bar?.visible), ids, { timeout: 5000 }).catch(() => {});
+  check(await g((ids) => ids.every((id) => game.views.get(id)?.bar?.visible), ids), "a selected unit shows its health bar");
+  await g(([v]) => { game.world.unit(v).aboard = 999999; }, ids);
+  await page.waitForFunction(([v]) => !game.views.get(v)?.bar?.visible, ids, { timeout: 5000 }).catch(() => {});
+  check(await g(([v]) => !game.views.get(v)?.bar?.visible, ids), "aboard a transport, its health bar goes too");
+  await g(([v]) => { game.world.unit(v).aboard = null; }, ids);
 }
 
 // Resign, asked once more: everything of yours falls and the game is lost.

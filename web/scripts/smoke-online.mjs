@@ -116,7 +116,10 @@ for (const page of [host, guest]) {
   await page.evaluate(() => { const tc = game.world.buildingsOf(game.me).find((b) => b.def.id === "town_center"); game.selection = [tc.id]; });
   await page.keyboard.press("c");
 }
-await host.waitForTimeout(4000);
+// Each order runs a few turns after it is given, on both machines: on a slow runner (a CI machine draws
+// a few frames a second) that is more than the 4 s once waited here, so wait until both show it, up to 20 s.
+const ordered = () => [0, 1].every((i) => game.world.buildingsOf(i).find((b) => b.def.id === "town_center").queue.length + game.world.unitsOf(i).filter((u) => u.isVillager).length === 4);
+await Promise.all([host, guest].map((p) => p.waitForFunction(ordered, null, { timeout: 20000 }).catch(() => {})));
 const at = await Promise.all([host, guest].map((p) => p.evaluate(() => ({ turn: game.net.turn, tick: game.world.tick, q: [0, 1].map((i) => game.world.buildingsOf(i).find((b) => b.def.id === "town_center").queue.length + game.world.unitsOf(i).filter((u) => u.isVillager).length) }))));
 check(at[0].q[0] === 4 && at[0].q[1] === 4, `on the host, both players' villagers were ordered (${at[0].q.join(", ")})`);
 check(at[1].q[0] === 4 && at[1].q[1] === 4, `and the same on the friend's machine (${at[1].q.join(", ")})`);
