@@ -28,7 +28,7 @@ import { depth, fromIso, HALF_H, HALF_W, iso } from "./iso";
 import { SWEEP_RADIUS } from "../core/world";
 import { MouseLock } from "./mouselock";
 import { makeReport } from "./report";
-import { hints } from "../core/hints";
+import { HintReason, hintsWhy } from "../core/hints";
 import { chordOfKey, chordOfMouse, KEY_ACTIONS, KeyAction, KeyMap, prettyChord, RESERVED } from "./keymap";
 import { Sfx, Sound, VoiceKind } from "./sound";
 
@@ -2887,11 +2887,11 @@ export class Game {
   private menuFor = "";
 
   /** The hints, worked out again once a second of the game at most: the buttons are drawn every frame. */
-  private hintCache: { at: number; ids: Set<string> } | null = null;
+  private hintCache: { at: number; ids: Set<string>; reason: HintReason } | null = null;
   private hintsNow() {
     const at = Math.floor(this.world.time);
-    if (this.hintCache?.at !== at) this.hintCache = { at, ids: hints(this.world, this.me) };
-    return this.hintCache.ids;
+    if (this.hintCache?.at !== at) this.hintCache = { at, ...hintsWhy(this.world, this.me) };
+    return this.hintCache;
   }
 
   private commands(sel: Entity[]): Command[] {
@@ -2906,8 +2906,11 @@ export class Game {
       action: () => this.deleteSelection() };
     const units = mine.filter((e): e is Unit => e instanceof Unit);
     // For a new player: what suits the civilization's strengths, a little brighter until it is done (Settings).
-    const hinted = this.hintsOn ? this.hintsNow() : new Set<string>();
-    const why = `suggested: it suits the ${w.players[me].civ?.name ?? "civilization"}'s strengths`;
+    const hint = this.hintsOn ? this.hintsNow() : null;
+    const hinted = hint?.ids ?? new Set<string>();
+    const civName = w.players[me].civ?.name ?? "civilization";
+    const why = hint?.reason === "line" ? `suggested: the ${civName} have the most of this line of units and upgrades`
+      : `suggested: it suits the ${civName}'s strengths`;
     if (units.some((u) => u.isVillager)) {
       if (this.menu === "main") {
         const toBuild = [...hinted].some((id) => { const d = this.rules.buildings.get(id); return !!d && w.buildingShown(id, me) && this.rules.ages.findIndex((a) => a.id === d.age) <= w.players[me].age; });
