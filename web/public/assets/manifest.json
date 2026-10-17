@@ -6239,16 +6239,16 @@
     "bronze": {
      "file": "art3d/elf-wonder-bronze.png",
      "anchor": [
-      150.0,
-      258.9
+      148.0,
+      352.9
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-wonder-iron.png",
      "anchor": [
-      147.0,
-      264.9
+      144.0,
+      352.9
      ],
      "scale": 1.0
     }
@@ -6258,7 +6258,7 @@
      "file": "art3d/dwarf-wonder-bronze.png",
      "anchor": [
       144.0,
-      205.9
+      260.9
      ],
      "scale": 1.0
     },
@@ -6266,7 +6266,7 @@
      "file": "art3d/dwarf-wonder-iron.png",
      "anchor": [
       143.0,
-      205.9
+      260.9
      ],
      "scale": 1.0
     }
@@ -6276,7 +6276,7 @@
      "file": "art3d/centaur-wonder-bronze.png",
      "anchor": [
       147.0,
-      215.9
+      255.9
      ],
      "scale": 1.0
     },
@@ -6284,7 +6284,7 @@
      "file": "art3d/centaur-wonder-iron.png",
      "anchor": [
       147.0,
-      215.9
+      255.9
      ],
      "scale": 1.0
     }
@@ -6294,7 +6294,7 @@
      "file": "art3d/beastfolk-wonder-bronze.png",
      "anchor": [
       145.0,
-      191.9
+      219.9
      ],
      "scale": 1.0
     },
@@ -6302,7 +6302,7 @@
      "file": "art3d/beastfolk-wonder-iron.png",
      "anchor": [
       145.0,
-      191.9
+      219.9
      ],
      "scale": 1.0
     }

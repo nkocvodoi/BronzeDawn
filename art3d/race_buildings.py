@@ -651,7 +651,10 @@ def finish(k, key):
 def make(race, key, age):
     import race_compounds  # the compounds of the approved plan, built on this file's Kits and plain buildings
     k = KITS[race](race, age)
-    if race == "elf":
+    if key == "wonder":
+        import race_wonders  # each race's colossal statue (the owner's notes, 2026-10-17)
+        race_wonders.WONDERS[race](k)
+    elif race == "elf":
         import elf_ages  # the elves' own, age by age (replica/elf-ages-plan.md)
         elf_ages.BUILDERS[key](k)
     else:
