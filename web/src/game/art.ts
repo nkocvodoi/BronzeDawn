@@ -335,16 +335,19 @@ export type Tool = "none" | "axe" | "pick" | "basket" | "hoe" | "hammer" | "spea
 /** `job`: a finer name for the work than the tool, tried first for a sprite sheet ("villager:butcher" for
  *  cutting up a carcass, which is drawn with the spear when there is no such sheet). "fight" is a villager
  *  fighting: its own sheet, else the plain villager's attack, never the hunter's work. */
-export interface UnitLook { type: string; owner: number; facing: Facing; pose: Pose; frame: number; tool: Tool; carry: number | null; dir?: number; t?: number; civ?: string; job?: string }
+/** `age`: the owner's age (0 to 3), for a civilization's sheets drawn age by age ("elf/villager@bronze"). */
+export interface UnitLook { type: string; owner: number; facing: Facing; pose: Pose; frame: number; tool: Tool; carry: number | null; dir?: number; t?: number; civ?: string; job?: string; age?: number }
 
-/** A unit's frame from its sprite sheet, if the assets have one: the civilization's own first
+/** A unit's frame from its sprite sheet, if the assets have one: the civilization's own first, of the owner's
+ *  age or the latest before it ("elf/villager:axe@bronze", "elf/villager:axe@tool"), then of no age
  *  ("lac_viet/villager:axe", "lac_viet/villager"), then by its tool ("villager:axe"), then the unit. */
 function assetUnitPic(look: UnitLook): Pic | null {
   const units = ASSETS.manifest.units;
   if (!units) return null;
   const fight = look.job === "fight";
   const names = [look.job ? `${look.type}:${look.job}` : null, look.tool !== "none" && !fight ? `${look.type}:${look.tool}` : null, look.type].filter((n): n is string => n !== null);
-  const keys = [...(look.civ ? names.map((n) => `${look.civ}/${n}`) : []), ...names];
+  const ages = look.age !== undefined ? AGE_KEYS.slice(0, look.age + 1).reverse() : [];
+  const keys = [...(look.civ ? names.flatMap((n) => [...ages.map((a) => `${look.civ}/${n}@${a}`), `${look.civ}/${n}`]) : []), ...names];
   // From the topmost layer that has any of them (a pack over the game's own), and in that layer the first
   // name: a pack's hunter cutting up a kill, not the game's own butcher among the pack's villagers.
   // A civilization's own sheet counts once it has loaded (ASSETS.loadCiv); until then everyone's is drawn.

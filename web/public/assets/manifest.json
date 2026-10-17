@@ -3629,6 +3629,891 @@
      "fps": 10
     }
    }
+  },
+  "elf/villager:axe@iron": {
+   "file": "art3d/elf-villager-axe@iron.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "elf/villager@tool": {
+   "file": "art3d/elf-villager@tool.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "elf/villager:axe@tool": {
+   "file": "art3d/elf-villager-axe@tool.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "elf/villager:pick@tool": {
+   "file": "art3d/elf-villager-pick@tool.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "elf/villager:hammer@tool": {
+   "file": "art3d/elf-villager-hammer@tool.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "elf/villager:basket@tool": {
+   "file": "art3d/elf-villager-basket@tool.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "elf/villager:butcher@tool": {
+   "file": "art3d/elf-villager-butcher@tool.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "elf/villager:hoe@tool": {
+   "file": "art3d/elf-villager-hoe@tool.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/villager:spear@tool": {
+   "file": "art3d/elf-villager-spear@tool.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "elf/villager:net@tool": {
+   "file": "art3d/elf-villager-net@tool.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    95.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "elf/villager:fight@tool": {
+   "file": "art3d/elf-villager-fight@tool.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
+  },
+  "elf/villager@bronze": {
+   "file": "art3d/elf-villager@bronze.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "elf/villager:axe@bronze": {
+   "file": "art3d/elf-villager-axe@bronze.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "elf/villager:pick@bronze": {
+   "file": "art3d/elf-villager-pick@bronze.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "elf/villager:hammer@bronze": {
+   "file": "art3d/elf-villager-hammer@bronze.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "elf/villager:basket@bronze": {
+   "file": "art3d/elf-villager-basket@bronze.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "elf/villager:butcher@bronze": {
+   "file": "art3d/elf-villager-butcher@bronze.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "elf/villager:hoe@bronze": {
+   "file": "art3d/elf-villager-hoe@bronze.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/villager:spear@bronze": {
+   "file": "art3d/elf-villager-spear@bronze.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "elf/villager:net@bronze": {
+   "file": "art3d/elf-villager-net@bronze.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    95.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "elf/villager:fight@bronze": {
+   "file": "art3d/elf-villager-fight@bronze.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
+  },
+  "elf/villager@iron": {
+   "file": "art3d/elf-villager@iron.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "elf/villager:pick@iron": {
+   "file": "art3d/elf-villager-pick@iron.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "elf/villager:hammer@iron": {
+   "file": "art3d/elf-villager-hammer@iron.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "elf/villager:basket@iron": {
+   "file": "art3d/elf-villager-basket@iron.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "elf/villager:butcher@iron": {
+   "file": "art3d/elf-villager-butcher@iron.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "elf/villager:hoe@iron": {
+   "file": "art3d/elf-villager-hoe@iron.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "elf/villager:spear@iron": {
+   "file": "art3d/elf-villager-spear@iron.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "elf/villager:net@iron": {
+   "file": "art3d/elf-villager-net@iron.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    95.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "elf/villager:fight@iron": {
+   "file": "art3d/elf-villager-fight@iron.png",
+   "frame": [
+    105,
+    90
+   ],
+   "anchor": [
+    50.0,
+    64.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
   }
  },
  "credits": [
@@ -3679,15 +4564,15 @@
      "file": "art3d/elf-town_center-tool.png",
      "anchor": [
       87.0,
-      153.7
+      145.7
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/elf-town_center-bronze.png",
      "anchor": [
-      83.0,
-      169.7
+      81.0,
+      160.7
      ],
      "scale": 1.0
     },
@@ -3695,15 +4580,15 @@
      "file": "art3d/elf-town_center-stone.png",
      "anchor": [
       84.0,
-      137.7
+      98.7
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-town_center-iron.png",
      "anchor": [
-      83.0,
-      185.7
+      82.0,
+      176.7
      ],
      "scale": 1.0
     }
@@ -3981,7 +4866,7 @@
      "file": "art3d/elf-house-tool.png",
      "anchor": [
       41.0,
-      64.5
+      58.5
      ],
      "scale": 1.0
     },
@@ -3989,7 +4874,7 @@
      "file": "art3d/elf-house-stone.png",
      "anchor": [
       41.0,
-      61.5
+      58.5
      ],
      "scale": 1.0
     },
@@ -3997,7 +4882,7 @@
      "file": "art3d/elf-house-bronze.png",
      "anchor": [
       41.0,
-      67.5
+      71.5
      ],
      "scale": 1.0
     },
@@ -4005,7 +4890,7 @@
      "file": "art3d/elf-house-iron.png",
      "anchor": [
       41.0,
-      70.5
+      88.5
      ],
      "scale": 1.0
     }
@@ -4393,7 +5278,7 @@
      "file": "art3d/elf-granary-tool.png",
      "anchor": [
       63.0,
-      117.2
+      112.2
      ],
      "scale": 1.0
     },
@@ -4401,7 +5286,7 @@
      "file": "art3d/elf-granary-bronze.png",
      "anchor": [
       66.0,
-      121.2
+      97.2
      ],
      "scale": 1.0
     },
@@ -4409,7 +5294,7 @@
      "file": "art3d/elf-granary-iron.png",
      "anchor": [
       69.0,
-      126.2
+      102.2
      ],
      "scale": 1.0
     }
@@ -4585,7 +5470,7 @@
      "file": "art3d/elf-barracks-tool.png",
      "anchor": [
       75.0,
-      116.2
+      107.2
      ],
      "scale": 1.0
     },
@@ -4593,7 +5478,7 @@
      "file": "art3d/elf-barracks-stone.png",
      "anchor": [
       76.0,
-      113.2
+      93.2
      ],
      "scale": 1.0
     },
@@ -4601,7 +5486,7 @@
      "file": "art3d/elf-barracks-bronze.png",
      "anchor": [
       81.0,
-      119.2
+      111.2
      ],
      "scale": 1.0
     },
@@ -4609,7 +5494,7 @@
      "file": "art3d/elf-barracks-iron.png",
      "anchor": [
       82.0,
-      121.2
+      129.2
      ],
      "scale": 1.0
     }
@@ -4989,7 +5874,7 @@
      "file": "art3d/elf-dock-stone.png",
      "anchor": [
       94.0,
-      117.2
+      103.2
      ],
      "scale": 1.0
     },
@@ -4997,7 +5882,7 @@
      "file": "art3d/elf-dock-tool.png",
      "anchor": [
       94.0,
-      117.2
+      109.2
      ],
      "scale": 1.0
     },
@@ -5005,7 +5890,7 @@
      "file": "art3d/elf-dock-bronze.png",
      "anchor": [
       94.0,
-      117.2
+      111.2
      ],
      "scale": 1.0
     },
@@ -5013,7 +5898,7 @@
      "file": "art3d/elf-dock-iron.png",
      "anchor": [
       94.0,
-      117.2
+      125.2
      ],
      "scale": 1.0
     }
@@ -5172,8 +6057,8 @@
     "bronze": {
      "file": "art3d/elf-temple-bronze.png",
      "anchor": [
-      82.0,
-      134.7
+      83.0,
+      137.7
      ],
      "scale": 1.0
     },
@@ -5181,7 +6066,7 @@
      "file": "art3d/elf-temple-iron.png",
      "anchor": [
       84.0,
-      134.7
+      145.7
      ],
      "scale": 1.0
     }
@@ -5355,15 +6240,15 @@
      "file": "art3d/elf-wonder-bronze.png",
      "anchor": [
       148.0,
-      264.9
+      352.9
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-wonder-iron.png",
      "anchor": [
-      147.0,
-      264.9
+      144.0,
+      352.9
      ],
      "scale": 1.0
     }
@@ -5373,7 +6258,7 @@
      "file": "art3d/dwarf-wonder-bronze.png",
      "anchor": [
       144.0,
-      205.9
+      260.9
      ],
      "scale": 1.0
     },
@@ -5381,7 +6266,7 @@
      "file": "art3d/dwarf-wonder-iron.png",
      "anchor": [
       143.0,
-      205.9
+      260.9
      ],
      "scale": 1.0
     }
@@ -5391,7 +6276,7 @@
      "file": "art3d/centaur-wonder-bronze.png",
      "anchor": [
       147.0,
-      215.9
+      255.9
      ],
      "scale": 1.0
     },
@@ -5399,7 +6284,7 @@
      "file": "art3d/centaur-wonder-iron.png",
      "anchor": [
       147.0,
-      215.9
+      255.9
      ],
      "scale": 1.0
     }
@@ -5409,7 +6294,7 @@
      "file": "art3d/beastfolk-wonder-bronze.png",
      "anchor": [
       145.0,
-      191.9
+      219.9
      ],
      "scale": 1.0
     },
@@ -5417,7 +6302,7 @@
      "file": "art3d/beastfolk-wonder-iron.png",
      "anchor": [
       145.0,
-      191.9
+      219.9
      ],
      "scale": 1.0
     }
@@ -5559,7 +6444,7 @@
      "file": "art3d/elf-watch_tower-tool.png",
      "anchor": [
       59.0,
-      112.3
+      107.3
      ],
      "scale": 1.0
     }
@@ -5661,7 +6546,7 @@
      "file": "art3d/elf-sentry_tower-bronze.png",
      "anchor": [
       59.0,
-      119.7
+      112.7
      ],
      "scale": 1.0
     }
@@ -5763,7 +6648,7 @@
      "file": "art3d/elf-guard_tower-iron.png",
      "anchor": [
       59.0,
-      129.8
+      131.8
      ],
      "scale": 1.0
     }
@@ -5998,8 +6883,8 @@
     "bronze": {
      "file": "art3d/elf-government_center-bronze.png",
      "anchor": [
-      80.0,
-      151.2
+      83.0,
+      144.2
      ],
      "scale": 1.0
     },
@@ -6007,7 +6892,7 @@
      "file": "art3d/elf-government_center-iron.png",
      "anchor": [
       89.0,
-      157.2
+      144.2
      ],
      "scale": 1.0
     }
@@ -6181,7 +7066,7 @@
      "file": "art3d/elf-academy-bronze.png",
      "anchor": [
       81.0,
-      150.2
+      142.2
      ],
      "scale": 1.0
     },
@@ -6189,7 +7074,7 @@
      "file": "art3d/elf-academy-iron.png",
      "anchor": [
       84.0,
-      154.2
+      139.2
      ],
      "scale": 1.0
     }
@@ -6331,7 +7216,7 @@
      "file": "art3d/elf-siege_workshop-iron.png",
      "anchor": [
       84.0,
-      127.2
+      134.2
      ],
      "scale": 1.0
     }
@@ -6759,7 +7644,7 @@
      "file": "art3d/elf-stable-tool.png",
      "anchor": [
       86.0,
-      115.2
+      105.2
      ],
      "scale": 1.0
     },
@@ -6767,7 +7652,7 @@
      "file": "art3d/elf-stable-bronze.png",
      "anchor": [
       86.0,
-      118.2
+      106.2
      ],
      "scale": 1.0
     },
@@ -6775,7 +7660,7 @@
      "file": "art3d/elf-stable-iron.png",
      "anchor": [
       86.0,
-      120.2
+      119.2
      ],
      "scale": 1.0
     }
@@ -7021,7 +7906,7 @@
      "file": "art3d/elf-market-tool.png",
      "anchor": [
       81.0,
-      118.2
+      107.2
      ],
      "scale": 1.0
     },
@@ -7029,7 +7914,7 @@
      "file": "art3d/elf-market-bronze.png",
      "anchor": [
       83.0,
-      120.2
+      109.2
      ],
      "scale": 1.0
     },
@@ -7037,7 +7922,7 @@
      "file": "art3d/elf-market-iron.png",
      "anchor": [
       85.0,
-      123.2
+      110.2
      ],
      "scale": 1.0
     }
@@ -7377,7 +8262,7 @@
      "file": "art3d/elf-storage_pit-stone.png",
      "anchor": [
       80.0,
-      109.2
+      91.2
      ],
      "scale": 1.0
     },
@@ -7385,7 +8270,7 @@
      "file": "art3d/elf-storage_pit-tool.png",
      "anchor": [
       75.0,
-      111.2
+      104.2
      ],
      "scale": 1.0
     },
@@ -7393,7 +8278,7 @@
      "file": "art3d/elf-storage_pit-bronze.png",
      "anchor": [
       80.0,
-      113.2
+      107.2
      ],
      "scale": 1.0
     },
@@ -7401,7 +8286,7 @@
      "file": "art3d/elf-storage_pit-iron.png",
      "anchor": [
       84.0,
-      115.2
+      114.2
      ],
      "scale": 1.0
     }

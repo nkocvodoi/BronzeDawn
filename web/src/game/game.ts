@@ -2495,7 +2495,7 @@ export class Game {
       }
     }
     const carry = u.isVillager && u.carry >= 1 && u.carryRes !== null && pose !== "work" ? u.carryRes : null;
-    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry, dir: screenDirection(face.x, face.y), t: time + u.id * 0.37, civ: this.civId(u.owner), job };
+    return { type: u.def.id, owner: u.owner, facing, pose, frame, tool, carry, dir: screenDirection(face.x, face.y), t: time + u.id * 0.37, civ: this.civId(u.owner), job, age: this.world.players[u.owner]?.age };
   }
 
   private puff(at: Vec2, big: boolean) {
@@ -2584,7 +2584,7 @@ export class Game {
    *  turns, not with what it holds up or swings. */
   private barHeight(u: Unit): number {
     const pic = unitPic({ type: u.def.id, owner: 0, facing: "front", pose: "idle", frame: 0, tool: "none", carry: null, t: 0,
-      dir: screenDirection(u.facing.x, u.facing.y), civ: this.civId(u.owner) });
+      dir: screenDirection(u.facing.x, u.facing.y), civ: this.civId(u.owner), age: this.world.players[u.owner]?.age });
     return drawnBounds(pic).up;
   }
 
