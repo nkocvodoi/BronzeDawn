@@ -259,7 +259,8 @@ def main():
         jobs = [(None, "none", None, 0, 0), *JOBS]
         for tool, rig_tool, work, frames, fps in jobs:
             key = f"{race}/villager" + (f":{tool}" if tool else "")
-            if not (only is None or race in only or key in only):
+            base = only is None or race in only or key in only
+            if not base and not (race == "elf" and any(k.startswith(f"{key}@") or k.startswith("elf@") for k in only)):
                 continue
             make = lambda race=race, rig_tool=rig_tool: races.villager_of(race, rig_tool)  # noqa: E731
             # Elves hunt with the bow and fight with a dagger.
@@ -269,14 +270,23 @@ def main():
                 make, work = races.elf_fighter, "slash"
             anims = [("idle", "idle", 6, 4), ("walk", "walk", 12, 14)] + ([("work", work, frames, fps)] if tool else [])
             f, a = RACE_ANGLER.get(race, (ANGLER_FRAME, ANGLER_ANCHOR)) if rig_tool == "rod" else (frame, anchor)
-            units[key] = unit_sheet(key, make, anims, f, a, quick, tmp)
+            if base:
+                units[key] = unit_sheet(key, make, anims, f, a, quick, tmp)
+            # The elves' villagers again in the dress of each later age ("elf/villager:axe@bronze"); the game
+            # takes the owner's age, else the latest before it, else the sheet of no age.
+            if race == "elf":
+                for tier in (1, 2, 3):
+                    aged = f"{key}@{races.ELF_AGES[tier]}"
+                    if only is not None and not (race in only or key in only or aged in only or f"elf@{races.ELF_AGES[tier]}" in only):
+                        continue
+                    units[aged] = unit_sheet(aged, lambda make=make, tier=tier: races.elf_dress(make(), tier), anims, f, a, quick, tmp)
     # The elves' own looks for the common units they train ("elf/clubman"); --only takes "elf" or "elf/clubman".
     for unit in races.ELF_UNITS:
         key = f"elf/{unit}"
         if not (only is None or "elf" in only or key in only):
             continue
         _, anims, frame, anchor = unit_spec(unit)
-        units[key] = unit_sheet(key, lambda unit=unit: races.elf_unit(unit), anims, frame, anchor, quick, tmp)
+        units[key] = unit_sheet(key, lambda unit=unit: races.elf_unit_aged(unit), anims, frame, anchor, quick, tmp)
     for unit, (make, attack) in races.UNITS.items():
         if only is not None and unit not in only and "races" not in only:
             continue

@@ -45,12 +45,27 @@ class Kit:
 class Elf(Kit):
     def __init__(self, race, age):
         super().__init__(race, age)
-        self.bark = lib.mat("bark", (0.38, 0.26, 0.16), 0.95, grain=0.5, grain_size=0.008)
-        self.live = lib.mat("livewood", (0.80, 0.68, 0.48), 0.85, grain=0.3, grain_size=0.01)
-        self.leaf = lib.mat("leaf", (0.30, 0.55, 0.22), 0.9, grain=0.45, grain_size=0.012)
-        self.leaf2 = lib.mat("leaflight", (0.52, 0.70, 0.28), 0.9, grain=0.4, grain_size=0.012)
-        self.paving = lib.mat("whitestone", (0.84, 0.82, 0.74), 0.9, grain=0.15)
-        self.yard = (0.36, 0.42, 0.22)
+        # The ladder of the elves' ages (replica/elf-ages-plan.md, "thang-vat-lieu"): rough wood and fresh
+        # leaves; living wood bent to shape; white birch, jade silk and green bronze; silver, moonstone and
+        # leaf glass. Each age's materials are named apart, so a scene keeps its own.
+        t = self.tier
+        self.bark = lib.mat(f"bark{t}", [(0.32, 0.22, 0.14), (0.38, 0.26, 0.16), (0.70, 0.68, 0.62), (0.86, 0.85, 0.82)][t], 0.95,
+                            grain=[0.5, 0.5, 0.45, 0.2][t], grain_size=0.008)
+        self.live = lib.mat(f"livewood{t}", [(0.56, 0.42, 0.28), (0.80, 0.68, 0.48), (0.90, 0.88, 0.82), (0.95, 0.94, 0.91)][t],
+                            [0.9, 0.85, 0.8, 0.5][t], grain=[0.4, 0.3, 0.25, 0.08][t], grain_size=0.01)
+        self.leaf = lib.mat(f"leaf{t}", [(0.24, 0.42, 0.16), (0.30, 0.55, 0.22), (0.30, 0.60, 0.52), (0.62, 0.84, 0.76)][t],
+                            [0.9, 0.9, 0.6, 0.25][t], grain=[0.45, 0.45, 0.2, 0.08][t], grain_size=0.012)
+        self.leaf2 = lib.mat(f"leaflight{t}", [(0.36, 0.52, 0.20), (0.52, 0.70, 0.28), (0.46, 0.74, 0.64), (0.78, 0.92, 0.86)][t],
+                             [0.9, 0.9, 0.6, 0.25][t], grain=[0.4, 0.4, 0.2, 0.08][t], grain_size=0.012)
+        self.paving = lib.mat(f"whitestone{t}", [(0.60, 0.56, 0.50), (0.78, 0.76, 0.68), (0.88, 0.87, 0.82), (0.95, 0.95, 0.93)][t], 0.9, grain=0.15)
+        # The trees themselves stay green in every age, a little lusher with each: only what the elves make
+        # changes (domes of silk, then glass), not the forest.
+        self.foliage = lib.mat(f"foliage{t}", [(0.24, 0.42, 0.16), (0.30, 0.55, 0.22), (0.28, 0.58, 0.24), (0.30, 0.62, 0.28)][t], 0.9, grain=0.45, grain_size=0.012)
+        self.foliage2 = lib.mat(f"foliage2-{t}", [(0.36, 0.52, 0.20), (0.52, 0.70, 0.28), (0.50, 0.72, 0.30), (0.56, 0.76, 0.34)][t], 0.9, grain=0.4, grain_size=0.012)
+        # Bark cord, then green bronze, then silver: the bands, rails and fittings.
+        self.trim = [self.bark, self.bark, lib.mat("verdigris", (0.36, 0.60, 0.50), 0.45, 0.6),
+                     lib.mat("silver", (0.86, 0.88, 0.92), 0.25, 0.95)][t]
+        self.yard = [(0.34, 0.36, 0.20), (0.36, 0.42, 0.22), (0.40, 0.44, 0.28), (0.44, 0.46, 0.34)][t]
 
     def hall(self, name, x, y, w, d, h):
         # Rounded walls of pale living wood, roots at the corners, a dome of leaves.
@@ -636,7 +651,14 @@ def finish(k, key):
 def make(race, key, age):
     import race_compounds  # the compounds of the approved plan, built on this file's Kits and plain buildings
     k = KITS[race](race, age)
-    race_compounds.BUILDERS[key](k)
+    if key == "wonder":
+        import race_wonders  # each race's colossal statue (the owner's notes, 2026-10-17)
+        race_wonders.WONDERS[race](k)
+    elif race == "elf":
+        import elf_ages  # the elves' own, age by age (replica/elf-ages-plan.md)
+        elf_ages.BUILDERS[key](k)
+    else:
+        race_compounds.BUILDERS[key](k)
     finish(k, key)
 
 
