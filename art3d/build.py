@@ -122,19 +122,31 @@ def _unit_sheet(key, build, anims, frame_size, anchor, quick, tmp):
             "directions": DIRS, "anims": spec_anims}
 
 
-def still(key, build, size, anchor_point, tmp, center=(0, 0, 0), ground=True):
+def trim(img, ax, ay, pad=4):
+    """Cuts the empty margin off a picture (the fantasy races' frames are made big enough for their tallest,
+    and most stood in a corner of it), moving the anchor with it. In the picture's own pixels."""
+    import numpy as np
+    ys, xs = np.nonzero(img[:, :, 3] > 0)
+    if not len(xs):
+        return img, ax, ay
+    x0, y0 = max(0, xs.min() - pad), max(0, ys.min() - pad)
+    x1, y1 = min(img.shape[1], xs.max() + 1 + pad), min(img.shape[0], ys.max() + 1 + pad)
+    return img[y0:y1, x0:x1], ax - x0, ay - y0
+
+
+def still(key, build, size, anchor_point, tmp, center=(0, 0, 0), ground=True, cut=False):
     """One picture of a model; `anchor_point` is the point in the scene that stands on the ground spot.
     `ground`: whether it casts a shadow on the ground (not on water)."""
     ppu = lib.PPU
     lib.PPU = ppu * bigger(key)
     size, _ = grown(key, size, (0, 0))
     try:
-        return _still(key, build, size, anchor_point, tmp, center, ground)
+        return _still(key, build, size, anchor_point, tmp, center, ground, cut)
     finally:
         lib.PPU = ppu
 
 
-def _still(key, build, size, anchor_point, tmp, center, ground):
+def _still(key, build, size, anchor_point, tmp, center, ground, cut=False):
     lib.reset()
     build()
     lib.RIM = ground
@@ -146,12 +158,15 @@ def _still(key, build, size, anchor_point, tmp, center, ground):
     img = lib.frame(tmp)
     lib.RIM = True
     lib.check_edges(img, key)
+    k = lib.DOWN
+    ax, ay = ax / k, ay / k
+    if cut:
+        img, ax, ay = trim(img, ax, ay)
     path = os.path.join(OUT, ART, f"{key}.png")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     lib.save_png(img, path)
     print(f"{key} -> {path}")
-    k = lib.DOWN
-    return {"file": f"{ART}/{key}.png", "anchor": [round(ax / k, 1), round(ay / k, 1)], "scale": lib.SCALE}
+    return {"file": f"{ART}/{key}.png", "anchor": [round(ax, 1), round(ay, 1)], "scale": lib.SCALE}
 
 
 ANIMAL_FRAME = (180, 150)
@@ -301,7 +316,7 @@ def main():
                 size = (int(w * (1.2 if key == "town_center" else 1)), int(h * grow))
                 center = (center[0], center[1], center[2] * grow)
                 spec = still(f"{name}-{age}", lambda race=race, key=key, age=age: race_buildings.make(race, key, age), size, anchor, tmp, center,
-                             ground=key != "dock")
+                             ground=key != "dock", cut=True)
                 buildings.setdefault(key, {}).setdefault(race, {})[age] = spec
     if want("town_center-old"):
         s = models.TOWN_CENTER

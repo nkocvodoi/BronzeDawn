@@ -3678,32 +3678,32 @@
     "tool": {
      "file": "art3d/elf-town_center-tool.png",
      "anchor": [
-      151.0,
-      266.7
+      87.0,
+      153.7
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/elf-town_center-bronze.png",
      "anchor": [
-      151.0,
-      266.7
+      83.0,
+      169.7
      ],
      "scale": 1.0
     },
     "stone": {
      "file": "art3d/elf-town_center-stone.png",
      "anchor": [
-      151.0,
-      266.7
+      84.0,
+      137.7
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-town_center-iron.png",
      "anchor": [
-      151.0,
-      266.7
+      83.0,
+      185.7
      ],
      "scale": 1.0
     }
@@ -3712,32 +3712,32 @@
     "tool": {
      "file": "art3d/dwarf-town_center-tool.png",
      "anchor": [
-      151.0,
-      266.7
+      88.0,
+      127.7
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/dwarf-town_center-bronze.png",
      "anchor": [
-      151.0,
-      266.7
+      83.0,
+      137.7
      ],
      "scale": 1.0
     },
     "stone": {
      "file": "art3d/dwarf-town_center-stone.png",
      "anchor": [
-      151.0,
-      266.7
+      84.0,
+      117.7
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-town_center-iron.png",
      "anchor": [
-      151.0,
-      266.7
+      86.0,
+      147.7
      ],
      "scale": 1.0
     }
@@ -3746,32 +3746,32 @@
     "tool": {
      "file": "art3d/centaur-town_center-tool.png",
      "anchor": [
-      151.0,
-      266.7
+      81.0,
+      110.7
      ],
      "scale": 1.0
     },
     "stone": {
      "file": "art3d/centaur-town_center-stone.png",
      "anchor": [
-      151.0,
-      266.7
+      88.0,
+      106.7
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/centaur-town_center-bronze.png",
      "anchor": [
-      151.0,
-      266.7
+      88.0,
+      118.7
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-town_center-iron.png",
      "anchor": [
-      151.0,
-      266.7
+      86.0,
+      125.7
      ],
      "scale": 1.0
     }
@@ -3780,32 +3780,32 @@
     "tool": {
      "file": "art3d/beastfolk-town_center-tool.png",
      "anchor": [
-      151.0,
-      266.7
+      84.0,
+      130.7
      ],
      "scale": 1.0
     },
     "stone": {
      "file": "art3d/beastfolk-town_center-stone.png",
      "anchor": [
-      151.0,
-      266.7
+      81.0,
+      125.7
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/beastfolk-town_center-bronze.png",
      "anchor": [
-      151.0,
-      266.7
+      81.0,
+      135.7
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-town_center-iron.png",
      "anchor": [
-      151.0,
-      266.7
+      85.0,
+      140.7
      ],
      "scale": 1.0
     }
@@ -3980,32 +3980,32 @@
     "tool": {
      "file": "art3d/elf-house-tool.png",
      "anchor": [
-      94.0,
-      178.5
+      41.0,
+      64.5
      ],
      "scale": 1.0
     },
     "stone": {
      "file": "art3d/elf-house-stone.png",
      "anchor": [
-      94.0,
-      178.5
+      41.0,
+      61.5
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/elf-house-bronze.png",
      "anchor": [
-      94.0,
-      178.5
+      41.0,
+      67.5
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-house-iron.png",
      "anchor": [
-      94.0,
-      178.5
+      41.0,
+      70.5
      ],
      "scale": 1.0
     }
@@ -4014,32 +4014,32 @@
     "tool": {
      "file": "art3d/dwarf-house-tool.png",
      "anchor": [
-      94.0,
-      178.5
+      42.0,
+      64.5
      ],
      "scale": 1.0
     },
     "stone": {
      "file": "art3d/dwarf-house-stone.png",
      "anchor": [
-      94.0,
-      178.5
+      41.0,
+      64.5
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/dwarf-house-bronze.png",
      "anchor": [
-      94.0,
-      178.5
+      43.0,
+      65.5
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-house-iron.png",
      "anchor": [
-      94.0,
-      178.5
+      43.0,
+      67.5
      ],
      "scale": 1.0
     }
@@ -4048,32 +4048,32 @@
     "tool": {
      "file": "art3d/centaur-house-tool.png",
      "anchor": [
-      94.0,
-      178.5
+      44.0,
+      66.5
      ],
      "scale": 1.0
     },
     "stone": {
      "file": "art3d/centaur-house-stone.png",
      "anchor": [
-      94.0,
-      178.5
+      41.0,
+      64.5
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/centaur-house-bronze.png",
      "anchor": [
-      94.0,
-      178.5
+      45.0,
+      68.5
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-house-iron.png",
      "anchor": [
-      94.0,
-      178.5
+      47.0,
+      71.5
      ],
      "scale": 1.0
     }
@@ -4082,32 +4082,32 @@
     "tool": {
      "file": "art3d/beastfolk-house-tool.png",
      "anchor": [
-      94.0,
-      178.5
+      42.0,
+      63.5
      ],
      "scale": 1.0
     },
     "stone": {
      "file": "art3d/beastfolk-house-stone.png",
      "anchor": [
-      94.0,
-      178.5
+      41.0,
+      61.5
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/beastfolk-house-bronze.png",
      "anchor": [
-      94.0,
-      178.5
+      41.0,
+      64.5
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-house-iron.png",
      "anchor": [
-      94.0,
-      178.5
+      43.0,
+      64.5
      ],
      "scale": 1.0
     }
@@ -4282,32 +4282,32 @@
     "stone": {
      "file": "art3d/centaur-granary-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      62.0,
+      87.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/centaur-granary-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      62.0,
+      89.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/centaur-granary-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      66.0,
+      90.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-granary-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      69.0,
+      91.2
      ],
      "scale": 1.0
     }
@@ -4316,32 +4316,32 @@
     "stone": {
      "file": "art3d/beastfolk-granary-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      64.0,
+      92.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/beastfolk-granary-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      63.0,
+      92.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/beastfolk-granary-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      64.0,
+      92.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-granary-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      64.0,
+      92.2
      ],
      "scale": 1.0
     }
@@ -4350,32 +4350,32 @@
     "stone": {
      "file": "art3d/dwarf-granary-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      61.0,
+      82.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/dwarf-granary-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      62.0,
+      84.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/dwarf-granary-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      70.0,
+      86.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-granary-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      66.0,
+      88.2
      ],
      "scale": 1.0
     }
@@ -4384,32 +4384,32 @@
     "stone": {
      "file": "art3d/elf-granary-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      60.0,
+      112.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/elf-granary-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      63.0,
+      117.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/elf-granary-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      66.0,
+      121.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-granary-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      69.0,
+      126.2
      ],
      "scale": 1.0
     }
@@ -4584,32 +4584,32 @@
     "tool": {
      "file": "art3d/elf-barracks-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      75.0,
+      116.2
      ],
      "scale": 1.0
     },
     "stone": {
      "file": "art3d/elf-barracks-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      76.0,
+      113.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/elf-barracks-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      81.0,
+      119.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-barracks-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      82.0,
+      121.2
      ],
      "scale": 1.0
     }
@@ -4618,32 +4618,32 @@
     "stone": {
      "file": "art3d/centaur-barracks-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      81.0,
+      115.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/centaur-barracks-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      77.0,
+      118.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/centaur-barracks-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      82.0,
+      126.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-barracks-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      82.0,
+      129.2
      ],
      "scale": 1.0
     }
@@ -4652,32 +4652,32 @@
     "stone": {
      "file": "art3d/beastfolk-barracks-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      75.0,
+      120.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/beastfolk-barracks-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      79.0,
+      124.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/beastfolk-barracks-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      128.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-barracks-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      132.2
      ],
      "scale": 1.0
     }
@@ -4686,32 +4686,32 @@
     "stone": {
      "file": "art3d/dwarf-barracks-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      110.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/dwarf-barracks-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      113.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/dwarf-barracks-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      116.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-barracks-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      120.2
      ],
      "scale": 1.0
     }
@@ -4886,32 +4886,32 @@
     "stone": {
      "file": "art3d/centaur-dock-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      110.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/centaur-dock-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      110.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/centaur-dock-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      110.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-dock-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      110.2
      ],
      "scale": 1.0
     }
@@ -4920,32 +4920,32 @@
     "stone": {
      "file": "art3d/beastfolk-dock-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      106.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/beastfolk-dock-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      106.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/beastfolk-dock-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      106.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-dock-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      106.2
      ],
      "scale": 1.0
     }
@@ -4954,32 +4954,32 @@
     "stone": {
      "file": "art3d/dwarf-dock-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      106.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/dwarf-dock-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      106.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/dwarf-dock-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      106.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-dock-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      106.2
      ],
      "scale": 1.0
     }
@@ -4988,32 +4988,32 @@
     "stone": {
      "file": "art3d/elf-dock-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      117.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/elf-dock-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      117.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/elf-dock-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      117.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-dock-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      94.0,
+      117.2
      ],
      "scale": 1.0
     }
@@ -5172,16 +5172,16 @@
     "bronze": {
      "file": "art3d/elf-temple-bronze.png",
      "anchor": [
-      126.0,
-      266.7
+      82.0,
+      134.7
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-temple-iron.png",
      "anchor": [
-      126.0,
-      266.7
+      84.0,
+      134.7
      ],
      "scale": 1.0
     }
@@ -5190,16 +5190,16 @@
     "bronze": {
      "file": "art3d/dwarf-temple-bronze.png",
      "anchor": [
-      126.0,
-      266.7
+      86.0,
+      116.7
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-temple-iron.png",
      "anchor": [
-      126.0,
-      266.7
+      82.0,
+      116.7
      ],
      "scale": 1.0
     }
@@ -5208,16 +5208,16 @@
     "bronze": {
      "file": "art3d/centaur-temple-bronze.png",
      "anchor": [
-      126.0,
-      266.7
+      89.0,
+      138.7
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-temple-iron.png",
      "anchor": [
-      126.0,
-      266.7
+      87.0,
+      138.7
      ],
      "scale": 1.0
     }
@@ -5226,16 +5226,16 @@
     "bronze": {
      "file": "art3d/beastfolk-temple-bronze.png",
      "anchor": [
-      126.0,
-      266.7
+      82.0,
+      115.7
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-temple-iron.png",
      "anchor": [
-      126.0,
-      266.7
+      83.0,
+      115.7
      ],
      "scale": 1.0
     }
@@ -5354,16 +5354,16 @@
     "bronze": {
      "file": "art3d/elf-wonder-bronze.png",
      "anchor": [
-      190.0,
-      466.9
+      148.0,
+      264.9
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-wonder-iron.png",
      "anchor": [
-      190.0,
-      466.9
+      147.0,
+      264.9
      ],
      "scale": 1.0
     }
@@ -5372,16 +5372,16 @@
     "bronze": {
      "file": "art3d/dwarf-wonder-bronze.png",
      "anchor": [
-      190.0,
-      466.9
+      144.0,
+      205.9
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-wonder-iron.png",
      "anchor": [
-      190.0,
-      466.9
+      143.0,
+      205.9
      ],
      "scale": 1.0
     }
@@ -5390,16 +5390,16 @@
     "bronze": {
      "file": "art3d/centaur-wonder-bronze.png",
      "anchor": [
-      190.0,
-      466.9
+      147.0,
+      215.9
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-wonder-iron.png",
      "anchor": [
-      190.0,
-      466.9
+      147.0,
+      215.9
      ],
      "scale": 1.0
     }
@@ -5408,16 +5408,16 @@
     "bronze": {
      "file": "art3d/beastfolk-wonder-bronze.png",
      "anchor": [
-      190.0,
-      466.9
+      145.0,
+      191.9
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-wonder-iron.png",
      "anchor": [
-      190.0,
-      466.9
+      145.0,
+      191.9
      ],
      "scale": 1.0
     }
@@ -5528,8 +5528,8 @@
     "tool": {
      "file": "art3d/beastfolk-watch_tower-tool.png",
      "anchor": [
-      94.0,
-      212.3
+      60.0,
+      102.3
      ],
      "scale": 1.0
     }
@@ -5538,8 +5538,8 @@
     "tool": {
      "file": "art3d/centaur-watch_tower-tool.png",
      "anchor": [
-      94.0,
-      212.3
+      60.0,
+      113.3
      ],
      "scale": 1.0
     }
@@ -5548,8 +5548,8 @@
     "tool": {
      "file": "art3d/dwarf-watch_tower-tool.png",
      "anchor": [
-      94.0,
-      212.3
+      62.0,
+      104.3
      ],
      "scale": 1.0
     }
@@ -5558,8 +5558,8 @@
     "tool": {
      "file": "art3d/elf-watch_tower-tool.png",
      "anchor": [
-      94.0,
-      212.3
+      59.0,
+      112.3
      ],
      "scale": 1.0
     }
@@ -5630,8 +5630,8 @@
     "bronze": {
      "file": "art3d/centaur-sentry_tower-bronze.png",
      "anchor": [
-      94.0,
-      202.7
+      60.0,
+      120.7
      ],
      "scale": 1.0
     }
@@ -5640,8 +5640,8 @@
     "bronze": {
      "file": "art3d/beastfolk-sentry_tower-bronze.png",
      "anchor": [
-      94.0,
-      202.7
+      60.0,
+      109.7
      ],
      "scale": 1.0
     }
@@ -5650,8 +5650,8 @@
     "bronze": {
      "file": "art3d/dwarf-sentry_tower-bronze.png",
      "anchor": [
-      94.0,
-      202.7
+      62.0,
+      112.7
      ],
      "scale": 1.0
     }
@@ -5660,8 +5660,8 @@
     "bronze": {
      "file": "art3d/elf-sentry_tower-bronze.png",
      "anchor": [
-      94.0,
-      202.7
+      59.0,
+      119.7
      ],
      "scale": 1.0
     }
@@ -5732,8 +5732,8 @@
     "iron": {
      "file": "art3d/centaur-guard_tower-iron.png",
      "anchor": [
-      94.0,
-      216.8
+      60.0,
+      130.8
      ],
      "scale": 1.0
     }
@@ -5742,8 +5742,8 @@
     "iron": {
      "file": "art3d/beastfolk-guard_tower-iron.png",
      "anchor": [
-      94.0,
-      216.8
+      60.0,
+      119.8
      ],
      "scale": 1.0
     }
@@ -5752,8 +5752,8 @@
     "iron": {
      "file": "art3d/dwarf-guard_tower-iron.png",
      "anchor": [
-      94.0,
-      216.8
+      62.0,
+      121.8
      ],
      "scale": 1.0
     }
@@ -5762,8 +5762,8 @@
     "iron": {
      "file": "art3d/elf-guard_tower-iron.png",
      "anchor": [
-      94.0,
-      216.8
+      59.0,
+      129.8
      ],
      "scale": 1.0
     }
@@ -5834,8 +5834,8 @@
     "iron": {
      "file": "art3d/centaur-ballista_tower-iron.png",
      "anchor": [
-      94.0,
-      226.7
+      60.0,
+      145.7
      ],
      "scale": 1.0
     }
@@ -5844,8 +5844,8 @@
     "iron": {
      "file": "art3d/beastfolk-ballista_tower-iron.png",
      "anchor": [
-      94.0,
-      226.7
+      60.0,
+      131.7
      ],
      "scale": 1.0
     }
@@ -5854,8 +5854,8 @@
     "iron": {
      "file": "art3d/dwarf-ballista_tower-iron.png",
      "anchor": [
-      94.0,
-      226.7
+      62.0,
+      129.7
      ],
      "scale": 1.0
     }
@@ -5864,8 +5864,8 @@
     "iron": {
      "file": "art3d/elf-ballista_tower-iron.png",
      "anchor": [
-      94.0,
-      226.7
+      59.0,
+      139.7
      ],
      "scale": 1.0
     }
@@ -5944,16 +5944,16 @@
     "bronze": {
      "file": "art3d/centaur-government_center-bronze.png",
      "anchor": [
-      141.0,
-      215.2
+      86.0,
+      144.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-government_center-iron.png",
      "anchor": [
-      141.0,
-      215.2
+      85.0,
+      144.2
      ],
      "scale": 1.0
     }
@@ -5962,16 +5962,16 @@
     "bronze": {
      "file": "art3d/beastfolk-government_center-bronze.png",
      "anchor": [
-      141.0,
-      215.2
+      82.0,
+      144.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-government_center-iron.png",
      "anchor": [
-      141.0,
-      215.2
+      85.0,
+      144.2
      ],
      "scale": 1.0
     }
@@ -5980,16 +5980,16 @@
     "bronze": {
      "file": "art3d/dwarf-government_center-bronze.png",
      "anchor": [
-      141.0,
-      215.2
+      84.0,
+      144.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-government_center-iron.png",
      "anchor": [
-      141.0,
-      215.2
+      88.0,
+      144.2
      ],
      "scale": 1.0
     }
@@ -5998,16 +5998,16 @@
     "bronze": {
      "file": "art3d/elf-government_center-bronze.png",
      "anchor": [
-      141.0,
-      215.2
+      80.0,
+      151.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-government_center-iron.png",
      "anchor": [
-      141.0,
-      215.2
+      89.0,
+      157.2
      ],
      "scale": 1.0
     }
@@ -6126,16 +6126,16 @@
     "bronze": {
      "file": "art3d/centaur-academy-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      78.0,
+      111.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-academy-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      83.0,
+      114.2
      ],
      "scale": 1.0
     }
@@ -6144,16 +6144,16 @@
     "bronze": {
      "file": "art3d/beastfolk-academy-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      79.0,
+      106.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-academy-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      83.0,
+      107.2
      ],
      "scale": 1.0
     }
@@ -6162,16 +6162,16 @@
     "bronze": {
      "file": "art3d/dwarf-academy-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      85.0,
+      120.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-academy-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      85.0,
+      123.2
      ],
      "scale": 1.0
     }
@@ -6180,16 +6180,16 @@
     "bronze": {
      "file": "art3d/elf-academy-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      81.0,
+      150.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-academy-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      154.2
      ],
      "scale": 1.0
     }
@@ -6300,8 +6300,8 @@
     "iron": {
      "file": "art3d/centaur-siege_workshop-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      80.0,
+      128.2
      ],
      "scale": 1.0
     }
@@ -6310,8 +6310,8 @@
     "iron": {
      "file": "art3d/beastfolk-siege_workshop-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      106.2
      ],
      "scale": 1.0
     }
@@ -6320,8 +6320,8 @@
     "iron": {
      "file": "art3d/dwarf-siege_workshop-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      82.0,
+      124.2
      ],
      "scale": 1.0
     }
@@ -6330,8 +6330,8 @@
     "iron": {
      "file": "art3d/elf-siege_workshop-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      127.2
      ],
      "scale": 1.0
     }
@@ -6418,24 +6418,24 @@
     "tool": {
      "file": "art3d/centaur-archery_range-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      78.0,
+      128.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/centaur-archery_range-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      79.0,
+      128.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-archery_range-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      87.0,
+      128.2
      ],
      "scale": 1.0
     }
@@ -6444,24 +6444,24 @@
     "tool": {
      "file": "art3d/beastfolk-archery_range-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      81.0,
+      128.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/beastfolk-archery_range-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      128.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-archery_range-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      82.0,
+      128.2
      ],
      "scale": 1.0
     }
@@ -6470,24 +6470,24 @@
     "tool": {
      "file": "art3d/dwarf-archery_range-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      81.0,
+      128.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/dwarf-archery_range-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      85.0,
+      128.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-archery_range-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      82.0,
+      128.2
      ],
      "scale": 1.0
     }
@@ -6496,24 +6496,24 @@
     "tool": {
      "file": "art3d/elf-archery_range-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      128.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/elf-archery_range-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      128.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-archery_range-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      85.0,
+      128.2
      ],
      "scale": 1.0
     }
@@ -6680,24 +6680,24 @@
     "tool": {
      "file": "art3d/centaur-stable-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      87.0,
+      120.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/centaur-stable-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      87.0,
+      122.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-stable-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      87.0,
+      124.2
      ],
      "scale": 1.0
     }
@@ -6706,24 +6706,24 @@
     "tool": {
      "file": "art3d/beastfolk-stable-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      87.0,
+      120.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/beastfolk-stable-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      87.0,
+      123.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-stable-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      87.0,
+      126.2
      ],
      "scale": 1.0
     }
@@ -6732,24 +6732,24 @@
     "tool": {
      "file": "art3d/dwarf-stable-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      89.0,
+      115.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/dwarf-stable-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      89.0,
+      118.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-stable-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      89.0,
+      120.2
      ],
      "scale": 1.0
     }
@@ -6758,24 +6758,24 @@
     "tool": {
      "file": "art3d/elf-stable-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      86.0,
+      115.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/elf-stable-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      86.0,
+      118.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-stable-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      86.0,
+      120.2
      ],
      "scale": 1.0
     }
@@ -6942,24 +6942,24 @@
     "tool": {
      "file": "art3d/centaur-market-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      79.0,
+      115.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/centaur-market-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      79.0,
+      117.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-market-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      120.2
      ],
      "scale": 1.0
     }
@@ -6968,24 +6968,24 @@
     "tool": {
      "file": "art3d/beastfolk-market-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      77.0,
+      104.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/beastfolk-market-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      80.0,
+      104.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-market-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      82.0,
+      104.2
      ],
      "scale": 1.0
     }
@@ -6994,24 +6994,24 @@
     "tool": {
      "file": "art3d/dwarf-market-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      116.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/dwarf-market-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      81.0,
+      119.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-market-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      81.0,
+      122.2
      ],
      "scale": 1.0
     }
@@ -7020,24 +7020,24 @@
     "tool": {
      "file": "art3d/elf-market-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      81.0,
+      118.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/elf-market-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      83.0,
+      120.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-market-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      85.0,
+      123.2
      ],
      "scale": 1.0
     }
@@ -7274,32 +7274,32 @@
     "stone": {
      "file": "art3d/centaur-storage_pit-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      76.0,
+      108.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/centaur-storage_pit-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      81.0,
+      110.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/centaur-storage_pit-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      82.0,
+      117.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/centaur-storage_pit-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      83.0,
+      119.2
      ],
      "scale": 1.0
     }
@@ -7308,32 +7308,32 @@
     "stone": {
      "file": "art3d/beastfolk-storage_pit-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      75.0,
+      101.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/beastfolk-storage_pit-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      79.0,
+      103.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/beastfolk-storage_pit-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      106.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/beastfolk-storage_pit-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      81.0,
+      107.2
      ],
      "scale": 1.0
     }
@@ -7342,32 +7342,32 @@
     "stone": {
      "file": "art3d/dwarf-storage_pit-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      75.0,
+      109.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/dwarf-storage_pit-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      77.0,
+      111.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/dwarf-storage_pit-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      82.0,
+      114.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-storage_pit-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      85.0,
+      117.2
      ],
      "scale": 1.0
     }
@@ -7376,32 +7376,32 @@
     "stone": {
      "file": "art3d/elf-storage_pit-stone.png",
      "anchor": [
-      126.0,
-      215.2
+      80.0,
+      109.2
      ],
      "scale": 1.0
     },
     "tool": {
      "file": "art3d/elf-storage_pit-tool.png",
      "anchor": [
-      126.0,
-      215.2
+      75.0,
+      111.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/elf-storage_pit-bronze.png",
      "anchor": [
-      126.0,
-      215.2
+      80.0,
+      113.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/elf-storage_pit-iron.png",
      "anchor": [
-      126.0,
-      215.2
+      84.0,
+      115.2
      ],
      "scale": 1.0
     }
