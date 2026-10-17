@@ -6,6 +6,10 @@ liệu đo, cách kiểm tra) nằm trong mô tả của từng PR. Danh sách t
 
 Mỗi PR mới thêm một dòng vào đầu danh sách.
 
+## 2026-10-18
+
+- [#149](https://github.com/nkocvodoi/BronzeDawn/pull/149) Dwarf, Centaur, Beastfolk thay đổi theo từng đời: công trình (đá núi tới granite viền vàng; lều da tới bệ đá trắng; khung xương tới đá dựng và đồng), dân phục theo đời, lính chung vẽ theo từng tộc (centaur làm kỵ binh, người gấu làm bộ binh nặng)
+
 ## 2026-10-17
 
 - [#146](https://github.com/nkocvodoi/BronzeDawn/pull/146) Elf thay đổi theo từng đời: công trình (chòi lá, gỗ sống, vòm lụa xanh ngọc, bạc và kính lá), dân phục và quân phục theo đời, kỵ binh cưỡi nai; hình dân/lính theo đời (`elf/villager@bronze`). Wonder của 4 tộc là tượng khổng lồ dựng bằng metaball: nữ thần cây, thần thợ rèn, ngựa chồm, rồng trên núi đá
