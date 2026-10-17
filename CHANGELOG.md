@@ -6,6 +6,11 @@ liệu đo, cách kiểm tra) nằm trong mô tả của từng PR. Danh sách t
 
 Mỗi PR mới thêm một dòng vào đầu danh sách.
 
+## 2026-10-17
+
+- [#146](https://github.com/nkocvodoi/BronzeDawn/pull/146) Elf thay đổi theo từng đời: công trình (chòi lá, gỗ sống, vòm lụa xanh ngọc, bạc và kính lá), dân phục và quân phục theo đời, kỵ binh cưỡi nai; hình dân/lính theo đời (`elf/villager@bronze`). Wonder của 4 tộc là tượng khổng lồ dựng bằng metaball: nữ thần cây, thần thợ rèn, ngựa chồm, rồng trên núi đá
+- [#145](https://github.com/nkocvodoi/BronzeDawn/pull/145) Tộc giả tưởng: kế hoạch đồ họa đã duyệt, công trình thành khu nhiều phần (nhà phụ, rào, đồ nghề, đèn và tượng của tộc), cắt gọn vào giữa khung, biểu tượng riêng cho 4 công nghệ riêng; trang so sánh `web/scripts/race-review.mjs`
+
 ## 2026-10-16
 
 - [#144](https://github.com/nkocvodoi/BronzeDawn/pull/144) Công trình theo 5 bộ kiến trúc (Ai Cập, Babylon, Châu Á, Hy Lạp, La Mã; thay cho #141) và kế hoạch sửa hình đã duyệt: tường, mái có vân gạch, đá, ngói; nắng gắt hơn, màu đất; nền đất có rêu và đồ vật; công trình thành khu (doanh trại có sân tập, chuồng ngựa có bãi quây, bãi chứa ngoài trời); tháp, bến, ruộng riêng từng kiến trúc; nhà và kho lúa riêng từng đời; chợ và trường bắn làm lại; tượng Phật ở tháp chùa. Render lại cả 635 hình. So với bản gốc: 59 → 67/100
