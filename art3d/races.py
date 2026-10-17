@@ -444,3 +444,120 @@ def elf_unit_aged(unit):
     rider.root.location = (0, 0.02, soldiers.Horse.HIGH + 0.02 - 0.42)
     lib.adopt(rider.root, beast.body)
     return soldiers.Mount(rider, beast)
+
+
+# ---- the dwarves, centaurs and beastfolk age by age (replica/races-ages-plan.md), as the elves above: each
+# age's villager wears a layer more, and each common soldier the dress of the age it is first trained in.
+#   Dwarf      Tool: a leather apron, iron bracers, boots. Bronze: a shirt of mail, a bronze cap, a bronze belt.
+#              Iron: a steel breastplate banded in gold, a helm rimmed in gold with a miner's lamp.
+#   Centaur    Tool: a blanket over the horse's back, saddlebags, a leather vest. Bronze: the blanket blue and
+#              starred, bronze armlets, a band with a star. Iron: a white caparison fringed in gold, a gold
+#              breastplate and circlet.
+#   Beastfolk  Tool: a leather vest and wraps. Bronze: a necklace of fangs, stripes of ochre, a feather.
+#              Iron: bronze armlets, a cloak of dark fur, a circlet of bronze fangs.
+
+UNIT_AGE = {"clubman": 0, "axeman": 1, "slinger": 1, "bowman": 1, "scout": 1, "short_swordsman": 2, "broad_swordsman": 2,
+            "hoplite": 2, "improved_bowman": 2, "cavalry": 2, "priest": 2, "camel_rider": 2, "long_swordsman": 3, "legion": 3,
+            "phalanx": 3, "centurion": 3, "horse_archer": 3, "heavy_horse_archer": 3, "heavy_cavalry": 3, "cataphract": 3}
+MOUNTED = {"scout", "cavalry", "heavy_cavalry", "cataphract", "horse_archer", "heavy_horse_archer", "camel_rider"}
+# The common units each race trains (its tech tree), drawn as that race: "<race>/<unit>".
+RACE_UNITS = {
+    "dwarf": ["clubman", "axeman", "slinger", "short_swordsman", "broad_swordsman", "long_swordsman", "legion", "hoplite",
+              "phalanx", "centurion", "bowman", "improved_bowman", "scout"],
+    "centaur": ["clubman", "axeman", "slinger", "hoplite", "phalanx", "centurion", "bowman", "horse_archer",
+                "heavy_horse_archer", "scout", "cavalry", "heavy_cavalry", "cataphract", "camel_rider"],
+    "beastfolk": ["clubman", "axeman", "slinger", "short_swordsman", "broad_swordsman", "long_swordsman", "hoplite",
+                  "phalanx", "centurion", "bowman", "improved_bowman", "horse_archer", "heavy_horse_archer", "scout",
+                  "cavalry", "heavy_cavalry", "camel_rider"],
+}
+# The beastfolk's heavy foot are bearkin; the rest wolfkin.
+BEARS = {"long_swordsman", "phalanx", "centurion", "legion"}
+
+
+def _limbs(rig, fn):
+    """Calls fn(side, x, elbow, knee) for each side of a figure."""
+    for side in ("L", "R"):
+        x = 0.112 if side == "L" else -0.112
+        fn(side, x, rig.elbows.get(side), rig.knees.get(side))
+
+
+def race_dress(race, figure, tier):
+    """A race's figure (a villager or a soldier, or a centaur holding one) in the dress of an age."""
+    if tier <= 0:
+        return figure
+    rig = getattr(figure, "rider", figure)
+    t, n = rig.torso, rig.neck
+    leather = lib.mat(f"{race}-leather", (0.46, 0.30, 0.17), 0.75, grain=0.3, grain_size=0.01)
+    bronze = lib.mat("bronze", soldiers.BRONZE, 0.35, 0.8)
+    gold = lib.mat("dressgold", (0.95, 0.78, 0.32), 0.3, 0.9)
+    steel = lib.mat("dresssteel", (0.56, 0.58, 0.62), 0.3, 0.9)
+    if race == "dwarf":
+        iron = lib.mat("dwarfbracer", (0.36, 0.36, 0.38), 0.4, 0.8)
+        lib.box("d-apron", (0.15, 0.02, 0.24), (0, -0.115, 0.45), leather, t)
+        _limbs(rig, lambda s, x, e, k: (e and lib.cyl(f"d-bracer{s}", 0.03, 0.06, (x, 0, 0.42), iron if tier < 3 else gold, e, verts=10),
+                                          k and lib.cyl(f"d-boot{s}", 0.04, 0.12, (x * 0.45, 0, 0.07), leather, k, verts=10)))
+        if tier >= 2:
+            lib.cyl("d-mail", 0.104, 0.2, (0, 0, 0.56), lib.mat("mail", (0.50, 0.50, 0.52), 0.5, 0.7, grain=0.5, grain_size=0.004) if tier == 2 else steel,
+                    t, r2=0.09, verts=20)
+            lib.cyl("d-belt", 0.108, 0.035, (0, 0, 0.47), bronze if tier == 2 else gold, t, verts=20)
+            lib.ball("d-cap", 0.082, (0, 0.005, 0.81), bronze if tier == 2 else steel, n, scale=(1, 1, 0.75))
+        if tier == 3:
+            lib.cyl("d-breastband", 0.106, 0.03, (0, 0, 0.62), gold, t, verts=20)
+            lib.cyl("d-helmrim", 0.084, 0.02, (0, 0.005, 0.79), gold, n, verts=16)
+            lib.ball("d-lamp", 0.018, (0, -0.08, 0.83), lib.mat("dwarf-glow", (1.0, 0.45, 0.12), 1.0, emit=(1.0, 0.45, 0.12)), n, sub=1)
+    elif race == "centaur":
+        beast = getattr(figure, "beast", None)
+        blanket = [None, lib.mat("blanketbrown", (0.52, 0.34, 0.20), 0.85, grain=0.3), lib.mat("blanketblue", (0.20, 0.34, 0.64), 0.7),
+                   lib.mat("caparison", (0.95, 0.94, 0.90), 0.6)][tier]
+        if beast is not None:
+            hb = soldiers.Horse.HIGH
+            lib.ball("c-blanket", 0.15, (0, 0.08, hb + 0.04), blanket, beast.body, scale=(1.08, 1.4, 0.75), sub=2)
+            if tier == 1:
+                for s in (-1, 1):
+                    lib.ball(f"c-saddlebag{s}", 0.045, (s * 0.14, 0.18, hb - 0.02), leather, beast.body, scale=(0.6, 1.0, 1.0), sub=1)
+            if tier >= 2:
+                for i in range(5):
+                    lib.ball(f"c-star{i}", 0.014, (0.155, -0.08 + 0.08 * i, hb + 0.02), gold, beast.body, sub=1)
+            if tier == 3:
+                lib.cyl("c-fringe", 0.16, 0.025, (0, 0.08, hb - 0.06), gold, beast.body, verts=20).scale = (1.05, 1.45, 1)
+        lib.cyl("c-vest", 0.1, 0.18, (0, 0, 0.57), leather if tier == 1 else blanket if tier == 2 else gold, t, r2=0.088, verts=20)
+        if tier >= 2:
+            _limbs(rig, lambda s, x, e, k: e and lib.cyl(f"c-armlet{s}", 0.031, 0.03, (x, 0, 0.48), bronze if tier == 2 else gold, e, verts=10))
+            lib.cyl("c-headband", 0.081, 0.02, (0, 0, 0.82), blanket if tier == 2 else gold, n, verts=16)
+            lib.ball("c-headstar", 0.016, (0, -0.08, 0.82), gold, n, sub=1)
+    else:  # beastfolk
+        ochre = lib.mat("ochre2", (0.72, 0.20, 0.12), 0.85)
+        bone = lib.mat("bone", (0.90, 0.86, 0.74), 0.7)
+        fur = lib.mat("darkfur", (0.24, 0.18, 0.12), 0.95, grain=0.45, grain_size=0.006)
+        lib.cyl("b-vest", 0.1, 0.17, (0, 0, 0.57), leather, t, r2=0.09, verts=18)
+        _limbs(rig, lambda s, x, e, k: k and lib.cyl(f"b-wrap{s}", 0.037, 0.06, (x * 0.45, 0, 0.12), leather, k, verts=10))
+        if tier >= 2:
+            for i in range(5):
+                a = R(-60 + 30 * i)
+                lib.cyl(f"b-fang{i}", 0.008, 0.035, (math.sin(a) * 0.06, -math.cos(a) * 0.06, 0.66), bone, n, verts=4, r2=0.001)
+            for j in range(2):
+                lib.box(f"b-paint{j}", (0.1, 0.01, 0.012), (0, -0.1, 0.52 + 0.04 * j), ochre, t)
+            lib.cyl("b-feather", 0.008, 0.12, (0.05, 0.03, 0.87), lib.mat("feather", (0.90, 0.88, 0.82), 0.7), n, rot=(0, R(20), 0), verts=4, r2=0.002)
+        if tier == 3:
+            beastbronze = lib.mat("beastbronze", (0.68, 0.46, 0.22), 0.35, 0.8)
+            _limbs(rig, lambda s, x, e, k: e and lib.cyl(f"b-armlet{s}", 0.031, 0.035, (x, 0, 0.47), beastbronze, e, verts=10))
+            lib.box("b-cloak", (0.22, 0.015, 0.34), (0, 0.08, 0.5), fur, t, rot=(R(-6), 0, 0))
+            lib.cyl("b-circlet", 0.082, 0.018, (0, 0, 0.83), beastbronze, n, verts=16)
+    return figure
+
+
+def race_unit_aged(race, unit):
+    """A common unit as one of a race, in the dress of the age it is first trained in."""
+    tier = UNIT_AGE.get(unit, 0)
+    kit = soldiers.KITS[unit]
+    if race == "centaur":
+        coat = (0.56, 0.36, 0.20) if tier < 3 else (0.80, 0.76, 0.70)
+        return race_dress("centaur", Centaur(lambda: soldiers.Soldier(None, CENTAUR_LOOK, kit), coat=coat), tier)
+    look = DWARF if race == "dwarf" else (BEAR if unit in BEARS else WOLF)
+    if unit not in MOUNTED:
+        return race_dress(race, soldier_of(look, kit), tier)
+    rider = race_dress(race, finish(soldiers.Soldier(unit, look, kit)), tier)
+    beast = soldiers.Horse((0.40, 0.40, 0.42) if race == "dwarf" else (0.30, 0.30, 0.32))
+    rider.root.location = (0, 0.02, soldiers.Horse.HIGH + 0.02 - 0.42)
+    lib.adopt(rider.root, beast.body)
+    return soldiers.Mount(rider, beast)

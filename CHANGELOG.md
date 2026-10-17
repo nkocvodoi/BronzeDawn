@@ -6,6 +6,10 @@ liệu đo, cách kiểm tra) nằm trong mô tả của từng PR. Danh sách t
 
 Mỗi PR mới thêm một dòng vào đầu danh sách.
 
+## 2026-10-18
+
+- [#149](https://github.com/nkocvodoi/BronzeDawn/pull/149) Dwarf, Centaur, Beastfolk thay đổi theo từng đời: công trình (đá núi tới granite viền vàng; lều da tới bệ đá trắng; khung xương tới đá dựng và đồng), dân phục theo đời, lính chung vẽ theo từng tộc (centaur làm kỵ binh, người gấu làm bộ binh nặng)
+
 ## 2026-10-17
 
 - [#148](https://github.com/nkocvodoi/BronzeDawn/pull/148) Chế độ chỉ quan sát: Tab để xem qua mắt từng máy (sương mù, tài nguyên, thông báo, gợi ý, bảng lệnh), F để camera bám theo máy; thông báo khi đủ điều kiện lên đời

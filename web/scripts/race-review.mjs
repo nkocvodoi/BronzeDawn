@@ -94,18 +94,19 @@ const sprite = (side, spec, label) => {
   const row = (spec.anims.idle ?? spec.anims.walk).row;
   return `<figure><canvas class="sprite" data-src="${src}" data-fw="${spec.frame[0]}" data-fh="${spec.frame[1]}" data-row="${row}"></canvas><figcaption>${label}</figcaption></figure>`;
 };
-if (Object.keys(now.units ?? {}).some((k) => k.includes("@"))) {
-  cards.push(`<h2 id="elf-units">Elf: dân và lính</h2>`);
-  const tools = Object.keys(now.units).filter((k) => k.startsWith("elf/villager") && !k.includes("@"));
+for (const [race, raceName] of Object.entries(RACES)) {
+  if (!Object.keys(now.units ?? {}).some((k) => k.startsWith(`${race}/`) && k.includes("@"))) continue;
+  cards.push(`<h2 id="${race}-units">${raceName}: dân và lính</h2>`);
+  const tools = Object.keys(now.units).filter((k) => k.startsWith(`${race}/villager`) && !k.includes("@"));
   for (const key of tools) {
     const ages = ["", "@tool", "@bronze", "@iron"];
     const rows = `<div class="row"><span class="side">Hiện tại (main)</span>${sprite("before", before.units?.[key], "mọi đời")}</div>` +
       `<div class="row"><span class="side">Cải thiện</span>${ages.map((a) => sprite("after", now.units[key + a], AGE_NAME[a.slice(1) || "stone"])).join("")}</div>`;
-    card(`elf-units/${key}`, `Elf: ${key.replace("elf/", "")}`, `<b>Đề xuất:</b> dân phục theo đời (villager trong elf-ages-plan.md).`, rows);
+    card(`${race}-units/${key}`, `${raceName}: ${key.replace(`${race}/`, "")}`, `<b>Dân phục theo đời.</b>`, rows);
   }
-  for (const key of Object.keys(now.units).filter((k) => k.startsWith("elf/") && !k.startsWith("elf/villager"))) {
+  for (const key of Object.keys(now.units).filter((k) => k.startsWith(`${race}/`) && !k.startsWith(`${race}/villager`))) {
     const rows = `<div class="row"><span class="side">Hiện tại (main)</span>${sprite("before", before.units?.[key], "")}</div><div class="row"><span class="side">Cải thiện</span>${sprite("after", now.units[key], "")}</div>`;
-    card(`elf-units/${key}`, `Elf: ${key.replace("elf/", "")}`, `<b>Đề xuất:</b> quân phục theo đời lính xuất hiện (soldiers trong elf-ages-plan.md).`, rows);
+    card(`${race}-units/${key}`, `${raceName}: ${key.replace(`${race}/`, "")}`, `<b>Quân phục theo đời lính xuất hiện.</b>`, rows);
   }
 }
 for (const sec of ["units", "icons", "hud", "fx"]) for (const [k, v] of Object.entries(items[sec] ?? {})) card(`${sec}/${k}`, `${sec}: ${k}`, md(v));

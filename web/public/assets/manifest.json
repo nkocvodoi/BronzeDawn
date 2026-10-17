@@ -4514,6 +4514,3981 @@
      "fps": 11
     }
    }
+  },
+  "dwarf/villager:axe@iron": {
+   "file": "art3d/dwarf-villager-axe@iron.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "centaur/villager@bronze": {
+   "file": "art3d/centaur-villager@bronze.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "beastfolk/villager:pick@iron": {
+   "file": "art3d/beastfolk-villager-pick@iron.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "dwarf/long_swordsman": {
+   "file": "art3d/dwarf-long_swordsman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/cavalry": {
+   "file": "art3d/centaur-cavalry.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/phalanx": {
+   "file": "art3d/beastfolk-phalanx.png",
+   "frame": [
+    160,
+    155
+   ],
+   "anchor": [
+    78.0,
+    112.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/cavalry": {
+   "file": "art3d/beastfolk-cavalry.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/clubman": {
+   "file": "art3d/dwarf-clubman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/axeman": {
+   "file": "art3d/dwarf-axeman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/slinger": {
+   "file": "art3d/dwarf-slinger.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/short_swordsman": {
+   "file": "art3d/dwarf-short_swordsman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/broad_swordsman": {
+   "file": "art3d/dwarf-broad_swordsman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/legion": {
+   "file": "art3d/dwarf-legion.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/hoplite": {
+   "file": "art3d/dwarf-hoplite.png",
+   "frame": [
+    120,
+    100
+   ],
+   "anchor": [
+    58.0,
+    70.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/phalanx": {
+   "file": "art3d/dwarf-phalanx.png",
+   "frame": [
+    120,
+    100
+   ],
+   "anchor": [
+    58.0,
+    70.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/centurion": {
+   "file": "art3d/dwarf-centurion.png",
+   "frame": [
+    120,
+    100
+   ],
+   "anchor": [
+    58.0,
+    70.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/bowman": {
+   "file": "art3d/dwarf-bowman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/improved_bowman": {
+   "file": "art3d/dwarf-improved_bowman.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/scout": {
+   "file": "art3d/dwarf-scout.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/clubman": {
+   "file": "art3d/centaur-clubman.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/axeman": {
+   "file": "art3d/centaur-axeman.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/slinger": {
+   "file": "art3d/centaur-slinger.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/hoplite": {
+   "file": "art3d/centaur-hoplite.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/phalanx": {
+   "file": "art3d/centaur-phalanx.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/centurion": {
+   "file": "art3d/centaur-centurion.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/bowman": {
+   "file": "art3d/centaur-bowman.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/horse_archer": {
+   "file": "art3d/centaur-horse_archer.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/heavy_horse_archer": {
+   "file": "art3d/centaur-heavy_horse_archer.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/scout": {
+   "file": "art3d/centaur-scout.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/heavy_cavalry": {
+   "file": "art3d/centaur-heavy_cavalry.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/cataphract": {
+   "file": "art3d/centaur-cataphract.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/camel_rider": {
+   "file": "art3d/centaur-camel_rider.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/clubman": {
+   "file": "art3d/beastfolk-clubman.png",
+   "frame": [
+    125,
+    115
+   ],
+   "anchor": [
+    60.0,
+    82.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/axeman": {
+   "file": "art3d/beastfolk-axeman.png",
+   "frame": [
+    125,
+    115
+   ],
+   "anchor": [
+    60.0,
+    82.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/slinger": {
+   "file": "art3d/beastfolk-slinger.png",
+   "frame": [
+    125,
+    115
+   ],
+   "anchor": [
+    60.0,
+    82.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/short_swordsman": {
+   "file": "art3d/beastfolk-short_swordsman.png",
+   "frame": [
+    125,
+    115
+   ],
+   "anchor": [
+    60.0,
+    82.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/broad_swordsman": {
+   "file": "art3d/beastfolk-broad_swordsman.png",
+   "frame": [
+    125,
+    115
+   ],
+   "anchor": [
+    60.0,
+    82.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/long_swordsman": {
+   "file": "art3d/beastfolk-long_swordsman.png",
+   "frame": [
+    160,
+    155
+   ],
+   "anchor": [
+    78.0,
+    112.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/hoplite": {
+   "file": "art3d/beastfolk-hoplite.png",
+   "frame": [
+    125,
+    115
+   ],
+   "anchor": [
+    60.0,
+    82.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/centurion": {
+   "file": "art3d/beastfolk-centurion.png",
+   "frame": [
+    160,
+    155
+   ],
+   "anchor": [
+    78.0,
+    112.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/bowman": {
+   "file": "art3d/beastfolk-bowman.png",
+   "frame": [
+    125,
+    115
+   ],
+   "anchor": [
+    60.0,
+    82.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/improved_bowman": {
+   "file": "art3d/beastfolk-improved_bowman.png",
+   "frame": [
+    125,
+    115
+   ],
+   "anchor": [
+    60.0,
+    82.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/horse_archer": {
+   "file": "art3d/beastfolk-horse_archer.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/heavy_horse_archer": {
+   "file": "art3d/beastfolk-heavy_horse_archer.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/scout": {
+   "file": "art3d/beastfolk-scout.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/heavy_cavalry": {
+   "file": "art3d/beastfolk-heavy_cavalry.png",
+   "frame": [
+    150,
+    125
+   ],
+   "anchor": [
+    73.0,
+    89.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/camel_rider": {
+   "file": "art3d/beastfolk-camel_rider.png",
+   "frame": [
+    150,
+    135
+   ],
+   "anchor": [
+    73.0,
+    98.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 3
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "attack": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/villager@tool": {
+   "file": "art3d/dwarf-villager@tool.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "dwarf/villager@bronze": {
+   "file": "art3d/dwarf-villager@bronze.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "dwarf/villager@iron": {
+   "file": "art3d/dwarf-villager@iron.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "dwarf/villager:axe@tool": {
+   "file": "art3d/dwarf-villager-axe@tool.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "dwarf/villager:axe@bronze": {
+   "file": "art3d/dwarf-villager-axe@bronze.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "dwarf/villager:pick@tool": {
+   "file": "art3d/dwarf-villager-pick@tool.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "dwarf/villager:pick@bronze": {
+   "file": "art3d/dwarf-villager-pick@bronze.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "dwarf/villager:pick@iron": {
+   "file": "art3d/dwarf-villager-pick@iron.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "dwarf/villager:hammer@tool": {
+   "file": "art3d/dwarf-villager-hammer@tool.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "dwarf/villager:hammer@bronze": {
+   "file": "art3d/dwarf-villager-hammer@bronze.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "dwarf/villager:hammer@iron": {
+   "file": "art3d/dwarf-villager-hammer@iron.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "dwarf/villager:basket@tool": {
+   "file": "art3d/dwarf-villager-basket@tool.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/villager:basket@bronze": {
+   "file": "art3d/dwarf-villager-basket@bronze.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/villager:basket@iron": {
+   "file": "art3d/dwarf-villager-basket@iron.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/villager:butcher@tool": {
+   "file": "art3d/dwarf-villager-butcher@tool.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/villager:butcher@bronze": {
+   "file": "art3d/dwarf-villager-butcher@bronze.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/villager:butcher@iron": {
+   "file": "art3d/dwarf-villager-butcher@iron.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/villager:hoe@tool": {
+   "file": "art3d/dwarf-villager-hoe@tool.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/villager:hoe@bronze": {
+   "file": "art3d/dwarf-villager-hoe@bronze.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/villager:hoe@iron": {
+   "file": "art3d/dwarf-villager-hoe@iron.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "dwarf/villager:spear@tool": {
+   "file": "art3d/dwarf-villager-spear@tool.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "dwarf/villager:spear@bronze": {
+   "file": "art3d/dwarf-villager-spear@bronze.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "dwarf/villager:spear@iron": {
+   "file": "art3d/dwarf-villager-spear@iron.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "dwarf/villager:net@tool": {
+   "file": "art3d/dwarf-villager-net@tool.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    95.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "dwarf/villager:net@bronze": {
+   "file": "art3d/dwarf-villager-net@bronze.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    95.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "dwarf/villager:net@iron": {
+   "file": "art3d/dwarf-villager-net@iron.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    95.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "dwarf/villager:fight@tool": {
+   "file": "art3d/dwarf-villager-fight@tool.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
+  },
+  "dwarf/villager:fight@bronze": {
+   "file": "art3d/dwarf-villager-fight@bronze.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
+  },
+  "dwarf/villager:fight@iron": {
+   "file": "art3d/dwarf-villager-fight@iron.png",
+   "frame": [
+    100,
+    84
+   ],
+   "anchor": [
+    48.0,
+    59.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
+  },
+  "beastfolk/villager@tool": {
+   "file": "art3d/beastfolk-villager@tool.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "beastfolk/villager@bronze": {
+   "file": "art3d/beastfolk-villager@bronze.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "beastfolk/villager@iron": {
+   "file": "art3d/beastfolk-villager@iron.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "beastfolk/villager:axe@tool": {
+   "file": "art3d/beastfolk-villager-axe@tool.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "beastfolk/villager:axe@bronze": {
+   "file": "art3d/beastfolk-villager-axe@bronze.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "beastfolk/villager:axe@iron": {
+   "file": "art3d/beastfolk-villager-axe@iron.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "beastfolk/villager:pick@tool": {
+   "file": "art3d/beastfolk-villager-pick@tool.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "beastfolk/villager:pick@bronze": {
+   "file": "art3d/beastfolk-villager-pick@bronze.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "beastfolk/villager:hammer@tool": {
+   "file": "art3d/beastfolk-villager-hammer@tool.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "beastfolk/villager:hammer@bronze": {
+   "file": "art3d/beastfolk-villager-hammer@bronze.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "beastfolk/villager:hammer@iron": {
+   "file": "art3d/beastfolk-villager-hammer@iron.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "beastfolk/villager:basket@tool": {
+   "file": "art3d/beastfolk-villager-basket@tool.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/villager:basket@bronze": {
+   "file": "art3d/beastfolk-villager-basket@bronze.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/villager:basket@iron": {
+   "file": "art3d/beastfolk-villager-basket@iron.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/villager:butcher@tool": {
+   "file": "art3d/beastfolk-villager-butcher@tool.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/villager:butcher@bronze": {
+   "file": "art3d/beastfolk-villager-butcher@bronze.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/villager:butcher@iron": {
+   "file": "art3d/beastfolk-villager-butcher@iron.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/villager:hoe@tool": {
+   "file": "art3d/beastfolk-villager-hoe@tool.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/villager:hoe@bronze": {
+   "file": "art3d/beastfolk-villager-hoe@bronze.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/villager:hoe@iron": {
+   "file": "art3d/beastfolk-villager-hoe@iron.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "beastfolk/villager:spear@tool": {
+   "file": "art3d/beastfolk-villager-spear@tool.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "beastfolk/villager:spear@bronze": {
+   "file": "art3d/beastfolk-villager-spear@bronze.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "beastfolk/villager:spear@iron": {
+   "file": "art3d/beastfolk-villager-spear@iron.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "beastfolk/villager:net@tool": {
+   "file": "art3d/beastfolk-villager-net@tool.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    95.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "beastfolk/villager:net@bronze": {
+   "file": "art3d/beastfolk-villager-net@bronze.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    95.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "beastfolk/villager:net@iron": {
+   "file": "art3d/beastfolk-villager-net@iron.png",
+   "frame": [
+    140,
+    130
+   ],
+   "anchor": [
+    68.0,
+    95.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "beastfolk/villager:fight@tool": {
+   "file": "art3d/beastfolk-villager-fight@tool.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
+  },
+  "beastfolk/villager:fight@bronze": {
+   "file": "art3d/beastfolk-villager-fight@bronze.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
+  },
+  "beastfolk/villager:fight@iron": {
+   "file": "art3d/beastfolk-villager-fight@iron.png",
+   "frame": [
+    130,
+    100
+   ],
+   "anchor": [
+    63.0,
+    73.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
+  },
+  "centaur/villager@tool": {
+   "file": "art3d/centaur-villager@tool.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "centaur/villager@iron": {
+   "file": "art3d/centaur-villager@iron.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    }
+   }
+  },
+  "centaur/villager:axe@tool": {
+   "file": "art3d/centaur-villager-axe@tool.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "centaur/villager:axe@bronze": {
+   "file": "art3d/centaur-villager-axe@bronze.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "centaur/villager:axe@iron": {
+   "file": "art3d/centaur-villager-axe@iron.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "centaur/villager:pick@tool": {
+   "file": "art3d/centaur-villager-pick@tool.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "centaur/villager:pick@bronze": {
+   "file": "art3d/centaur-villager-pick@bronze.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "centaur/villager:pick@iron": {
+   "file": "art3d/centaur-villager-pick@iron.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 11
+    }
+   }
+  },
+  "centaur/villager:hammer@tool": {
+   "file": "art3d/centaur-villager-hammer@tool.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "centaur/villager:hammer@bronze": {
+   "file": "art3d/centaur-villager-hammer@bronze.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "centaur/villager:hammer@iron": {
+   "file": "art3d/centaur-villager-hammer@iron.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 12
+    }
+   }
+  },
+  "centaur/villager:basket@tool": {
+   "file": "art3d/centaur-villager-basket@tool.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/villager:basket@bronze": {
+   "file": "art3d/centaur-villager-basket@bronze.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/villager:basket@iron": {
+   "file": "art3d/centaur-villager-basket@iron.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 16,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/villager:butcher@tool": {
+   "file": "art3d/centaur-villager-butcher@tool.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/villager:butcher@bronze": {
+   "file": "art3d/centaur-villager-butcher@bronze.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/villager:butcher@iron": {
+   "file": "art3d/centaur-villager-butcher@iron.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 14,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/villager:hoe@tool": {
+   "file": "art3d/centaur-villager-hoe@tool.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/villager:hoe@bronze": {
+   "file": "art3d/centaur-villager-hoe@bronze.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/villager:hoe@iron": {
+   "file": "art3d/centaur-villager-hoe@iron.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 10
+    }
+   }
+  },
+  "centaur/villager:spear@tool": {
+   "file": "art3d/centaur-villager-spear@tool.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "centaur/villager:spear@bronze": {
+   "file": "art3d/centaur-villager-spear@bronze.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "centaur/villager:spear@iron": {
+   "file": "art3d/centaur-villager-spear@iron.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 12,
+     "fps": 12
+    }
+   }
+  },
+  "centaur/villager:net@tool": {
+   "file": "art3d/centaur-villager-net@tool.png",
+   "frame": [
+    210,
+    180
+   ],
+   "anchor": [
+    103.0,
+    127.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "centaur/villager:net@bronze": {
+   "file": "art3d/centaur-villager-net@bronze.png",
+   "frame": [
+    210,
+    180
+   ],
+   "anchor": [
+    103.0,
+    127.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "centaur/villager:net@iron": {
+   "file": "art3d/centaur-villager-net@iron.png",
+   "frame": [
+    210,
+    180
+   ],
+   "anchor": [
+    103.0,
+    127.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 20,
+     "fps": 8
+    }
+   }
+  },
+  "centaur/villager:fight@tool": {
+   "file": "art3d/centaur-villager-fight@tool.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
+  },
+  "centaur/villager:fight@bronze": {
+   "file": "art3d/centaur-villager-fight@bronze.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
+  },
+  "centaur/villager:fight@iron": {
+   "file": "art3d/centaur-villager-fight@iron.png",
+   "frame": [
+    170,
+    150
+   ],
+   "anchor": [
+    83.0,
+    107.0
+   ],
+   "scale": 1.0,
+   "directions": 8,
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4
+    },
+    "walk": {
+     "row": 8,
+     "frames": 12,
+     "fps": 14
+    },
+    "work": {
+     "row": 16,
+     "frames": 10,
+     "fps": 11
+    }
+   }
   }
  },
  "credits": [
@@ -4640,7 +8615,7 @@
      "file": "art3d/centaur-town_center-stone.png",
      "anchor": [
       88.0,
-      106.7
+      104.7
      ],
      "scale": 1.0
     },
@@ -4666,7 +8641,7 @@
      "file": "art3d/beastfolk-town_center-tool.png",
      "anchor": [
       84.0,
-      130.7
+      131.7
      ],
      "scale": 1.0
     },
@@ -4674,7 +8649,7 @@
      "file": "art3d/beastfolk-town_center-stone.png",
      "anchor": [
       81.0,
-      125.7
+      121.7
      ],
      "scale": 1.0
     },
@@ -4682,7 +8657,7 @@
      "file": "art3d/beastfolk-town_center-bronze.png",
      "anchor": [
       81.0,
-      135.7
+      138.7
      ],
      "scale": 1.0
     },
@@ -4690,7 +8665,7 @@
      "file": "art3d/beastfolk-town_center-iron.png",
      "anchor": [
       85.0,
-      140.7
+      144.7
      ],
      "scale": 1.0
     }
@@ -4916,7 +8891,7 @@
      "file": "art3d/dwarf-house-bronze.png",
      "anchor": [
       43.0,
-      65.5
+      67.5
      ],
      "scale": 1.0
     },
@@ -4924,7 +8899,7 @@
      "file": "art3d/dwarf-house-iron.png",
      "anchor": [
       43.0,
-      67.5
+      68.5
      ],
      "scale": 1.0
     }
@@ -4942,7 +8917,7 @@
      "file": "art3d/centaur-house-stone.png",
      "anchor": [
       41.0,
-      64.5
+      59.5
      ],
      "scale": 1.0
     },
@@ -4958,7 +8933,7 @@
      "file": "art3d/centaur-house-iron.png",
      "anchor": [
       47.0,
-      71.5
+      72.5
      ],
      "scale": 1.0
     }
@@ -5168,7 +9143,7 @@
      "file": "art3d/centaur-granary-stone.png",
      "anchor": [
       62.0,
-      87.2
+      85.2
      ],
      "scale": 1.0
     },
@@ -5192,7 +9167,7 @@
      "file": "art3d/centaur-granary-iron.png",
      "anchor": [
       69.0,
-      91.2
+      93.2
      ],
      "scale": 1.0
     }
@@ -5236,7 +9211,7 @@
      "file": "art3d/dwarf-granary-stone.png",
      "anchor": [
       61.0,
-      82.2
+      81.2
      ],
      "scale": 1.0
     },
@@ -5244,7 +9219,7 @@
      "file": "art3d/dwarf-granary-tool.png",
      "anchor": [
       62.0,
-      84.2
+      85.2
      ],
      "scale": 1.0
     },
@@ -5252,7 +9227,7 @@
      "file": "art3d/dwarf-granary-bronze.png",
      "anchor": [
       70.0,
-      86.2
+      88.2
      ],
      "scale": 1.0
     },
@@ -5260,7 +9235,7 @@
      "file": "art3d/dwarf-granary-iron.png",
      "anchor": [
       66.0,
-      88.2
+      89.2
      ],
      "scale": 1.0
     }
@@ -5538,7 +9513,7 @@
      "file": "art3d/beastfolk-barracks-stone.png",
      "anchor": [
       75.0,
-      120.2
+      103.2
      ],
      "scale": 1.0
     },
@@ -5546,7 +9521,7 @@
      "file": "art3d/beastfolk-barracks-tool.png",
      "anchor": [
       79.0,
-      124.2
+      125.2
      ],
      "scale": 1.0
     },
@@ -5554,7 +9529,7 @@
      "file": "art3d/beastfolk-barracks-bronze.png",
      "anchor": [
       84.0,
-      128.2
+      131.2
      ],
      "scale": 1.0
     },
@@ -5562,7 +9537,7 @@
      "file": "art3d/beastfolk-barracks-iron.png",
      "anchor": [
       84.0,
-      132.2
+      136.2
      ],
      "scale": 1.0
     }
@@ -5572,7 +9547,7 @@
      "file": "art3d/dwarf-barracks-stone.png",
      "anchor": [
       94.0,
-      110.2
+      108.2
      ],
      "scale": 1.0
     },
@@ -5587,15 +9562,15 @@
     "bronze": {
      "file": "art3d/dwarf-barracks-bronze.png",
      "anchor": [
-      94.0,
-      116.2
+      95.0,
+      117.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-barracks-iron.png",
      "anchor": [
-      94.0,
+      95.0,
       120.2
      ],
      "scale": 1.0
@@ -5772,7 +9747,7 @@
      "file": "art3d/centaur-dock-stone.png",
      "anchor": [
       94.0,
-      110.2
+      106.2
      ],
      "scale": 1.0
     },
@@ -5796,7 +9771,7 @@
      "file": "art3d/centaur-dock-iron.png",
      "anchor": [
       94.0,
-      110.2
+      112.2
      ],
      "scale": 1.0
     }
@@ -5864,7 +9839,7 @@
      "file": "art3d/dwarf-dock-iron.png",
      "anchor": [
       94.0,
-      106.2
+      107.2
      ],
      "scale": 1.0
     }
@@ -6535,7 +10510,7 @@
     "bronze": {
      "file": "art3d/dwarf-sentry_tower-bronze.png",
      "anchor": [
-      62.0,
+      63.0,
       112.7
      ],
      "scale": 1.0
@@ -6637,7 +10612,7 @@
     "iron": {
      "file": "art3d/dwarf-guard_tower-iron.png",
      "anchor": [
-      62.0,
+      63.0,
       121.8
      ],
      "scale": 1.0
@@ -6739,7 +10714,7 @@
     "iron": {
      "file": "art3d/dwarf-ballista_tower-iron.png",
      "anchor": [
-      62.0,
+      63.0,
       129.7
      ],
      "scale": 1.0
@@ -7020,7 +10995,7 @@
      "file": "art3d/centaur-academy-iron.png",
      "anchor": [
       83.0,
-      114.2
+      116.2
      ],
      "scale": 1.0
     }
@@ -7048,7 +11023,7 @@
      "file": "art3d/dwarf-academy-bronze.png",
      "anchor": [
       85.0,
-      120.2
+      121.2
      ],
      "scale": 1.0
     },
@@ -7592,7 +11567,7 @@
      "file": "art3d/beastfolk-stable-tool.png",
      "anchor": [
       87.0,
-      120.2
+      121.2
      ],
      "scale": 1.0
     },
@@ -7600,7 +11575,7 @@
      "file": "art3d/beastfolk-stable-bronze.png",
      "anchor": [
       87.0,
-      123.2
+      125.2
      ],
      "scale": 1.0
     },
@@ -7608,7 +11583,7 @@
      "file": "art3d/beastfolk-stable-iron.png",
      "anchor": [
       87.0,
-      126.2
+      129.2
      ],
      "scale": 1.0
     }
@@ -7618,22 +11593,22 @@
      "file": "art3d/dwarf-stable-tool.png",
      "anchor": [
       89.0,
-      115.2
+      116.2
      ],
      "scale": 1.0
     },
     "bronze": {
      "file": "art3d/dwarf-stable-bronze.png",
      "anchor": [
-      89.0,
-      118.2
+      90.0,
+      120.2
      ],
      "scale": 1.0
     },
     "iron": {
      "file": "art3d/dwarf-stable-iron.png",
      "anchor": [
-      89.0,
+      90.0,
       120.2
      ],
      "scale": 1.0
@@ -7844,7 +11819,7 @@
      "file": "art3d/centaur-market-iron.png",
      "anchor": [
       84.0,
-      120.2
+      121.2
      ],
      "scale": 1.0
     }

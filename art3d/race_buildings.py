@@ -118,50 +118,95 @@ class Elf(Kit):
 
 
 class Dwarf(Kit):
+    """The dwarves' ages (replica/races-ages-plan.md): rough rock and hide; fieldstone, timber and slate;
+    dressed blocks banded in bronze, with runes; polished dark granite trimmed in gold, forge-light in every
+    window."""
+
     def __init__(self, race, age):
         super().__init__(race, age)
-        self.stone = lib.mat("granite", (0.50, 0.49, 0.47), 0.9, grain=0.3, grain_size=0.02)
-        self.dstone = lib.mat("darkstone", (0.30, 0.30, 0.32), 0.9, grain=0.25, grain_size=0.02)
-        self.slate = lib.mat("slate", (0.26, 0.28, 0.32), 0.85, grain=0.2, grain_size=0.015)
+        t = self.tier
+        self.stone = lib.mat(f"granite{t}", [(0.46, 0.44, 0.40), (0.50, 0.49, 0.47), (0.58, 0.56, 0.52), (0.36, 0.36, 0.40)][t], 0.9 if t < 3 else 0.45,
+                             grain=0.3, grain_size=0.02, kind=None if t < 2 else ("brick", 0.22, 0.12, 0.45))
+        self.dstone = lib.mat(f"darkstone{t}", [(0.30, 0.29, 0.28), (0.30, 0.30, 0.32), (0.34, 0.33, 0.34), (0.22, 0.22, 0.26)][t], 0.9 if t < 3 else 0.4,
+                              grain=0.25, grain_size=0.02)
+        self.slate = lib.mat(f"slate{t}", [(0.36, 0.30, 0.22), (0.26, 0.28, 0.32), (0.24, 0.28, 0.34), (0.18, 0.20, 0.26)][t], 0.85,
+                             grain=0.2, grain_size=0.015, kind=None if t == 0 else ("brick", 0.12, 0.06, 0.5))
         self.rock = lib.mat("rock", (0.44, 0.42, 0.40), 0.95, grain=0.45, grain_size=0.04)
         self.bronze = lib.mat("bronze", (0.72, 0.48, 0.22), 0.35, 0.8)
-        self.ember = lib.mat("ember", (0.95, 0.42, 0.12), 0.6)
-        self.yard = (0.40, 0.38, 0.36)
+        self.ember = lib.mat("ember", (0.95, 0.42, 0.12), 0.6, emit=(1.0, 0.4, 0.1))
+        self.hidem = lib.mat("dwarfhide", (0.46, 0.32, 0.20), 0.9, grain=0.3)
+        # Hide lashings, then iron, then bronze, then gold: the bands, door fittings, rails.
+        self.trim = [self.hidem, lib.mat("dwarfiron", (0.34, 0.34, 0.36), 0.4, 0.8), self.bronze,
+                     lib.mat("dwarfgold", (0.95, 0.78, 0.32), 0.3, 0.9)][t]
+        self.yard = [(0.42, 0.38, 0.32), (0.40, 0.38, 0.36), (0.44, 0.42, 0.40), (0.38, 0.38, 0.40)][t]
 
     def hall(self, name, x, y, w, d, h):
-        # Into a mound of rock behind: thick walls, a slab roof, a deep arched door, a chimney.
+        t = self.tier
         mound = lib.ball(f"{name}-mound", 0.5, (x, y + d * 0.45, h * 0.55), self.rock, scale=(w * 1.25, d * 1.1, h * 1.9), sub=3)
         lib.lumpy(mound, 0.06, 0.133, len(name) + 1)
+        if t == 0:
+            # A lean-to of piled stones against the rock, a hide over the door.
+            lib.box(f"{name}-walls", (w, d, h * 0.8), (x, y, h * 0.4), self.stone, bevel=0.06)
+            lib.lumpy(lib.box(f"{name}-pile", (w * 1.05, d * 1.05, 0.12), (x, y, h * 0.85), self.rock, bevel=0.04), 0.03, 0.08)
+            lib.box(f"{name}-hide", (0.3, 0.03, h * 0.55), (x, y - d / 2 - 0.01, h * 0.28), self.hidem)
+            return h
         lib.box(f"{name}-walls", (w, d, h), (x, y, h / 2), self.stone, bevel=0.03)
+        if t >= 2:
+            # Buttresses of dark stone at the corners and either side of the door.
+            for dx in (-w / 2, -0.25, 0.25, w / 2):
+                lib.box(f"{name}-butt{dx:.2f}", (0.1, 0.1, h * 1.02), (x + dx, y - d / 2 - 0.03, h * 0.51), self.dstone, bevel=0.01)
         lib.box(f"{name}-slab", (w + 0.12, d + 0.12, 0.08), (x, y, h + 0.04), self.slate, bevel=0.02)
-        prism(f"{name}-roof", w + 0.1, d + 0.1, 0.16, (x, y, h + 0.08), self.slate, "x")
+        if t == 3:
+            # A stepped roof, gold along its ridge.
+            for j, s in enumerate((0.85, 0.6)):
+                lib.box(f"{name}-step{j}", (w * s, d * s, 0.12), (x, y, h + 0.14 + j * 0.12), self.slate, bevel=0.015)
+            lib.box(f"{name}-ridge", (w * 0.4, 0.06, 0.04), (x, y, h + 0.36), self.trim)
+        else:
+            prism(f"{name}-roof", w + 0.1, d + 0.1, 0.16 + 0.04 * t, (x, y, h + 0.08), self.slate, "x")
         lib.box(f"{name}-arch", (0.3, 0.06, h * 0.62), (x, y - d / 2 - 0.01, h * 0.31), self.dark)
         lib.cyl(f"{name}-archtop", 0.15, 0.06, (x, y - d / 2 - 0.01, h * 0.62), self.dark, rot=(R(90), 0, 0), verts=12)
-        lib.box(f"{name}-lintel", (0.42, 0.08, 0.08), (x, y - d / 2 - 0.02, h * 0.62 + 0.15), self.dstone)
+        lib.box(f"{name}-lintel", (0.42, 0.08, 0.08), (x, y - d / 2 - 0.02, h * 0.62 + 0.15), self.trim if t >= 2 else self.dstone)
+        if t >= 2:
+            for i in range(3):
+                lib.box(f"{name}-rune{i}", (0.05, 0.02, 0.05), (x - 0.1 + i * 0.1, y - d / 2 - 0.065, h * 0.62 + 0.15), self.ember if t == 3 else self.dstone)
+            lib.box(f"{name}-band", (w + 0.02, 0.03, 0.05), (x, y - d / 2 - 0.01, h * 0.86), self.trim)
+        if t == 3:
+            # Forge-light in the windows.
+            for dx in (-w * 0.3, w * 0.3):
+                lib.box(f"{name}-win{dx:.2f}", (0.1, 0.03, 0.12), (x + dx, y - d / 2 - 0.015, h * 0.55), self.ember)
         lib.box(f"{name}-chimney", (0.16, 0.16, 0.4), (x + w * 0.3, y + d * 0.2, h + 0.2), self.dstone)
         lib.box(f"{name}-chimneytop", (0.2, 0.2, 0.04), (x + w * 0.3, y + d * 0.2, h + 0.42), self.slate)
-        if self.tier >= 2:
-            lib.box(f"{name}-band", (w + 0.02, 0.03, 0.05), (x, y - d / 2 - 0.01, h * 0.86), self.bronze)
-        return h + 0.24
+        return h + 0.24 + 0.1 * (t == 3)
 
     def hut(self, name, x, y, r, h):
+        t = self.tier
         lib.cyl(f"{name}-wall", r, h, (x, y, h / 2), self.stone, verts=8)
+        if t >= 2:
+            lib.cyl(f"{name}-band", r * 1.02, 0.04, (x, y, h * 0.8), self.trim, verts=8)
         lib.cyl(f"{name}-cap", r * 1.15, r * 0.6, (x, y, h + r * 0.3), self.slate, verts=8, r2=0.04)
+        if t == 3:
+            lib.ball(f"{name}-finial", 0.04, (x, y, h + r * 0.62), self.trim, sub=1)
         return h + r * 0.6
 
     def tower(self, name, x, y, h):
+        t = self.tier
         lib.box(f"{name}-body", (0.7, 0.7, h), (x, y, h / 2), self.stone, bevel=0.03)
+        if t >= 2:
+            for dz in (0.3, 0.65):
+                lib.box(f"{name}-band{dz}", (0.72, 0.72, 0.04), (x, y, h * dz), self.trim)
         for i in range(4):
             for j in (-1, 1):
                 dx, dy = ((j * 0.25, -0.33), (0.33, j * 0.25), (j * 0.25, 0.33), (-0.33, j * 0.25))[i]
                 lib.box(f"{name}-merlon{i}{j}", (0.16, 0.16, 0.14), (x + dx, y + dy, h + 0.07), self.stone)
-        lib.box(f"{name}-slit", (0.05, 0.03, 0.22), (x, y - 0.36, h * 0.65), self.dark)
-        lib.cyl(f"{name}-brazier", 0.09, 0.08, (x, y, h + 0.04), self.bronze, verts=10)
+        lib.box(f"{name}-slit", (0.05, 0.03, 0.22), (x, y - 0.36, h * 0.65), self.ember if t == 3 else self.dark)
+        lib.cyl(f"{name}-brazier", 0.09, 0.08, (x, y, h + 0.04), self.trim if t >= 2 else self.bronze, verts=10)
         lib.ball(f"{name}-coals", 0.06, (x, y, h + 0.09), self.ember, sub=1)
         return h + 0.15
 
     def fence(self, x0, y0, x1, y1, h=0.2):
         lib.box(f"wall{x0:.1f}{y0:.1f}", (abs(x1 - x0) + 0.12, abs(y1 - y0) + 0.12, h), ((x0 + x1) / 2, (y0 + y1) / 2, h / 2), self.stone, bevel=0.02)
+        if self.tier >= 2:
+            lib.box(f"wallcap{x0:.1f}{y0:.1f}", (abs(x1 - x0) + 0.14, abs(y1 - y0) + 0.14, 0.03), ((x0 + x1) / 2, (y0 + y1) / 2, h + 0.015), self.trim)
 
     def mountain(self, x, y, w, h):
         """A peak of rock, the town's hall cut into its foot, snow on its top."""
@@ -172,37 +217,69 @@ class Dwarf(Kit):
 
 
 class Centaur(Kit):
+    """The centaurs' ages: tents of hide on poles; tents of cream canvas; canvas painted with stars, poles
+    painted blue, rugs; white stone daises under stretched canvas, gold on every pole's top."""
+
     def __init__(self, race, age):
         super().__init__(race, age)
-        self.canvas = lib.mat("canvas", (0.92, 0.88, 0.76), 0.9, grain=0.12, grain_size=0.03)
-        self.canvas2 = lib.mat("canvasdark", (0.78, 0.70, 0.54), 0.9, grain=0.15, grain_size=0.03)
-        self.sky = lib.mat("skyblue", (0.40, 0.62, 0.80), 0.8)
+        t = self.tier
+        self.canvas = lib.mat(f"canvas{t}", [(0.62, 0.48, 0.32), (0.92, 0.88, 0.76), (0.94, 0.90, 0.80), (0.97, 0.96, 0.92)][t], 0.9,
+                              grain=0.12, grain_size=0.03)
+        self.canvas2 = lib.mat(f"canvasdark{t}", [(0.48, 0.36, 0.24), (0.78, 0.70, 0.54), (0.80, 0.72, 0.56), (0.92, 0.90, 0.86)][t], 0.9,
+                               grain=0.15, grain_size=0.03)
+        self.sky = lib.mat(f"skyblue{t}", [(0.42, 0.34, 0.24), (0.40, 0.62, 0.80), (0.20, 0.36, 0.66), (0.16, 0.26, 0.56)][t], 0.8)
         self.gold = lib.mat("gold", (0.92, 0.74, 0.30), 0.35, 0.9)
-        self.yard = (0.56, 0.52, 0.36)
+        self.trim = [self.wood, self.wood, self.sky, self.gold][t]
+        self.yard = [(0.50, 0.44, 0.30), (0.56, 0.52, 0.36), (0.58, 0.54, 0.40), (0.62, 0.60, 0.50)][t]
+
+    def stars(self, name, x, y, z, w, n=5):
+        """Gold stars painted along a band."""
+        for i in range(n):
+            lib.ball(f"{name}-star{i}", 0.018, (x - w / 2 + (i + 0.5) * w / n, y, z), self.gold, sub=1)
 
     def hall(self, name, x, y, w, d, h):
-        # A long ridge tent on low canvas walls, its poles standing out at the ends, a blue band.
+        t = self.tier
         wall = h * 0.35
-        lib.box(f"{name}-walls", (w, d, wall), (x, y, wall / 2), self.canvas2)
-        prism(f"{name}-tent", w + 0.12, d + 0.14, h - wall, (x, y, wall), self.canvas, "x")
-        lib.box(f"{name}-band", (w + 0.02, d + 0.02, 0.05), (x, y, wall), self.sky)
+        lift = 0.1 if t == 3 else 0.0
+        if t == 3:
+            lib.box(f"{name}-dais", (w + 0.25, d + 0.25, 0.1), (x, y, 0.05), self.canvas2, bevel=0.02)
+        lib.box(f"{name}-walls", (w, d, wall), (x, y, wall / 2 + lift), self.canvas2)
+        z = wall + lift
+        prism(f"{name}-tent", w + 0.12, d + 0.14, h - wall, (x, y, z), self.canvas, "x")
+        lib.box(f"{name}-band", (w + 0.02, d + 0.02, 0.05), (x, y, z), self.sky)
+        if t >= 2:
+            self.stars(f"{name}-band", x, y - d / 2 - 0.02, z, w)
         for dx in (-w / 2 - 0.06, w / 2 + 0.06):
-            lib.cyl(f"{name}-pole{dx:.2f}", 0.022, h + 0.25, (x + dx, y, (h + 0.25) / 2), self.wood, verts=6)
-        lib.box(f"{name}-flap", (0.36, 0.03, wall * 1.6), (x, y - d / 2 - 0.02, wall * 0.8), self.dark)
+            lib.cyl(f"{name}-pole{dx:.2f}", 0.022, h + 0.25, (x + dx, y, (h + 0.25) / 2), self.trim if t >= 2 else self.wood, verts=6)
+            if t == 3:
+                lib.ball(f"{name}-finial{dx:.2f}", 0.035, (x + dx, y, h + 0.27), self.gold, sub=1)
+        lib.box(f"{name}-flap", (0.36, 0.03, wall * 1.6), (x, y - d / 2 - 0.02, wall * 0.8 + lift), self.dark)
         return h + 0.25
 
     def hut(self, name, x, y, r, h):
+        t = self.tier
         wall = h * 0.4
+        if t == 0:
+            # Hides on a cone of poles.
+            lib.cyl(f"{name}-tent", r, h * 1.1, (x, y, h * 0.55), self.canvas, verts=10, r2=r * 0.1)
+            for i in range(4):
+                a = R(90 * i + 20)
+                lib.cyl(f"{name}-pole{i}", 0.012, 0.3, (x + math.cos(a) * 0.04, y + math.sin(a) * 0.04, h * 1.1 + 0.08), self.wood, verts=5)
+            return h * 1.1 + 0.2
         lib.cyl(f"{name}-wall", r, wall, (x, y, wall / 2), self.canvas2, verts=16)
         lib.cyl(f"{name}-roof", r * 1.08, h - wall + r * 0.4, (x, y, wall + (h - wall + r * 0.4) / 2), self.canvas, verts=16, r2=0.04)
         lib.cyl(f"{name}-band", r * 1.01, 0.05, (x, y, wall), self.team, verts=16)
-        lib.cyl(f"{name}-top", 0.015, 0.25, (x, y, h + r * 0.4 + 0.1), self.wood, verts=6)
+        if t >= 2:
+            lib.cyl(f"{name}-skyband", r * 1.02, 0.05, (x, y, wall * 0.55), self.sky, verts=16)
+        lib.cyl(f"{name}-top", 0.015, 0.25, (x, y, h + r * 0.4 + 0.1), self.trim if t >= 2 else self.wood, verts=6)
+        if t == 3:
+            lib.ball(f"{name}-finial", 0.04, (x, y, h + r * 0.4 + 0.24), self.gold, sub=1)
         return h + r * 0.4
 
     def tower(self, name, x, y, h):
-        # A star-watcher's frame: four poles, a platform, a canopy, a ring of bronze on top.
+        t = self.tier
         for dx, dy in ((-0.3, -0.3), (0.3, -0.3), (0.3, 0.3), (-0.3, 0.3)):
-            lib.cyl(f"{name}-leg{dx}{dy}", 0.035, h, (x + dx, y + dy, h / 2), self.wood, verts=8, r2=0.025)
+            lib.cyl(f"{name}-leg{dx}{dy}", 0.035, h, (x + dx, y + dy, h / 2), self.canvas2 if t == 3 else self.wood, verts=8, r2=0.025)
         lib.box(f"{name}-deck", (0.8, 0.8, 0.05), (x, y, h * 0.85), self.wood, bevel=0.01)
         lib.cyl(f"{name}-canopy", 0.6, 0.3, (x, y, h + 0.12), self.canvas, verts=4, r2=0.03).rotation_euler = (0, 0, R(45))
         ring = lib.cyl(f"{name}-ring", 0.18, 0.02, (x, y, h + 0.45), self.gold, rot=(R(90), 0, R(30)), verts=20)
@@ -214,64 +291,117 @@ class Centaur(Kit):
         n = max(2, int(math.hypot(x1 - x0, y1 - y0) / 0.45))
         for i in range(n + 1):
             k = i / n
-            lib.cyl(f"rp{x0:.1f}{y0:.1f}{i}", 0.02, h, (x0 + (x1 - x0) * k, y0 + (y1 - y0) * k, h / 2), self.wood, verts=6)
+            lib.cyl(f"rp{x0:.1f}{y0:.1f}{i}", 0.02, h, (x0 + (x1 - x0) * k, y0 + (y1 - y0) * k, h / 2), self.trim if self.tier >= 2 else self.wood, verts=6)
         lib.box(f"rope{x0:.1f}{y0:.1f}", (abs(x1 - x0) + 0.02, abs(y1 - y0) + 0.02, 0.012), ((x0 + x1) / 2, (y0 + y1) / 2, h * 0.85), self.canvas2)
 
     def pavilion(self, name, x, y, w, d, h):
-        """Columns of wood under a canvas roof, open on every side: a centaur does not go in at a door."""
+        """Columns under a canvas roof, open on every side: a centaur does not go in at a door."""
+        t = self.tier
         n = 4 if w > 1.4 else 3
         for i in range(n):
             for yy in (y - d / 2, y + d / 2):
                 xx = x - w / 2 + w * i / (n - 1)
-                lib.cyl(f"{name}-col{i}{yy:.2f}", 0.04, h, (xx, yy, h / 2), self.wood if self.tier < 3 else self.canvas2, verts=10)
-        lib.box(f"{name}-beam", (w + 0.1, d + 0.1, 0.06), (x, y, h + 0.03), self.wood)
+                lib.cyl(f"{name}-col{i}{yy:.2f}", 0.04, h, (xx, yy, h / 2), self.wood if t < 3 else self.canvas2, verts=10)
+                if t == 3:
+                    lib.cyl(f"{name}-cap{i}{yy:.2f}", 0.06, 0.04, (xx, yy, h - 0.02), self.gold, verts=10)
+        lib.box(f"{name}-beam", (w + 0.1, d + 0.1, 0.06), (x, y, h + 0.03), self.sky if t >= 2 else self.wood)
         prism(f"{name}-roof", w + 0.25, d + 0.25, min(w, d) * 0.35, (x, y, h + 0.06), self.canvas, "x")
         lib.box(f"{name}-floor", (w, d, 0.04), (x, y, 0.02), self.canvas2)
+        if t >= 2:
+            self.stars(f"{name}-beam", x, y - d / 2 - 0.06, h + 0.03, w, 7)
         return h + min(w, d) * 0.4
 
 
 class Beastfolk(Kit):
+    """The beastfolk's ages: hides on frames of bone; mud longhouses under thatch; wood carved into beasts'
+    heads, painted in ochre, horns on the gables; standing stones, bronze, trophies of skulls, fire."""
+
     def __init__(self, race, age):
         super().__init__(race, age)
+        t = self.tier
         self.hide = lib.mat("hide", (0.60, 0.44, 0.27), 0.95, grain=0.35, grain_size=0.02)
         self.hide2 = lib.mat("hidedark", (0.42, 0.30, 0.18), 0.95, grain=0.35, grain_size=0.02)
-        self.mud = lib.mat("mud", (0.54, 0.40, 0.26), 0.98, grain=0.35, grain_size=0.03)
-        self.thatch = lib.mat("thatch", (0.72, 0.60, 0.32), 0.95, grain=0.45, grain_size=0.01)
+        self.mud = lib.mat(f"mud{t}", [(0.50, 0.38, 0.26), (0.54, 0.40, 0.26), (0.56, 0.42, 0.28), (0.50, 0.48, 0.44)][t], 0.98,
+                           grain=0.35, grain_size=0.03, kind=None if t < 3 else ("brick", 0.3, 0.18, 0.5))
+        self.thatch = lib.mat("thatch", (0.72, 0.60, 0.32), 0.95, grain=0.45, grain_size=0.01, kind=("thatch", 0.05, 0, 0.5))
         self.bone = lib.mat("bone", (0.90, 0.86, 0.74), 0.7)
-        self.ochre = lib.mat("ochre", (0.64, 0.22, 0.14), 0.85)
-        self.yard = (0.46, 0.36, 0.24)
+        self.ochre = lib.mat(f"ochre{t}", [(0.50, 0.28, 0.18), (0.64, 0.22, 0.14), (0.72, 0.20, 0.12), (0.78, 0.16, 0.10)][t], 0.85)
+        self.carved = lib.mat("carvedwood", (0.42, 0.26, 0.14), 0.8, grain=0.4, grain_size=0.008)
+        self.trim = [self.bone, self.wood, self.ochre, lib.mat("beastbronze", (0.68, 0.46, 0.22), 0.35, 0.8)][t]
+        self.yard = [(0.42, 0.34, 0.22), (0.46, 0.36, 0.24), (0.48, 0.38, 0.24), (0.46, 0.40, 0.30)][t]
+
+    def head(self, name, x, y, z, s=1.0, m=None):
+        """A beast's head carved in wood: muzzle, ears, eyes of bone."""
+        m = m or self.carved
+        lib.ball(f"{name}-skull", 0.1 * s, (x, y, z), m, scale=(1, 1.2, 0.9), sub=2)
+        lib.cyl(f"{name}-snout", 0.06 * s, 0.14 * s, (x, y - 0.12 * s, z - 0.02 * s), m, rot=(R(90), 0, 0), verts=8, r2=0.035 * s)
+        for k in (-1, 1):
+            lib.cyl(f"{name}-ear{k}", 0.035 * s, 0.1 * s, (x + k * 0.06 * s, y, z + 0.1 * s), m, rot=(0, R(15 * k), 0), verts=4, r2=0.004)
+            lib.ball(f"{name}-eye{k}", 0.015 * s, (x + k * 0.045 * s, y - 0.08 * s, z + 0.03 * s), self.bone, sub=1)
 
     def hall(self, name, x, y, w, d, h):
-        # A longhouse: mud walls, a steep thatch, horns of bone crossed over each gable, an ochre band.
-        lib.box(f"{name}-walls", (w, d, h * 0.55), (x, y, h * 0.275), self.mud, bevel=0.04)
+        t = self.tier
+        if t == 0:
+            # Hides stretched over arches of bone.
+            lib.ball(f"{name}-hides", 0.5, (x, y, h * 0.2), self.hide, scale=(w, d, h * 1.3), sub=3)
+            for i in range(4):
+                lib.cyl(f"{name}-rib{i}", 0.02, d * 1.05, (x - w * 0.38 + i * w * 0.25, y, h * 0.55), self.bone, rot=(R(90), 0, 0), verts=6)
+            lib.box(f"{name}-door", (0.24, 0.03, h * 0.4), (x, y - d / 2 - 0.01, h * 0.2), self.dark)
+            return h * 0.85
+        if t == 3:
+            # A footing of standing stones under the walls.
+            menhir = lib.mat("menhir", (0.52, 0.50, 0.46), 0.95, grain=0.35)
+            for i in range(int(w / 0.3) + 1):
+                lib.box(f"{name}-footing{i}", (0.22, 0.1, h * 0.35), (x - w / 2 + i * 0.3, y - d / 2 - 0.04, h * 0.17), menhir)
+        lib.box(f"{name}-walls", (w, d, h * 0.55), (x, y, h * 0.275), self.mud if t < 2 else self.carved, bevel=0.04)
         lib.box(f"{name}-band", (w + 0.02, d + 0.02, 0.05), (x, y, h * 0.35), self.ochre)
         roof = prism(f"{name}-roof", w + 0.16, d + 0.2, h * 0.75, (x, y, h * 0.55), self.thatch, "x")
         lib.lumpy(roof, 0.015, 0.04)
         top = h * 0.55 + h * 0.75
         for dx in (-w / 2 - 0.05, w / 2 + 0.05):
             for k in (-1, 1):
-                lib.cyl(f"{name}-horn{dx:.2f}{k}", 0.025, 0.3, (x + dx, y + k * 0.07, top + 0.08), self.bone, rot=(R(35 * k), 0, 0), verts=6, r2=0.004)
+                lib.cyl(f"{name}-horn{dx:.2f}{k}", 0.025 + 0.008 * t, 0.3 + 0.06 * t, (x + dx, y + k * 0.07, top + 0.08), self.bone, rot=(R(35 * k), 0, 0), verts=6, r2=0.004)
+        if t >= 2:
+            # Carved beasts' heads at the gables and over the door; posts painted in ochre.
+            for dx in (-w / 2 - 0.04, w / 2 + 0.04):
+                self.head(f"{name}-gable{dx:.2f}", x + dx, y - d / 2 + 0.05, top - 0.15, 0.9)
+            self.head(f"{name}-doorhead", x, y - d / 2 - 0.06, h * 0.5, 0.8, self.trim if t == 3 else None)
+            for dx in (-w / 2, w / 2):
+                lib.cyl(f"{name}-post{dx:.2f}", 0.04, h * 0.6, (x + dx, y - d / 2 - 0.03, h * 0.3), self.ochre, verts=8)
+        if t == 3:
+            for dx in (-0.35, 0.35):
+                self.skull(x + dx, y - d / 2 - 0.05, h * 0.62)
         lib.box(f"{name}-door", (0.28, 0.03, h * 0.45), (x, y - d / 2 - 0.01, h * 0.225), self.dark)
         return top + 0.2
 
     def hut(self, name, x, y, r, h):
-        # A tent of hides on poles that stand out of its top.
+        t = self.tier
         lib.cyl(f"{name}-tent", r, h, (x, y, h / 2), self.hide, verts=10, r2=r * 0.12)
         lib.cyl(f"{name}-stripe", r * 0.78, 0.06, (x, y, h * 0.3), self.ochre, verts=10)
+        if t >= 2:
+            lib.cyl(f"{name}-stripe2", r * 0.55, 0.04, (x, y, h * 0.55), self.ochre, verts=10)
         for i in range(3):
             a = R(120 * i)
-            lib.cyl(f"{name}-pole{i}", 0.014, 0.35, (x + math.cos(a) * 0.04, y + math.sin(a) * 0.04, h + 0.1), self.wood, rot=(math.sin(a) * R(15), -math.cos(a) * R(15), 0), verts=5)
+            lib.cyl(f"{name}-pole{i}", 0.014, 0.35, (x + math.cos(a) * 0.04, y + math.sin(a) * 0.04, h + 0.1), self.bone if t == 0 else self.wood,
+                    rot=(math.sin(a) * R(15), -math.cos(a) * R(15), 0), verts=5)
         lib.box(f"{name}-flap", (0.18, 0.03, h * 0.4), (x, y - r * 0.7, h * 0.2), self.dark, rot=(R(-12), 0, 0))
+        if t == 3:
+            self.skull(x, y - r * 0.6, h * 0.62)
         return h + 0.25
 
     def totem(self, name, x, y, h):
-        """A carved pole: painted rings, a beast's head on top with ears and teeth of bone."""
-        cols = (self.hide2, self.ochre, self.wood, self.bone)
-        n = 4
+        """A carved pole: painted rings, faces of beasts, a beast's head on top with ears and teeth of bone."""
+        t = self.tier
+        cols = (self.hide2, self.ochre, self.carved, self.bone)
+        n = 4 + (t >= 2)
         for i in range(n):
             lib.cyl(f"{name}-seg{i}", 0.11 - i * 0.008, h / n, (x, y, h / n * (i + 0.5)), cols[i % 4], verts=10)
-        lib.ball(f"{name}-head", 0.14, (x, y, h + 0.08), self.hide2, scale=(1, 1.2, 0.9), sub=2)
-        lib.cyl(f"{name}-snout", 0.07, 0.14, (x, y - 0.14, h + 0.05), self.hide2, rot=(R(90), 0, 0), verts=8, r2=0.04)
+        if t >= 2:
+            for i in range(2):
+                self.head(f"{name}-face{i}", x, y - 0.04, h * (0.35 + 0.3 * i), 0.7)
+        top_m = self.hide2 if t < 3 else self.trim
+        lib.ball(f"{name}-head", 0.14, (x, y, h + 0.08), top_m, scale=(1, 1.2, 0.9), sub=2)
+        lib.cyl(f"{name}-snout", 0.07, 0.14, (x, y - 0.14, h + 0.05), top_m, rot=(R(90), 0, 0), verts=8, r2=0.04)
         for k in (-1, 1):
             lib.cyl(f"{name}-ear{k}", 0.045, 0.12, (x + k * 0.08, y, h + 0.2), self.hide2, rot=(0, R(15 * k), 0), verts=4, r2=0.004)
             lib.cyl(f"{name}-fang{k}", 0.012, 0.06, (x + k * 0.035, y - 0.2, h + 0.0), self.bone, verts=5, r2=0.002)
@@ -289,11 +419,12 @@ class Beastfolk(Kit):
         n = max(2, int(math.hypot(x1 - x0, y1 - y0) / 0.11))
         for i in range(n + 1):
             k = i / n
-            lib.cyl(f"bone{x0:.1f}{y0:.1f}{i}", 0.025, h * (0.8 + 0.2 * (i % 2)), (x0 + (x1 - x0) * k, y0 + (y1 - y0) * k, h * 0.45), self.bone, verts=6, r2=0.004)
+            m = self.bone if (self.tier == 0 or i % 3) else self.ochre
+            lib.cyl(f"bone{x0:.1f}{y0:.1f}{i}", 0.025, h * (0.8 + 0.2 * (i % 2)), (x0 + (x1 - x0) * k, y0 + (y1 - y0) * k, h * 0.45), m, verts=6, r2=0.004)
 
     def skull(self, x, y, z):
-        lib.ball(f"skull{x:.2f}{y:.2f}", 0.06, (x, y, z), self.bone, scale=(1, 1.2, 0.85), sub=2)
-        lib.ball(f"eye{x:.2f}{y:.2f}", 0.015, (x - 0.02, y - 0.065, z + 0.01), self.dark, sub=1)
+        lib.ball(f"skull{x:.2f}{y:.2f}{z:.2f}", 0.06, (x, y, z), self.bone, scale=(1, 1.2, 0.85), sub=2)
+        lib.ball(f"eye{x:.2f}{y:.2f}{z:.2f}", 0.015, (x - 0.02, y - 0.065, z + 0.01), self.dark, sub=1)
 
 
 KITS = {"elf": Elf, "dwarf": Dwarf, "centaur": Centaur, "beastfolk": Beastfolk}

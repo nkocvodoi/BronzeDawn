@@ -260,7 +260,7 @@ def main():
         for tool, rig_tool, work, frames, fps in jobs:
             key = f"{race}/villager" + (f":{tool}" if tool else "")
             base = only is None or race in only or key in only
-            if not base and not (race == "elf" and any(k.startswith(f"{key}@") or k.startswith("elf@") for k in only)):
+            if not base and not any(k.startswith(f"{key}@") or k.startswith(f"{race}@") for k in only):
                 continue
             make = lambda race=race, rig_tool=rig_tool: races.villager_of(race, rig_tool)  # noqa: E731
             # Elves hunt with the bow and fight with a dagger.
@@ -274,12 +274,15 @@ def main():
                 units[key] = unit_sheet(key, make, anims, f, a, quick, tmp)
             # The elves' villagers again in the dress of each later age ("elf/villager:axe@bronze"); the game
             # takes the owner's age, else the latest before it, else the sheet of no age.
-            if race == "elf":
-                for tier in (1, 2, 3):
-                    aged = f"{key}@{races.ELF_AGES[tier]}"
-                    if only is not None and not (race in only or key in only or aged in only or f"elf@{races.ELF_AGES[tier]}" in only):
-                        continue
-                    units[aged] = unit_sheet(aged, lambda make=make, tier=tier: races.elf_dress(make(), tier), anims, f, a, quick, tmp)
+            for tier in (1, 2, 3):
+                aged = f"{key}@{races.ELF_AGES[tier]}"
+                if only is not None and not (race in only or key in only or aged in only or f"{race}@{races.ELF_AGES[tier]}" in only):
+                    continue
+                if race == "elf":
+                    dress = lambda make=make, tier=tier: races.elf_dress(make(), tier)  # noqa: E731
+                else:
+                    dress = lambda make=make, tier=tier, race=race: races.race_dress(race, make(), tier)  # noqa: E731
+                units[aged] = unit_sheet(aged, dress, anims, f, a, quick, tmp)
     # The elves' own looks for the common units they train ("elf/clubman"); --only takes "elf" or "elf/clubman".
     for unit in races.ELF_UNITS:
         key = f"elf/{unit}"
@@ -287,6 +290,19 @@ def main():
             continue
         _, anims, frame, anchor = unit_spec(unit)
         units[key] = unit_sheet(key, lambda unit=unit: races.elf_unit_aged(unit), anims, frame, anchor, quick, tmp)
+    # The other races' looks for the common units they train ("dwarf/clubman", "centaur/cavalry"), each in the
+    # dress of the age it is first trained in; --only takes "units-dwarf" or "dwarf/clubman".
+    for race, list_ in races.RACE_UNITS.items():
+        for unit in list_:
+            key = f"{race}/{unit}"
+            if not (only is None or f"units-{race}" in only or key in only):
+                continue
+            _, anims, frame, anchor = unit_spec(unit)
+            if race == "centaur":
+                frame, anchor = RACE_FRAME["centaur"]
+            elif race == "beastfolk" and unit not in races.MOUNTED:
+                frame, anchor = OWN_FRAME["bearkin_brute" if unit in races.BEARS else "wolfkin_raider"]
+            units[key] = unit_sheet(key, lambda race=race, unit=unit: races.race_unit_aged(race, unit), anims, frame, anchor, quick, tmp)
     for unit, (make, attack) in races.UNITS.items():
         if only is not None and unit not in only and "races" not in only:
             continue
