@@ -591,6 +591,7 @@ export class Game {
     this.popLimit = Number(pickFrom("#pop-limit", "bd-pop-limit", (this.rules.economy.pop_limits ?? []).map(String)) ?? this.popLimit);
     this.me = 0;
     this.watchAll = true;
+    this.hud.setPov(null);
     // The same map, now with civilizations: yours, and one for the computer.
     const pick = (document.querySelector("#civ") as HTMLSelectElement | null)?.value || null;
     const civs = this.rules.civs;
@@ -626,7 +627,7 @@ export class Game {
     this.enterGame();
     const civ = this.world.players[this.me].civ;
     if (size > chosenSize) this.hud.message(`The map was made ${MAP_SIZES.find(([, t]) => t === size)?.[0] ?? size} to fit ${opp + 1} players`);
-    if (this.watching) this.hud.message(`Watching ${this.world.players.length} computers. V: follow a player or see everything · + and -: speed up to 10x`);
+    if (this.watching) this.hud.message(`Watching ${this.world.players.length} computers. Tab: through each one's eyes (Shift+Tab back) · + and -: speed up to 10x`);
     else this.hud.message(`${civ ? `Your civilization: ${civ.name}. ` : ""}Gather food and wood. Build houses. Good luck.`);
     this.selectTownCenter();
   }
@@ -842,6 +843,7 @@ export class Game {
     const w = back?.world ?? this.worldFromSetup(setup);
     this.onlineSetup = setup;
     this.me = me; this.watching = false; this.watchAll = false; this.revealMap = false; this.ended = false;
+    this.hud.setPov(null);
     this.seed = setup.seed; this.mapSize = setup.size; this.hostPaused = false; this.desyncShown = false; this.netFailed = false;
     this.useWorld(w);
     this.leads.clear();
@@ -1670,6 +1672,7 @@ export class Game {
     if (ui.speed && this.speeds.includes(ui.speed)) { this.speed = ui.speed; this.hud.speed(ui.speed); }
     if (ui.reseed !== undefined) this.reseed = ui.reseed;
     this.revealMap = this.watching && this.watchAll;
+    this.hud.setPov(this.watching && !this.watchAll ? this.world.players[this.me].name : null, playerColor(this.me));
     if (ui.cam) { this.cam.x = ui.cam.x; this.cam.y = ui.cam.y; this.cam.zoom = ui.cam.zoom; this.clampCamera(); }
     this.enterGame();
     this.hud.message(`Game loaded: ${clock(w.time)}`);
@@ -1739,7 +1742,7 @@ export class Game {
         row("Ruins and Artifacts", "walk any unit up to one to take it; an Artifact you hold can be moved (right-click) and carried in a transport. Hold all of either for 15 minutes to win"),
         row("Selection", "drag a box over as many as you like · double-click one to pick all of its kind on the screen"),
         row("Game speed", `1x, 1.5x, 2x, 3x (${this.keyName("faster")} and ${this.keyName("slower")}, or click the speed in the top bar), and 5x, 10x when watching`),
-        row("Watching the computers", `${kbd("V")} follows one player (its fog, resources and panel), then the next, then everything`),
+        row("Watching the computers", `${kbd("Tab")} (or ${kbd("V")}) looks through one computer's eyes (its fog, resources, messages, hints and panel), then the next, then everything · ${kbd("Shift+Tab")} back · ${kbd("F")} the camera follows it`),
         row("Online", `${kbd("Enter")} chats · only the host pauses and sets the speed`),
         row("The menu", `${kbd("F10")}: help, save or load, the Timeline, resign, quit · Settings there: game speed, farms that sow themselves again, sound, music, full screen (hold Esc to leave), keeping the mouse in the game (Alt+Tab or Esc lets go), the keys on the buttons, the shortcuts`),
       ])],
@@ -1839,16 +1842,21 @@ export class Game {
   }
 
   /** Watching: everything, then each player in turn, seen through their eyes (fog, resources, panel). */
-  private nextView() {
+  /** While watching: everything, then each computer's eyes in turn (Tab, or V), Shift+Tab back. From a
+   *  computer's eyes the screen is that player's: its fog, resources, population, messages and hints, and
+   *  its panel for what is selected. */
+  private nextView(step = 1) {
     const n = this.world.players.length;
-    if (this.watchAll) { this.watchAll = false; this.me = 0; }
-    else if (this.me + 1 < n) this.me++;
-    else { this.watchAll = true; this.me = 0; }
+    const at = this.watchAll ? -1 : this.me;
+    const to = ((at + 1 + step) % (n + 1) + (n + 1)) % (n + 1) - 1; // -1 is everything
+    this.watchAll = to < 0;
+    this.me = Math.max(0, to);
     this.revealMap = this.watchAll;
     this.selection = [];
     this.fogStamp = this.minimapStamp = -1;
     const p = this.world.players[this.me];
-    this.hud.message(this.watchAll ? "Seeing everything (V: follow a player)" : `Following ${p.name}${p.civ ? ` (${p.civ.name})` : ""}: what it sees, its resources and population`);
+    this.hud.message(this.watchAll ? "Seeing everything (Tab: through each computer's eyes)" : `Through ${p.name}'s eyes${p.civ ? ` (${p.civ.name})` : ""}: what it sees, its resources, messages and hints · Tab: next · Shift+Tab: back · F: camera follows it`);
+    this.hud.setPov(this.watchAll ? null : `${p.name}${p.civ ? ` · ${p.civ.name}` : ""}${p.defeated ? " · defeated" : ""}`, playerColor(p.id));
     if (!this.watchAll) this.selectTownCenter();
   }
 
@@ -2219,7 +2227,9 @@ export class Game {
     // The status box shows the first of a group, so its picture too.
     const one = sel.length ? this.views.get(sel[0].id) : undefined;
     this.hud.portrait(one?.pic.canvas ?? null);
-    this.hud.setCommands(this.commands(sel));
+    this.hud.setCommands(this.panel(sel));
+    this.checkAgeReady();
+    this.followPov();
     this.updateGhost();
     this.updateCursor();
   }
@@ -2409,10 +2419,15 @@ export class Game {
           if (e.player === this.me || e.player === -1) this.hud.message(e.text);
           break;
         case "underAttack":
+          if (e.player === this.me) this.lastAlert = { at: e.at, time: w.time };
           if (e.player === this.me && !this.onScreen(e.at)) { this.hud.message("You are under attack!", "warn"); this.sound.play("alarm", 1, 0, 8); }
           break;
         case "ageReached":
-          if (e.player !== this.me) { this.hud.message(`The enemy reached the ${this.rules.ages[e.age].name}`, "warn"); this.sound.play("researched", 0.7); }
+          if (e.player !== this.me) {
+            // Watching, every one is named: "the enemy" says nothing when all of them are computers.
+            const who = this.watching ? w.players[e.player].name : w.allied(this.me, e.player) ? `Your ally ${w.players[e.player].name}` : "The enemy";
+            this.hud.message(`${who} reached the ${this.rules.ages[e.age].name}`, "warn"); this.sound.play("researched", 0.7);
+          }
           else this.sound.play("ageUp");
           break;
         case "completed": {
@@ -2957,10 +2972,60 @@ export class Game {
     return this.hintCache;
   }
 
+  /** The command panel. Watching from a computer's eyes, its panel as it would be for that player (what is
+   *  lit as a hint, what is greyed out and why), but the computer gives the orders: a click only says so. */
+  private panel(sel: Entity[]): Command[] {
+    const cs = this.commands(sel);
+    if (!this.watching) return cs;
+    return cs.map((c) => ({ ...c, action: () => this.hud.message(`Watching: ${this.world.players[this.me].name} gives its own orders`) }));
+  }
+
+  /** Watching through a computer's eyes with F on, the camera goes where its game is: to a fight at home
+   *  when it is attacked, with its army when the army is out, else its Town Center. Looked at again every
+   *  few seconds, and moved only when that is somewhere else. */
+  private povFollow = false;
+  private povLookAt = 0;
+  private lastAlert: { at: Vec2; time: number } | null = null;
+  private followPov() {
+    if (!this.watching || this.watchAll || !this.povFollow || performance.now() - this.povLookAt < 3000) return;
+    this.povLookAt = performance.now();
+    const w = this.world, me = this.me;
+    const tc = w.buildingsOf(me).find((b) => b.def.id === "town_center");
+    let to: Vec2 | null = this.lastAlert && w.time - this.lastAlert.time < 12 ? this.lastAlert.at : null;
+    if (!to) {
+      const out = w.unitsOf(me).filter((u) => u.isSoldier && !u.isBoat && u.aboard === null && (!tc || u.pos.distance(tc.center) > 18));
+      if (out.length >= 3) to = out.reduce((a, u) => a.add(u.pos), new Vec2(0, 0)).mul(1 / out.length);
+    }
+    to ??= tc?.center ?? null;
+    if (!to) return;
+    const here = this.toWorld(this.app.screen.width / 2, this.app.screen.height / 2);
+    if (here.distance(to) > 8) this.centerOn(to);
+  }
+
+  /** Once an age's buildings stand: a word that the Town Center can advance now (with the cost), once each
+   *  age, and the A button lit (see commands). Off with the hints in Settings. */
+  private ageReadyShown = new Set<string>();
+  private ageReadyAt = -1;
+  private checkAgeReady() {
+    const w = this.world, me = this.me, now = Math.floor(w.time);
+    if (now === this.ageReadyAt || !this.started || !this.hintsOn || (this.watching && this.watchAll) || w.winner !== null) return;
+    this.ageReadyAt = now;
+    const p = w.players[me];
+    if (p.defeated || p.age + 1 >= this.rules.ages.length) return;
+    const key = `${me}:${p.age + 1}`, why = w.blockerForNextAge(me);
+    if (this.ageReadyShown.has(key) || (why !== null && why !== "Not enough resources" && why !== "Already advancing")) return;
+    this.ageReadyShown.add(key);
+    if (why === "Already advancing") return; // advanced the moment it could: nothing to point out
+    const next = this.rules.ages[p.age + 1];
+    const cost = ResBag.of(next.cost).text;
+    this.hud.message(`${this.watching ? `${p.name} can` : "You can"} advance to the ${next.name} now: Town Center, A (${cost})${why ? " · not enough resources yet" : ""}`);
+    this.sound.play("researched", 0.6);
+  }
+
   private commands(sel: Entity[]): Command[] {
     const w = this.world, me = this.me;
     const mine = sel.filter((e) => e.owner === me);
-    if (!mine.length || w.winner !== null || this.watching) return [];
+    if (!mine.length || w.winner !== null || (this.watching && this.watchAll)) return [];
     // A new selection starts at its main menu, as in the original.
     const selKey = mine.map((e) => e.id).join(",");
     if (selKey !== this.menuFor) { this.menuFor = selKey; this.menu = "main"; }
@@ -3051,7 +3116,9 @@ export class Game {
     if (b.def.id === "town_center" && p.age + 1 < this.rules.ages.length) {
       const next = this.rules.ages[p.age + 1];
       used.add("A");
-      out.push({ key: "A", title: `Advance to the ${next.name}`, detail: `${ResBag.of(next.cost).text} · ${duration(next.research_time ?? 60)}`, blocker: w.blockerForNextAge(me), icon: "age", row: 1, action: () => {
+      const ageBlock = w.blockerForNextAge(me);
+      out.push({ key: "A", title: `Advance to the ${next.name}`, detail: `${ResBag.of(next.cost).text} · ${duration(next.research_time ?? 60)}`, blocker: ageBlock, icon: "age", row: 1,
+        hint: this.hintsOn && ageBlock === null, help: this.hintsOn && ageBlock === null ? "suggested: everything the next age needs is ready" : undefined, action: () => {
         const why = this.issue({ k: "age", building: b.id });
         if (typeof why === "string") this.hud.message(why, "warn");
       } });
@@ -3785,7 +3852,13 @@ export class Game {
       else { if (key === "F10") this.showMenu(); else this.showHelp(); this.paused = true; }
       return;
     }
-    if (this.watching && ch === "V") { this.nextView(); return; }
+    if (this.watching && !this.watchAll && ch === "F" && !this.hud.overlayShown) {
+      this.povFollow = !this.povFollow;
+      this.povLookAt = 0;
+      this.hud.message(this.povFollow ? "Camera follows the computer: its fights, its army, its town (F: off)" : "Camera free (F: follow)");
+      return;
+    }
+    if (this.watching && (ch === "V" || (key === "Tab" && !this.hud.overlayShown))) { e.preventDefault(); this.nextView(key === "Tab" && e.shiftKey ? -1 : 1); return; }
     if (key === "Escape") {
       if (this.hud.overlayShown) { this.hud.hideOverlay(); this.paused = false; return; }
       const cancel = this.hud.commands.find((c) => c.key === "Escape");
@@ -3814,7 +3887,7 @@ export class Game {
     if (e.metaKey || e.ctrlKey) return; // leave browser shortcuts alone
     if (key === "`") { this.revealMap = !this.revealMap; this.fogStamp = -1; return; } // debugging aid
     // Rebuild the commands now: the selection may have changed since the last frame.
-    this.hud.setCommands(this.commands(this.selectedEntities()));
+    this.hud.setCommands(this.panel(this.selectedEntities()));
     this.hud.run(this.hud.commands.find((c) => c.key === ch));
   }
 
@@ -3838,7 +3911,7 @@ export class Game {
       case "scores": this.scoresToggled(); return;
     }
     // An order on the command panel: the button with that icon (or title), for what is selected now.
-    this.hud.setCommands(this.commands(this.selectedEntities()));
+    this.hud.setCommands(this.panel(this.selectedEntities()));
     const c = this.hud.commands.find((x) => (act.title ? x.title.startsWith(act.title) : x.icon === act.icon));
     if (c) this.hud.run(c);
   }

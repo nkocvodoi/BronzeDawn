@@ -8,6 +8,7 @@ Mỗi PR mới thêm một dòng vào đầu danh sách.
 
 ## 2026-10-17
 
+- [#148](https://github.com/nkocvodoi/BronzeDawn/pull/148) Chế độ chỉ quan sát: Tab để xem qua mắt từng máy (sương mù, tài nguyên, thông báo, gợi ý, bảng lệnh), F để camera bám theo máy; thông báo khi đủ điều kiện lên đời
 - [#147](https://github.com/nkocvodoi/BronzeDawn/pull/147) Tộc nào cũng có gợi ý nên xây gì, nâng cấp gì (Greek: Academy và bộ binh); thanh máu biến mất theo lính khi lên thuyền, thanh máu của địch màu tím; bảng Diplomacy theo bố cục AoE, bấm OK mới áp dụng
 - [#146](https://github.com/nkocvodoi/BronzeDawn/pull/146) Elf thay đổi theo từng đời: công trình (chòi lá, gỗ sống, vòm lụa xanh ngọc, bạc và kính lá), dân phục và quân phục theo đời, kỵ binh cưỡi nai; hình dân/lính theo đời (`elf/villager@bronze`). Wonder của 4 tộc là tượng khổng lồ dựng bằng metaball: nữ thần cây, thần thợ rèn, ngựa chồm, rồng trên núi đá
 - [#145](https://github.com/nkocvodoi/BronzeDawn/pull/145) Tộc giả tưởng: kế hoạch đồ họa đã duyệt, công trình thành khu nhiều phần (nhà phụ, rào, đồ nghề, đèn và tượng của tộc), cắt gọn vào giữa khung, biểu tượng riêng cho 4 công nghệ riêng; trang so sánh `web/scripts/race-review.mjs`

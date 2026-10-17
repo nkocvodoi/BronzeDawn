@@ -514,9 +514,23 @@ await wait(300);
 check(await g(() => game.watching && game.world.ais.length === game.world.players.length && game.revealMap), "watch mode: every player is a computer and the map is shown");
 await g(() => { game.selection = [game.world.buildingsOf(0)[0].id]; });
 await wait(200);
-check((await page.$$("#commands button:not(.empty)")).length === 0, "watching, there are no orders to give");
+check((await page.$$("#commands button:not(.empty)")).length === 0, "watching everything, there is no panel");
+await page.keyboard.press("Tab");
+check(await g(() => !game.revealMap && game.me === 0) && (await page.isVisible("#pov")) && (await page.textContent("#pov")).includes("Computer 1"),
+  "Tab: through the first computer's eyes, its name under the top bar");
+await g(() => { game.selection = [game.world.buildingsOf(0).find((b) => b.def.id === "town_center").id]; });
+await page.waitForFunction(() => document.querySelectorAll("#commands button:not(.empty)").length > 0, null, { timeout: 3000 }).catch(() => {});
+const queued = await g(() => game.world.buildingsOf(0).find((b) => b.def.id === "town_center").queue.length);
+await page.click("#commands button:not(.empty)");
+check((await page.$$("#commands button:not(.empty)")).length > 0 && (await g(() => game.world.buildingsOf(0).find((b) => b.def.id === "town_center").queue.length)) === queued,
+  "its panel shows, but a click gives no order");
+await page.keyboard.press("Tab");
+check(await g(() => game.me === 1 && !game.watchAll), "Tab again: the next computer");
+await page.keyboard.press("Shift+Tab");
+await page.keyboard.press("Shift+Tab");
+check(await g(() => game.watchAll && game.revealMap) && !(await page.isVisible("#pov")), "Shift+Tab back to everything");
 await page.keyboard.press("v");
-check(await g(() => !game.revealMap && game.me === 0), "V follows one player");
+check(await g(() => !game.revealMap && game.me === 0), "V does as Tab");
 
 // The original's game settings: a later age, a bigger stockpile, another population limit, an explored
 // map and a time limit, all taken from the start screen.
